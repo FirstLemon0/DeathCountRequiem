@@ -1,0 +1,262 @@
+.builder-shell {
+  grid-template-columns: 1fr;
+  width: min(1840px, calc(100vw - 16px));
+  padding-inline: 0;
+}
+
+.builder-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(560px, 1fr) minmax(360px, 460px);
+  grid-template-areas:
+    "settings search deck"
+    "io search deck";
+  gap: 12px;
+  align-items: start;
+  min-width: 0;
+}
+
+.builder-grid > * {
+  min-width: 0;
+}
+
+.builder-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgb(var(--panel-rgb) / 0.92);
+  box-shadow: var(--shadow);
+  padding: 12px;
+}
+
+.deck-settings {
+  grid-area: settings;
+}
+
+.search-panel {
+  grid-area: search;
+}
+
+.deck-list-panel {
+  grid-area: deck;
+}
+
+.import-panel {
+  grid-area: io;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.panel-head strong {
+  color: var(--warn);
+  font-size: 0.9rem;
+}
+
+.field-label {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.field-label input,
+.field-label select {
+  width: 100%;
+}
+
+.search-controls {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(120px, 150px) minmax(120px, 150px) minmax(180px, 240px);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.card-results,
+.deck-list {
+  display: grid;
+  gap: 8px;
+  max-height: calc(100vh - 210px);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.builder-card,
+.deck-row,
+.validation-item,
+.stat-pill {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card-bg);
+}
+
+.builder-card,
+.deck-row {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.builder-card-head,
+.deck-row-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.builder-card-title,
+.deck-row-title {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.builder-card-title strong,
+.deck-row-title strong {
+  line-height: 1.25;
+}
+
+.meta-line,
+.rules-line {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.rules-line {
+  color: var(--text-2);
+}
+
+.card-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 6px;
+}
+
+.card-stat-grid.compact {
+  grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+}
+
+.card-stat {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  border: 1px solid rgb(var(--muted-rgb) / 0.25);
+  border-radius: 6px;
+  background: rgb(var(--surface-deep-rgb) / 0.78);
+  padding: 6px 7px;
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.card-stat b {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.card-actions,
+.deck-actions,
+.io-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.card-actions button,
+.deck-actions button,
+.io-actions button,
+.panel-head button {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 0.84rem;
+}
+
+.deck-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.stat-pill {
+  padding: 6px 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.validation-list {
+  display: grid;
+  gap: 6px;
+}
+
+.validation-item {
+  padding: 8px;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.validation-item.ok {
+  border-color: rgb(var(--c-flag-rgb) / 0.65);
+}
+
+.validation-item.warn {
+  border-color: rgb(var(--c-impact-rgb) / 0.75);
+}
+
+.validation-item.error {
+  border-color: rgb(var(--c-monster-rgb) / 0.8);
+}
+
+.status-text {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+#deckJsonText {
+  width: 100%;
+  margin-top: 10px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 1260px) {
+  .builder-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "settings io"
+      "search search"
+      "deck deck";
+  }
+
+  .card-results,
+  .deck-list {
+    max-height: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .builder-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "settings"
+      "search"
+      "deck"
+      "io";
+  }
+
+  .search-controls {
+    grid-template-columns: 1fr;
+  }
+}

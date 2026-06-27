@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>デッキ構築 - バディファイト試作アプリ</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script>
+      // テーマbootstrap(描画前にdata-themeを確定しFOUC回避)。3画面共通。
+      (function () {
+        try {
+          var saved = localStorage.getItem("bf-theme");
+          if (saved === "light" || saved === "dark") {
+            document.documentElement.setAttribute("data-theme", saved);
+          }
+        } catch (e) {}
+        function effective() {
+          return (
+            document.documentElement.getAttribute("data-theme") ||
+            (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
+          );
+        }
+        window.updateThemeToggleIcon = function () {
+          var btn = document.getElementById("themeToggle");
+          if (!btn) return;
+          var mode = effective();
+          btn.textContent = mode === "light" ? "\u{1F319}" : "\u2600\uFE0F";
+          btn.setAttribute("aria-label", mode === "light" ? "ダークモードに切替" : "ライトモードに切替");
+          btn.setAttribute("aria-pressed", mode === "light" ? "true" : "false");
+        };
+        window.toggleTheme = function () {
+          var next = effective() === "light" ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", next);
+          try { localStorage.setItem("bf-theme", next); } catch (e) {}
+          window.updateThemeToggleIcon();
+        };
+        document.addEventListener("DOMContentLoaded", window.updateThemeToggleIcon);
+      })();
+    </script>
+    <link rel="stylesheet" href="builder.css" />
+  </head>
+  <body>
+    <main class="app-shell builder-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">デッキ構築ツール</p>
+          <h1>デッキ構築</h1>
+        </div>
+        <div class="toolbar" aria-label="画面操作">
+          <button type="button" id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="テーマ切替">☀️</button>
+          <button type="button" class="mobile-only nav-toggle" onclick="document.body.classList.toggle('nav-open')" aria-label="メニュー">☰</button>
+          <a class="toolbar-link" href="index.html">対戦へ</a>
+          <button id="newDeckButton" type="button">新規</button>
+          <button id="saveDeckButton" type="button">保存</button>
+          <button id="exportDeckButton" type="button">エクスポート</button>
+        </div>
+      </header>
+
+      <section class="builder-grid" aria-label="デッキ構築">
+        <section class="builder-panel deck-settings" aria-label="デッキ設定">
+          <div class="panel-head">
+            <h2>デッキ</h2>
+            <strong id="deckCountLabel">0枚</strong>
+          </div>
+          <label class="field-label">
+            <span>デッキ名</span>
+            <input id="deckNameInput" type="text" value="新しいデッキ" />
+          </label>
+          <label class="field-label">
+            <span>フラッグ</span>
+            <select id="flagSelect"></select>
+          </label>
+          <label class="field-label">
+            <span>バディ</span>
+            <select id="buddySelect"></select>
+          </label>
+          <div class="deck-stats" id="deckStats"></div>
+          <div class="validation-list" id="validationList"></div>
+        </section>
+
+        <section class="builder-panel search-panel" aria-label="カード検索">
+          <div class="panel-head">
+            <h2>カード検索</h2>
+            <strong id="resultCountLabel">0件</strong>
+          </div>
+          <div class="search-controls">
+            <input id="searchInput" type="search" placeholder="カード名・番号・属性" />
+            <select id="typeFilter" aria-label="種類"></select>
+            <select id="worldFilter" aria-label="ワールド"></select>
+            <select id="productFilter" aria-label="製品"></select>
+          </div>
+          <div class="card-results" id="cardResults"></div>
+        </section>
+
+        <section class="builder-panel deck-list-panel" aria-label="採用カード">
+          <div class="panel-head">
+            <h2>採用カード</h2>
+            <button id="sortDeckButton" type="button">整列</button>
+          </div>
+          <div class="deck-list" id="deckList"></div>
+        </section>
+
+        <section class="builder-panel import-panel" aria-label="入出力">
+          <div class="panel-head">
+            <h2>インポート / エクスポート</h2>
+            <select id="savedDeckSelect" aria-label="保存済みデッキ"></select>
+          </div>
+          <div class="io-actions">
+            <button id="loadSavedDeckButton" type="button">読込</button>
+            <button id="deleteSavedDeckButton" type="button">削除</button>
+            <button id="importDeckButton" type="button">インポート</button>
+            <button id="downloadDeckButton" type="button">JSON保存</button>
+          </div>
+          <div class="io-actions">
+            <button id="issueShareCodeButton" type="button">共有コード発行</button>
+            <button id="importShareCodeButton" type="button">共有コード取込</button>
+          </div>
+          <input id="shareCodeInput" type="text" spellcheck="false" placeholder="BFD1.… デッキ共有コード（持ち寄り用）" class="share-code-input" />
+          <textarea id="deckJsonText" spellcheck="false"></textarea>
+          <p class="status-text" id="builderStatus">カードデータ読込中</p>
+        </section>
+      </section>
+    </main>
+    <script src="builder.js"></script>
+  </body>
+</html>

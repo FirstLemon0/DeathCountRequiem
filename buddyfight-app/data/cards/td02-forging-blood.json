@@ -1,0 +1,607 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "sd02-forging-blood",
+    "name": "500円スタートデッキ第2弾「フォージング・ブラッド」",
+    "kind": "500円スタートデッキ",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=3"
+  },
+  "cards": [
+    {
+      "id": "armorknight-black-drake",
+      "no": "TD02/0001",
+      "name": "アーマナイト・ブラックドレイク",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "size": 3,
+      "power": 9000,
+      "critical": 4,
+      "defense": 8000,
+      "rarity": "デッキ商品",
+      "callCost": {
+        "gauge": 3
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "rules": [
+        "コールする時、ゲージ3を払う。"
+      ]
+    },
+    {
+      "id": "armorknight-griffin",
+      "no": "TD02/0002",
+      "name": "アーマナイト・グリフィン",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 3,
+      "defense": 3000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "能力なし。"
+      ]
+    },
+    {
+      "id": "armorknight-cerberus",
+      "no": "TD02/0003",
+      "name": "アーマナイト・ケルベロス",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "rarity": "デッキ商品",
+      "keywords": [
+        "soulguard"
+      ],
+      "callCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "rules": [
+        "コールする時、ゲージ2を払う。",
+        "【起動】自分の場のサイズ1以下の《アーマナイト》1枚をこのカードのソウルに入れられる。",
+        "【起動】このカードのソウル1枚を捨てることで、相手の場のモンスター1枚を破壊する。",
+        "ソウルガード"
+      ],
+      "effect": "armorknight-cerberus",
+      "abilities": [
+        {
+          "id": "armorknight-cerberus-main",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "target": {
+            "anyOf": [
+              {
+                "type": "fieldCard",
+                "controller": "self",
+                "excludeSource": true,
+                "filter": {
+                  "cardType": "monster",
+                  "attribute": "アーマナイト",
+                  "sizeLte": 1
+                }
+              },
+              {
+                "type": "fieldCard",
+                "controller": "opponent",
+                "sourceSoulCountGte": 1,
+                "filter": {
+                  "cardType": "monster"
+                }
+              }
+            ]
+          },
+          "script": [
+            {
+              "op": "ifTargetController",
+              "controller": "self",
+              "then": [
+                {
+                  "op": "moveSelected",
+                  "var": "$target",
+                  "to": "soul",
+                  "log": "{cards}をソウルに入れました。"
+                }
+              ],
+              "else": [
+                {
+                  "op": "discardSelfSoul",
+                  "amount": 1
+                },
+                {
+                  "op": "destroySelected",
+                  "var": "$target"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "armorknight-minotaur",
+      "no": "TD02/0004",
+      "name": "アーマナイト・ミノタウロス",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 4000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "能力なし。"
+      ]
+    },
+    {
+      "id": "armorknight-ogre",
+      "no": "TD02/0005",
+      "name": "アーマナイト・オーガー",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 2,
+      "defense": 3000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "能力なし。"
+      ]
+    },
+    {
+      "id": "armorknight-hellhound",
+      "no": "TD02/0006",
+      "name": "アーマナイト・ヘルハウンド",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 6000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "能力なし。"
+      ]
+    },
+    {
+      "id": "armorknight-wizard",
+      "no": "TD02/0007",
+      "name": "アーマナイト・ウィザード",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "能力なし。"
+      ]
+    },
+    {
+      "id": "armorknight-eagle",
+      "no": "TD02/0008",
+      "name": "アーマナイト・イーグル",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "size": 0,
+      "power": 4000,
+      "critical": 1,
+      "defense": 1000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "能力なし。"
+      ]
+    },
+    {
+      "id": "guren-zangeki",
+      "no": "TD02/0009",
+      "name": "紅蓮斬撃",
+      "type": "spell",
+      "world": "デンジャーW",
+      "attributes": [
+        "闘気",
+        "破壊"
+      ],
+      "rarity": "デッキ商品",
+      "castCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "rules": [
+        "自分のセンターにモンスターがいないなら使える。",
+        "使う時、ゲージ1を払う。",
+        "相手の場のサイズ1か2のモンスター1枚を破壊する。"
+      ],
+      "abilities": [
+        {
+          "id": "guren-zangeki-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster",
+              "sizeIn": [
+                1,
+                2
+              ]
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shichu-katsuro",
+      "no": "TD02/0010",
+      "name": "死中活路",
+      "type": "spell",
+      "world": "デンジャーW",
+      "attributes": [
+        "闘気",
+        "ドロー"
+      ],
+      "rarity": "デッキ商品",
+      "castCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "rules": [
+        "自分のライフが5以下なら使える。",
+        "使う時、ゲージ1を払う。",
+        "カードを2枚引く。",
+        "このカードは1ターンに1回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "shichu-katsuro-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "shichu-katsuro"
+          },
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 5
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "toki-shihojin",
+      "no": "TD02/0011",
+      "name": "闘気四方陣",
+      "type": "spell",
+      "world": "デンジャーW",
+      "attributes": [
+        "闘気",
+        "防御"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "【対抗】相手のターンの攻撃中、自分のセンターにモンスターがいないなら使える。",
+        "その攻撃を無効化する。"
+      ],
+      "abilities": [
+        {
+          "id": "toki-shihojin-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ketsuryu-koki",
+      "no": "TD02/0012",
+      "name": "血流呼気",
+      "type": "spell",
+      "world": "デンジャーW",
+      "attributes": [
+        "闘気",
+        "回復"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "自分が《武器》を装備していて、自分のセンターにモンスターがいないなら使える。",
+        "自分のライフを+4する。ドロップゾーンにあるこのカードと同名のカード1枚につき、回復する数値は1減る。"
+      ],
+      "abilities": [
+        {
+          "id": "ketsuryu-koki-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "ownItemHasAttribute",
+              "attribute": "武器"
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLifeMinusMatchingDropCount",
+              "baseAmount": 4,
+              "filter": {
+                "sameNameAsSource": true,
+                "excludeSource": true
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gekiso-shigurui",
+      "no": "TD02/0013",
+      "name": "激槍 死狂い",
+      "type": "item",
+      "world": "デンジャーW",
+      "attributes": [
+        "闘気",
+        "武器"
+      ],
+      "power": 5000,
+      "critical": 2,
+      "rarity": "デッキ商品",
+      "equipCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate"
+      ],
+      "rules": [
+        "装備する時、ゲージ2を払う。",
+        "貫通"
+      ]
+    },
+    {
+      "id": "messo-iwakujiri",
+      "no": "TD02/0014",
+      "name": "滅槍 岩抉り",
+      "type": "item",
+      "world": "デンジャーW",
+      "attributes": [
+        "闘気",
+        "武器"
+      ],
+      "power": 3000,
+      "critical": 2,
+      "rarity": "デッキ商品",
+      "rules": [
+        "能力なし。"
+      ]
+    },
+    {
+      "id": "drill-bunker",
+      "no": "TD02/0015",
+      "name": "怒裏留バンカー!!",
+      "type": "impact",
+      "world": "デンジャーW",
+      "attributes": [
+        "闘気"
+      ],
+      "rarity": "デッキ商品",
+      "castCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "rules": [
+        "自分のセンターにモンスターがいなくて、自分の《武器》がスタンドしているなら使える。",
+        "使う時、ゲージ2を払う。",
+        "その《武器》の攻撃力を+4000、打撃力を+2し、貫通を与える。"
+      ],
+      "abilities": [
+        {
+          "id": "drill-bunker-cast",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "ownItemHasAttribute",
+              "attribute": "武器"
+            },
+            {
+              "op": "ownItemStanding"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "item",
+              "attribute": "武器",
+              "zone": "item"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 4000,
+              "critical": 2,
+              "duration": "turn"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "penetrate",
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "my-buddy-danger",
+      "no": "TD02/0016",
+      "name": "俺のバディ！（デンジャーワールド）",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "バディ"
+      ],
+      "size": 1,
+      "power": 1000,
+      "critical": 1,
+      "defense": 1000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "メインフェイズにセンターへバディコールできる。",
+        "バディコールした時、自分のライフを+1する。"
+      ],
+      "effect": "my-buddy"
+    },
+    {
+      "id": "danger-world",
+      "no": "TD02/0017",
+      "name": "デンジャーワールド",
+      "type": "flag",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "このファイターはデンジャーWとジェネリックのカードを使う。"
+      ]
+    }
+  ]
+}

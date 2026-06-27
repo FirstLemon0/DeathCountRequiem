@@ -1,0 +1,5250 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bt02-cyber-ninja-squad",
+    "name": "ブースターパック第2弾 サイバー忍軍"
+  },
+  "cards": [
+    {
+      "id": "bt02-0001",
+      "no": "BT02/0001",
+      "name": "超武装騎竜 ガルバニックフェザー・ドラゴン",
+      "ruby": "ちょうぶそうきりゅう ガルバニックフェザー・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "超ガチレア",
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■“ガルバニックチャージ”このカードが攻撃した時、君のデッキの上から１枚をゲージに置く。",
+        "■【起動】“ガルバニックサンダー”ゲージ２を払ってよい。払ったら、相手にダメージ２。この能力は１ターンに１回だけ使える。"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 2,
+      "defense": 6000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bt02-0001-attack-gauge",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bt02-0001-galvanic-thunder",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bt02-0001-thunder"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bt02-0002",
+      "no": "BT02/0002",
+      "name": "世界の中心 メアリー・スー",
+      "ruby": "せかいのちゅうしん メアリー・スー",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "魔術師"
+      ],
+      "rarity": "超ガチレア",
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■“無敵の奇跡”このカードが登場した時、君のデッキから魔法１枚までを手札に加え、デッキをシャッフルする。"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 3000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bt02-0002-enter-search-spell",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "spell",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "spell"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "世界の中心 メアリー・スーで手札に加える魔法",
+              "lead": "デッキから魔法１枚までを選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "spell",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を手札に加えました。"
+            },
+            {
+              "op": "shuffleDeck",
+              "controller": "self"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0003",
+      "no": "BT02/0003",
+      "name": "大魔法 マイ・グランファーザークロック",
+      "ruby": "だいまほう マイ・グランファーザークロック",
+      "type": "spell",
+      "world": "マジックW",
+      "attributes": [
+        "魔術師",
+        "魔力"
+      ],
+      "rarity": "超ガチレア",
+      "rules": [
+        "■【使用コスト】ゲージ２を払う。",
+        "■君のドロップゾーンの《魔術師》が６種類以上あるなら使える。",
+        "■君のドロップゾーンのカード全てをデッキに戻し、デッキをシャッフルする。このターンが終わった後、もう１度君のターンになる！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bt02-0003-extra-turn",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "ownDropDistinctAttributeCountGte",
+              "attribute": "魔術師",
+              "amount": 6
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "shuffleDropIntoDeck"
+            },
+            {
+              "op": "takeExtraTurnAfterThis"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0004",
+      "no": "BT02/0004",
+      "name": "帝王竜 ガエル・カーン",
+      "ruby": "ていおうりゅう ガエル・カーン",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン"
+      ],
+      "rarity": "超ガチレア",
+      "rules": [
+        "■【コールコスト】君の場のモンスター２枚をドロップゾーンに置き、ゲージ２を払う。",
+        "■“王の一喝”このカードが登場した時、相手の場のモンスター全てを破壊する！"
+      ],
+      "size": 3,
+      "power": 10000,
+      "critical": 4,
+      "defense": 10000,
+      "costs": {
+        "call": [
+          {
+            "op": "dropOwnMonster",
+            "amount": 2,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bt02-0004-enter-destroy-all",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "destroyAll",
+              "controller": "opponent",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0005",
+      "no": "BT02/0005",
+      "name": "剛力忍者 風魔小太郎",
+      "ruby": "ごうりきにんじゃ ふうまこたろう",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "忍者",
+        "風"
+      ],
+      "rarity": "超ガチレア",
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "『移動』『２回攻撃』"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 2,
+      "defense": 5000,
+      "keywords": [
+        "move",
+        "doubleAttack"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      }
+    },
+    {
+      "id": "bt02-0006",
+      "no": "BT02/0006",
+      "name": "ナノマシン忍者 月影",
+      "ruby": "ナノマシンにんじゃ つきかげ",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "忍者"
+      ],
+      "rarity": "超ガチレア",
+      "rules": [
+        "■“ナノマシン空蝉”このカードが破壊される場合、手札のモンスター以外のカード１枚を捨ててよい。捨てたら、このカードを場に残せる！"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000,
+      "destroyReplacement": {
+        "optional": true,
+        "cost": [
+          {
+            "op": "discardHand",
+            "amount": 1,
+            "filter": {
+              "cardTypeIn": [
+                "spell",
+                "impact",
+                "item"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "bt02-0007",
+      "no": "BT02/0007",
+      "name": "包蔵禍心 闇狐",
+      "ruby": "ほうぞうかしん やみぎつね",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "髑髏武者",
+        "闇"
+      ],
+      "rarity": "超ガチレア",
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■“無明送り”君の《髑髏武者》が相手にダメージを与えた時、そのカードをドロップゾーンに置いてよい。置いたら、カード１枚を引く。"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bt02-0007-ally-skull-damage",
+          "kind": "triggered",
+          "event": "allyDealDamage",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "damageSourceMatches",
+              "filter": {
+                "attribute": "髑髏武者"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dropEventCard",
+              "eventCard": "damageSource"
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bt02-0007-self-skull-damage",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "damageSourceMatches",
+              "filter": {
+                "attribute": "髑髏武者"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dropEventCard",
+              "eventCard": "damageSource"
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0008",
+      "no": "BT02/0008",
+      "name": "秘剣 星砕き",
+      "ruby": "ひけん ほしくだき",
+      "type": "impact",
+      "world": "カタナW",
+      "attributes": [
+        "忍法",
+        "秘剣"
+      ],
+      "rarity": "超ガチレア",
+      "rules": [
+        "■【使用コスト】ゲージ３を払う。",
+        "■相手が魔法を使った時、このカードが「秘剣 絶命陣」のソウルにあるなら使える。(このカードは手札から使えない)",
+        "■【対抗】相手にダメージ３！相手が使ったその魔法を無効化する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 3
+      },
+      "abilities": [
+        {
+          "id": "bt02-0008-hiken-star-crusher",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "fromSoulOnly": true,
+          "conditions": [
+            {
+              "op": "pendingActionIsOpponent"
+            },
+            {
+              "op": "pendingActionKind",
+              "kind": "spell"
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 3
+            },
+            {
+              "op": "nullifyPendingAction"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0009",
+      "no": "BT02/0009",
+      "name": "竜騎士 ヴラド・ドラキュラ",
+      "ruby": "りゅうきし ヴラド・ドラキュラ",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■【コールコスト】ゲージ３を払う。",
+        "■“ブラッディチャージ”このカードの打撃力は、君のドロップゾーンの《竜騎士》のモンスターの枚数分増える。このカードの打撃力は最大６だぞ！！"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 0,
+      "defense": 5000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      },
+      "continuous": [
+        {
+          "op": "modifyStatsByDropAttributeCount",
+          "filter": {
+            "sameNameAsSource": true
+          },
+          "attribute": "竜騎士",
+          "criticalPerCard": 1,
+          "max": 6,
+          "dropFilter": {
+            "cardType": "monster",
+            "attribute": "竜騎士"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bt02-0010",
+      "no": "BT02/0010",
+      "name": "エミグレッテ・ドラゴン",
+      "ruby": "エミグレッテ・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■“ダブルループ” このカードの攻撃で、相手のモンスターを破壊した時、そのターン中、このカードは『２回攻撃』を得る。"
+      ],
+      "size": 2,
+      "power": 2000,
+      "critical": 3,
+      "defense": 5000,
+      "abilities": [
+        {
+          "id": "bt02-0010-destroy-by-attack-double",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "doubleAttack",
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0011",
+      "no": "BT02/0011",
+      "name": "撃滅の魔女 ハーティ・ザ・デバステイター",
+      "ruby": "げきめつのまじょ ハーティ・ザ・デバステイター",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "魔術師",
+        "破壊"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■【コールコスト】ゲージ３を払う。",
+        "■【起動】“マギカブラスター”手札の《魔術師》１枚を捨ててよい。捨てたら、相手の場のモンスター１枚を破壊する。この能力は１ターンに１回だけ使える。",
+        "■“ルミナスシャドー”このカードが連携攻撃された時、手札の《魔術師》１枚を捨ててよい。捨てたら、その連携攻撃を無効化する。",
+        "『２回攻撃』"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 2,
+      "defense": 6000,
+      "keywords": [
+        "doubleAttack"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      },
+      "abilities": [
+        {
+          "id": "bt02-0011-discard-destroy",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1,
+              "filter": {
+                "attribute": "魔術師"
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bt02-0011-destroy"
+          }
+        },
+        {
+          "id": "bt02-0011-link-nullify",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackIsLink"
+            },
+            {
+              "op": "pendingAttackTargetIsSource"
+            }
+          ],
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1,
+              "filter": {
+                "attribute": "魔術師"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0012",
+      "no": "BT02/0012",
+      "name": "大公爵 アスタロト",
+      "ruby": "だいこうしゃく アスタロト",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■【コールコスト】ゲージ３を払い、君の手札の《72柱》２枚までをこのカードのソウルに入れる。",
+        "■君の使う<マジックワールド>の魔法の【使用コスト】に書かれている払うゲージの数値は１少なくなる。",
+        "『ソウルガード』『２回攻撃』"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "keywords": [
+        "doubleAttack",
+        "soulguard",
+        "reduceMagicWorldSpellGaugeCost"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          },
+          {
+            "op": "putHandToSoul",
+            "amount": 2,
+            "min": 0,
+            "max": 2,
+            "filter": {
+              "attribute": "72柱"
+            }
+          }
+        ],
+        "cast": []
+      },
+      "callCost": {
+        "gauge": 3
+      }
+    },
+    {
+      "id": "bt02-0013",
+      "no": "BT02/0013",
+      "name": "双角竜 アークギラファ",
+      "ruby": "そうかくりゅう アークギラファ",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "『２回攻撃』（このカードは１ターンに１回、攻撃した後【スタンド】できる）"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 6000,
+      "keywords": [
+        "doubleAttack"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      }
+    },
+    {
+      "id": "bt02-0014",
+      "no": "BT02/0014",
+      "name": "夜翔竜 ラハル",
+      "ruby": "やしょうりゅう ラハル",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "『移動』（お互いのアタックフェイズ開始時に、場のこのカードを空いている別のエリアに置いてよい）"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 5000,
+      "keywords": [
+        "move"
+      ]
+    },
+    {
+      "id": "bt02-0015",
+      "no": "BT02/0015",
+      "name": "殲滅忍者 斬撃阿修羅丸",
+      "ruby": "せんめつにんじゃ ざんげきあしゅらまる",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "忍者",
+        "火"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■【起動】“忍法阿修羅爆炎”ライフ１を払ってよい。払ったら、君の手札全てを捨て、相手の場のモンスター全てを破壊する。この能力は１ターンに１回だけ使える。"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 3,
+      "defense": 4000,
+      "abilities": [
+        {
+          "id": "bt02-0015-all-destroy",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "discardAllHand"
+            },
+            {
+              "op": "destroyAll",
+              "controller": "opponent",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bt02-0015-all-destroy"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bt02-0016",
+      "no": "BT02/0016",
+      "name": "疾風 餓狼王",
+      "ruby": "しっぷう がろうおう",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "髑髏武者",
+        "風"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■【起動】“餓狼斬”ゲージ１を払ってよい。払ったら、そのターン中、このカードは『２回攻撃』を得て、攻撃力＋3000する。ターン終了時、このカードを破壊する。"
+      ],
+      "size": 2,
+      "power": 3000,
+      "critical": 2,
+      "defense": 5000,
+      "abilities": [
+        {
+          "id": "bt02-0016-burst",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "power": 3000,
+              "duration": "turn"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "doubleAttack",
+              "duration": "turn"
+            },
+            {
+              "op": "setDelayedDestroyAtTurnEnd"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0017",
+      "no": "BT02/0017",
+      "name": "電子忍者 紫電",
+      "ruby": "でんしにんじゃ しでん",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "忍者"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■【起動】“サイバー・アナライズ”手札の《忍法》１枚を捨て、ゲージ１を払ってよい。そうしたら、カード２枚を引く。この能力は１ターンに１回だけ使える。"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "abilities": [
+        {
+          "id": "bt02-0017-discard-ninpo-draw",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "ninpo",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "attribute": "忍法"
+              },
+              "amount": 1,
+              "title": "電子忍者 紫電で捨てる《忍法》",
+              "lead": "手札から《忍法》１枚を選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "ninpo",
+              "to": "drop",
+              "log": "discard"
+            },
+            {
+              "op": "draw",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bt02-0017-draw"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bt02-0018",
+      "no": "BT02/0018",
+      "name": "爆殺奈落送りの術",
+      "ruby": "ばくさつならくおくりのじゅつ",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "忍法",
+        "土"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■『設置』",
+        "■【使用コスト】ゲージ１を払い、君のデッキの中から１枚を選び、裏向きでこのカードのソウルに入れ、君のデッキをシャッフルする。",
+        "■相手の場にモンスターが登場した時、このカードのソウル全てをドロップゾーンに置いてよい。置いたら、そのカードの中に、登場したモンスターのサイズと同じサイズのカードがあるなら、そのモンスターを破壊し、相手にダメージ２。その後、このカードをドロップゾーンに置く。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "putCardToSoul",
+            "sources": [
+              "deck"
+            ],
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "uniqueSet": true,
+      "abilities": [
+        {
+          "id": "bt02-0018-opponent-enter-trap",
+          "kind": "triggered",
+          "event": "opponentEnter",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "enteredCardMatches",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
+          "script": [
+            {
+              "op": "moveSoulToDrop"
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "movedToDropHasSameSizeAsEntered"
+              },
+              "then": [
+                {
+                  "op": "destroy",
+                  "target": "$target"
+                },
+                {
+                  "op": "dealDamage",
+                  "player": "opponent",
+                  "amount": 2
+                }
+              ]
+            },
+            {
+              "op": "destroySelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0019",
+      "no": "BT02/0019",
+      "name": "鬼道 唐紅",
+      "ruby": "きどう からくれない",
+      "type": "impact",
+      "world": "カタナW",
+      "attributes": [
+        "鬼道"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■【使用コスト】ゲージ２を払う。",
+        "■相手の手札が２枚以下、相手のライフが４以下で、君のセンターと相手のセンターにモンスターがいないなら使える。",
+        "■相手にダメージ４！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bt02-0019-damage",
+          "kind": "impact",
+          "conditions": [
+            {
+              "op": "opponentHandCountLte",
+              "amount": 2
+            },
+            {
+              "op": "opponentLifeLte",
+              "amount": 4
+            },
+            {
+              "op": "bothCentersEmpty"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0020",
+      "no": "BT02/0020",
+      "name": "秘剣 絶命陣",
+      "ruby": "ひけん ぜつめいじん",
+      "type": "impact",
+      "world": "カタナW",
+      "attributes": [
+        "忍法"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■【使用コスト】君の手札かデッキかドロップゾーンからカード１枚を選び、裏向きでこのカードのソウルに置く。デッキを見たら、デッキをシャッフルする。",
+        "■君はこのカードのソウルを見て、そのソウルから《秘剣》を【使用コスト】を払って使える。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "putCardToSoul",
+            "sources": [
+              "hand",
+              "deck",
+              "drop"
+            ],
+            "amount": 1
+          }
+        ]
+      },
+      "uniqueSet": true,
+      "abilities": [
+        {
+          "id": "bt02-0020-use-hiken",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "hiken",
+              "from": "soul",
+              "controller": "self",
+              "filter": {
+                "attribute": "秘剣"
+              },
+              "amount": 1,
+              "title": "秘剣 絶命陣で使う《秘剣》",
+              "lead": "ソウルの《秘剣》を選んでください。"
+            },
+            {
+              "op": "useSelectedCardAbility",
+              "var": "hiken"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0021",
+      "no": "BT02/0021",
+      "name": "サイキックナイフ・ドラゴン",
+      "ruby": "サイキックナイフ・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "白竜"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【起動】“サイコダガー”このカードを【レスト】してよい。【レスト】したら、場の防御力4000以下のモンスター１枚を破壊する！"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 4000,
+      "abilities": [
+        {
+          "id": "bt02-0021-rest-destroy",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceStanding"
+            }
+          ],
+          "cost": [],
+          "target": {
+            "type": "fieldCard",
+            "controller": "any",
+            "filter": {
+              "cardType": "monster",
+              "defenseLte": 4000
+            }
+          },
+          "effects": [
+            {
+              "op": "restSelf"
+            },
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0022",
+      "no": "BT02/0022",
+      "name": "ドラゴニック・パラトルーパー",
+      "ruby": "ドラゴニック・パラトルーパー",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "移動",
+        "白竜"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■相手のモンスターの攻撃中に使える。",
+        "■【対抗】君の手札の《武装騎竜》１枚を、【コールコスト】を払ってコールし、その攻撃の対象を、そのモンスターに変更する。"
+      ],
+      "abilities": [
+        {
+          "id": "bt02-0022-paratrooper",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackByOpponentMonster"
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "monster",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "attribute": "武装騎竜"
+              },
+              "callable": true,
+              "canUseForFlag": true,
+              "canPayCost": "call",
+              "amount": 1,
+              "title": "ドラゴニック・パラトルーパーでコールするモンスター",
+              "lead": "手札の《武装騎竜》１枚を選んでください。"
+            },
+            {
+              "op": "selectZone",
+              "var": "zone",
+              "cardVar": "monster",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ],
+              "emptyOnly": false
+            },
+            {
+              "op": "payCardCostForSelection",
+              "var": "monster",
+              "purpose": "call"
+            },
+            {
+              "op": "callSelected",
+              "var": "monster",
+              "zoneVar": "zone",
+              "redirectPendingAttack": true,
+              "resolveOnEnter": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0023",
+      "no": "BT02/0023",
+      "name": "ビクトリースラッシュ！",
+      "ruby": "ビクトリースラッシュ！",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■君の《武器》が相手にダメージを与えた時に使える。",
+        "■【対抗】相手とジャンケンする。君がジャンケンに勝ったら、相手にその《武器》の打撃力分のダメージを与える！「ビクトリースラッシュ！」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bt02-0023-rps-damage",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "lastDamageSourceMatches",
+              "controller": "self",
+              "filter": {
+                "cardType": "item"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamageByFieldCardStat",
+              "controller": "self",
+              "zone": "item",
+              "stat": "critical",
+              "player": "opponent",
+              "rockPaperScissors": true
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bt02-0023-rps-damage"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bt02-0024",
+      "no": "BT02/0024",
+      "name": "闇の魔法騎士 ドゥンケルハイト",
+      "ruby": "やみのまほうきし ドゥンケルハイト",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "魔術師",
+        "騎士"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■“強固な盾”君の場に「光の魔法騎士 リヒト」がいるなら、このカードの攻撃力＋3000、防御力＋3000！"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 1,
+      "defense": 3000,
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "name": "闇の魔法騎士 ドゥンケルハイト"
+          },
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "name": "光の魔法騎士 リヒト"
+              }
+            }
+          ],
+          "power": 3000,
+          "defense": 3000
+        }
+      ]
+    },
+    {
+      "id": "bt02-0025",
+      "no": "BT02/0025",
+      "name": "光の魔法騎士 リヒト",
+      "ruby": "ひかりのまほうきし リヒト",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "魔術師",
+        "騎士"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■“閃光光線”君の場に「闇の魔法騎士 ドゥンケルハイト」がいるなら、このカードの攻撃力＋3000、防御力＋3000！"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 4000,
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "name": "光の魔法騎士 リヒト"
+          },
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "name": "闇の魔法騎士 ドゥンケルハイト"
+              }
+            }
+          ],
+          "power": 3000,
+          "defense": 3000
+        }
+      ]
+    },
+    {
+      "id": "bt02-0026",
+      "no": "BT02/0026",
+      "name": "コーシャー",
+      "ruby": "コーシャー",
+      "type": "spell",
+      "world": "マジックW",
+      "attributes": [
+        "魔力"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■君の場に《魔術師》のモンスターが２枚以上いるなら使える。",
+        "■君のデッキの上から１枚をゲージに置き、カード１枚を引く。「コーシャー」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bt02-0026-gauge-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardCountGte",
+              "amount": 2,
+              "filter": {
+                "cardType": "monster",
+                "attribute": "魔術師"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bt02-0026-cast"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bt02-0027",
+      "no": "BT02/0027",
+      "name": "ソロモンの鍵 上巻",
+      "ruby": "ソロモンのかぎ じょうかん",
+      "type": "spell",
+      "world": "マジックW",
+      "attributes": [
+        "魔力"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【対抗】君のデッキの上から２枚をゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bt02-0027-gauge2",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0028",
+      "no": "BT02/0028",
+      "name": "ソロモンの鍵 下巻",
+      "ruby": "ソロモンのかぎ げかん",
+      "type": "spell",
+      "world": "マジックW",
+      "attributes": [
+        "魔力"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■君のライフを＋１する。君のドロップゾーンに「ソロモンの鍵 上巻」があるなら、カード１枚を引く。"
+      ],
+      "abilities": [
+        {
+          "id": "bt02-0028-life-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "ownDropHasCardName",
+                "name": "ソロモンの鍵 上巻"
+              },
+              "then": [
+                {
+                  "op": "draw",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0029",
+      "no": "BT02/0029",
+      "name": "アーマナイト・イフリート",
+      "ruby": "アーマナイト・イフリート",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "『貫通』（このカードの攻撃で相手センターのモンスターを破壊したら、相手にも打撃力分ダメージを与える）"
+      ],
+      "size": 3,
+      "power": 8000,
+      "critical": 3,
+      "defense": 7000,
+      "keywords": [
+        "penetrate"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      }
+    },
+    {
+      "id": "bt02-0030",
+      "no": "BT02/0030",
+      "name": "アーマナイト・タイガー",
+      "ruby": "アーマナイト・タイガー",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "-"
+      ],
+      "size": 0,
+      "power": 1000,
+      "critical": 2,
+      "defense": 1000
+    },
+    {
+      "id": "bt02-0031",
+      "no": "BT02/0031",
+      "name": "破魔震脚",
+      "ruby": "はましんきゃく",
+      "type": "spell",
+      "world": "デンジャーW",
+      "attributes": [
+        "闘気",
+        "破壊"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【使用コスト】ゲージ２を払う。",
+        "■相手の場のアイテムか魔法１枚を破壊する！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bt02-0031-destroy-item-spell",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardTypeIn": [
+                "item",
+                "spell"
+              ]
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0032",
+      "no": "BT02/0032",
+      "name": "アーマナイト・フォーメーション",
+      "ruby": "アーマナイト・フォーメーション",
+      "type": "spell",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■【使用コスト】ゲージ１を払う。",
+        "■君の場の《アーマナイト》のモンスターを攻撃力＋1000、防御力＋1000！"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "アーマナイト"
+          },
+          "power": 1000,
+          "defense": 1000
+        }
+      ]
+    },
+    {
+      "id": "bt02-0033",
+      "no": "BT02/0033",
+      "name": "天衝 牙龍王",
+      "ruby": "てんしょう がりゅうおう",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "髑髏武者",
+        "ドラゴン"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【コールコスト】ゲージ３を払い、君のドロップゾーンの《髑髏武者》１枚をこのカードのソウルに入れる。",
+        "『ソウルガード』『貫通』"
+      ],
+      "size": 3,
+      "power": 8000,
+      "critical": 2,
+      "defense": 5000,
+      "keywords": [
+        "penetrate",
+        "soulguard"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          },
+          {
+            "op": "putDropToSoul",
+            "amount": 1,
+            "filter": {
+              "attribute": "髑髏武者"
+            }
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      }
+    },
+    {
+      "id": "bt02-0034",
+      "no": "BT02/0034",
+      "name": "閃撃 病蛇",
+      "ruby": "せんげき やまいへび",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "髑髏武者",
+        "闇"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■“毒蛇閃撃”このカードが登場した時、相手の場のサイズ１以下のモンスター１枚を破壊する。",
+        "■ターン終了時、このカードを破壊する。"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000,
+      "abilities": [
+        {
+          "id": "bt02-0034-enter-destroy",
+          "kind": "triggered",
+          "event": "enter",
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster",
+              "sizeLte": 1
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "setDelayedDestroyAtTurnEnd"
+            }
+          ],
+          "allowMissingTarget": true
+        }
+      ]
+    },
+    {
+      "id": "bt02-0035",
+      "no": "BT02/0035",
+      "name": "サイバー陰陽師 晴明",
+      "ruby": "サイバーおんみょうじ せいめい",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "魔術師",
+        "忍者"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【起動】“電子式神”ゲージ２を払ってよい。払ったら、君の手札１枚を裏向きにして、「サイズ１/攻撃力6000/防御力6000/打撃力２」のモンスターとして場に出す。"
+      ],
+      "size": 2,
+      "power": 3000,
+      "critical": 1,
+      "defense": 5000,
+      "abilities": [
+        {
+          "id": "bt02-0035-hand-as-monster",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "card",
+              "from": "hand",
+              "controller": "self",
+              "amount": 1,
+              "title": "サイバー陰陽師 晴明で置く手札",
+              "lead": "モンスターとして置く手札１枚を選んでください。"
+            },
+            {
+              "op": "selectZone",
+              "var": "zone",
+              "cardVar": "card",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ],
+              "emptyOnly": true
+            },
+            {
+              "op": "callSelectedAsMonster",
+              "var": "card",
+              "zoneVar": "zone",
+              "size": 1,
+              "power": 6000,
+              "critical": 2,
+              "defense": 6000,
+              "attributes": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0036",
+      "no": "BT02/0036",
+      "name": "幻魔忍者 果心居士",
+      "ruby": "げんまにんじゃ かしんこじ",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "忍者",
+        "火"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■“千里眼”このカードが登場した時、君は相手の手札を見る。",
+        "■このカードは連携攻撃されない。"
+      ],
+      "size": 2,
+      "power": 1000,
+      "critical": 2,
+      "defense": 5000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "cannotBeLinkAttacked"
+      ],
+      "abilities": [
+        {
+          "id": "bt02-0036-reveal-hand",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "revealHand",
+              "player": "opponent"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0037",
+      "no": "BT02/0037",
+      "name": "明鏡止水",
+      "ruby": "めいきょうしすい",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "忍法",
+        "鬼道"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【対抗】君のデッキの上から３枚をゲージに置く。「明鏡止水」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bt02-0037-top3-gauge",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 3
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bt02-0037-cast"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bt02-0038",
+      "no": "BT02/0038",
+      "name": "忍び巻物",
+      "ruby": "しのびまきもの",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "忍法"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■【起動】ゲージ１を払い、君の手札１枚を裏向きでこのカードのソウルに入れてよい。そうしたら、カード１枚を引く。この能力は１ターンに１回だけ使える。",
+        "■君はこのカードのソウルを見て、そのソウルから《忍法》を【使用コスト】を払って使える。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "costs": {
+        "cast": []
+      },
+      "uniqueSet": true,
+      "abilities": [
+        {
+          "id": "bt02-0038-soul-draw",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "putHandToSoul",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bt02-0038-draw"
+          }
+        },
+        {
+          "id": "bt02-0038-use-ninpo",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "ninpo",
+              "from": "soul",
+              "controller": "self",
+              "filter": {
+                "attribute": "忍法"
+              },
+              "amount": 1,
+              "title": "忍び巻物で使う《忍法》",
+              "lead": "ソウルの《忍法》を選んでください。"
+            },
+            {
+              "op": "useSelectedCardAbility",
+              "var": "ninpo"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0039",
+      "no": "BT02/0039",
+      "name": "黄泉の還り路",
+      "ruby": "よみのかえりみち",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "鬼道",
+        "闇"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■【起動】ゲージ１を払ってよい。払ったら、君のドロップゾーンのサイズ１以下の《髑髏武者》１枚を、【コールコスト】を払わずにコールする。この能力は１ターンに１回だけ使える。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "uniqueSet": true,
+      "abilities": [
+        {
+          "id": "bt02-0039-drop-call",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "monster",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "髑髏武者",
+                "sizeLte": 1
+              },
+              "callable": true,
+              "canUseForFlag": true,
+              "amount": 1,
+              "title": "黄泉の還り路でコールするモンスター",
+              "lead": "ドロップゾーンのサイズ１以下の《髑髏武者》１枚を選んでください。"
+            },
+            {
+              "op": "selectZone",
+              "var": "zone",
+              "cardVar": "monster",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            },
+            {
+              "op": "callSelected",
+              "var": "monster",
+              "zoneVar": "zone",
+              "resolveOnEnter": true
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bt02-0039-call"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bt02-0040",
+      "no": "BT02/0040",
+      "name": "天下五剣 三日月宗近",
+      "ruby": "てんかごけん みかづきむねちか",
+      "type": "item",
+      "world": "カタナW",
+      "attributes": [
+        "日本刀",
+        "武器"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■ターン終了時、このカードを破壊する。",
+        "『貫通』（このカードの攻撃で相手センターのモンスターを破壊したら、相手にも打撃力分ダメージを与える）"
+      ],
+      "power": 5000,
+      "critical": 2,
+      "defense": 0,
+      "keywords": [
+        "penetrate"
+      ],
+      "destroyAtEndOfTurn": true
+    },
+    {
+      "id": "bt02-0041",
+      "no": "BT02/0041",
+      "name": "秘剣 月牙",
+      "ruby": "ひけん げつが",
+      "type": "impact",
+      "world": "カタナW",
+      "attributes": [
+        "忍法",
+        "秘剣"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【使用コスト】ゲージ３を払う。",
+        "■相手が必殺技を使った時、このカードが「秘剣 絶命陣」のソウルにあるなら使える。(このカードは手札から使えない)",
+        "■【対抗】相手にダメージ３！相手が使ったその必殺技を無効化する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 3
+      },
+      "abilities": [
+        {
+          "id": "bt02-0041-hiken-moon-fang",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "fromSoulOnly": true,
+          "conditions": [
+            {
+              "op": "pendingActionIsOpponent"
+            },
+            {
+              "op": "pendingActionKind",
+              "kind": "impact"
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 3
+            },
+            {
+              "op": "nullifyPendingAction"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0042",
+      "no": "BT02/0042",
+      "name": "秘剣 流星",
+      "ruby": "ひけん りゅうせい",
+      "type": "impact",
+      "world": "カタナW",
+      "attributes": [
+        "忍法",
+        "秘剣"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【使用コスト】ゲージ３を払う。",
+        "■相手が《武器》で君を攻撃している攻撃中、このカードが「秘剣 絶命陣」のソウルにあるなら使える。(このカードは手札から使えない)",
+        "■【対抗】相手にダメージ３！相手の場のアイテム１枚を破壊する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 3
+      },
+      "abilities": [
+        {
+          "id": "bt02-0042-hiken-meteor",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "fromSoulOnly": true,
+          "conditions": [
+            {
+              "op": "pendingAttackByOpponentItem"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            }
+          ],
+          "script": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 3
+            },
+            {
+              "op": "selectCards",
+              "var": "meteorItem",
+              "from": "field",
+              "controller": "opponent",
+              "filter": {
+                "cardType": "item"
+              },
+              "amount": 1,
+              "allowEmpty": true,
+              "emptyMessage": "相手の場にアイテムがないため、破壊は行いません。",
+              "title": "秘剣 流星で破壊するアイテム",
+              "lead": "相手の場のアイテム１枚を選んでください。"
+            },
+            {
+              "op": "destroySelected",
+              "var": "meteorItem",
+              "require": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0043",
+      "no": "BT02/0043",
+      "name": "アクターナイツ・ザ・ワールド",
+      "ruby": "アクターナイツ・ザ・ワールド",
+      "type": "monster",
+      "world": "ジェネリック",
+      "attributes": [
+        "タロット"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■【起動】“完全なる支配”ゲージ３を払い、君の手札の「アクターナイツ・ザ・フール」１枚と、君のドロップゾーンの「アクターナイツ・ザ・フール」１枚をデッキの下に置いてよい。置いたら、このターンの次のターンは君のターンになる。"
+      ],
+      "size": 3,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bt02-0043-extra-turn",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 3
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "foolHand",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "name": "アクターナイツ・ザ・フール"
+              },
+              "amount": 1
+            },
+            {
+              "op": "moveSelected",
+              "var": "foolHand",
+              "to": "deckBottom"
+            },
+            {
+              "op": "selectCards",
+              "var": "foolDrop",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "name": "アクターナイツ・ザ・フール"
+              },
+              "amount": 1
+            },
+            {
+              "op": "moveSelected",
+              "var": "foolDrop",
+              "to": "deckBottom"
+            },
+            {
+              "op": "takeExtraTurnAfterThis"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0044",
+      "no": "BT02/0044",
+      "name": "アルティメット・バディ！",
+      "ruby": "アルティメット・バディ！",
+      "type": "spell",
+      "world": "ジェネリック",
+      "attributes": [
+        "強化"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■このカードを君のバディモンスターのソウルに入れる。",
+        "■このカードが君のバディモンスターのソウルにあるなら、君のバディモンスターは『ソウルガード』を得て、攻撃力＋5000する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "soulContinuous": [
+        {
+          "op": "grantKeyword",
+          "filter": {
+            "cardType": "monster"
+          },
+          "requireBuddy": true,
+          "keyword": "soulguard"
+        },
+        {
+          "op": "modifyStats",
+          "filter": {
+            "cardType": "monster"
+          },
+          "requireBuddy": true,
+          "power": 5000
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bt02-0044-buddy-soul",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "buddy": true
+            }
+          },
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0045",
+      "no": "BT02/0045",
+      "name": "ブレイズガントレット・ドラゴン",
+      "ruby": "ブレイズガントレット・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "上",
+      "rules": [
+        "-"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 3,
+      "defense": 5000
+    },
+    {
+      "id": "bt02-0046",
+      "no": "BT02/0046",
+      "name": "竜騎士 リョウマ",
+      "ruby": "りゅうきし リョウマ",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士",
+        "武士"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■“時代の風”このカードが登場した時、君の場の「竜騎士 リョウマ」以外のモンスター１枚を手札に戻してもよい。"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 3000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bt02-0046-return-own",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "excludeSource": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "returnToHand",
+              "target": "$target"
+            }
+          ],
+          "allowMissingTarget": true
+        }
+      ]
+    },
+    {
+      "id": "bt02-0047",
+      "no": "BT02/0047",
+      "name": "ドラゴンシールド 白竜の盾",
+      "ruby": "ドラゴンシールド はくりゅうのたて",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "白竜",
+        "防御"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【対抗】そのターン中、次に君に与えられるダメージを２減らす。"
+      ],
+      "abilities": [
+        {
+          "id": "bt02-0047-reduce-next-damage",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "effects": [
+            {
+              "op": "reduceNextDamage",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0048",
+      "no": "BT02/0048",
+      "name": "竜剣 ドラゴブリーチ",
+      "ruby": "りゅうけん ドラゴブリーチ",
+      "type": "item",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "武器"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【装備コスト】ゲージ１を払い、ライフ１を払う。"
+      ],
+      "power": 5000,
+      "critical": 3,
+      "defense": 0,
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "equipCost": {
+        "gauge": 1
+      }
+    },
+    {
+      "id": "bt02-0049",
+      "no": "BT02/0049",
+      "name": "伊達男 シトリー",
+      "ruby": "だておとこ シトリー",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■“当たって砕けろ”このカードが登場した時、君のデッキの上から１枚を公開する。",
+        "公開したカードが魔法カードなら、【使用コスト】を払わず使ってよい。使わないなら、または公開したカードが魔法でないなら、公開したカードをデッキの１番下に置く。"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 3000,
+      "abilities": [
+        {
+          "id": "bt02-0049-top-spell",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "useTopDeckCardIfMatchesElseBottom",
+              "controller": "self",
+              "filter": {
+                "cardType": "spell"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0050",
+      "no": "BT02/0050",
+      "name": "雲乗りホプホブ",
+      "ruby": "くものりホプホブ",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "魔術師"
+      ],
+      "rarity": "上",
+      "rules": [
+        "『移動』（お互いのアタックフェイズ開始時に、場のこのカードを空いている別のエリアに置いてよい）"
+      ],
+      "size": 2,
+      "power": 3000,
+      "critical": 2,
+      "defense": 5000,
+      "keywords": [
+        "move"
+      ]
+    },
+    {
+      "id": "bt02-0051",
+      "no": "BT02/0051",
+      "name": "魔界コンピューター ヴァッサゴー",
+      "ruby": "まかいコンピューター ヴァッサゴー",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■“悪魔的検索術”このカードが登場した時、君の手札１枚を捨ててよい。捨てたら、カード１枚を引く。",
+        "■このカードは場から手札に戻せない。"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 3000,
+      "cannotReturnToHand": true,
+      "abilities": [
+        {
+          "id": "bt02-0051-discard-draw",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0052",
+      "no": "BT02/0052",
+      "name": "ド・ガイタ・クラッシュナックル！",
+      "ruby": "ド・ガイタ・クラッシュナックル！",
+      "type": "impact",
+      "world": "マジックW",
+      "attributes": [
+        "火力"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【使用コスト】ゲージ３を払う。",
+        "■君の場に《魔術師》がいるなら使える。",
+        "■相手の場のモンスター全てを破壊するか、相手にダメージ２！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 3
+      },
+      "abilities": [
+        {
+          "id": "bt02-0052-choice",
+          "kind": "impact",
+          "conditions": [
+            {
+              "op": "ownFieldHasAttribute",
+              "attribute": "魔術師"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 3
+            }
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "大魔法 デビルズロッケンロール",
+              "lead": "解決する効果を選んでください。",
+              "options": [
+                {
+                  "key": "destroy",
+                  "label": "相手モンスター全破壊",
+                  "script": [
+                    {
+                      "op": "destroyAll",
+                      "controller": "opponent",
+                      "filter": {
+                        "cardType": "monster"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "key": "damage",
+                  "label": "相手にダメージ２",
+                  "script": [
+                    {
+                      "op": "dealDamage",
+                      "player": "opponent",
+                      "amount": 2
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0053",
+      "no": "BT02/0053",
+      "name": "ホーリー・モーリィ！",
+      "ruby": "ホーリー・モーリィ！",
+      "type": "spell",
+      "world": "マジックW",
+      "attributes": [
+        "魔力",
+        "移動"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■相手のセンターのサイズ２以下のモンスターを、空いているレフトかライトに移動させる！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bt02-0053-move-center",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster",
+              "zone": "center",
+              "sizeLte": 2
+            }
+          },
+          "effects": [
+            {
+              "op": "moveTargetToEmptyZone",
+              "target": "$target",
+              "zones": [
+                "left",
+                "right"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0054",
+      "no": "BT02/0054",
+      "name": "チェレックス！",
+      "ruby": "チェレックス！",
+      "type": "spell",
+      "world": "マジックW",
+      "attributes": [
+        "防御"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】そのターン中、次に君に与えられるダメージを０に減らし、君のライフを＋１する！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bt02-0054-prevent-gain",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "preventNextDamage"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0055",
+      "no": "BT02/0055",
+      "name": "バスティン・キャップス",
+      "ruby": "バスティン・キャップス",
+      "type": "spell",
+      "world": "マジックW",
+      "attributes": [
+        "破壊"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【使用コスト】ゲージ４を払う。",
+        "■【対抗】場のカード１枚を破壊する！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 4
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 4
+      },
+      "abilities": [
+        {
+          "id": "bt02-0055-destroy-any",
+          "kind": "spell",
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 4
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "any",
+            "filter": {}
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0056",
+      "no": "BT02/0056",
+      "name": "アーマナイト・トレント",
+      "ruby": "アーマナイト・トレント",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【コールコスト】ゲージ３を払う。"
+      ],
+      "size": 3,
+      "power": 8000,
+      "critical": 4,
+      "defense": 10000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      }
+    },
+    {
+      "id": "bt02-0057",
+      "no": "BT02/0057",
+      "name": "強角竜 ダイアトラス",
+      "ruby": "ごうかくりゅう ダイアトラス",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "『貫通』（このカードの攻撃で相手センターのモンスターを破壊したら、相手にも打撃力分ダメージを与える）"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 5000,
+      "keywords": [
+        "penetrate"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      }
+    },
+    {
+      "id": "bt02-0058",
+      "no": "BT02/0058",
+      "name": "アーマナイト・ウォールリザード",
+      "ruby": "アーマナイト・ウォールリザード",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■【対抗】【起動】相手ターンの攻撃中、場のこのカードをドロップゾーンに置いてよい。置いたら、そのターン中、次に君に与えられるダメージを２減らす。"
+      ],
+      "size": 2,
+      "power": 3000,
+      "critical": 3,
+      "defense": 3000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bt02-0058-drop-reduce",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            }
+          ],
+          "effects": [
+            {
+              "op": "dropSelf"
+            },
+            {
+              "op": "reduceNextDamage",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0059",
+      "no": "BT02/0059",
+      "name": "流浪忍者 飛び加藤",
+      "ruby": "るろうにんじゃ とびかとう",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "忍者"
+      ],
+      "rarity": "上",
+      "rules": [
+        "-"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 3,
+      "defense": 3000
+    },
+    {
+      "id": "bt02-0060",
+      "no": "BT02/0060",
+      "name": "血刀 鬼面斎",
+      "ruby": "けっとう きめんさい",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "髑髏武者",
+        "土"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■ターン終了時、このカードを破壊する。",
+        "『貫通』（このカードの攻撃で相手センターのモンスターを破壊したら、相手にも打撃力分ダメージを与える）"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 1000,
+      "keywords": [
+        "penetrate"
+      ],
+      "destroyAtEndOfTurn": true
+    },
+    {
+      "id": "bt02-0061",
+      "no": "BT02/0061",
+      "name": "加速忍者 疾風",
+      "ruby": "かそくにんじゃ はやて",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "忍者",
+        "風"
+      ],
+      "rarity": "上",
+      "rules": [
+        "『移動』（お互いのアタックフェイズ開始時に、場のこのカードを空いている別のエリアに置いてよい）"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 1000,
+      "keywords": [
+        "move"
+      ]
+    },
+    {
+      "id": "bt02-0062",
+      "no": "BT02/0062",
+      "name": "アイテム爆砕の術",
+      "ruby": "アイテムばくさいのじゅつ",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "忍法"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【使用コスト】ゲージ２を払う。",
+        "■【対抗】場のアイテム１枚を破壊する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bt02-0062-destroy-item",
+          "kind": "spell",
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "filter": {
+              "cardType": "item"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0063",
+      "no": "BT02/0063",
+      "name": "うつせみの術",
+      "ruby": "うつせみのじゅつ",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "忍法",
+        "風"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■相手のターンの攻撃中に使える。",
+        "■【対抗】その攻撃が連携攻撃でないなら、無効化する。"
+      ],
+      "abilities": [
+        {
+          "id": "bt02-0063-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackNotLink"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0064",
+      "no": "BT02/0064",
+      "name": "忍法 玉鋼",
+      "ruby": "にんぽう たまはがね",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "忍法"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【対抗】バトルしている《忍者》１枚を選び、このバトル中、攻撃力＋3000、防御力＋3000し、『反撃』を与える！(反撃：このカードが攻撃された後、このカードが場にいるなら、このカードの攻撃力以下の防御力を持つ攻撃してきたモンスター１枚を破壊する）"
+      ],
+      "keywords": [
+        "counterattack"
+      ],
+      "abilities": [
+        {
+          "id": "bt02-0064-buff",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "battleCard",
+            "role": null,
+            "filter": {
+              "cardType": "monster",
+              "attribute": "忍者"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 3000,
+              "defense": 3000
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "counterattack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0065",
+      "no": "BT02/0065",
+      "name": "流星十字手裏剣 右打ち",
+      "ruby": "りゅうせいじゅうじしゅりけん みぎうち",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "忍法"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■相手のモンスターが君のライトのモンスターを攻撃した時に使える。",
+        "■【対抗】その攻撃を無効化し、相手の場のモンスター全てを破壊する！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bt02-0065-right-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetZone",
+              "zone": "right"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "destroyAll",
+              "controller": "opponent",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0066",
+      "no": "BT02/0066",
+      "name": "旋風風車手裏剣 逆打ち",
+      "ruby": "せんぷうふうしゃしゅりけん さかうち",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "忍法"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■相手のモンスターが君のレフトのモンスターを攻撃した時に使える。",
+        "■【対抗】その攻撃を無効化し、相手の場のモンスター全てを破壊する！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bt02-0066-left-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetZone",
+              "zone": "left"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "destroyAll",
+              "controller": "opponent",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0067",
+      "no": "BT02/0067",
+      "name": "鬼道 月白斬り",
+      "ruby": "きどう げっぱくぎり",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "鬼道",
+        "闇"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■君のモンスターが破壊された時に使える。",
+        "■【対抗】相手の場のモンスター１枚を破壊する。"
+      ],
+      "abilities": [
+        {
+          "id": "bt02-0067-destroy-after-own-destroyed",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "lastDestroyedCardMatches",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0068",
+      "no": "BT02/0068",
+      "name": "鬼道 紫炎烈火",
+      "ruby": "きどう しえんれっか",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "鬼道",
+        "火"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【対抗】バトルしている《髑髏武者》１枚を選び、このバトル中、攻撃力＋3000、防御力＋3000し、『反撃』を与える！(反撃：このカードが攻撃された後、このカードが場にいるなら、このカードの攻撃力以下の防御力を持つ攻撃してきたモンスター１枚を破壊する）"
+      ],
+      "keywords": [
+        "counterattack"
+      ],
+      "abilities": [
+        {
+          "id": "bt02-0068-skull-buff",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "battleCard",
+            "role": null,
+            "filter": {
+              "cardType": "monster",
+              "attribute": "髑髏武者"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 3000,
+              "defense": 3000
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "counterattack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0069",
+      "no": "BT02/0069",
+      "name": "アクターナイツ・チャリオット",
+      "ruby": "アクターナイツ・チャリオット",
+      "type": "monster",
+      "world": "ジェネリック",
+      "attributes": [
+        "タロット",
+        "破壊"
+      ],
+      "rarity": "上",
+      "rules": [
+        "-"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 1000
+    },
+    {
+      "id": "bt02-0070",
+      "no": "BT02/0070",
+      "name": "アクターナイツ・ハイプリエステス",
+      "ruby": "アクターナイツ・ハイプリエステス",
+      "type": "monster",
+      "world": "ジェネリック",
+      "attributes": [
+        "タロット",
+        "防御"
+      ],
+      "rarity": "上",
+      "rules": [
+        "-"
+      ],
+      "size": 2,
+      "power": 3000,
+      "critical": 1,
+      "defense": 7000
+    },
+    {
+      "id": "bt02-0071",
+      "no": "BT02/0071",
+      "name": "アクターナイツ・ザ・マジシャン",
+      "ruby": "アクターナイツ・ザ・マジシャン",
+      "type": "monster",
+      "world": "ジェネリック",
+      "attributes": [
+        "タロット",
+        "魔術師"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■このカードが破壊された時、ゲージ１を払ってよい。払ったら、カード１枚を引く！"
+      ],
+      "size": 1,
+      "power": 1000,
+      "critical": 1,
+      "defense": 1000,
+      "abilities": [
+        {
+          "id": "bt02-0071-destroyed-draw",
+          "kind": "triggered",
+          "event": "destroyed",
+          "optional": true,
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0072",
+      "no": "BT02/0072",
+      "name": "愚か者が荒野を目指す",
+      "ruby": "おろかものがこうやをめざす",
+      "type": "spell",
+      "world": "ジェネリック",
+      "attributes": [
+        "タロット"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■君のライフが５以下なら使える。",
+        "■君のデッキの上から１枚をゲージに置き、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "bt02-0072-life-gauge",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 5
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0073",
+      "no": "BT02/0073",
+      "name": "フールズ・ジャーニー",
+      "ruby": "フールズ・ジャーニー",
+      "type": "spell",
+      "world": "ジェネリック",
+      "attributes": [
+        "タロット"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【使用コスト】ゲージ１を払い、君の場の「アクターナイツ・ザ・フール」１枚をドロップゾーンに置く。",
+        "■君のドロップゾーンの《タロット》が３種類以上あるなら、使える。",
+        "■カード３枚を引く！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bt02-0073-draw3",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "dropOwnMonster",
+              "amount": 1,
+              "filter": {
+                "name": "アクターナイツ・ザ・フール"
+              }
+            }
+          ],
+          "conditions": [
+            {
+              "op": "ownDropDistinctAttributeCountGte",
+              "attribute": "タロット",
+              "amount": 3
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0074",
+      "no": "BT02/0074",
+      "name": "バーニング・ボウ",
+      "ruby": "バーニング・ボウ",
+      "type": "item",
+      "world": "ジェネリック",
+      "attributes": [
+        "武器",
+        "火"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【装備コスト】ゲージ２を払う。",
+        "■このカードは、君のセンターにモンスターがいても攻撃できる。"
+      ],
+      "power": 2000,
+      "critical": 1,
+      "defense": 0,
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "equipCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "canAttackWithCenter"
+      ]
+    },
+    {
+      "id": "bt02-0075",
+      "no": "BT02/0075",
+      "name": "サウザンドレイピア・ドラゴン",
+      "ruby": "サウザンドレイピア・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "白竜"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000
+    },
+    {
+      "id": "bt02-0076",
+      "no": "BT02/0076",
+      "name": "レイドクロウ・ドラゴン",
+      "ruby": "レイドクロウ・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 1,
+      "defense": 5000
+    },
+    {
+      "id": "bt02-0077",
+      "no": "BT02/0077",
+      "name": "竜騎士 シンゲン",
+      "ruby": "りゅうきし シンゲン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士",
+        "武士"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 4000
+    },
+    {
+      "id": "bt02-0078",
+      "no": "BT02/0078",
+      "name": "フォースリターン",
+      "ruby": "フォースリターン",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■君の場のモンスター全てを手札に戻し、君のライフを＋１する。「フォースリターン」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bt02-0078-return-own-all",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "returnAllToHand",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster"
+              }
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bt02-0078-cast"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bt02-0079",
+      "no": "BT02/0079",
+      "name": "ドラゴ・ボンド",
+      "ruby": "ドラゴ・ボンド",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "金竜"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■君のセンターにモンスターがいないなら使える。",
+        "■【対抗】君の場のモンスター１枚を選ぶ。そのターン中、次にそのモンスターが破壊される場合、君のライフを＋２し、そのモンスターを場に残せる。"
+      ],
+      "abilities": [
+        {
+          "id": "bt02-0079-bond",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "setPreventNextDestroy",
+              "target": "$target",
+              "amount": 1,
+              "gainLife": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0080",
+      "no": "BT02/0080",
+      "name": "東方魔剣王 バアル",
+      "ruby": "とうほうまけんおう バアル",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000
+    },
+    {
+      "id": "bt02-0081",
+      "no": "BT02/0081",
+      "name": "友情の守護者 バルバトス",
+      "ruby": "ゆうじょうのしゅごしゃ バルバトス",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 6000
+    },
+    {
+      "id": "bt02-0082",
+      "no": "BT02/0082",
+      "name": "黒剣の魔剣士 ジェイス・アルディース",
+      "ruby": "こっけんのまけんし ジェイス・アルディース",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "魔術師"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■【コールコスト】ライフ１を払う。",
+        "■【起動】“フェイタルリッパー”ゲージ１を払ってよい。払ったら、そのターン中、このカードの攻撃力＋3000！"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 5000,
+      "costs": {
+        "call": [
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {},
+      "abilities": [
+        {
+          "id": "bt02-0082-power",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "power": 3000,
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0083",
+      "no": "BT02/0083",
+      "name": "必殺の弓 レラジェ",
+      "ruby": "ひっさつのゆみ レラジェ",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 1000,
+      "critical": 2,
+      "defense": 4000
+    },
+    {
+      "id": "bt02-0084",
+      "no": "BT02/0084",
+      "name": "ガンロッド マーティル",
+      "ruby": "ガンロッド マーティル",
+      "type": "item",
+      "world": "マジックW",
+      "attributes": [
+        "武器"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■【起動】“エーテルブースト”このカードを【レスト】してよい。【レスト】したら、そのターン中、君の場のモンスター１枚の攻撃力＋3000！"
+      ],
+      "power": 2000,
+      "critical": 1,
+      "defense": 0,
+      "abilities": [
+        {
+          "id": "bt02-0084-rest-power",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceStanding"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "restSelf"
+            },
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 3000,
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0085",
+      "no": "BT02/0085",
+      "name": "暴竜 ボラリオス",
+      "ruby": "ぼうりゅう ボラリオス",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■君のドロップゾーンのモンスターが４種類以上あるなら、コールできる。"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 4,
+      "defense": 4000,
+      "callConditions": [
+        {
+          "op": "ownDropDistinctCardCountGte",
+          "amount": 4,
+          "filter": {
+            "cardType": "monster"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bt02-0086",
+      "no": "BT02/0086",
+      "name": "炎操竜 ヴォルガレード",
+      "ruby": "えんそうりゅう ヴォルガレード",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 6000
+    },
+    {
+      "id": "bt02-0087",
+      "no": "BT02/0087",
+      "name": "蟷螂竜 ドランティス",
+      "ruby": "とうろうりゅう ドランティス",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■“ビーストオーラ”このカードがレフトかライトに登場した時、ゲージ１を払ってよい。払ったら、君のライフを＋１する。"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 2000,
+      "abilities": [
+        {
+          "id": "bt02-0087-enter-life",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "right"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0088",
+      "no": "BT02/0088",
+      "name": "アーマナイト・キマイラ",
+      "ruby": "アーマナイト・キマイラ",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 7000
+    },
+    {
+      "id": "bt02-0089",
+      "no": "BT02/0089",
+      "name": "アーマナイト・ポーラベアー",
+      "ruby": "アーマナイト・ポーラベアー",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 5000
+    },
+    {
+      "id": "bt02-0090",
+      "no": "BT02/0090",
+      "name": "剣虎 紅蓮炎武",
+      "ruby": "けんこ ぐれんえんぶ",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "髑髏武者",
+        "火"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 1000
+    },
+    {
+      "id": "bt02-0091",
+      "no": "BT02/0091",
+      "name": "機動忍者 地雷也",
+      "ruby": "きどうにんじゃ じらいや",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "忍者",
+        "水"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000
+    },
+    {
+      "id": "bt02-0092",
+      "no": "BT02/0092",
+      "name": "アームド僧兵 弁慶",
+      "ruby": "アームドそうへい べんけい",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "武士",
+        "忍者"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 1,
+      "defense": 4000
+    },
+    {
+      "id": "bt02-0093",
+      "no": "BT02/0093",
+      "name": "海裂き海豚丸",
+      "ruby": "うみさき いるかまる",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "髑髏武者",
+        "水"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 2000
+    },
+    {
+      "id": "bt02-0094",
+      "no": "BT02/0094",
+      "name": "銅牆鉄壁 首切り蟹",
+      "ruby": "どうしょうてっぺき くびきりがに",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "髑髏武者",
+        "水"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 5000
+    },
+    {
+      "id": "bt02-0095",
+      "no": "BT02/0095",
+      "name": "ステルス忍者 霧隠れ才蔵",
+      "ruby": "ステルスにんじゃ きりがくれさいぞう",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "忍者",
+        "水"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 3000
+    },
+    {
+      "id": "bt02-0096",
+      "no": "BT02/0096",
+      "name": "銅頭鉄額 兜熊",
+      "ruby": "どうとうてつがく かぶとぐま",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "髑髏武者",
+        "土"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 3000
+    },
+    {
+      "id": "bt02-0097",
+      "no": "BT02/0097",
+      "name": "鬼道 桜吹雪",
+      "ruby": "きどう さくらふぶき",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "鬼道",
+        "土"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■相手が魔法を使った時に使える。",
+        "■【使用コスト】ライフ２を払う。",
+        "■【対抗】相手が使ったその魔法を無効化する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payLife",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {},
+      "abilities": [
+        {
+          "id": "bt02-0097-nullify-spell",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingActionIsOpponent"
+            },
+            {
+              "op": "pendingActionKind",
+              "kind": "spell"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyPendingAction"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0098",
+      "no": "BT02/0098",
+      "name": "鬼道 呪い氷鏡",
+      "ruby": "きどう のろいひかがみ",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "鬼道",
+        "水"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■相手のモンスターが君のセンターのモンスターを攻撃した時に使える。",
+        "■【対抗】その攻撃が連携攻撃でないなら、無効化する。無効化したら、サイズ２以下の攻撃してきたモンスター１枚を破壊する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bt02-0098-nullify-destroy",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetZone",
+              "zone": "center"
+            },
+            {
+              "op": "pendingAttackNotLink"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "battleCard",
+            "role": "attacker",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster",
+              "sizeLte": 2
+            }
+          },
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0099",
+      "no": "BT02/0099",
+      "name": "忍者刀 黒曷",
+      "ruby": "にんじゃとう くろがち",
+      "type": "item",
+      "world": "カタナW",
+      "attributes": [
+        "日本刀",
+        "武器"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "power": 3000,
+      "critical": 2,
+      "defense": 0
+    },
+    {
+      "id": "bt02-0100",
+      "no": "BT02/0100",
+      "name": "アクターナイツ・ハーミット",
+      "ruby": "アクターナイツ・ハーミット",
+      "type": "monster",
+      "world": "ジェネリック",
+      "attributes": [
+        "タロット",
+        "学芸"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 3000
+    },
+    {
+      "id": "bt02-0101",
+      "no": "BT02/0101",
+      "name": "アクターナイツ・ザ・フール",
+      "ruby": "アクターナイツ・ザ・フール",
+      "type": "monster",
+      "world": "ジェネリック",
+      "attributes": [
+        "タロット"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■（一見弱いカードだが、強力な魔法のコンボカードになるぞ！）"
+      ],
+      "size": 1,
+      "power": 1000,
+      "critical": 2,
+      "defense": 2000
+    },
+    {
+      "id": "bt02-0102",
+      "no": "BT02/0102",
+      "name": "アクターナイツ・ラヴァーズ",
+      "ruby": "アクターナイツ・ラヴァーズ",
+      "type": "monster",
+      "world": "ジェネリック",
+      "attributes": [
+        "タロット"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 0,
+      "critical": 1,
+      "defense": 6000
+    },
+    {
+      "id": "bt02-0103",
+      "no": "BT02/0103",
+      "name": "ギャンビット",
+      "ruby": "ギャンビット",
+      "type": "spell",
+      "world": "ジェネリック",
+      "attributes": [
+        "チェス",
+        "移動"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■君の場のモンスター全てを手札に戻す。「ギャンビット」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bt02-0103-return-own-all",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "returnAllToHand",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bt02-0103-cast"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bt02-0104",
+      "no": "BT02/0104",
+      "name": "キャスリング",
+      "ruby": "キャスリング",
+      "type": "spell",
+      "world": "ジェネリック",
+      "attributes": [
+        "チェス",
+        "防御"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■【使用コスト】ゲージ１を払い、君の場のモンスター１枚をドロップゾーンに置く。",
+        "■君が攻撃された時に使える。",
+        "■【対抗】その攻撃を無効化する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bt02-0104-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "dropOwnMonster",
+              "amount": 1,
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-0105",
+      "no": "BT02/0105",
+      "name": "武神竜王 デュエルズィーガー",
+      "ruby": "ぶしんりゅうおう デュエルズィーガー",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード"
+      ],
+      "rarity": "バディレア",
+      "rules": [
+        "■【コールコスト】ゲージ３を払い、君の手札の《ドラゴンロード》２枚までをソウルに入れてよい。",
+        "『２回攻撃』『ソウルガード』『ライフリンク５』"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 7000,
+      "keywords": [
+        "doubleAttack",
+        "soulguard",
+        "lifeLink5"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          },
+          {
+            "op": "putHandToSoul",
+            "amount": 2,
+            "min": 0,
+            "max": 2,
+            "filter": {
+              "attribute": "ドラゴンロード"
+            }
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      }
+    },
+    {
+      "id": "bt02-s001",
+      "no": "BT02/S001",
+      "name": "超武装騎竜 ガルバニックフェザー・ドラゴン",
+      "ruby": "ちょうぶそうきりゅう ガルバニックフェザー・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■“ガルバニックチャージ”このカードが攻撃した時、君のデッキの上から１枚をゲージに置く。",
+        "■【起動】“ガルバニックサンダー”ゲージ２を払ってよい。払ったら、相手にダメージ２。この能力は１ターンに１回だけ使える。"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 2,
+      "defense": 6000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bt02-s001-attack-gauge",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bt02-s001-galvanic-thunder",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bt02-s001-thunder"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bt02-s002",
+      "no": "BT02/S002",
+      "name": "世界の中心 メアリー・スー",
+      "ruby": "せかいのちゅうしん メアリー・スー",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "魔術師"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■“無敵の奇跡”このカードが登場した時、君のデッキから魔法１枚までを手札に加え、デッキをシャッフルする。"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 3000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bt02-s002-enter-search-spell",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "spell",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "spell"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "世界の中心 メアリー・スーで手札に加える魔法",
+              "lead": "デッキから魔法１枚までを選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "spell",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を手札に加えました。"
+            },
+            {
+              "op": "shuffleDeck",
+              "controller": "self"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-s003",
+      "no": "BT02/S003",
+      "name": "帝王竜 ガエル・カーン",
+      "ruby": "ていおうりゅう ガエル・カーン",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【コールコスト】君の場のモンスター２枚をドロップゾーンに置き、ゲージ２を払う。",
+        "■“王の一喝”このカードが登場した時、相手の場のモンスター全てを破壊する！"
+      ],
+      "size": 3,
+      "power": 10000,
+      "critical": 4,
+      "defense": 10000,
+      "costs": {
+        "call": [
+          {
+            "op": "dropOwnMonster",
+            "amount": 2,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bt02-s003-enter-destroy-all",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "destroyAll",
+              "controller": "opponent",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-s004",
+      "no": "BT02/S004",
+      "name": "剛力忍者 風魔小太郎",
+      "ruby": "ごうりきにんじゃ ふうまこたろう",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "忍者",
+        "風"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "『移動』『２回攻撃』"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 2,
+      "defense": 5000,
+      "keywords": [
+        "move",
+        "doubleAttack"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      }
+    },
+    {
+      "id": "bt02-s005",
+      "no": "BT02/S005",
+      "name": "ナノマシン忍者 月影",
+      "ruby": "ナノマシンにんじゃ つきかげ",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "忍者"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■“ナノマシン空蝉”このカードが破壊される場合、手札のモンスター以外のカード１枚を捨ててよい。捨てたら、このカードを場に残せる！"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000,
+      "destroyReplacement": {
+        "optional": true,
+        "cost": [
+          {
+            "op": "discardHand",
+            "amount": 1,
+            "filter": {
+              "cardTypeIn": [
+                "spell",
+                "impact",
+                "item"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "bt02-s006",
+      "no": "BT02/S006",
+      "name": "包蔵禍心 闇狐",
+      "ruby": "ほうぞうかしん やみぎつね",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "髑髏武者",
+        "闇"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■“無明送り”君の《髑髏武者》が相手にダメージを与えた時、そのカードをドロップゾーンに置いてよい。置いたら、カード１枚を引く。"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bt02-s006-ally-skull-damage",
+          "kind": "triggered",
+          "event": "allyDealDamage",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "damageSourceMatches",
+              "filter": {
+                "attribute": "髑髏武者"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dropEventCard",
+              "eventCard": "damageSource"
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bt02-s006-self-skull-damage",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "damageSourceMatches",
+              "filter": {
+                "attribute": "髑髏武者"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dropEventCard",
+              "eventCard": "damageSource"
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-s007",
+      "no": "BT02/S007",
+      "name": "竜騎士 ヴラド・ドラキュラ",
+      "ruby": "りゅうきし ヴラド・ドラキュラ",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【コールコスト】ゲージ３を払う。",
+        "■“ブラッディチャージ”このカードの打撃力は、君のドロップゾーンの《竜騎士》のモンスターの枚数分増える。このカードの打撃力は最大６だぞ！！"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 0,
+      "defense": 5000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      },
+      "continuous": [
+        {
+          "op": "modifyStatsByDropAttributeCount",
+          "filter": {
+            "sameNameAsSource": true
+          },
+          "attribute": "竜騎士",
+          "criticalPerCard": 1,
+          "max": 6,
+          "dropFilter": {
+            "cardType": "monster",
+            "attribute": "竜騎士"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bt02-s008",
+      "no": "BT02/S008",
+      "name": "撃滅の魔女 ハーティ・ザ・デバステイター",
+      "ruby": "げきめつのまじょ ハーティ・ザ・デバステイター",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "魔術師",
+        "破壊"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【コールコスト】ゲージ３を払う。",
+        "■【起動】“マギカブラスター”手札の《魔術師》１枚を捨ててよい。捨てたら、相手の場のモンスター１枚を破壊する。この能力は１ターンに１回だけ使える。",
+        "■“ルミナスシャドー”このカードが連携攻撃された時、手札の《魔術師》１枚を捨ててよい。捨てたら、その連携攻撃を無効化する。",
+        "『２回攻撃』"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 2,
+      "defense": 6000,
+      "keywords": [
+        "doubleAttack"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      },
+      "abilities": [
+        {
+          "id": "bt02-s008-discard-destroy",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1,
+              "filter": {
+                "attribute": "魔術師"
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bt02-s008-destroy"
+          }
+        },
+        {
+          "id": "bt02-s008-link-nullify",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackIsLink"
+            },
+            {
+              "op": "pendingAttackTargetIsSource"
+            }
+          ],
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1,
+              "filter": {
+                "attribute": "魔術師"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-s009",
+      "no": "BT02/S009",
+      "name": "大公爵 アスタロト",
+      "ruby": "だいこうしゃく アスタロト",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【コールコスト】ゲージ３を払い、君の手札の《72柱》２枚までをこのカードのソウルに入れる。",
+        "■君の使う<マジックワールド>の魔法の【使用コスト】に書かれている払うゲージの数値は１少なくなる。",
+        "『ソウルガード』『２回攻撃』"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "keywords": [
+        "doubleAttack",
+        "soulguard",
+        "reduceMagicWorldSpellGaugeCost"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          },
+          {
+            "op": "putHandToSoul",
+            "amount": 2,
+            "min": 0,
+            "max": 2,
+            "filter": {
+              "attribute": "72柱"
+            }
+          }
+        ],
+        "cast": []
+      },
+      "callCost": {
+        "gauge": 3
+      }
+    },
+    {
+      "id": "bt02-s010",
+      "no": "BT02/S010",
+      "name": "疾風 餓狼王",
+      "ruby": "しっぷう がろうおう",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "髑髏武者",
+        "風"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【起動】“餓狼斬”ゲージ１を払ってよい。払ったら、そのターン中、このカードは『２回攻撃』を得て、攻撃力＋3000する。ターン終了時、このカードを破壊する。"
+      ],
+      "size": 2,
+      "power": 3000,
+      "critical": 2,
+      "defense": 5000,
+      "abilities": [
+        {
+          "id": "bt02-s010-burst",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "power": 3000,
+              "duration": "turn"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "doubleAttack",
+              "duration": "turn"
+            },
+            {
+              "op": "setDelayedDestroyAtTurnEnd"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bt02-s011",
+      "no": "BT02/S011",
+      "name": "電子忍者 紫電",
+      "ruby": "でんしにんじゃ しでん",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "忍者"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【起動】“サイバー・アナライズ”手札の《忍法》１枚を捨て、ゲージ１を払ってよい。そうしたら、カード２枚を引く。この能力は１ターンに１回だけ使える。"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "abilities": [
+        {
+          "id": "bt02-s011-discard-ninpo-draw",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "ninpo",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "attribute": "忍法"
+              },
+              "amount": 1,
+              "title": "疾風 餓狼王で捨てる《忍法》",
+              "lead": "手札から《忍法》１枚を選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "ninpo",
+              "to": "drop",
+              "log": "discard"
+            },
+            {
+              "op": "draw",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bt02-s011-draw"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bt02-s012",
+      "no": "BT02/S012",
+      "name": "秘剣 絶命陣",
+      "ruby": "ひけん ぜつめいじん",
+      "type": "impact",
+      "world": "カタナW",
+      "attributes": [
+        "忍法"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■【使用コスト】君の手札かデッキかドロップゾーンからカード１枚を選び、裏向きでこのカードのソウルに置く。デッキを見たら、デッキをシャッフルする。",
+        "■君はこのカードのソウルを見て、そのソウルから《秘剣》を【使用コスト】を払って使える。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "putCardToSoul",
+            "sources": [
+              "hand",
+              "deck",
+              "drop"
+            ],
+            "amount": 1
+          }
+        ]
+      },
+      "uniqueSet": true,
+      "abilities": [
+        {
+          "id": "bt02-s012-use-hiken",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "hiken",
+              "from": "soul",
+              "controller": "self",
+              "filter": {
+                "attribute": "秘剣"
+              },
+              "amount": 1,
+              "title": "秘剣 絶命陣で使う《秘剣》",
+              "lead": "ソウルの《秘剣》を選んでください。"
+            },
+            {
+              "op": "useSelectedCardAbility",
+              "var": "hiken"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

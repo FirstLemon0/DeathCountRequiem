@@ -1,0 +1,725 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "sd03-dragonic-force",
+    "name": "500円スタートデッキ第3弾「ドラゴニック・フォース」",
+    "kind": "500円スタートデッキ",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=8"
+  },
+  "cards": [
+    {
+      "id": "td03-jackknife-thunder-storm",
+      "no": "TD03/0001",
+      "name": "ジャックナイフ “サンダーストーム”",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 6000,
+      "rarity": "デッキ商品",
+      "keywords": [
+        "soulguard"
+      ],
+      "callCost": {
+        "gauge": 1
+      },
+      "callStack": {
+        "nameIncludes": "ジャックナイフ"
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "rules": [
+        "コールする時、ゲージ1を払い、自分の場のカード名に「ジャックナイフ」を含むモンスターの上に重ねる。",
+        "【起動】レフトかライトにいるなら、ライフ2を払って相手の場のモンスター1枚を破壊できる。",
+        "ソウルガード"
+      ],
+      "abilities": [
+        {
+          "id": "td03-thunder-raid",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 2
+            }
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "right"
+              ]
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td03-jackknife-diaspacy",
+      "no": "TD03/0002",
+      "name": "ジャックナイフ “ディアスパシィ”",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 5000,
+      "rarity": "デッキ商品",
+      "keywords": [
+        "soulguard"
+      ],
+      "callCost": {
+        "gauge": 1
+      },
+      "callStack": {
+        "nameIncludes": "ジャックナイフ"
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "rules": [
+        "コールする時、ゲージ1を払い、自分の場のカード名に「ジャックナイフ」を含むモンスターの上に重ねる。",
+        "レフトかライトにいるなら、貫通を得る。",
+        "ソウルガード"
+      ],
+      "abilities": [
+        {
+          "id": "td03-diaspacy-penetrate",
+          "kind": "continuous",
+          "keyword": "penetrate",
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "right"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td03-gust-charging-dragon",
+      "no": "TD03/0003",
+      "name": "ガストチャージング・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "黒竜"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 3000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "能力なし。"
+      ]
+    },
+    {
+      "id": "td03-jackknife-dragon",
+      "no": "TD03/0004",
+      "name": "ジャックナイフ・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 3,
+      "defense": 6000,
+      "rarity": "デッキ商品",
+      "callCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "rules": [
+        "コールする時、ゲージ1を払う。",
+        "【起動】ゲージ2を払って、デッキからカード名に「ジャックナイフ」を含むモンスター1枚をコールコストなしでこのカードの上に重ねてコールし、デッキをシャッフルする。"
+      ],
+      "abilities": [
+        {
+          "id": "td03-jackknife-evolution",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "stackCall",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "ジャックナイフ"
+              },
+              "callable": true,
+              "amount": 1,
+              "title": "ジャックナイフ・ドラゴンで重ねてコールするカード",
+              "lead": "デッキからカード名に「ジャックナイフ」を含むモンスター1枚を選んでください。",
+              "emptyMessage": "デッキに重ねてコールできる「ジャックナイフ」のモンスターがありません。"
+            },
+            {
+              "op": "stackCallSelected",
+              "var": "stackCall",
+              "resolveOnEnter": true
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td03-hammer-mace-dragon",
+      "no": "TD03/0005",
+      "name": "ハンマーメイス・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 2,
+      "power": 3000,
+      "critical": 3,
+      "defense": 6000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "能力なし。"
+      ]
+    },
+    {
+      "id": "td03-zantetsunodachi-dragon",
+      "no": "TD03/0006",
+      "name": "ザンテツノダチ・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 4000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "能力なし。"
+      ]
+    },
+    {
+      "id": "td03-grave-horn-dragon",
+      "no": "TD03/0007",
+      "name": "グレイブホーン・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 2000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "能力なし。"
+      ]
+    },
+    {
+      "id": "td03-slashknife-dragon",
+      "no": "TD03/0008",
+      "name": "スラッシュナイフ・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "黒竜"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 2000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "【起動】ゲージ1を払って、そのターン中、相手のセンターにモンスターがいても相手を攻撃できる。"
+      ],
+      "abilities": [
+        {
+          "id": "td03-shadow-run",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "canAttackFighterThroughCenter",
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td03-latale-shield-dragon",
+      "no": "TD03/0009",
+      "name": "ラテルシールド・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 4000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "能力なし。"
+      ]
+    },
+    {
+      "id": "td03-bronze-shield-dragon",
+      "no": "TD03/0010",
+      "name": "ブロンズシールド・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 1,
+      "defense": 6000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "能力なし。"
+      ]
+    },
+    {
+      "id": "td03-jackknife-braveheart",
+      "no": "TD03/0011",
+      "name": "ジャックナイフ・ブレイブハート",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "デッキ商品",
+      "castCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "rules": [
+        "使う時、ゲージ2を払う。",
+        "デッキからカード名に「ジャックナイフ」を含むカード1枚を手札に加え、デッキをシャッフルする。"
+      ],
+      "abilities": [
+        {
+          "id": "td03-braveheart-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "search": {
+            "nameIncludes": "ジャックナイフ"
+          },
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "searchedCard",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "nameIncludes": "ジャックナイフ"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "ジャックナイフ・ブレイブハートで手札に加えるカード",
+              "lead": "デッキからカード名に「ジャックナイフ」を含むカード1枚を選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "searchedCard",
+              "to": "hand",
+              "log": "ジャックナイフ・ブレイブハートで{cards}をデッキから手札に加えました。"
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td03-dragon-flame",
+      "no": "TD03/0012",
+      "name": "ドラゴン・フレイム",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "赤竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "場の攻撃力5000以下のモンスター1枚を破壊する。"
+      ],
+      "abilities": [
+        {
+          "id": "td03-dragon-flame-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "filter": {
+              "cardType": "monster",
+              "powerLte": 5000
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td03-dragoenergy",
+      "no": "TD03/0013",
+      "name": "ドラゴエナジー",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "【対抗】バトル中の《武装騎竜》1体を選ぶ。",
+        "そのカードの攻撃力と防御力を+3000し、反撃を持たせる。"
+      ],
+      "effect": "dragoenergy",
+      "abilities": [
+        {
+          "id": "td03-dragoenergy-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "battleCard",
+            "filter": {
+              "attribute": "武装騎竜"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 3000,
+              "defense": 3000,
+              "duration": "battle"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "counterattack",
+              "duration": "battle"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td03-dragonic-charge",
+      "no": "TD03/0014",
+      "name": "ドラゴニック・チャージ",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "【対抗】デッキの上から2枚をゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "td03-dragonic-charge-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td03-green-dragon-shield",
+      "no": "TD03/0015",
+      "name": "ドラゴンシールド 緑竜の盾",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "緑竜",
+        "防御"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "【対抗】相手の攻撃中、自分のセンターが空なら使える。",
+        "その攻撃を無効化し、自分のライフを+1する。"
+      ],
+      "effect": "green-shield",
+      "abilities": [
+        {
+          "id": "td03-green-shield-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
+            },
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td03-dragonblade-dragobrave",
+      "no": "TD03/0016",
+      "name": "竜剣 ドラゴブレイブ",
+      "type": "item",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "power": 5000,
+      "critical": 3,
+      "rarity": "デッキ商品",
+      "equipCost": {
+        "discard": 1,
+        "gauge": 1
+      },
+      "costs": {
+        "equip": [
+          {
+            "op": "discardHand",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "rules": [
+        "装備する時、手札1枚を捨て、ゲージ1を払う。"
+      ]
+    },
+    {
+      "id": "td03-dragonblade-dragofearless",
+      "no": "TD03/0017",
+      "name": "竜剣 ドラゴフィアレス",
+      "type": "item",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "武器"
+      ],
+      "power": 3000,
+      "critical": 2,
+      "rarity": "デッキ商品",
+      "rules": [
+        "能力なし。"
+      ]
+    },
+    {
+      "id": "td03-dragonic-punisher",
+      "no": "TD03/0018",
+      "name": "ドラゴニック・パニッシャー",
+      "type": "impact",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "デッキ商品",
+      "castCost": {
+        "gauge": 4
+      },
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 4
+          },
+          {
+            "op": "payLife",
+            "amount": 2
+          }
+        ]
+      },
+      "rules": [
+        "使う時、ゲージ4を払い、ライフ2を払う。",
+        "相手のライフが4以下で、自分の場にサイズ2以上の《武装騎竜》がいるなら使える。",
+        "相手に4ダメージを与える。"
+      ],
+      "abilities": [
+        {
+          "id": "td03-dragonic-punisher-cast",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 4
+            },
+            {
+              "op": "payLife",
+              "amount": 2
+            }
+          ],
+          "conditions": [
+            {
+              "op": "opponentLifeLte",
+              "amount": 4
+            },
+            {
+              "op": "ownFieldMonsterAttributeSizeGte",
+              "attribute": "武装騎竜",
+              "size": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td03-dragon-world",
+      "no": "TD03/0019",
+      "name": "ドラゴンワールド",
+      "type": "flag",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "このファイターはドラゴンWのカードを使う。"
+      ]
+    }
+  ]
+}

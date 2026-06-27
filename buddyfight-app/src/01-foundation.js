@@ -1,0 +1,130 @@
+// ==========================================================================
+// buddyfight モジュール 01 — 定数・共有状態・DOM参照(elements)
+// 旧 app.js L1-124 由来。全モジュールはグローバルスコープを共有し、
+// HTML で番号順に <script> 読み込みする（連結すると旧 app.js とバイト等価）。
+// ==========================================================================
+const typeLabels = {
+  monster: "モンスター",
+  spell: "魔法",
+  item: "アイテム",
+  impact: "必殺技",
+  impactMonster: "必殺モンスター",
+  flag: "フラッグ",
+};
+
+const phaseLabels = {
+  draw: "ドロー",
+  charge: "チャージ",
+  main: "メイン",
+  attack: "アタック",
+  defense: "防御確認",
+  final: "ファイナル",
+  end: "終了",
+};
+
+const fieldZones = ["left", "center", "right"];
+const setZones = ["set1", "set2"];
+const zones = ["left", "center", "right", "set1", "set2", "item"];
+const ruleEraLabel = "2018年6月以前ルール（神バディファイト以前）";
+
+let cardLibrary = [];
+let deckProfiles = [];
+let cardSetProfiles = [];
+let deckSetProfiles = [];
+let flagIdAliases = new Map();
+
+const dataFiles = {
+  cardsets: "data/cardsets.json",
+  decksets: "data/decksets.json",
+  flags: "data/flags.json",
+};
+
+const customDeckStorageKey = "buddyfight.customDecks.v1";
+
+const elements = {
+  turnLabel: document.querySelector("#turnLabel"),
+  phaseLabel: document.querySelector("#phaseLabel"),
+  selectionLabel: document.querySelector("#selectionLabel"),
+  handTitle: document.querySelector("#handTitle"),
+  handList: document.querySelector("#handList"),
+  sizeLabel: document.querySelector("#sizeLabel"),
+  attackTarget: document.querySelector("#attackTarget"),
+  effectTarget: document.querySelector("#effectTarget"),
+  logList: document.querySelector("#logList"),
+  cardTooltip: document.querySelector("#cardTooltip"),
+  newGameButton: document.querySelector("#newGameButton"),
+  exportLogButton: document.querySelector("#exportLogButton"),
+  p1DeckSelect: document.querySelector("#p1DeckSelect"),
+  p2DeckSelect: document.querySelector("#p2DeckSelect"),
+  rulesButton: document.querySelector("#rulesButton"),
+  rulesDialog: document.querySelector("#rulesDialog"),
+  closeRulesButton: document.querySelector("#closeRulesButton"),
+  dropDialog: document.querySelector("#dropDialog"),
+  dropDialogTitle: document.querySelector("#dropDialogTitle"),
+  dropDialogList: document.querySelector("#dropDialogList"),
+  closeDropDialogButton: document.querySelector("#closeDropDialogButton"),
+  selectionDialog: document.querySelector("#selectionDialog"),
+  selectionDialogTitle: document.querySelector("#selectionDialogTitle"),
+  selectionDialogLead: document.querySelector("#selectionDialogLead"),
+  selectionDialogPreview: document.querySelector("#selectionDialogPreview"),
+  selectionDialogList: document.querySelector("#selectionDialogList"),
+  selectionBoardButton: document.querySelector("#selectionBoardButton"),
+  selectionConfirmButton: document.querySelector("#selectionConfirmButton"),
+  selectionCancelButton: document.querySelector("#selectionCancelButton"),
+  drawButton: document.querySelector("#drawButton"),
+  chargeButton: document.querySelector("#chargeButton"),
+  mainPhaseButton: document.querySelector("#mainPhaseButton"),
+  castButton: document.querySelector("#castButton"),
+  resolveAttackButton: document.querySelector("#resolveAttackButton"),
+  counterHandButton: document.querySelector("#counterHandButton"),
+  attackPhaseButton: document.querySelector("#attackPhaseButton"),
+  linkToggleButton: document.querySelector("#linkToggleButton"),
+  finalPhaseButton: document.querySelector("#finalPhaseButton"),
+  attackButton: document.querySelector("#attackButton"),
+  endTurnButton: document.querySelector("#endTurnButton"),
+  partnerCallButton: document.querySelector("#partnerCallButton"),
+  netplayPanel: document.querySelector("#netplayPanel"),
+  networkStatus: document.querySelector("#networkStatus"),
+  roomInput: document.querySelector("#roomInput"),
+  createRoomButton: document.querySelector("#createRoomButton"),
+  joinRoomButton: document.querySelector("#joinRoomButton"),
+  copyRoomButton: document.querySelector("#copyRoomButton"),
+  playerSeatLabel: document.querySelector("#playerSeatLabel"),
+  // B2: カードシート / デッキ情報 / 確認ダイアログ（タッチ操作刷新）
+  cardSheet: document.querySelector("#cardSheet"),
+  cardSheetTitle: document.querySelector("#cardSheetTitle"),
+  cardSheetDetail: document.querySelector("#cardSheetDetail"),
+  cardSheetActions: document.querySelector("#cardSheetActions"),
+  closeCardSheetButton: document.querySelector("#closeCardSheetButton"),
+  deckInfoDialog: document.querySelector("#deckInfoDialog"),
+  deckInfoTitle: document.querySelector("#deckInfoTitle"),
+  deckInfoBody: document.querySelector("#deckInfoBody"),
+  closeDeckInfoButton: document.querySelector("#closeDeckInfoButton"),
+  confirmDialog: document.querySelector("#confirmDialog"),
+  confirmMessage: document.querySelector("#confirmMessage"),
+  confirmOkButton: document.querySelector("#confirmOkButton"),
+  confirmCancelButton: document.querySelector("#confirmCancelButton"),
+};
+
+let state;
+let networkSession = {
+  connected: false,
+  roomId: "",
+  token: "",
+  seat: null,
+  eventSource: null,
+  applyingSnapshot: false,
+  lastSeq: 0,
+  pendingChoiceResolvers: new Map(),
+  handledChoiceRequests: new Set(),
+};
+
+// B2: タッチ操作刷新のUI状態。ネット同期(snapshot)には絶対に載せない（相手画面へ漏れるため）。
+let uiTargeting = null; // null | { mode: "attack" | "effect", candidates: [...] }
+let cardSheetReadOnly = false; // 閲覧専用シート（相手カード等）かどうか
+let cardSheetReadOnlyCard = null; // 閲覧専用シートで表示中のカード
+let confirmDialogResolver = null; // confirmAction() のPromise解決関数
+let longPressTimer = null; // ロングプレス検出タイマー
+let suppressNextZoneClick = false; // ロングプレス後のclick抑制フラグ
+let thinViewerSeat = null; // シンクライアント(play.html)の視点席。手札ドックを常に自分側にする
+

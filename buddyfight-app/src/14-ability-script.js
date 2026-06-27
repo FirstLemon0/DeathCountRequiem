@@ -1,0 +1,1552 @@
+// ==========================================================================
+// buddyfight モジュール 14 — トリガー能力・効果スクリプトエンジン
+// 旧 app.js L6487-8025 由来。全モジュールはグローバルスコープを共有し、
+// HTML で番号順に <script> 読み込みする（連結すると旧 app.js とバイト等価）。
+// ==========================================================================
+async function runTriggeredAbilities(card, event, baseContext = {}) {
+  const triggeredAbilities = (card.abilities || []).filter(
+    (ability) => ability.kind === "triggered" && ability.event === event,
+  );
+  for (const ability of triggeredAbilities) {
+      const owner = baseContext.owner ?? findFieldCardSlot(card)?.owner;
+      if (owner === undefined || owner === null) {
+        continue;
+      }
+      const context = {
+        ...baseContext,
+        card,
+        ability,
+        player: state.players[owner],
+        owner,
+        zone: baseContext.zone ?? findFieldCardSlot(card)?.zone,
+      };
+      if (
+        ability.target &&
+        !context.target &&
+        !ability.allowMissingTarget &&
+        targetCandidatesFromSpecForOwner(ability.target, owner, { card, ability }).length === 0
+      ) {
+        continue;
+      }
+      if (isAbilityLimitUsed(owner, card, ability) || !checkAbilityConditions(ability, owner, context)) {
+        continue;
+      }
+      const player = state.players[owner];
+      const costContext = {
+        sourceCard: card,
+        selectedCard: card,
+        allowInteractiveSelection: true,
+      };
+      const canPay = canPayStructuredCost(player, ability.cost || [], costContext);
+      if (!canPay.ok) {
+        if (!ability.optional) {
+          addLog(canPay.reason);
+        }
+        continue;
+      }
+      if (!(await shouldUseOptionalAbility(card, ability, owner))) {
+        addLog(`${card.name}の任意能力を使いませんでした。`);
+        continue;
+      }
+      if (ability.target && !context.target && !Array.isArray(ability.script)) {
+        context.target = await chooseAbilityTarget(card, ability, owner);
+        if (!context.target && !ability.allowMissingTarget) {
+          addLog(`${card.name}の対象が選ばれなかったため、能力を解決しませんでした。`);
+          continue;
+        }
+      }
+      const payment = await payStructuredCostWithSelection(player, ability.cost || [], costContext);
+      if (!payment.ok) {
+        addLog(ability.optional ? `${card.name}の任意能力を使いませんでした。` : payment.reason);
+        continue;
+      }
+      context.player = player;
+      await executeAbilityBody(context);
+      markAbilityLimit(owner, card, ability);
+    }
+}
+
+async function chooseAbilityTarget(card, ability, owner) {
+  const candidates = targetCandidatesFromSpecForOwner(ability.target, owner, { card, ability });
+  if (candidates.length === 0) {
+    return null;
+  }
+  const selected = await chooseCardEntries(candidates, {
+    title: `${card.name}の対象`,
+    lead: "効果の対象にするカードを選んでください。",
+    min: 1,
+    max: 1,
+    forceDialog: true,
+    // 権威サーバ: 能力主体の席へ往復させる（未指定だと inferPromptSeat 任せで
+    // 相手誘発・攻撃側誘発の選択が誤配送＝候補名漏れの恐れ）。
+    promptSeat: owner,
+  });
+  const target = selected?.[0];
+  return target ? { owner: target.owner, zone: target.zone, card: target.card } : null;
+}
+
+async function shouldUseOptionalAbility(card, ability, owner) {
+  if (!ability.optional) {
+    return true;
+  }
+  const selected = await chooseCardEntries(
+    [
+      {
+        key: "use",
+        card: {
+          name: "使う",
+          rules: [`${card.name}の任意能力を使います。`],
+          attributes: [],
+          keywords: [],
+          costs: {},
+        },
+      },
+      {
+        key: "skip",
+        card: {
+          name: "使わない",
+          rules: [`${card.name}の任意能力を使いません。`],
+          attributes: [],
+          keywords: [],
+          costs: {},
+        },
+      },
+    ],
+    {
+      title: `${card.name}の任意能力`,
+      lead: "この能力を使いますか？",
+      min: 1,
+      max: 1,
+      forceDialog: true,
+      // 権威サーバ: 任意能力の発動可否は能力主体の席へ問う。
+      promptSeat: owner,
+    },
+  );
+  return selected?.[0]?.key === "use";
+}
+
+async function executeAbilityBody(context) {
+  const ability = context.ability || {};
+  if (Array.isArray(ability.script) && ability.script.length > 0) {
+    return executeAbilityScript(ability.script, context);
+  }
+  const legacyScript = legacyAbilityScriptDefinition(ability.handler);
+  if (legacyScript) {
+    return executeAbilityScript(legacyScript, {
+      ...context,
+      ability: {
+        ...ability,
+        script: legacyScript,
+      },
+    });
+  }
+  const handler = ability.handler ? abilityHandlers[ability.handler] : null;
+  if (ability.handler && !handler) {
+    addLog(`未実装の効果ハンドラです: ${ability.handler}`);
+    return false;
+  }
+  if (handler) {
+    await handler(context);
+    return true;
+  }
+  await executeAbilityEffects(ability.effects || [], context);
+  return true;
+}
+
+async function executeAbilityScript(script, context) {
+  const scriptContext = {
+    ...context,
+    vars: {
+      ...(context.vars || {}),
+    },
+  };
+  recordDiagnosticEvent("effect_script", {
+    stage: "start",
+    card: compactCardForLog(context.card),
+    abilityId: context.ability?.id || "",
+    stepCount: script.length,
+  });
+  for (const [index, step] of script.entries()) {
+    recordDiagnosticEvent("effect_script", {
+      stage: "step",
+      index,
+      op: step.op,
+      var: step.var || "",
+      card: compactCardForLog(context.card),
+      abilityId: context.ability?.id || "",
+    });
+    const result = await executeAbilityScriptStep(step, scriptContext);
+    if (result === false || result?.ok === false) {
+      recordDiagnosticEvent("effect_script", {
+        stage: "stopped",
+        index,
+        op: step.op,
+        reason: result?.reason || "script_step_failed",
+        card: compactCardForLog(context.card),
+        abilityId: context.ability?.id || "",
+      });
+      context.vars = scriptContext.vars;
+      return false;
+    }
+  }
+  context.vars = scriptContext.vars;
+  recordDiagnosticEvent("effect_script", {
+    stage: "complete",
+    card: compactCardForLog(context.card),
+    abilityId: context.ability?.id || "",
+  });
+  return true;
+}
+
+function canSatisfyAbilityScript(card, ability, owner, baseContext = {}) {
+  const script = Array.isArray(ability?.script) && ability.script.length > 0
+    ? ability.script
+    : legacyAbilityScriptDefinition(ability?.handler);
+  if (!Array.isArray(script) || script.length === 0) {
+    return true;
+  }
+  const context = {
+    ...baseContext,
+    card,
+    ability,
+    player: state.players[owner],
+    owner,
+    vars: {},
+  };
+  return canSatisfyScriptSteps(script, context);
+}
+
+function canSatisfyScriptSteps(script, context) {
+  return (script || []).every((step) => {
+    if (step.op === "selectCards") {
+      const candidates = groupScriptCandidates(scriptCardSelectionCandidates(step, context), step);
+      const amount = step.amount ?? 1;
+      const allowEmpty = Boolean(step.allowEmpty && candidates.length === 0);
+      const min = allowEmpty ? 0 : step.min ?? (step.require === false ? 0 : amount);
+      return candidates.length >= min;
+    }
+    return true;
+  });
+}
+
+async function executeAbilityScriptStep(step, context) {
+  if (step.op === "selectCards") {
+    return selectCardsForScript(step, context);
+  }
+  if (step.op === "moveSelected") {
+    return moveSelectedForScript(step, context);
+  }
+  if (step.op === "moveSelectedGroup") {
+    return moveSelectedGroupForScript(step, context);
+  }
+  if (step.op === "ifSelection") {
+    return ifSelectionForScript(step, context);
+  }
+  if (step.op === "ifTargetController") {
+    return ifTargetControllerForScript(step, context);
+  }
+  if (step.op === "ifCondition") {
+    return ifConditionForScript(step, context);
+  }
+  if (step.op === "chooseBranch") {
+    return chooseBranchForScript(step, context);
+  }
+  if (step.op === "moveSelectedToDeckBottomOrdered") {
+    return moveSelectedToDeckBottomOrderedForScript(step, context);
+  }
+  if (step.op === "payCost") {
+    return payCostForScript(step, context);
+  }
+  if (step.op === "destroySelected") {
+    return await destroySelectedForScript(step, context);
+  }
+  if (step.op === "grantKeywordSelected") {
+    return grantKeywordSelectedForScript(step, context);
+  }
+  if (step.op === "modifySelectedStats") {
+    return modifySelectedStatsForScript(step, context);
+  }
+  if (step.op === "restSelected") {
+    return restSelectedForScript(step, context);
+  }
+  if (step.op === "putSelectedToGauge") {
+    return putSelectedToGaugeForScript(step, context);
+  }
+  if (step.op === "dropSelectedSoul") {
+    return dropSelectedSoulForScript(step, context);
+  }
+  if (step.op === "discardSelfSoul") {
+    return discardSelfSoulForScript(step, context);
+  }
+  if (step.op === "moveSoulToDrop") {
+    return moveSoulToDropForScript(step, context);
+  }
+  if (step.op === "payCardCostForSelection") {
+    return payCardCostForScriptSelection(step, context);
+  }
+  if (step.op === "useSelectedCardAbility") {
+    return useSelectedCardAbilityForScript(step, context);
+  }
+  if (step.op === "useSelectedCard") {
+    return useSelectedCardForScript(step, context);
+  }
+  if (step.op === "useTopDeckCardIfMatchesElseBottom") {
+    return useTopDeckCardIfMatchesElseBottomForScript(step, context);
+  }
+  if (step.op === "selectZone") {
+    return selectZoneForScript(step, context);
+  }
+  if (step.op === "callSelected") {
+    return callSelectedForScript(step, context);
+  }
+  if (step.op === "callSelfFromHand") {
+    return callSelfFromHandForScript(step, context);
+  }
+  if (step.op === "callSelectedAsMonster") {
+    return callSelectedAsMonsterForScript(step, context);
+  }
+  if (step.op === "callSelectedToEmptyZones") {
+    return callSelectedToEmptyZonesForScript(step, context);
+  }
+  if (step.op === "stackCallSelected") {
+    return stackCallSelectedForScript(step, context);
+  }
+  if (step.op === "placeSelected") {
+    return placeSelectedForScript(step, context);
+  }
+  if (step.op === "shuffleDeck") {
+    return shuffleDeckForScript(step, context);
+  }
+  if (step.op === "stopUnlessMovedToDropMatches") {
+    return stopUnlessMovedToDropMatchesForScript(step, context);
+  }
+  if (step.op === "log") {
+    addLog(interpolateScriptMessage(step.message || "", context));
+    return true;
+  }
+  if (isScriptEffectStep(step)) {
+    await executeAbilityEffect(step, context);
+    return true;
+  }
+  addLog(`未実装のscript命令です: ${step.op}`);
+  return { ok: false, reason: `unknown_script_op:${step.op}` };
+}
+
+async function selectCardsForScript(step, context) {
+  const rawCandidates = scriptCardSelectionCandidates(step, context);
+  const candidates = groupScriptCandidates(rawCandidates, step);
+  const amount = step.amount ?? 1;
+  const allowEmpty = Boolean(step.allowEmpty && candidates.length === 0);
+  const min = allowEmpty ? 0 : step.min ?? (step.require === false ? 0 : amount);
+  let max = step.max ?? amount;
+  if (step.maxByEmptyFieldZones) {
+    max = Math.min(max, fieldZones.filter((zone) => !context.player.field[zone]).length);
+  }
+  recordDiagnosticEvent("effect_script", {
+    stage: "select_candidates",
+    op: step.op,
+    var: step.var,
+    from: step.from,
+    candidateCount: candidates.length,
+    candidates: candidates.map(compactChoiceForLog),
+    card: compactCardForLog(context.card),
+  });
+  if (candidates.length < min) {
+    context.vars[step.var] = [];
+    addLog(step.emptyMessage || `${context.card.name}で選べるカードがありません。`);
+    return step.require === false ? true : { ok: false, reason: "not_enough_candidates" };
+  }
+  if (allowEmpty) {
+    context.vars[step.var] = [];
+    if (step.emptyMessage) {
+      addLog(step.emptyMessage);
+    }
+    return true;
+  }
+  const selected = await chooseCardEntries(candidates, {
+    title: step.title || `${context.card.name}の選択`,
+    lead: step.lead || `${min}枚選んでください。`,
+    min,
+    max,
+    forceDialog: step.forceDialog !== false,
+    // 権威サーバ: スクリプト選択は能力主体（context.owner）の席へ往復させる。
+    // 相手誘発(opponentEnter等)が能動側ターンに選ぶ場合、未指定だと能動側へ誤配送＝手札漏れ。
+    promptSeat: context.owner,
+  });
+  if (!selected || selected.length < min) {
+    context.vars[step.var] = [];
+    addLog(step.cancelMessage || `${context.card.name}のカードを選んでください。`);
+    return step.require === false ? true : { ok: false, reason: "selection_cancelled" };
+  }
+  context.vars[step.var] = selected;
+  return true;
+}
+
+function groupScriptCandidates(candidates, step) {
+  if (!step.groupBy) {
+    return candidates;
+  }
+  const groups = new Map();
+  candidates.forEach((entry) => {
+    const key = scriptGroupKey(entry.card, step.groupBy);
+    if (!key) {
+      return;
+    }
+    const group = groups.get(key) || [];
+    group.push(entry);
+    groups.set(key, group);
+  });
+  const requiredSize = step.groupSizeGte || 1;
+  return [...groups.entries()]
+    .filter(([, group]) => group.length >= requiredSize)
+    .map(([key, group]) => ({
+      ...group[0],
+      group,
+      note: step.note || `${key} ${group.length}枚`,
+    }));
+}
+
+function scriptGroupKey(card, groupBy) {
+  if (groupBy === "name") {
+    return card.name;
+  }
+  if (groupBy === "id") {
+    return card.id;
+  }
+  return card[groupBy];
+}
+
+function scriptCardSelectionCandidates(step, context) {
+  const from = step.from || "field";
+  if (from === "pendingAttackers") {
+    return getPendingAttackers()
+      .filter((entry) =>
+        scriptControllerMatches(step.controller, entry.owner, context.owner) &&
+          scriptCardMatches(entry.card, entry.owner, entry.zone, step, context),
+      )
+      .map((entry) => ({
+        ...entry,
+        source: "field",
+        note: step.note || zoneLabel(entry.zone),
+      }));
+  }
+  if (from === "movedToDrop") {
+    const movedEntries = context.movedToDropEntries || (context.movedToDrop || []).map((card) => ({
+      owner: context.owner,
+      card,
+    }));
+    return movedEntries
+      .filter((entry) => scriptControllerMatches(step.controller, entry.owner, context.owner))
+      .map((entry) => {
+        const pile = state.players[entry.owner]?.drop || [];
+        const index = pile.findIndex((card) => card.instanceId === entry.card?.instanceId);
+        return index >= 0 ? { ...entry, index, source: "drop", note: step.note || scriptSourceLabel("drop") } : null;
+      })
+      .filter((entry) => entry && scriptCardMatches(entry.card, entry.owner, null, step, context));
+  }
+  if (from === "field") {
+    return allFieldTargets((card, owner, zone) =>
+      scriptControllerMatches(step.controller, owner, context.owner) &&
+        scriptCardMatches(card, owner, zone, step, context),
+    ).map((entry) => ({
+      ...entry,
+      source: "field",
+      note: step.note || zoneLabel(entry.zone),
+    }));
+  }
+  const candidates = [];
+  for (const owner of scriptOwnersForController(step.controller || "self", context.owner)) {
+    const pile = scriptPileForSource(owner, from, context);
+    if (!pile) {
+      continue;
+    }
+    pile.forEach((card, index) => {
+      if (!scriptCardMatches(card, owner, null, step, context)) {
+        return;
+      }
+      candidates.push({
+        card,
+        index,
+        owner,
+        source: from,
+        sourceCard: from === "soul" ? context.card : null,
+        note: step.note || scriptSourceLabel(from),
+      });
+    });
+  }
+  return candidates;
+}
+
+function scriptCardMatches(card, owner, zone, step, context) {
+  if (!card) {
+    return false;
+  }
+  if (step.excludeSource === true && card.instanceId === context.card?.instanceId) {
+    return false;
+  }
+  if (!matchesCardFilter(card, step.filter || {})) {
+    return false;
+  }
+  if (step.callable && !isCallableMonster(card)) {
+    return false;
+  }
+  if (step.callable && !checkCardConditions(card.callConditions, owner)) {
+    return false;
+  }
+  if (step.canUseForFlag && !canUseCardForFlag(state.players[owner], card)) {
+    return false;
+  }
+  if (step.canPayCost) {
+    const payment = canPayCardCost(state.players[owner], card, step.canPayCost, card, {
+      sourceCard: card,
+      allowInteractiveSelection: true,
+    });
+    if (!payment.ok) {
+      return false;
+    }
+  }
+  if (step.zone && zone !== step.zone) {
+    return false;
+  }
+  return true;
+}
+
+function scriptControllerMatches(controller = "self", owner, contextOwner) {
+  if (controller === "any") {
+    return true;
+  }
+  if (controller === "opponent") {
+    return owner !== contextOwner;
+  }
+  return owner === contextOwner;
+}
+
+function scriptOwnersForController(controller = "self", contextOwner) {
+  if (controller === "any") {
+    return [0, 1];
+  }
+  if (controller === "opponent") {
+    return [1 - contextOwner];
+  }
+  return [contextOwner];
+}
+
+function scriptPileForSource(owner, from, context) {
+  if (from === "soul") {
+    return context.card?.soul || [];
+  }
+  return state.players[owner]?.[from] || null;
+}
+
+function scriptSourceLabel(from) {
+  return {
+    hand: "手札",
+    drop: "ドロップ",
+    deck: "デッキ",
+    gauge: "ゲージ",
+    soul: "ソウル",
+    field: "場",
+  }[from] || from;
+}
+
+function scriptSelection(step, context) {
+  const key = step.var || step.selection || step.cardVar;
+  if (key === "$target" && context.target?.card) {
+    return [{ ...context.target, source: "field" }];
+  }
+  const selected = context.vars?.[key];
+  if (!selected) {
+    return [];
+  }
+  return Array.isArray(selected) ? selected : [selected];
+}
+
+function takeScriptSelectionCards(selection) {
+  const movedCards = [];
+  for (const entry of [...selection].sort((left, right) => (right.index ?? 0) - (left.index ?? 0))) {
+    if (entry.source === "field") {
+      const card = detachFieldCardForMove(entry.owner, entry.zone, entry.card);
+      if (card) {
+        movedCards.unshift({ ...entry, card });
+      }
+      continue;
+    }
+    const pile = scriptPileForSource(entry.owner, entry.source, { card: entry.sourceCard });
+    if (!pile) {
+      continue;
+    }
+    const currentIndex =
+      pile[entry.index]?.instanceId === entry.card.instanceId
+        ? entry.index
+        : pile.findIndex((card) => card.instanceId === entry.card.instanceId);
+    if (currentIndex >= 0) {
+      movedCards.unshift({ ...entry, card: pile.splice(currentIndex, 1)[0] });
+    }
+  }
+  return movedCards;
+}
+
+function detachFieldCardForMove(owner, zone, expectedCard = null) {
+  const player = state.players[owner];
+  const card = player?.field?.[zone];
+  if (!card || (expectedCard && card.instanceId !== expectedCard.instanceId)) {
+    return null;
+  }
+  player.drop.push(...(card.soul || []));
+  card.soul = [];
+  player.field[zone] = null;
+  if (zone === "item" && player.arrivalCardId === card.instanceId) {
+    player.arrivalCardId = null;
+  }
+  applyLifeLink(card, owner);
+  return card;
+}
+
+function moveSelectedForScript(step, context) {
+  if (step.to === "deckBottom" && step.order === "choose") {
+    return moveSelectedToDeckBottomOrderedForScript(step, context);
+  }
+  const movedEntries = takeScriptSelectionCards(scriptSelection(step, context));
+  if (movedEntries.length === 0) {
+    addLog(step.emptyMessage || `${context.card.name}で動かすカードがありません。`);
+    return step.require === false ? true : { ok: false, reason: "no_selected_cards" };
+  }
+  for (const entry of movedEntries) {
+    const destinationOwner = scriptMoveDestinationOwner(step, entry, context);
+    moveScriptCardToDestination(entry.card, step.to, destinationOwner, context);
+  }
+  if (step.log === "discard") {
+    addLog(`${context.player.name}は${context.card.name}の効果で${movedEntries.map((entry) => entry.card.name).join("、")}を捨てました。`);
+  } else if (step.log) {
+    addLog(step.log.replace("{cards}", movedEntries.map((entry) => entry.card.name).join("、")));
+  }
+  return true;
+}
+
+function moveSelectedGroupForScript(step, context) {
+  const selected = scriptSelection(step, context);
+  const movedEntries = [];
+  selected.forEach((entry) => {
+    const group = entry.group || [entry];
+    const amount = Math.min(step.amount || group.length, group.length);
+    movedEntries.push(...takeScriptSelectionCards(group.slice(0, amount)));
+  });
+  if (movedEntries.length === 0) {
+    addLog(step.emptyMessage || `${context.card.name}で動かすカードがありません。`);
+    return step.require === false ? true : { ok: false, reason: "no_selected_group_cards" };
+  }
+  for (const entry of movedEntries) {
+    const destinationOwner = scriptMoveDestinationOwner(step, entry, context);
+    moveScriptCardToDestination(entry.card, step.to, destinationOwner, context);
+  }
+  if (step.log) {
+    addLog(step.log.replace("{cards}", movedEntries.map((entry) => entry.card.name).join("、")));
+  }
+  return true;
+}
+
+async function ifSelectionForScript(step, context) {
+  const selected = scriptSelection(step, context);
+  const branch = selected.length > 0 ? step.then : step.else;
+  if (!Array.isArray(branch) || branch.length === 0) {
+    return true;
+  }
+  return executeAbilityScript(branch, context);
+}
+
+async function ifTargetControllerForScript(step, context) {
+  const targetOwner = context.target?.owner;
+  const matches =
+    step.controller === "any" ||
+    (step.controller === "self" && targetOwner === context.owner) ||
+    (step.controller === "opponent" && targetOwner === 1 - context.owner);
+  const branch = matches ? step.then : step.else;
+  if (!Array.isArray(branch) || branch.length === 0) {
+    return true;
+  }
+  return executeAbilityScript(branch, context);
+}
+
+async function ifConditionForScript(step, context) {
+  const matches = checkCondition(step.condition || {}, context.owner, context);
+  const branch = matches ? step.then : step.else;
+  if (!Array.isArray(branch) || branch.length === 0) {
+    return true;
+  }
+  return executeAbilityScript(branch, context);
+}
+
+async function chooseBranchForScript(step, context) {
+  const options = (Array.isArray(step.options) ? step.options : []).filter(
+    (option) =>
+      (!option.condition || checkCondition(option.condition, context.owner, context)) &&
+      canPayScriptBranchCosts([{ op: "payCost", cost: option.canPayCost || [] }], context) &&
+      canPayScriptBranchCosts(option.script || [], context),
+  );
+  if (options.length === 0) {
+    if (step.emptyMessage) {
+      addLog(step.emptyMessage);
+    }
+    return true;
+  }
+  const selected = await chooseCardEntries(
+    options.map((option) => ({
+      option,
+      card: {
+        name: option.label || option.key,
+        rules: option.description ? [option.description] : [],
+        type: "choice",
+      },
+      note: option.note || "",
+    })),
+    {
+      title: step.title || `${context.card.name}の効果`,
+      lead: step.lead || "解決する効果を選んでください。",
+      min: 1,
+      max: 1,
+      forceDialog: true,
+    },
+  );
+  const branch = selected?.[0]?.option?.script;
+  if (!Array.isArray(branch) || branch.length === 0) {
+    return true;
+  }
+  return executeAbilityScript(branch, context);
+}
+
+function canPayScriptBranchCosts(script, context) {
+  return (script || []).every((step) => {
+    if (step.op === "payCost") {
+      const costSteps = adjustedCostSteps(
+        context.player,
+        context.card,
+        step.purpose || "activated",
+        step.cost || [],
+      );
+      return canPayStructuredCost(context.player, costSteps, {
+        sourceCard: context.card,
+        selectedCard: context.card,
+        allowInteractiveSelection: true,
+      }).ok;
+    }
+    if (Array.isArray(step.then) && !canPayScriptBranchCosts(step.then, context)) {
+      return false;
+    }
+    if (Array.isArray(step.else) && !canPayScriptBranchCosts(step.else, context)) {
+      return false;
+    }
+    return true;
+  });
+}
+
+async function payCostForScript(step, context) {
+  const costSteps = adjustedCostSteps(
+    context.player,
+    context.card,
+    step.purpose || "activated",
+    step.cost || [],
+  );
+  const payment = await payStructuredCostWithSelection(context.player, costSteps, {
+    sourceCard: context.card,
+    selectedCard: context.card,
+  });
+  if (!payment.ok) {
+    addLog(payment.reason);
+    return { ok: false, reason: payment.reason || "script_cost_unpaid" };
+  }
+  context.costPayment = payment;
+  return true;
+}
+
+async function moveSelectedToDeckBottomOrderedForScript(step, context) {
+  const selected = Array.isArray(step.vars)
+    ? step.vars.flatMap((varName) => scriptSelection({ var: varName }, context))
+    : scriptSelection(step, context);
+  const movedEntries = takeScriptSelectionCards(selected);
+  if (movedEntries.length === 0) {
+    return step.require === false ? true : { ok: false, reason: "no_selected_cards" };
+  }
+  const owner =
+    step.toOwner === "opponent" ? 1 - context.owner :
+    step.toOwner === "self" ? context.owner :
+    movedEntries[0]?.owner ?? context.owner;
+  const player = state.players[owner];
+  let remaining = [...movedEntries];
+  const ordered = [];
+  while (remaining.length > 0) {
+    const picked = await chooseCardEntries(remaining, {
+      title: step.title || `${context.card.name}のデッキ下順序`,
+      lead: `デッキの下から${ordered.length + 1}番目に置くカードを選んでください。`,
+      min: 1,
+      max: 1,
+      forceDialog: true,
+    });
+    const entry = picked?.[0];
+    if (!entry) {
+      player.drop.push(...remaining.map((candidate) => candidate.card));
+      return { ok: false, reason: "ordered_selection_cancelled" };
+    }
+    ordered.push(entry.card);
+    remaining = remaining.filter((candidate) => candidate.card.instanceId !== entry.card.instanceId);
+  }
+  player.deck.unshift(...ordered);
+  if (step.log) {
+    addLog(step.log.replace("{cards}", ordered.map((card) => card.name).join("、")));
+  }
+  return true;
+}
+
+function scriptMoveDestinationOwner(step, entry, context) {
+  if (step.toOwner === "self") {
+    return context.owner;
+  }
+  if (step.toOwner === "opponent") {
+    return 1 - context.owner;
+  }
+  return entry.owner ?? context.owner;
+}
+
+function moveScriptCardToDestination(card, destination, owner, context) {
+  const player = state.players[owner];
+  if (destination === "hand") {
+    player.hand.push(card);
+  } else if (destination === "gauge") {
+    player.gauge.push(card);
+  } else if (destination === "deck") {
+    player.deck.push(card);
+  } else if (destination === "deckBottom") {
+    player.deck.unshift(card);
+  } else if (destination === "soul") {
+    context.card.soul ||= [];
+    context.card.soul.push(card);
+  } else if (destination === "itemSoul") {
+    // 君のアイテムのソウルに入れる（アーマナイト・カーリーの“修羅降臨の儀”）
+    const item = player.field.item;
+    if (item) {
+      item.soul ||= [];
+      item.soul.push(card);
+    } else {
+      player.hand.push(card);
+    }
+  } else {
+    player.drop.push(card);
+  }
+}
+
+async function destroySelectedForScript(step, context) {
+  const selected = scriptSelection(step, context);
+  let destroyedCount = 0;
+  for (const entry of selected) {
+    if (entry.source !== "field") {
+      continue;
+    }
+    const targetCard = state.players[entry.owner]?.field?.[entry.zone];
+    if (!targetCard || targetCard.instanceId !== entry.card.instanceId) {
+      continue;
+    }
+    const destroyedName = targetCard.name;
+    const destroyed = await destroyFieldCard(entry.owner, entry.zone);
+    if (destroyed) {
+      destroyedCount += 1;
+      addLog(`${context.card.name}の効果で${destroyedName}を破壊しました。`);
+    }
+  }
+  if (destroyedCount === 0 && step.require !== false) {
+    return { ok: false, reason: "no_destroyed_cards" };
+  }
+  return true;
+}
+
+function grantKeywordSelectedForScript(step, context) {
+  const selected = scriptSelection(step, context);
+  selected.forEach((entry) => {
+    const card = entry.card;
+    if (!card) {
+      return;
+    }
+    if (step.keyword === "counterattack") {
+      card.counterattack = true;
+    } else if (step.duration === "permanent") {
+      card.keywords ||= [];
+      if (!card.keywords.includes(step.keyword)) {
+        card.keywords.push(step.keyword);
+      }
+    } else if (step.duration === "turn") {
+      card.turnKeywords ||= [];
+      card.turnKeywords.push(step.keyword);
+    } else {
+      card.temporaryKeywords ||= [];
+      card.temporaryKeywords.push(step.keyword);
+    }
+  });
+  return true;
+}
+
+function modifySelectedStatsForScript(step, context) {
+  const selected = scriptSelection(step, context);
+  const duration = step.duration || "battle";
+  const prefix = duration === "turn" ? "turn" : "battle";
+  selected.forEach((entry) => {
+    const card = entry.card;
+    if (!card) {
+      return;
+    }
+    applyStatBonus(card, prefix, "power", step.power || 0);
+    applyStatBonus(card, prefix, "defense", step.defense || 0);
+    applyStatBonus(card, prefix, "critical", step.critical || 0);
+  });
+  return true;
+}
+
+async function restSelectedForScript(step, context) {
+  for (const entry of scriptSelection(step, context)) {
+    if (entry.card) {
+      await restFieldCard(entry.owner ?? context.owner, entry.zone, entry.card, { source: context.card });
+    }
+  }
+  return true;
+}
+
+function putSelectedToGaugeForScript(step, context) {
+  const selected = scriptSelection(step, context);
+  selected.forEach((entry) => {
+    if (entry.source !== "field") {
+      return;
+    }
+    const ownerPlayer = state.players[entry.owner];
+    if (ownerPlayer?.field?.[entry.zone]?.instanceId === entry.card?.instanceId) {
+      putFieldCardToGauge(ownerPlayer, entry.zone);
+    }
+  });
+  return true;
+}
+
+function dropSelectedSoulForScript(step, context) {
+  const selected = scriptSelection(step, context);
+  selected.forEach((entry) => {
+    const amount = Math.min(step.amount ?? entry.card?.soul?.length ?? 0, entry.card?.soul?.length || 0);
+    const movedCards = amount > 0 ? entry.card.soul.splice(0, amount) : [];
+    state.players[entry.owner ?? context.owner].drop.push(...movedCards);
+    if (movedCards.length > 0 && step.log !== false) {
+      addLog(`${entry.card.name}のソウルから${movedCards.map((card) => card.name).join("、")}をドロップゾーンに置きました。`);
+    }
+  });
+  return true;
+}
+
+async function discardSelfSoulForScript(step, context) {
+  const amount = Math.min(step.amount || 1, context.card?.soul?.length || 0);
+  if (amount <= 0) {
+    addLog(step.emptyMessage || `${context.card.name}のソウルがありません。`);
+    return step.require === false ? true : { ok: false, reason: "missing_soul" };
+  }
+  const soulEntries = (context.card.soul || []).map((card, index) => ({
+    card,
+    index,
+    owner: context.owner,
+    source: "soul",
+    note: `${context.card.name}のソウル`,
+  }));
+  const selected =
+    soulEntries.length > amount
+      ? await chooseCardEntries(soulEntries, {
+          title: `${context.card.name}のソウル選択`,
+          lead: `ドロップゾーンに置くソウルを${amount}枚選んでください。`,
+          min: amount,
+          max: amount,
+          forceDialog: true,
+        })
+      : soulEntries.slice(0, amount);
+  const movedCards = removePileEntries(context.card.soul || [], selected || []);
+  context.player.drop.push(...movedCards);
+  if (step.log !== false) {
+    addLog(`${context.card.name}のソウルから${movedCards.map((card) => card.name).join("、")}をドロップゾーンに置きました。`);
+  }
+  return true;
+}
+
+function moveSoulToDropForScript(step, context) {
+  const movedCards = context.card?.soul?.splice(0) || [];
+  context.player.drop.push(...movedCards);
+  context.movedToDrop ||= [];
+  context.movedToDrop.push(...movedCards);
+  if (movedCards.length > 0 && step.log !== false) {
+    addLog(`${context.card.name}のソウルを全てドロップゾーンに置きました。`);
+  }
+  return true;
+}
+
+async function payCardCostForScriptSelection(step, context) {
+  const entry = scriptSelection(step, context)[0];
+  if (!entry?.card) {
+    addLog(`${context.card.name}のコストを支払うカードを選んでください。`);
+    return { ok: false, reason: "missing_cost_card" };
+  }
+  const player = state.players[entry.owner ?? context.owner];
+  const payment = await payCardCostWithSelection(player, entry.card, step.purpose || "call", entry.card, {
+    sourceCard: entry.card,
+  });
+  if (!payment.ok) {
+    addLog(payment.reason);
+    return { ok: false, reason: payment.reason };
+  }
+  return true;
+}
+
+// 共通: 選択したカード(ドロップ等)を、その種別に応じて「正しく使う」。
+//   アイテム → 装備(equipCost を払い equipCardDirect: 装備変更/着任/装備時誘発も通る)
+//   『設置』を持つ魔法/必殺技 → 設置ゾーンへ配置(castCost を払い placeSetSpellDirect)
+//   それ以外の魔法/必殺技 → その能力を即時解決(useSelectedCardAbility にフォールバック)
+// step.payCost:false でコスト支払いを省略可。例: ヴォータンシャドウ(ドロップから装備/設置)。
+async function useSelectedCardForScript(step, context) {
+  const entry = scriptSelection(step, context)[0];
+  if (!entry?.card) {
+    addLog(`${context.card.name}で使うカードを選んでください。`);
+    return { ok: false, reason: "missing_use_card" };
+  }
+  const owner = entry.owner ?? context.owner;
+  const player = state.players[owner];
+  const card = entry.card;
+  const type = effectiveCardType(card);
+  const payCost = step.payCost !== false;
+  if (type === "item") {
+    if (card.equipConditions && !checkCardConditions(card.equipConditions, owner, { card })) {
+      addLog(`${card.name}の装備条件を満たしていません。`);
+      return { ok: false, reason: "equip_conditions" };
+    }
+    if (payCost) {
+      const payment = await payCardCostWithSelection(player, card, "equip", card);
+      if (!payment.ok) {
+        addLog(payment.reason);
+        return { ok: false, reason: "cannot_pay_equip" };
+      }
+    }
+    takeScriptSelectionCards([entry]);
+    await equipCardDirect(player, card);
+    return true;
+  }
+  if ((type === "spell" || type === "impact") && hasKeyword(card, "set")) {
+    const zone = setZones.find((candidate) => !player.field[candidate]);
+    if (!zone) {
+      addLog("配置魔法ゾーンが空いていません。");
+      return { ok: false, reason: "no_set_zone" };
+    }
+    if (card.uniqueSet && setZones.some((candidate) => player.field[candidate]?.id === card.id)) {
+      addLog(`${card.name}はすでに配置されています。`);
+      return { ok: false, reason: "already_set" };
+    }
+    if (payCost) {
+      const payment = await payCardCostWithSelection(player, card, "cast", card);
+      if (!payment.ok) {
+        addLog(payment.reason);
+        return { ok: false, reason: "cannot_pay_cast" };
+      }
+    }
+    takeScriptSelectionCards([entry]);
+    await placeSetSpellDirect(player, card, zone);
+    return true;
+  }
+  // 通常の魔法/必殺技は能力を即時解決（既存挙動）
+  return useSelectedCardAbilityForScript(step, context);
+}
+
+async function useSelectedCardAbilityForScript(step, context) {
+  const entry = scriptSelection(step, context)[0];
+  if (!entry?.card) {
+    addLog(`${context.card.name}で使うカードを選んでください。`);
+    return { ok: false, reason: "missing_selected_ability_card" };
+  }
+  const usedAbility = (entry.card.abilities || []).find((ability) => {
+    if (!canUseAbilityFromScriptSelection(ability, entry)) {
+      return false;
+    }
+    const timing = state.pendingAttack || state.pendingAction ? "counter" : state.phase;
+    return abilityTimingIncludes(ability, timing) && checkAbilityConditions(ability, context.owner, {
+      ...context,
+      card: entry.card,
+      ability,
+    });
+  });
+  if (!usedAbility) {
+    addLog(`${entry.card.name}は現在のタイミングで使える能力がありません。`);
+    return { ok: false, reason: "selected_card_ability_unusable" };
+  }
+  const target = usedAbility.target ? await chooseAbilityTarget(entry.card, usedAbility, context.owner) : null;
+  if (usedAbility.target && !target) {
+    return { ok: false, reason: "selected_card_ability_missing_target" };
+  }
+  const costSteps = adjustedCostSteps(
+    context.player,
+    entry.card,
+    abilityCostPurpose(usedAbility),
+    abilityCostSteps(entry.card, usedAbility),
+  );
+  const payment = await payStructuredCostWithSelection(context.player, costSteps, {
+    sourceCard: entry.card,
+    selectedCard: entry.card,
+  });
+  if (!payment.ok) {
+    addLog(payment.reason);
+    return { ok: false, reason: payment.reason };
+  }
+  const moved = takeScriptSelectionCards([entry]);
+  const usedCard = moved[0]?.card || entry.card;
+  await executeAbilityBody({
+    ...context,
+    card: usedCard,
+    ability: usedAbility,
+    target,
+  });
+  context.player.drop.push(usedCard);
+  addLog(`${context.card.name}の効果で${usedCard.name}を使いました。`);
+  return true;
+}
+
+function canUseAbilityFromScriptSelection(ability, entry = {}) {
+  if (!ability) {
+    return false;
+  }
+  if (["spell", "impact"].includes(ability.kind)) {
+    return !ability.fromFieldOnly;
+  }
+  if (ability.kind !== "activated") {
+    return false;
+  }
+  if (entry.source === "hand") {
+    return Boolean(ability.fromHandOnly);
+  }
+  if (entry.source === "soul") {
+    return Boolean(ability.fromSoulOnly);
+  }
+  return false;
+}
+
+async function useTopDeckCardIfMatchesElseBottomForScript(step, context) {
+  const owner = scriptOwnersForController(step.controller || "self", context.owner)[0];
+  const player = state.players[owner];
+  const topCard = player.deck.pop();
+  if (!topCard) {
+    declareDeckLoss(player);
+    return step.require === false ? true : { ok: false, reason: "deck_empty" };
+  }
+  if (!matchesCardFilter(topCard, step.filter || {})) {
+    player.deck.unshift(topCard);
+    addLog(`${context.card.name}で確認した${topCard.name}をデッキの下に置きました。`);
+    return true;
+  }
+  const ability = (topCard.abilities || []).find((candidate) =>
+    ["spell", "impact"].includes(candidate.kind) &&
+      !candidate.fromFieldOnly &&
+      !candidate.fromSoulOnly &&
+      abilityTimingIncludes(candidate, state.pendingAttack || state.pendingAction ? "counter" : state.phase) &&
+      checkAbilityConditions(candidate, owner, {
+        ...context,
+        card: topCard,
+        ability: candidate,
+      }),
+  );
+  if (!ability) {
+    player.deck.unshift(topCard);
+    addLog(`${context.card.name}で確認した${topCard.name}は現在使えないためデッキの下に置きました。`);
+    return true;
+  }
+  const target = ability.target ? await chooseAbilityTarget(topCard, ability, owner) : null;
+  if (ability.target && !target) {
+    player.deck.unshift(topCard);
+    return { ok: false, reason: "top_deck_ability_missing_target" };
+  }
+  const topContext = {
+    ...context,
+    card: topCard,
+    ability,
+    player,
+    owner,
+    target,
+    cardMoved: false,
+  };
+  await executeAbilityBody(topContext);
+  if (!topContext.cardMoved) {
+    player.drop.push(topCard);
+  }
+  markAbilityLimit(owner, topCard, ability);
+  addLog(`${context.card.name}の効果で${topCard.name}をコストを払わず使いました。`);
+  return true;
+}
+
+async function selectZoneForScript(step, context) {
+  const cardEntry = scriptSelection({ var: step.cardVar }, context)[0];
+  const card = cardEntry?.card || context.card;
+  const zoneOwner = step.controller === "opponent" ? 1 - context.owner : context.owner;
+  const zonesToOffer = (step.zones || fieldZones).filter(
+    (zone) => !step.emptyOnly || !state.players[zoneOwner].field[zone],
+  );
+  const selected = await chooseCardEntries(
+    zonesToOffer.map((zone) => ({
+      card,
+      zone,
+      owner: zoneOwner,
+      note: step.note || `${zoneLabel(zone)}にコール`,
+    })),
+    {
+      title: step.title || `${card.name}のコール先`,
+      lead: step.lead || "コールするエリアを選んでください。",
+      min: 1,
+      max: 1,
+      forceDialog: step.forceDialog !== false,
+    },
+  );
+  const choice = selected?.[0];
+  if (!choice) {
+    addLog(step.cancelMessage || `${context.card.name}のエリアを選んでください。`);
+    return { ok: false, reason: "zone_cancelled" };
+  }
+  context.vars[step.var] = choice.zone;
+  return true;
+}
+
+async function callSelectedForScript(step, context) {
+  const entry = scriptSelection(step, context)[0];
+  if (!entry?.card) {
+    addLog(`${context.card.name}でコールするカードを選んでください。`);
+    return { ok: false, reason: "missing_call_card" };
+  }
+  const player = state.players[entry.owner ?? context.owner];
+  const zone = context.vars[step.zoneVar] || step.zone;
+  if (!fieldZones.includes(zone)) {
+    addLog(`${context.card.name}のコール先を選んでください。`);
+    return { ok: false, reason: "missing_call_zone" };
+  }
+  const moved = takeScriptSelectionCards([entry]);
+  const calledCard = moved[0]?.card;
+  if (!calledCard) {
+    addLog(`${context.card.name}で選んだカードが移動できません。`);
+    return { ok: false, reason: "call_card_missing" };
+  }
+  if (player.field[zone]) {
+    dropFieldCardByRule(player, zone);
+  }
+  player.field[zone] = calledCard;
+  applyScriptGrantedKeywords(calledCard, step.grantKeywords || []);
+  enforceSizeLimit(player, zone);
+  if (step.redirectPendingAttack && state.pendingAttack) {
+    state.pendingAttack.targetOwner = entry.owner ?? context.owner;
+    state.pendingAttack.targetZone = zone;
+    state.pendingAttack.targetType = "monster";
+  }
+  addLog(`${context.card.name}で${calledCard.name}を${zoneLabel(zone)}にコールしました。`);
+  if (step.redirectPendingAttack && state.pendingAttack) {
+    addLog(`${context.card.name}の効果で攻撃対象を変更しました。`);
+  }
+  if (step.resolveOnEnter) {
+    await resolveOnEnter(calledCard, player);
+  }
+  return true;
+}
+
+// 「【対抗】手札のこのカードをコールする」等、発生源カード自身を場へコールする。
+// useHandAbilityAction が起動コスト解決時に使用カードをドロップへ送るため、ドロップ→手札の順で発生源を回収する。
+async function callSelfFromHandForScript(step, context) {
+  const player = state.players[context.owner];
+  const card = context.card;
+  if (!card) {
+    return { ok: false, reason: "self_missing" };
+  }
+  const zone = context.vars?.[step.zoneVar] || step.zone;
+  if (!fieldZones.includes(zone)) {
+    addLog(`${card.name}のコール先を選んでください。`);
+    return { ok: false, reason: "missing_call_zone" };
+  }
+  const cost = card.costs?.call || [];
+  if (cost.length && !canPayStructuredCost(player, cost, { sourceCard: card }).ok) {
+    addLog(`${card.name}のコールコストを支払えません。`);
+    return { ok: false, reason: "cannot_pay_call_cost" };
+  }
+  const removeSelf = (pile) => {
+    const index = pile.findIndex((c) => c.instanceId === card.instanceId);
+    if (index >= 0) {
+      pile.splice(index, 1);
+      return true;
+    }
+    return false;
+  };
+  if (!removeSelf(player.drop) && !removeSelf(player.hand)) {
+    addLog(`${card.name}はコールできる場所にありません。`);
+    return { ok: false, reason: "self_not_found" };
+  }
+  if (cost.length) {
+    payStructuredCost(player, cost, { sourceCard: card });
+  }
+  if (player.field[zone]) {
+    dropFieldCardByRule(player, zone);
+  }
+  player.field[zone] = card;
+  applyScriptGrantedKeywords(card, step.grantKeywords || []);
+  enforceSizeLimit(player, zone);
+  addLog(`${card.name}を${zoneLabel(zone)}にコールしました。`);
+  if (step.resolveOnEnter !== false) {
+    await resolveOnEnter(card, player);
+  }
+  return true;
+}
+
+async function callSelectedAsMonsterForScript(step, context) {
+  const entry = scriptSelection(step, context)[0];
+  const zone = context.vars[step.zoneVar] || step.zone;
+  if (!entry?.card || !fieldZones.includes(zone)) {
+    addLog(`${context.card.name}で置くカードとエリアを選んでください。`);
+    return { ok: false, reason: "missing_monster_card_or_zone" };
+  }
+  const player = state.players[entry.owner ?? context.owner];
+  const moved = takeScriptSelectionCards([entry]);
+  const calledCard = moved[0]?.card;
+  if (!calledCard) {
+    return { ok: false, reason: "monster_card_missing" };
+  }
+  if (player.field[zone]) {
+    dropFieldCardByRule(player, zone);
+  }
+  calledCard.currentType = "monster";
+  calledCard.faceDownMonster = true;
+  calledCard.size = step.size ?? calledCard.size ?? 0;
+  calledCard.power = step.power ?? calledCard.power ?? 0;
+  calledCard.critical = step.critical ?? calledCard.critical ?? 1;
+  calledCard.defense = step.defense ?? calledCard.defense ?? 0;
+  calledCard.attributes = step.attributes || calledCard.attributes || [];
+  player.field[zone] = calledCard;
+  enforceSizeLimit(player, zone);
+  addLog(`${context.card.name}の効果で手札のカードを${zoneLabel(zone)}にモンスターとして置きました。`);
+  return true;
+}
+
+async function callSelectedToEmptyZonesForScript(step, context) {
+  const selected = scriptSelection(step, context);
+  if (selected.length === 0) {
+    return step.require === false ? true : { ok: false, reason: "missing_call_cards" };
+  }
+  const player = context.player;
+  for (const entry of selected) {
+    const emptyZones = fieldZones.filter((zone) => !player.field[zone]);
+    if (emptyZones.length === 0) {
+      break;
+    }
+    let zone = emptyZones[0];
+    if (step.chooseZones && emptyZones.length > 1) {
+      const selectedZone = await chooseCardEntries(
+        emptyZones.map((candidateZone) => ({
+          card: entry.card,
+          owner: entry.owner ?? context.owner,
+          zone: candidateZone,
+          note: zoneLabel(candidateZone),
+        })),
+        {
+          title: `${entry.card.name}のコール先`,
+          lead: "コールするエリアを選んでください。",
+          min: 1,
+          max: 1,
+          forceDialog: true,
+        },
+      );
+      zone = selectedZone?.[0]?.zone;
+    }
+    if (!zone) {
+      continue;
+    }
+    if (step.payCost) {
+      const payment = await payCardCostWithSelection(player, entry.card, step.payCost, entry.card, {
+        sourceCard: entry.card,
+      });
+      if (!payment.ok) {
+        addLog(payment.reason);
+        continue;
+      }
+    }
+    const movedEntries = takeScriptSelectionCards([entry]);
+    const calledCard = movedEntries[0]?.card;
+    if (!calledCard) {
+      continue;
+    }
+    player.field[zone] = calledCard;
+    applyScriptGrantedKeywords(calledCard, step.grantKeywords || []);
+    enforceSizeLimit(player, zone);
+    addLog(`${context.card.name}の効果で${calledCard.name}を${zoneLabel(zone)}にコールしました。`);
+    if (step.resolveOnEnter) {
+      await resolveOnEnter(calledCard, player);
+    }
+  }
+  return true;
+}
+
+async function stackCallSelectedForScript(step, context) {
+  const entry = scriptSelection(step, context)[0];
+  const zone = context.zone ?? findFieldCardSlot(context.card)?.zone;
+  if (!entry?.card || !fieldZones.includes(zone)) {
+    addLog(`${context.card.name}で重ねてコールするカードを選んでください。`);
+    return { ok: false, reason: "missing_stack_call_card" };
+  }
+  const moved = takeScriptSelectionCards([entry]);
+  const calledCard = moved[0]?.card;
+  if (!calledCard) {
+    addLog(`${context.card.name}で選んだカードが移動できません。`);
+    return { ok: false, reason: "stack_call_card_missing" };
+  }
+  const player = context.player;
+  stackFieldCardAsSoul(player, zone, calledCard);
+  enforceSizeLimit(player, zone);
+  addLog(`${context.card.name}の効果で${calledCard.name}を${zoneLabel(zone)}に重ねてコールしました。`);
+  if (step.resolveOnEnter) {
+    await resolveOnEnter(calledCard, player);
+  }
+  return true;
+}
+
+function placeSelectedForScript(step, context) {
+  const entry = scriptSelection(step, context)[0];
+  if (!entry?.card) {
+    addLog(`${context.card.name}で配置するカードを選んでください。`);
+    return { ok: false, reason: "missing_place_card" };
+  }
+  const player = state.players[entry.owner ?? context.owner];
+  const zone = resolveScriptPlaceZone(step, player);
+  if (!zone) {
+    addLog(step.noZoneMessage || "配置できる場所がありません。");
+    return { ok: false, reason: "missing_place_zone" };
+  }
+  const moved = takeScriptSelectionCards([entry]);
+  const placedCard = moved[0]?.card;
+  if (!placedCard) {
+    addLog(`${context.card.name}で選んだカードが移動できません。`);
+    return { ok: false, reason: "place_card_missing" };
+  }
+  if (step.currentType) {
+    placedCard.currentType = step.currentType;
+  }
+  player.field[zone] = placedCard;
+  if (step.log) {
+    addLog(step.log.replace("{cards}", placedCard.name).replace("{zone}", zoneLabel(zone)));
+  } else {
+    addLog(`${context.card.name}の効果で${placedCard.name}を${zoneLabel(zone)}に置きました。`);
+  }
+  return true;
+}
+
+function resolveScriptPlaceZone(step, player) {
+  if (step.zone === "firstEmptySet") {
+    return setZones.find((zone) => !player.field[zone]);
+  }
+  if (step.zone === "firstEmptyField") {
+    return fieldZones.find((zone) => !player.field[zone]);
+  }
+  return step.zone && !player.field[step.zone] ? step.zone : null;
+}
+
+function shuffleDeckForScript(step, context) {
+  scriptOwnersForController(step.controller || "self", context.owner).forEach((owner) => {
+    shuffleInPlace(state.players[owner].deck);
+    if (step.log !== false) {
+      addLog(`${state.players[owner].name}はデッキをシャッフルしました。`);
+    }
+  });
+  return true;
+}
+
+function stopUnlessMovedToDropMatchesForScript(step, context) {
+  const movedCards = context.movedToDrop || [];
+  const matched = movedCards.some((card) => matchesCardFilter(card, step.filter || {}));
+  if (matched) {
+    return true;
+  }
+  if (step.message) {
+    addLog(interpolateScriptMessage(step.message, context));
+  }
+  return { ok: false, reason: "moved_to_drop_condition_not_met" };
+}
+
+function interpolateScriptMessage(message, context) {
+  return String(message)
+    .replaceAll("{card}", context.card?.name || "")
+    .replaceAll("{player}", context.player?.name || "")
+    .replace(/\{selection:([^}]+)\}/g, (_match, varName) =>
+      scriptSelection({ var: varName }, context)
+        .map((entry) => entry.card?.name)
+        .filter(Boolean)
+        .join("、"),
+    );
+}
+
+function isScriptEffectStep(step) {
+  return [
+    "draw",
+    "putTopDeckToGauge",
+    "putTopDeckToGaugeIfBuddyOnField",
+    "moveTopDeckToDrop",
+    "gainLife",
+    "dealDamage",
+    "dealDamageByFieldCardStat",
+    "discardAllHand",
+    "discardHand",
+    "moveHandToGauge",
+    "moveMatchingDropToHand",
+    "moveGaugeToDrop",
+    "revealHand",
+    "setNextActivatedCostMayUseOpponentGauge",
+    "eachPlayerTopDeckToDropThenDamageOrLife",
+    "rockPaperScissorsDamageLosers",
+    "topTwoRevealOneOpponentRandomToHandOrGauge",
+    "startAttackPhase",
+    "restSelf",
+    "dropSelf",
+    "destroySelf",
+    "destroy",
+    "destroyAll",
+    "moveTargetToDrop",
+    "putTopDeckToSoul",
+    "moveSourceSoulToHand",
+    "returnToHand",
+    "returnSelfToHand",
+    "returnAllToHand",
+    "modifyStats",
+    "modifyStatsAll",
+    "modifyStatsBySelectedCard",
+    "modifyStatsByFieldCardStat",
+    "modifyStatsIfTargetAttribute",
+    "grantKeyword",
+    "dropTargetSoul",
+    "nullifyAttack",
+    "nullifyPendingAction",
+    "redirectPendingAttackToSelf",
+    "putTopDeckToGaugeEqualToLastDamage",
+    "destroyOpponentMonsterWithPowerLteOwnWeapon",
+    "moveTargetToZone",
+    "moveTargetToEmptyZone",
+    "moveSelfToTargetSoul",
+    "dropEventCard",
+    "preventOwnMonsterAttacksThisTurn",
+    "cancelRecentLifeLink",
+    "cancelLifeLink",
+    "cancelCallOpportunityLifeLink",
+    "reduceNextDamage",
+    "preventNextDamage",
+    "setPreventNextDestroy",
+    "setDelayedDestroyAtOpponentTurnEnd",
+    "setDelayedDestroyAtTurnEnd",
+    "setDelayedDestroy",
+    "shuffleDropIntoDeck",
+    "takeExtraTurnAfterThis",
+    "gainLifeMinusMatchingDropCount",
+    "winGame",
+    "lookTopSelectToHandRestToBottom",
+    "revealTopDamagePerMatchRestToBottom",
+  ].includes(step.op);
+}
+
+function applyScriptGrantedKeywords(card, keywords) {
+  keywords.forEach((keyword) => {
+    if (keyword === "counterattack") {
+      card.counterattack = true;
+      return;
+    }
+    card.temporaryKeywords ||= [];
+    card.temporaryKeywords.push(keyword);
+  });
+}
+

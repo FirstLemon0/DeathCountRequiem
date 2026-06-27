@@ -1,0 +1,2758 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "eb01-immortal-dragon-deity",
+    "name": "エクストラブースター第1弾「不死身の竜神」",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=12"
+  },
+  "cards": [
+    {
+      "id": "eb01-0001",
+      "no": "EB01/0001",
+      "name": "太陽拳 サンシャイン・インパクト",
+      "ruby": "たいようけん サンシャイン・インパクト",
+      "type": "item",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武器"
+      ],
+      "rarity": "超ガチレア",
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■このカードがバディモンスターと連携攻撃した時、そのターン中、このカードの攻撃力は∞になる。（∞は足しても減らしてもどの数値より大きい数値として扱う）"
+      ],
+      "power": 6000,
+      "critical": 2,
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "equipCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "eb01-0001-buddy-link-power",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "linkAttackWithBuddy"
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "power": 999999,
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0002",
+      "no": "EB01/0002",
+      "name": "デュエルズィーガー “テンペスト・エンフォーサー”",
+      "ruby": "デュエルズィーガー “テンペスト・エンフォーサー”",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード"
+      ],
+      "rarity": "超ガチレア",
+      "rules": [
+        "■【コールコスト】君の場の「デュエルズィーガー“スパルタンド”」が破壊された時、「デュエルズィーガー“スパルタンド”」の『ライフリンク』を無効化し、ゲージ３を払う。",
+        "『ライフリンク即死』（このモンスターが場から離れた時、君はゲームに敗北する。）『貫通』『３回攻撃』"
+      ],
+      "size": 3,
+      "power": 12000,
+      "critical": 3,
+      "defense": 12000,
+      "keywords": [
+        "tripleAttack",
+        "penetrate",
+        "lifeLinkLose"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "cancelCallOpportunityLifeLink",
+            "filter": {
+              "name": "デュエルズィーガー “スパルタンド”"
+            }
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callConditions": [
+        {
+          "op": "temporaryCallOpportunityMatches",
+          "kind": "destroyed",
+          "controller": "self",
+          "filter": {
+            "name": "デュエルズィーガー “スパルタンド”"
+          }
+        }
+      ],
+      "callCost": {
+        "gauge": 3
+      }
+    },
+    {
+      "id": "eb01-0003",
+      "no": "EB01/0003",
+      "name": "竜騎士 リチャード",
+      "ruby": "りゅうきし リチャード",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■“騎士の王”君のドロップゾーンに、《竜騎士》が４種類以上あるなら、このカードの攻撃力＋4000、防御力＋4000する！"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 4000,
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameIdAsSource": true
+          },
+          "power": 4000,
+          "defense": 4000,
+          "conditions": [
+            {
+              "op": "ownDropDistinctCardCountGte",
+              "filter": {
+                "attribute": "竜騎士"
+              },
+              "amount": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0004",
+      "no": "EB01/0004",
+      "name": "次元魔竜 ラディス・ザ・タイラント",
+      "ruby": "じげんまりゅう ラディス・ザ・タイラント",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード",
+        "ネイキッドドラゴン"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■【コールコスト】ゲージ３を払う。",
+        "■【対抗】【起動】 手札の《ネイキッドドラゴン》１枚を捨ててよい。捨てたら、次の２つから１つを選んで使う。",
+        "・ライフ２を払い、そのターン中、次にこのカードが破壊される場合、場に残せる！",
+        "・ゲージ２を払い、相手が使ったその魔法を無効化する。",
+        "『２回攻撃』"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 3,
+      "defense": 6000,
+      "keywords": [
+        "doubleAttack"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      },
+      "abilities": [
+        {
+          "id": "eb01-0004-tyrant-counter",
+          "kind": "activated",
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "fromFieldOnly": true,
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "discard",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "attribute": "ネイキッドドラゴン"
+              },
+              "amount": 1,
+              "require": false,
+              "title": "ラディス・ザ・タイラントで捨てる《ネイキッドドラゴン》",
+              "lead": "手札の《ネイキッドドラゴン》1枚を捨てる場合は選んでください。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "discard",
+              "then": [
+                {
+                  "op": "chooseBranch",
+                  "title": "ラディス・ザ・タイラントの効果",
+                  "options": [
+                    {
+                      "key": "remain",
+                      "label": "場に残す",
+                      "description": "ライフ2を払い、次に破壊される場合、場に残します。",
+                      "canPayCost": [
+                        {
+                          "op": "payLife",
+                          "amount": 2
+                        }
+                      ],
+                      "script": [
+                        {
+                          "op": "payCost",
+                          "cost": [
+                            {
+                              "op": "payLife",
+                              "amount": 2
+                            }
+                          ]
+                        },
+                        {
+                          "op": "moveSelected",
+                          "var": "discard",
+                          "to": "drop",
+                          "log": "discard"
+                        },
+                        {
+                          "op": "setPreventNextDestroy",
+                          "target": "$self"
+                        }
+                      ]
+                    },
+                    {
+                      "key": "nullify",
+                      "label": "魔法を無効化",
+                      "description": "ゲージ2を払い、相手が使った魔法を無効化します。",
+                      "canPayCost": [
+                        {
+                          "op": "payGauge",
+                          "amount": 2
+                        }
+                      ],
+                      "condition": {
+                        "op": "all",
+                        "conditions": [
+                          {
+                            "op": "pendingActionIsOpponent"
+                          },
+                          {
+                            "op": "pendingActionCardType",
+                            "cardType": "spell"
+                          }
+                        ]
+                      },
+                      "script": [
+                        {
+                          "op": "payCost",
+                          "cost": [
+                            {
+                              "op": "payGauge",
+                              "amount": 2
+                            }
+                          ]
+                        },
+                        {
+                          "op": "moveSelected",
+                          "var": "discard",
+                          "to": "drop",
+                          "log": "discard"
+                        },
+                        {
+                          "op": "nullifyPendingAction"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0005",
+      "no": "EB01/0005",
+      "name": "幸いの竜 フォーボルカ",
+      "ruby": "さいわいのりゅう フォーボルカ",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード",
+        "光"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■【起動】君の場にサイズ３のモンスターがいるなら、手札のこのカードを捨ててよい。捨てたら、君のデッキの上から２枚をゲージに置く。",
+        "『ライフリンク１』"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 0,
+      "defense": 5000,
+      "keywords": [
+        "lifeLink1"
+      ],
+      "abilities": [
+        {
+          "id": "eb01-0005-hand-gauge",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "fromHandOnly": true,
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ],
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0006",
+      "no": "EB01/0006",
+      "name": "破邪顕正 剛竜火弾！",
+      "ruby": "はじゃけんせい ごうりゅうかだん！",
+      "type": "impact",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■【使用コスト】ゲージ３を払う。",
+        "■君の場にサイズ３のモンスターがいて、相手の場にモンスターがいないなら使える。",
+        "■相手にダメージ４！！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 3
+      },
+      "abilities": [
+        {
+          "id": "eb01-0006-damage4",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ],
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              }
+            },
+            {
+              "op": "opponentFieldCardCountLte",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ],
+              "filter": {
+                "cardType": "monster"
+              },
+              "amount": 0
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 3
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0007",
+      "no": "EB01/0007",
+      "name": "天竜開闢",
+      "ruby": "てんりゅうかいびゃく",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■【使用コスト】ライフ２を払う。",
+        "■カード２枚を引く。「天竜開闢」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payLife",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "eb01-0007-draw2",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "tenryu-kaibyaku"
+          }
+        }
+      ]
+    },
+    {
+      "id": "eb01-0008",
+      "no": "EB01/0008",
+      "name": "システミックダガー “オンサ”",
+      "ruby": "システミックダガー “オンサ”",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、君のドロップゾーンの、カード名に「システミックダガー」を含むカード１枚を、このカードのソウルに入れる。",
+        "『ソウルガード』"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 6000,
+      "keywords": [
+        "soulguard"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putCardToSoul",
+            "sources": [
+              "drop"
+            ],
+            "amount": 1,
+            "filter": {
+              "nameIncludes": "システミックダガー"
+            }
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      }
+    },
+    {
+      "id": "eb01-0009",
+      "no": "EB01/0009",
+      "name": "ドラゴバルク・ストームシュラーク",
+      "ruby": "ドラゴバルク・ストームシュラーク",
+      "type": "impact",
+      "world": "ドラゴンW",
+      "attributes": [
+        "青竜",
+        "破壊"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【使用コスト】ゲージ６を払う。",
+        "■君のドロップゾーンに《武装騎竜》が８枚以上あり、君のセンターにモンスターがいないなら使える。",
+        "■相手にダメージ５！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 6
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 6
+      },
+      "abilities": [
+        {
+          "id": "eb01-0009-damage5",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "ownDropAttributeCountGte",
+              "attribute": "武装騎竜",
+              "amount": 8
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 6
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0010",
+      "no": "EB01/0010",
+      "name": "無道八虐 撞木鮫",
+      "ruby": "むどうはちぎゃく しゅもくざめ",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "髑髏武者"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【コールコスト】ゲージ３を払う。",
+        "■このカードが登場した時、君のドロップゾーンの《鬼道》１枚を手札に加えてよい。加えたら、相手のドロップゾーンのカードを３枚まで選び、相手のデッキの下に好きな順番で置く。"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 3,
+      "defense": 7000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      },
+      "abilities": [
+        {
+          "id": "eb01-0010-kidou-recycle",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "kidou",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "attribute": "鬼道"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "撞木鮫で手札に加える《鬼道》",
+              "lead": "ドロップゾーンの《鬼道》1枚を手札に加える場合は選んでください。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "kidou",
+              "then": [
+                {
+                  "op": "moveSelected",
+                  "var": "kidou",
+                  "to": "hand",
+                  "log": "{cards}を手札に加えました。"
+                },
+                {
+                  "op": "selectCards",
+                  "var": "opponentDrop",
+                  "from": "drop",
+                  "controller": "opponent",
+                  "min": 0,
+                  "max": 3,
+                  "amount": 3,
+                  "require": false,
+                  "title": "相手のデッキの下に置くカード",
+                  "lead": "相手のドロップゾーンから3枚まで選んでください。"
+                },
+                {
+                  "op": "moveSelected",
+                  "var": "opponentDrop",
+                  "to": "deckBottom",
+                  "order": "choose",
+                  "title": "撞木鮫でデッキ下に置く順番",
+                  "lead": "相手のデッキの一番下にするカードから順に指定してください。",
+                  "require": false,
+                  "log": "{cards}をデッキの下に置きました。"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0011",
+      "no": "EB01/0011",
+      "name": "盗賊忍者 五右衛門",
+      "ruby": "とうぞくにんじゃ ごえもん",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "忍者"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■このカードが相手にダメージを与えた時、ゲージ１を払ってよい。払ったら、相手のゲージ１枚をドロップゾーンに置く。"
+      ],
+      "size": 2,
+      "power": 3000,
+      "critical": 2,
+      "defense": 5000,
+      "abilities": [
+        {
+          "id": "eb01-0011-gauge-drop",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "optional": true,
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "moveGaugeToDrop",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0012",
+      "no": "EB01/0012",
+      "name": "デュエルズィーガー “スパルタンド”",
+      "ruby": "デュエルズィーガー “スパルタンド”",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【コールコスト】君の場の「武神竜王 デュエルズィーガー」が破壊された時、「武神竜王 デュエルズィーガー」の『ライフリンク』を無効化し、ゲージ３を払い、ドロップゾーンの「武神竜王 デュエルズィーガー」１枚をソウルに入れる。",
+        "『２回攻撃』『ソウルガード』『ライフリンク５』"
+      ],
+      "size": 3,
+      "power": 8000,
+      "critical": 3,
+      "defense": 8000,
+      "keywords": [
+        "doubleAttack",
+        "soulguard",
+        "lifeLink5"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "cancelCallOpportunityLifeLink",
+            "filter": {
+              "name": "武神竜王 デュエルズィーガー"
+            }
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          },
+          {
+            "op": "putCardToSoul",
+            "sources": [
+              "drop"
+            ],
+            "amount": 1,
+            "filter": {
+              "name": "武神竜王 デュエルズィーガー"
+            }
+          }
+        ]
+      },
+      "callConditions": [
+        {
+          "op": "temporaryCallOpportunityMatches",
+          "kind": "destroyed",
+          "controller": "self",
+          "filter": {
+            "name": "武神竜王 デュエルズィーガー"
+          }
+        }
+      ],
+      "callCost": {
+        "gauge": 3
+      }
+    },
+    {
+      "id": "eb01-0013",
+      "no": "EB01/0013",
+      "name": "武神竜王 デュエルズィーガー",
+      "ruby": "ぶしんりゅうおう デュエルズィーガー",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【コールコスト】ゲージ３を払い、君の手札の《ドラゴンロード》２枚までをソウルに入れてよい。",
+        "『２回攻撃』『ソウルガード』『ライフリンク５』"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 7000,
+      "keywords": [
+        "doubleAttack",
+        "soulguard",
+        "lifeLink5"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          },
+          {
+            "op": "putHandToSoul",
+            "amount": 2,
+            "min": 0,
+            "max": 2,
+            "filter": {
+              "attribute": "ドラゴンロード"
+            }
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      }
+    },
+    {
+      "id": "eb01-0014",
+      "no": "EB01/0014",
+      "name": "宇内竜王 ガリアゾンド",
+      "ruby": "うだいりゅうおう ガリアゾンド",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【コールコスト】ゲージ３を払い、君のドロップゾーンの「炎竜王 マグマノヴァ」「氷竜王 グラキエス」「岩竜王 ヴラゴス」「嵐竜王 サンダートルネード」１枚ずつをこのカードのソウルに入れる。",
+        "『２回攻撃』『ソウルガード』『ライフリンク８』"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 3,
+      "defense": 6000,
+      "keywords": [
+        "doubleAttack",
+        "soulguard",
+        "lifeLink8"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          },
+          {
+            "op": "putCardToSoul",
+            "sources": [
+              "drop"
+            ],
+            "amount": 1,
+            "filter": {
+              "name": "炎竜王 マグマノヴァ"
+            }
+          },
+          {
+            "op": "putCardToSoul",
+            "sources": [
+              "drop"
+            ],
+            "amount": 1,
+            "filter": {
+              "name": "氷竜王 グラキエス"
+            }
+          },
+          {
+            "op": "putCardToSoul",
+            "sources": [
+              "drop"
+            ],
+            "amount": 1,
+            "filter": {
+              "name": "岩竜王 ヴラゴス"
+            }
+          },
+          {
+            "op": "putCardToSoul",
+            "sources": [
+              "drop"
+            ],
+            "amount": 1,
+            "filter": {
+              "name": "嵐竜王 サンダートルネード"
+            }
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      }
+    },
+    {
+      "id": "eb01-0015",
+      "no": "EB01/0015",
+      "name": "炎竜王 マグマノヴァ",
+      "ruby": "えんりゅうおう マグマノヴァ",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード",
+        "火"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【起動】“火炎弾” 君の場にサイズ３のモンスターがいるなら、手札のこのカードを捨ててよい。捨てたら、相手にダメージ１。",
+        "『ライフリンク１』"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 3,
+      "defense": 3000,
+      "keywords": [
+        "lifeLink1"
+      ],
+      "abilities": [
+        {
+          "id": "eb01-0015-hand-damage",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "fromHandOnly": true,
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ],
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0016",
+      "no": "EB01/0016",
+      "name": "竜王伝",
+      "ruby": "りゅうおうでん",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■君のデッキの上から１枚をゲージに置き、君のライフを＋１し、カード１枚を引く。「竜王伝」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "eb01-0016-gauge-life-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "ryuoden"
+          }
+        }
+      ]
+    },
+    {
+      "id": "eb01-0017",
+      "no": "EB01/0017",
+      "name": "竜炎瀑布",
+      "ruby": "りゅうえんばくふ",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン",
+        "火力"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【使用コスト】ゲージ２を払う。",
+        "■【対抗】相手の場の攻撃力か防御力が2000以下のモンスター全てを破壊する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "eb01-0017-destroy-small",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroyAll",
+              "controller": "opponent",
+              "filter": {
+                "cardType": "monster",
+                "anyOf": [
+                  {
+                    "powerLte": 2000
+                  },
+                  {
+                    "defenseLte": 2000
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0018",
+      "no": "EB01/0018",
+      "name": "ブロウハンマー・ドラゴン",
+      "ruby": "ブロウハンマー・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "金竜"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このモンスターはセンターにコールできない。",
+        "■“フラクチャープレス！”このカードが相手にダメージを与えた時、相手の場のアイテムか魔法１枚を破壊してもよい。"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "cannotCallZones": [
+        "center"
+      ],
+      "abilities": [
+        {
+          "id": "eb01-0018-break-item-spell",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "optional": true,
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardTypeIn": [
+                "item",
+                "spell"
+              ]
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0019",
+      "no": "EB01/0019",
+      "name": "アイアンチェーン・ドラゴン",
+      "ruby": "アイアンチェーン・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "青竜"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【起動】“リスティックチェーン！” ゲージ１を払ってよい。払ったら、そのターン中、場のカード１枚の防御力を、－3000する！"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 3000,
+      "abilities": [
+        {
+          "id": "eb01-0019-defense-minus",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "fromFieldOnly": true,
+          "target": {
+            "type": "fieldCard",
+            "controller": "any",
+            "filter": {}
+          },
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "defense": -3000,
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0020",
+      "no": "EB01/0020",
+      "name": "百面忍者 無楽",
+      "ruby": "ひゃくめんにんじゃ むらく",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "忍者"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【対抗】【起動】手札１枚を捨ててよい。捨てたら、そのターン中、このカードの攻撃力と防御力と打撃力を、この能力で捨てたカードに書かれているそれらの数値分増やす。この能力は１ターンに１回だけ使える。",
+        "『反撃』"
+      ],
+      "size": 1,
+      "power": 1000,
+      "critical": 1,
+      "defense": 1000,
+      "keywords": [
+        "counterattack"
+      ],
+      "abilities": [
+        {
+          "id": "eb01-0020-copy-stats",
+          "kind": "activated",
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "fromFieldOnly": true,
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "discard",
+              "from": "hand",
+              "controller": "self",
+              "amount": 1,
+              "title": "無楽で捨てる手札",
+              "lead": "能力値を加えるため、手札1枚を選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "discard",
+              "to": "drop",
+              "log": "discard"
+            },
+            {
+              "op": "modifyStatsBySelectedCard",
+              "target": "$self",
+              "var": "discard",
+              "duration": "turn"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "eb01-0020-copy-stats"
+          }
+        }
+      ]
+    },
+    {
+      "id": "eb01-0021",
+      "no": "EB01/0021",
+      "name": "シルバードラゴン アデイラード",
+      "ruby": "シルバードラゴン アデイラード",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ネイキッドドラゴン",
+        "地"
+      ],
+      "rarity": "上",
+      "rules": [
+        "『ライフリンク１』（このカードが場から離れた時、君はライフリンクの数値分のダメージを受ける）"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 3,
+      "defense": 4000,
+      "keywords": [
+        "lifeLink1"
+      ]
+    },
+    {
+      "id": "eb01-0022",
+      "no": "EB01/0022",
+      "name": "嵐竜王 サンダートルネード",
+      "ruby": "らんりゅうおう サンダートルネード",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード",
+        "風"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【起動】“魔風撃” 君の場にサイズ３のモンスターがいるなら、手札のこのカードを捨て、ゲージ１を払ってよい。そうしたら、場のアイテムか魔法１枚を破壊する。",
+        "『ライフリンク１』"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "keywords": [
+        "lifeLink1"
+      ],
+      "abilities": [
+        {
+          "id": "eb01-0022-hand-destroy-item-spell",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "fromHandOnly": true,
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ],
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "any",
+            "filter": {
+              "cardTypeIn": [
+                "item",
+                "spell"
+              ]
+            }
+          },
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0023",
+      "no": "EB01/0023",
+      "name": "岩竜王 ヴラゴス",
+      "ruby": "がんりゅうおう ヴラゴス",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード",
+        "地"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【起動】“アースエナジー” 君の場にサイズ３のモンスターがいるなら、手札のこのカードを捨ててよい。捨てたら、君のライフを＋２する。",
+        "『ライフリンク１』"
+      ],
+      "size": 2,
+      "power": 2000,
+      "critical": 2,
+      "defense": 7000,
+      "keywords": [
+        "lifeLink1"
+      ],
+      "abilities": [
+        {
+          "id": "eb01-0023-hand-life",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "fromHandOnly": true,
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ],
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0024",
+      "no": "EB01/0024",
+      "name": "ブルードラゴン サンダーホーン",
+      "ruby": "ブルードラゴン サンダーホーン",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ネイキッドドラゴン",
+        "風"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "『ライフリンク１』（このカードが場から離れた時、君はライフリンクの数値分のダメージを受ける）"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 3,
+      "defense": 2000,
+      "keywords": [
+        "lifeLink1"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      }
+    },
+    {
+      "id": "eb01-0025",
+      "no": "EB01/0025",
+      "name": "竜羅万象",
+      "ruby": "りゅうらばんしょう",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード",
+        "ネイキッドドラゴン"
+      ],
+      "rarity": "上",
+      "rules": [
+        "『設置』（このカードは場に置いて使う）",
+        "■【使用コスト】ゲージ１を払う。",
+        "■君の場に『ライフリンク』を持つモンスターが登場した時、君のライフを＋１する。",
+        "■「竜羅万象」は君の場に１枚だけ『設置』できる。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "uniqueSet": true,
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "eb01-0025-lifelink-enter-life",
+          "kind": "triggered",
+          "event": "allyEnter",
+          "conditions": [
+            {
+              "op": "enteredCardMatches",
+              "filter": {
+                "keyword": "lifeLink"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0026",
+      "no": "EB01/0026",
+      "name": "竜命励起",
+      "ruby": "りゅうめいれいき",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【対抗】バトルしている《ドラゴンロード》１枚を選び、このバトル中、攻撃力＋2000、防御力＋2000し、さらに君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "eb01-0026-battle-buff-life",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "battleCard",
+            "role": null,
+            "filter": {
+              "attribute": "ドラゴンロード"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 2000,
+              "defense": 2000
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0027",
+      "no": "EB01/0027",
+      "name": "竜枯盛衰",
+      "ruby": "りゅうこせいすい",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【使用コスト】ライフ２を払う。",
+        "■【対抗】君のデッキの上から４枚をゲージに置く。「竜枯盛衰」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payLife",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "eb01-0027-gauge4",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 4
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "ryuko-seisui"
+          }
+        }
+      ]
+    },
+    {
+      "id": "eb01-0028",
+      "no": "EB01/0028",
+      "name": "竜騎士 ジル・ド・レ",
+      "ruby": "りゅうきし ジル・ド・レ",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 3000
+    },
+    {
+      "id": "eb01-0029",
+      "no": "EB01/0029",
+      "name": "ダージドリル・ドラゴン",
+      "ruby": "ダージドリル・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "青竜"
+      ],
+      "rarity": "並",
+      "rules": [
+        "『貫通』（このカードの攻撃で相手センターのモンスターを破壊したら、相手にも打撃力分ダメージを与える）"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 2000,
+      "keywords": [
+        "penetrate"
+      ]
+    },
+    {
+      "id": "eb01-0030",
+      "no": "EB01/0030",
+      "name": "竜騎士 ソクラテス",
+      "ruby": "りゅうきし ソクラテス",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士",
+        "天才"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■【対抗】【起動】“無知の知”君が攻撃されている攻撃中、手札の《竜騎士》１枚を捨て、ライフ１を払ってよい。そうしたら、その攻撃を無効化する。"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "abilities": [
+        {
+          "id": "eb01-0030-nullify-from-field",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "fromFieldOnly": true,
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
+            }
+          ],
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1,
+              "filter": {
+                "attribute": "竜騎士"
+              }
+            },
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0031",
+      "no": "EB01/0031",
+      "name": "ドラゴニック・ダッシュ",
+      "ruby": "ドラゴニック・ダッシュ",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■君の場のモンスター１枚を選び、そのターン中、『貫通』を与える。",
+        "（貫通：このカードの攻撃で相手センターのモンスターを破壊したら、相手にも打撃力分ダメージを与える）"
+      ],
+      "abilities": [
+        {
+          "id": "eb01-0031-grant-penetrate",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "penetrate",
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0032",
+      "no": "EB01/0032",
+      "name": "ドラゴスピード",
+      "ruby": "ドラゴスピード",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■【使用コスト】ゲージ２を払う。",
+        "■君の場のサイズ２以下の《武装騎竜》１枚は、そのターン中、相手のセンターにモンスターがいても、相手を攻撃できる。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "eb01-0032-attack-through-center",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "sizeLte": 2,
+              "attribute": "武装騎竜"
+            }
+          },
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "canAttackFighterThroughCenter",
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0033",
+      "no": "EB01/0033",
+      "name": "真剣白刃取り",
+      "ruby": "しんけんしらはどり",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "忍法",
+        "体術"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■相手が《武器》で君のモンスターを攻撃している攻撃中に使える。",
+        "■【対抗】その攻撃を無効化し、カード１枚を引く。"
+      ],
+      "abilities": [
+        {
+          "id": "eb01-0033-nullify-item-attack",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackByOpponentItem"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "monster"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0034",
+      "no": "EB01/0034",
+      "name": "忍法 半殺し",
+      "ruby": "にんぽう はんごろし",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "忍法"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■相手の『ソウルガード』を持つモンスターの攻撃中に使える。",
+        "■【対抗】その攻撃を無効化し、攻撃しているモンスターのソウル全てをドロップゾーンに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "eb01-0034-drop-soulguard-soul",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackByOpponentCardMatches",
+              "filter": {
+                "cardType": "monster",
+                "keyword": "soulguard"
+              }
+            }
+          ],
+          "target": {
+            "type": "battleCard",
+            "role": "attacker",
+            "filter": {
+              "cardType": "monster",
+              "keyword": "soulguard"
+            }
+          },
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "dropTargetSoul",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0035",
+      "no": "EB01/0035",
+      "name": "ゴールドドラゴン アーベント",
+      "ruby": "ゴールドドラゴン アーベント",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ネイキッドドラゴン",
+        "光"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、君のデッキの上から１枚をこのモンスターのソウルに入れる。",
+        "『貫通』『ソウルガード』『ライフリンク３』"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 3,
+      "defense": 6000,
+      "keywords": [
+        "penetrate",
+        "soulguard",
+        "lifeLink3"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      }
+    },
+    {
+      "id": "eb01-0036",
+      "no": "EB01/0036",
+      "name": "アイスドラゴン クノクアイル",
+      "ruby": "アイスドラゴン クノクアイル",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ネイキッドドラゴン",
+        "水"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 2000
+    },
+    {
+      "id": "eb01-0037",
+      "no": "EB01/0037",
+      "name": "ヴィテス パープルダイヤドラゴン",
+      "ruby": "ヴィテス パープルダイヤドラゴン",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ネイキッドドラゴン",
+        "地"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 3,
+      "defense": 3000
+    },
+    {
+      "id": "eb01-0038",
+      "no": "EB01/0038",
+      "name": "氷竜王 グラキエス",
+      "ruby": "ひょうりゅうおう グラキエス",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード",
+        "水"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■【対抗】【起動】“氷結弾”相手のターンの攻撃中、君の場にサイズ３のモンスターがいるなら、手札のこのカードを捨て、ライフ１を払ってよい。そうしたら、その攻撃を無効化する。",
+        "『ライフリンク１』"
+      ],
+      "size": 2,
+      "power": 3000,
+      "critical": 3,
+      "defense": 4000,
+      "keywords": [
+        "lifeLink1"
+      ],
+      "abilities": [
+        {
+          "id": "eb01-0038-hand-nullify",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "fromHandOnly": true,
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ],
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0039",
+      "no": "EB01/0039",
+      "name": "炎精竜 シャルヘヴェット",
+      "ruby": "えんせいりゅう シャルヘヴェット",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード",
+        "火"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 6000,
+      "critical": 1,
+      "defense": 2000
+    },
+    {
+      "id": "eb01-0040",
+      "no": "EB01/0040",
+      "name": "風精竜 スファー",
+      "ruby": "ふうせいりゅう スファー",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード",
+        "風"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 3000
+    },
+    {
+      "id": "eb01-0041",
+      "no": "EB01/0041",
+      "name": "氷精竜 ガルボレット",
+      "ruby": "ひょうせいりゅう ガルボレット",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード",
+        "水"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 1000
+    },
+    {
+      "id": "eb01-0042",
+      "no": "EB01/0042",
+      "name": "フェザードラゴン タラワール",
+      "ruby": "フェザードラゴン タラワール",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ネイキッドドラゴン",
+        "風"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 1,
+      "defense": 4000
+    },
+    {
+      "id": "eb01-0043",
+      "no": "EB01/0043",
+      "name": "ディエス アズライトドラゴン",
+      "ruby": "ディエス アズライトドラゴン",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ネイキッドドラゴン",
+        "地"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 2000
+    },
+    {
+      "id": "eb01-0044",
+      "no": "EB01/0044",
+      "name": "竜神無頼",
+      "ruby": "りゅうじんぶらい",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■【対抗】バトルしている《ドラゴンロード》１枚を選び、このバトル中、攻撃力＋3000、防御力＋3000し、さらに『反撃』を与える！(反撃：このカードが攻撃された後、このカードが場にいるなら、このカードの攻撃力以下の防御力を持つ攻撃してきたモンスター１枚を破壊する）"
+      ],
+      "abilities": [
+        {
+          "id": "eb01-0044-dragonlord-counterattack",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "battleCard",
+            "role": null,
+            "filter": {
+              "attribute": "ドラゴンロード"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 3000,
+              "defense": 3000
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "counterattack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0045",
+      "no": "EB01/0045",
+      "name": "竜胆不敵",
+      "ruby": "りゅうたんふてき",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■【対抗】バトルしている《ネイキッドドラゴン》１枚を選び、このバトル中、攻撃力＋3000、防御力＋3000し、さらに『反撃』を与える！(反撃：このカードが攻撃された後、このカードが場にいるなら、このカードの攻撃力以下の防御力を持つ攻撃してきたモンスター１枚を破壊する）"
+      ],
+      "abilities": [
+        {
+          "id": "eb01-0045-naked-counterattack",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "battleCard",
+            "role": null,
+            "filter": {
+              "attribute": "ネイキッドドラゴン"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 3000,
+              "defense": 3000
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "counterattack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0046",
+      "no": "EB01/0046",
+      "name": "同床竜夢",
+      "ruby": "どうしょうりゅうむ",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン",
+        "回復"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■君のライフを＋３する。"
+      ],
+      "abilities": [
+        {
+          "id": "eb01-0046-life3",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0047",
+      "no": "EB01/0047",
+      "name": "竜の豪雷",
+      "ruby": "りゅうのごうらい",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン",
+        "火力"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■【対抗】場の攻撃力か防御力が2000以下のモンスター１枚を破壊する！"
+      ],
+      "abilities": [
+        {
+          "id": "eb01-0047-destroy-small",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "any",
+            "filter": {
+              "cardType": "monster",
+              "anyOf": [
+                {
+                  "powerLte": 2000
+                },
+                {
+                  "defenseLte": 2000
+                }
+              ]
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-0048",
+      "no": "EB01/0048",
+      "name": "迅雷騎士団 ドラムバンカー・ドラゴン",
+      "ruby": "じんらいきしだん ドラムバンカー・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "バディレア",
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、君の手札のカード名に「迅雷騎士団」を含むカード１枚をこのカードのソウルに入れてよい。",
+        "『移動』『貫通』『ソウルガード』"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 4000,
+      "keywords": [
+        "penetrate",
+        "soulguard",
+        "move"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "putHandToSoul",
+            "amount": 1,
+            "min": 0,
+            "max": 1,
+            "filter": {
+              "nameIncludes": "迅雷騎士団"
+            }
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      }
+    },
+    {
+      "id": "eb01-s001",
+      "no": "EB01/S001",
+      "name": "太陽拳 サンシャイン・インパクト",
+      "ruby": "たいようけん サンシャイン・インパクト",
+      "type": "item",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武器"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■このカードがバディモンスターと連携攻撃した時、そのターン中、このカードの攻撃力は∞になる。（∞は足しても減らしてもどの数値より大きい数値として扱う）"
+      ],
+      "power": 6000,
+      "critical": 2,
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "equipCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "eb01-s001-buddy-link-power",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "linkAttackWithBuddy"
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "power": 999999,
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-s002",
+      "no": "EB01/S002",
+      "name": "デュエルズィーガー “テンペスト・エンフォーサー”",
+      "ruby": "デュエルズィーガー “テンペスト・エンフォーサー”",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【コールコスト】君の場の「デュエルズィーガー“スパルタンド”」が破壊された時、「デュエルズィーガー“スパルタンド”」の『ライフリンク』を無効化し、ゲージ３を払う。",
+        "『ライフリンク即死』（このモンスターが場から離れた時、君はゲームに敗北する。）『貫通』『３回攻撃』"
+      ],
+      "size": 3,
+      "power": 12000,
+      "critical": 3,
+      "defense": 12000,
+      "keywords": [
+        "tripleAttack",
+        "penetrate",
+        "lifeLinkLose"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "cancelCallOpportunityLifeLink",
+            "filter": {
+              "name": "デュエルズィーガー “スパルタンド”"
+            }
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callConditions": [
+        {
+          "op": "temporaryCallOpportunityMatches",
+          "kind": "destroyed",
+          "controller": "self",
+          "filter": {
+            "name": "デュエルズィーガー “スパルタンド”"
+          }
+        }
+      ],
+      "callCost": {
+        "gauge": 3
+      }
+    },
+    {
+      "id": "eb01-s003",
+      "no": "EB01/S003",
+      "name": "竜騎士 リチャード",
+      "ruby": "りゅうきし リチャード",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■“騎士の王”君のドロップゾーンに、《竜騎士》が４種類以上あるなら、このカードの攻撃力＋4000、防御力＋4000する！"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 4000,
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameIdAsSource": true
+          },
+          "power": 4000,
+          "defense": 4000,
+          "conditions": [
+            {
+              "op": "ownDropDistinctCardCountGte",
+              "filter": {
+                "attribute": "竜騎士"
+              },
+              "amount": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-s004",
+      "no": "EB01/S004",
+      "name": "次元魔竜 ラディス・ザ・タイラント",
+      "ruby": "じげんまりゅう ラディス・ザ・タイラント",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード",
+        "ネイキッドドラゴン"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【コールコスト】ゲージ３を払う。",
+        "■【対抗】【起動】 手札の《ネイキッドドラゴン》１枚を捨ててよい。捨てたら、次の２つから１つを選んで使う。",
+        "・ライフ２を払い、そのターン中、次にこのカードが破壊される場合、場に残せる！",
+        "・ゲージ２を払い、相手が使ったその魔法を無効化する。",
+        "『２回攻撃』"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 3,
+      "defense": 6000,
+      "keywords": [
+        "doubleAttack"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      },
+      "abilities": [
+        {
+          "id": "eb01-s004-tyrant-counter",
+          "kind": "activated",
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "fromFieldOnly": true,
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "discard",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "attribute": "ネイキッドドラゴン"
+              },
+              "amount": 1,
+              "require": false,
+              "title": "ラディス・ザ・タイラントで捨てる《ネイキッドドラゴン》",
+              "lead": "手札の《ネイキッドドラゴン》1枚を捨てる場合は選んでください。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "discard",
+              "then": [
+                {
+                  "op": "chooseBranch",
+                  "title": "ラディス・ザ・タイラントの効果",
+                  "options": [
+                    {
+                      "key": "remain",
+                      "label": "場に残す",
+                      "description": "ライフ2を払い、次に破壊される場合、場に残します。",
+                      "canPayCost": [
+                        {
+                          "op": "payLife",
+                          "amount": 2
+                        }
+                      ],
+                      "script": [
+                        {
+                          "op": "payCost",
+                          "cost": [
+                            {
+                              "op": "payLife",
+                              "amount": 2
+                            }
+                          ]
+                        },
+                        {
+                          "op": "moveSelected",
+                          "var": "discard",
+                          "to": "drop",
+                          "log": "discard"
+                        },
+                        {
+                          "op": "setPreventNextDestroy",
+                          "target": "$self"
+                        }
+                      ]
+                    },
+                    {
+                      "key": "nullify",
+                      "label": "魔法を無効化",
+                      "description": "ゲージ2を払い、相手が使った魔法を無効化します。",
+                      "canPayCost": [
+                        {
+                          "op": "payGauge",
+                          "amount": 2
+                        }
+                      ],
+                      "condition": {
+                        "op": "all",
+                        "conditions": [
+                          {
+                            "op": "pendingActionIsOpponent"
+                          },
+                          {
+                            "op": "pendingActionCardType",
+                            "cardType": "spell"
+                          }
+                        ]
+                      },
+                      "script": [
+                        {
+                          "op": "payCost",
+                          "cost": [
+                            {
+                              "op": "payGauge",
+                              "amount": 2
+                            }
+                          ]
+                        },
+                        {
+                          "op": "moveSelected",
+                          "var": "discard",
+                          "to": "drop",
+                          "log": "discard"
+                        },
+                        {
+                          "op": "nullifyPendingAction"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-s005",
+      "no": "EB01/S005",
+      "name": "破邪顕正 剛竜火弾！",
+      "ruby": "はじゃけんせい ごうりゅうかだん！",
+      "type": "impact",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【使用コスト】ゲージ３を払う。",
+        "■君の場にサイズ３のモンスターがいて、相手の場にモンスターがいないなら使える。",
+        "■相手にダメージ４！！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 3
+      },
+      "abilities": [
+        {
+          "id": "eb01-s005-damage4",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ],
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              }
+            },
+            {
+              "op": "opponentFieldCardCountLte",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ],
+              "filter": {
+                "cardType": "monster"
+              },
+              "amount": 0
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 3
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb01-s006",
+      "no": "EB01/S006",
+      "name": "宇内竜王 ガリアゾンド",
+      "ruby": "うだいりゅうおう ガリアゾンド",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【コールコスト】ゲージ３を払い、君のドロップゾーンの「炎竜王 マグマノヴァ」「氷竜王 グラキエス」「岩竜王 ヴラゴス」「嵐竜王 サンダートルネード」１枚ずつをこのカードのソウルに入れる。",
+        "『２回攻撃』『ソウルガード』『ライフリンク８』"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 3,
+      "defense": 6000,
+      "keywords": [
+        "doubleAttack",
+        "soulguard",
+        "lifeLink8"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          },
+          {
+            "op": "putCardToSoul",
+            "sources": [
+              "drop"
+            ],
+            "amount": 1,
+            "filter": {
+              "name": "炎竜王 マグマノヴァ"
+            }
+          },
+          {
+            "op": "putCardToSoul",
+            "sources": [
+              "drop"
+            ],
+            "amount": 1,
+            "filter": {
+              "name": "氷竜王 グラキエス"
+            }
+          },
+          {
+            "op": "putCardToSoul",
+            "sources": [
+              "drop"
+            ],
+            "amount": 1,
+            "filter": {
+              "name": "岩竜王 ヴラゴス"
+            }
+          },
+          {
+            "op": "putCardToSoul",
+            "sources": [
+              "drop"
+            ],
+            "amount": 1,
+            "filter": {
+              "name": "嵐竜王 サンダートルネード"
+            }
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      }
+    }
+  ]
+}

@@ -1,0 +1,619 @@
+// ==========================================================================
+// buddyfight モジュール 10 — バトル解決(対抗/貫通/ダメージトリガー)
+// 旧 app.js L3777-4390 由来。全モジュールはグローバルスコープを共有し、
+// HTML で番号順に <script> 読み込みする（連結すると旧 app.js とバイト等価）。
+// ==========================================================================
+async function resolvePendingAttack() {
+  if (!state.pendingAttack) {
+    return;
+  }
+  const pending = state.pendingAttack;
+  if (pending.nullified) {
+    addLog("この攻撃は無効化されています。");
+    clearPendingAttack({ nullified: true });
+    render();
+    return;
+  }
+  const attackers = getPendingAttackers();
+  if (attackers.length === 0) {
+    addLog("攻撃カードが場を離れたため、攻撃は終了しました。");
+    clearPendingAttack();
+    render();
+    return;
+  }
+  const attackerNames = attackers.map((attacker) => attacker.card.name).join("、");
+  if (pending.targetType === "fighter") {
+    await resolveFighterAttack(pending, attackers, attackerNames);
+    return;
+  }
+  if (pending.attackAllTargetZones?.length) {
+    await resolveMultiMonsterAttack(pending, attackers, attackerNames);
+    return;
+  }
+  const target = getPendingTarget();
+  if (!target) {
+    addLog("攻撃対象が場を離れたため、攻撃は終了しました。");
+    clearPendingAttack();
+    render();
+    return;
+  }
+  const attackPower = attackers.reduce((total, attacker) => total + visiblePower(attacker.card), 0);
+  if (attackPower >= visibleDefense(target)) {
+    const destroyedName = target.name;
+    const destroyed = await destroyFieldCard(pending.targetOwner, pending.targetZone, {
+      cause: { byBattle: true, byOpponent: true, sourceCard: attackers[0]?.card },
+    });
+    if (destroyed) {
+      addLog(`${attackerNames}は${destroyedName}を破壊しました。`);
+      await runAttackDestroyedTriggers(attackers, pending, destroyed);
+      resolveLinkDestroyedMonsterTriggers(pending, attackers);
+      await resolvePenetrateDamage(attackers, pending);
+    }
+  } else {
+    addLog(`${target.name}は攻撃を耐えました。`);
+  }
+
+  await resolveCounterattack({ owner: pending.targetOwner, zone: pending.targetZone }, attackers);
+  finishPendingAttack({ destroyedTarget: pending.targetType === "monster" && !getPendingTarget() });
+  render();
+}
+
+async function resolveMultiMonsterAttack(pending, attackers, attackerNames) {
+  const targets = uniqueTargetEntries(
+    (pending.attackAllTargetZones || [])
+      .map((zone) => getFieldTarget(pending.targetOwner, zone))
+      .filter((target) => target?.card && effectiveCardType(target.card) === "monster"),
+  );
+  if (targets.length === 0) {
+    addLog("攻撃対象が場を離れたため、攻撃は終了しました。");
+    clearPendingAttack();
+    render();
+    return;
+  }
+  const attackPower = attackers.reduce((total, attacker) => total + visiblePower(attacker.card), 0);
+  let destroyedCount = 0;
+  for (const target of targets) {
+    const current = state.players[target.owner]?.field?.[target.zone];
+    if (!current || current.instanceId !== target.card.instanceId) {
+      continue;
+    }
+    if (attackPower >= visibleDefense(current)) {
+      const destroyedName = current.name;
+      const destroyed = await destroyFieldCard(target.owner, target.zone, {
+        cause: { byBattle: true, byOpponent: true, sourceCard: attackers[0]?.card },
+      });
+      if (destroyed) {
+        destroyedCount += 1;
+        addLog(`${attackerNames}は${destroyedName}を破壊しました。`);
+        await runAttackDestroyedTriggers(
+          attackers,
+          {
+            ...pending,
+            targetOwner: target.owner,
+            targetZone: target.zone,
+            targetType: "monster",
+          },
+          destroyed,
+        );
+      }
+    } else {
+      addLog(`${current.name}は攻撃を耐えました。`);
+    }
+  }
+  for (const target of targets) {
+    await resolveCounterattack({ owner: target.owner, zone: target.zone }, attackers);
+  }
+  finishPendingAttack({
+    destroyedTarget: destroyedCount > 0,
+    destroyedCount,
+    attackAllTargetZones: [...(pending.attackAllTargetZones || [])],
+  });
+  render();
+}
+
+async function runAttackDestroyedTriggers(attackers, pending, destroyedCard) {
+  for (const attacker of attackers) {
+    await runTriggeredAbilities(attacker.card, "destroyByAttack", {
+      card: attacker.card,
+      player: state.players[attacker.owner],
+      owner: attacker.owner,
+      zone: attacker.zone,
+      destroyedCard,
+      destroyedOwner: pending.targetOwner,
+      destroyedZone: pending.targetZone,
+      eventCard: {
+        card: destroyedCard,
+        owner: pending.targetOwner,
+        zone: pending.targetZone,
+        source: "field",
+      },
+    });
+  }
+  const attackerOwner = attackers[0]?.owner;
+  if (attackerOwner !== undefined && attackerOwner !== null) {
+    for (const zone of zones) {
+      const sourceCard = state.players[attackerOwner]?.field?.[zone];
+      if (!sourceCard) {
+        continue;
+      }
+      await runTriggeredAbilities(sourceCard, "allyAttackDestroyed", {
+        card: sourceCard,
+        player: state.players[attackerOwner],
+        owner: attackerOwner,
+        zone,
+        attackers,
+        destroyedCard,
+        destroyedOwner: pending.targetOwner,
+        destroyedZone: pending.targetZone,
+        eventCard: {
+          card: destroyedCard,
+          owner: pending.targetOwner,
+          zone: pending.targetZone,
+          source: "field",
+        },
+      });
+    }
+  }
+  for (const zone of zones) {
+    const sourceCard = state.players[pending.targetOwner]?.field?.[zone];
+    if (!sourceCard) {
+      continue;
+    }
+    await runTriggeredAbilities(sourceCard, "allyDestroyedByAttack", {
+      card: sourceCard,
+      player: state.players[pending.targetOwner],
+      owner: pending.targetOwner,
+      zone,
+      destroyedCard,
+      destroyedOwner: pending.targetOwner,
+      destroyedZone: pending.targetZone,
+      eventCard: {
+        card: destroyedCard,
+        owner: pending.targetOwner,
+        zone: pending.targetZone,
+        source: "field",
+      },
+    });
+  }
+}
+
+function resolveLinkDestroyedMonsterTriggers(pending, attackers) {
+  if (!pending || pending.targetType !== "monster" || (attackers?.length || 0) <= 1) {
+    return;
+  }
+  let dealtDamage = false;
+  state.players.forEach((player, owner) => {
+    setZones.forEach((zone) => {
+      const setCard = player.field[zone];
+      const trigger = setCard?.linkDestroyedOpponentMonsterTrigger;
+      if (!trigger || pending.targetOwner === owner) {
+        return;
+      }
+      const receiver = state.players[pending.targetOwner];
+      const damage = trigger.damage || 1;
+      const appliedDamage = applyDamageToPlayer(pending.targetOwner, damage, { log: false });
+      dealtDamage = appliedDamage;
+      addLog(`${setCard.name}の効果で${receiver.name}に${dealtDamage}ダメージを与えました。`);
+    });
+  });
+  if (dealtDamage) {
+    checkWinner();
+  }
+}
+
+// このカードが1枚で攻撃しているなら、攻撃はカード名に「ドラゴンシールド」を含む
+// カードによって無効化・軽減されない（ディルクショーテル・ドラゴン EB02/0008）。
+// 攻撃の防御耐性(attackResistances): 条件×フィルタ×耐性種別(nullify/reduce) の合成可能プリミティブ
+function resistanceFilterMatches(filter, card, name) {
+  if (!filter || Object.keys(filter).length === 0) return true; // filter省略=全防御源に一致
+  if (card) return matchesCardFilter(card, filter);
+  const nameHit = (f) => Boolean((f.nameIncludes && (name || "").includes(f.nameIncludes)) || (f.name && name === f.name));
+  if (Array.isArray(filter.anyOf)) return filter.anyOf.some(nameHit) || nameHit(filter);
+  return nameHit(filter);
+}
+
+function applicableAttackResistances(attackers = []) {
+  const entries = [];
+  (attackers || []).forEach((atk) => {
+    const card = atk?.card;
+    (card?.attackResistances || []).forEach((entry) => {
+      const owner = atk.owner ?? findFieldCardSlot(card)?.owner ?? state.active;
+      if (!entry.conditions || checkCardConditions(entry.conditions, owner, { card, zone: atk.zone })) {
+        entries.push(entry);
+      }
+    });
+  });
+  return entries;
+}
+
+function attackSourceResisted(attackers, kind, sourceCard, sourceName) {
+  return applicableAttackResistances(attackers).some(
+    (e) => (e.effects || []).includes(kind) && resistanceFilterMatches(e.filter, sourceCard, sourceName),
+  );
+}
+
+// 連携攻撃で受けるダメージの上限（君が連携攻撃によって受けるダメージは N になる）。
+function linkAttackDamageCapFor(defenderOwner) {
+  const player = state.players[defenderOwner];
+  let cap = null;
+  zones.forEach((zone) => {
+    const card = player.field[zone];
+    if (card && typeof card.linkAttackDamageReceivedTo === "number") {
+      cap = cap === null ? card.linkAttackDamageReceivedTo : Math.min(cap, card.linkAttackDamageReceivedTo);
+    }
+  });
+  return cap;
+}
+
+async function resolveFighterAttack(pending, attackers, attackerNames) {
+  const defender = state.players[pending.defender];
+  const defenseItemInfo = getPendingBattleTargetInfo(pending);
+  let damage = attackers.reduce((total, attacker) => total + visibleCritical(attacker.card), 0);
+  if (attackers.length > 1) {
+    const cap = linkAttackDamageCapFor(pending.defender);
+    if (cap !== null && damage > cap) {
+      damage = cap;
+    }
+  }
+  const damageOptions = { log: false };
+  const reduceResist = applicableAttackResistances(attackers).filter((e) => (e.effects || []).includes("reduce"));
+  if (reduceResist.length > 0) {
+    damageOptions.resistEntries = reduceResist;
+  }
+
+  if (defenseItemInfo) {
+    const attackPower = attackers.reduce((total, attacker) => total + visiblePower(attacker.card), 0);
+    const itemDefense = visibleDefense(defenseItemInfo.card);
+    if (attackPower < itemDefense) {
+      addLog(
+        `${defender.name}の${defenseItemInfo.card.name}の防御力${itemDefense}により、${attackerNames}の攻撃はダメージを与えられませんでした。`,
+      );
+      finishPendingAttack({ dealtDamage: 0, battledDefenseItem: true });
+      render();
+      return;
+    }
+    const dealtDamage = applyDamageToPlayer(pending.defender, damage, damageOptions);
+    addLog(
+      `${attackerNames}の攻撃力${attackPower}が${defenseItemInfo.card.name}の防御力${itemDefense}以上のため、${defender.name}は${dealtDamage}ダメージを受けました。`,
+    );
+    await runDamageDealtTriggers(attackers, pending, dealtDamage);
+    finishPendingAttack({ dealtDamage, battledDefenseItem: true });
+    checkWinner();
+    render();
+    return;
+  }
+
+  const dealtDamage = applyDamageToPlayer(pending.defender, damage, damageOptions);
+  addLog(`${defender.name}は${attackerNames}の攻撃で${dealtDamage}ダメージを受けました。`);
+  await runDamageDealtTriggers(attackers, pending, dealtDamage);
+  finishPendingAttack({ dealtDamage });
+  checkWinner();
+  render();
+}
+
+async function resolveCounterattack(targetSlot, attackers) {
+  const targetAfterBattle = state.players[targetSlot.owner]?.field[targetSlot.zone];
+  if (!hasKeyword(targetAfterBattle, "counterattack") || effectiveCardType(targetAfterBattle) !== "monster") {
+    return;
+  }
+  const candidates = attackers.filter(
+    (attacker) =>
+      effectiveCardType(attacker.card) === "monster" &&
+      visiblePower(targetAfterBattle) >= visibleDefense(attacker.card),
+  );
+  if (candidates.length === 0) {
+    return;
+  }
+  let counterTarget = candidates[0];
+  if (candidates.length > 1) {
+    const selected = await chooseCardEntries(candidates, {
+      title: `${targetAfterBattle.name}の『反撃』`,
+      lead: "『反撃』で破壊する攻撃モンスター1枚を選んでください。",
+      min: 1,
+      max: 1,
+      forceDialog: true,
+    });
+    counterTarget = selected?.[0];
+  }
+  if (!counterTarget) {
+    return;
+  }
+  const attackerName = counterTarget.card.name;
+  const destroyed = await destroyFieldCard(counterTarget.owner, counterTarget.zone);
+  if (destroyed) {
+    addLog(`${targetAfterBattle.name}の反撃で${attackerName}を破壊しました。`);
+  }
+}
+
+function finishPendingAttack(outcome = {}) {
+  const pending = state.pendingAttack;
+  if (!pending) {
+    return;
+  }
+  state.lastAttackOutcome = {
+    ...outcome,
+    nullified: Boolean(outcome.nullified || pending.nullified),
+    attackers: getPendingAttackerSlots(pending),
+    targetOwner: pending.targetOwner,
+    targetZone: pending.targetZone,
+    targetType: pending.targetType,
+  };
+  if (!state.lastAttackOutcome.nullified) {
+    runAfterAttackTriggers(state.lastAttackOutcome);
+    queueBattleEndTriggers(state.lastAttackOutcome.attackers || []);
+  }
+  clearPendingAttack(outcome);
+}
+
+// このカードのバトル終了時(攻撃が無効化されず解決した後)の triggered 能力を発火する。
+function queueBattleEndTriggers(attackerSlots) {
+  attackerSlots.forEach((slot) => {
+    const card = state.players[slot.owner]?.field?.[slot.zone];
+    if (!card || !(card.abilities || []).some((ability) => ability.kind === "triggered" && ability.event === "battleEnd")) {
+      return;
+    }
+    Promise.resolve()
+      .then(async () => {
+        await runTriggeredAbilities(card, "battleEnd", { card, player: state.players[slot.owner], owner: slot.owner, zone: slot.zone });
+        render();
+      })
+      .catch((error) => {
+        console.error(error);
+        addLog(`${card.name}のバトル終了時能力の処理中にエラーが発生しました。`);
+        render();
+      });
+  });
+}
+
+function pendingAttackNullifyBlocker(pending = state.pendingAttack) {
+  if (!pending) {
+    return null;
+  }
+  const attackers = getPendingAttackers();
+  if (attackers.length === 1 && hasKeyword(attackers[0].card, "singleAttackCannotBeNullified")) {
+    return attackers[0].card;
+  }
+  return null;
+}
+
+function nullifyPendingAttack(sourceName = "効果", sourceCard = null) {
+  const pending = state.pendingAttack;
+  if (!pending) {
+    return false;
+  }
+  const blocker = pendingAttackNullifyBlocker(pending);
+  if (blocker) {
+    addLog(`${blocker.name}の攻撃は無効化されません。`);
+    return false;
+  }
+  // 攻撃の無効化耐性（attackResistances の nullify。filter/conditionで合成可能）
+  if (attackSourceResisted(getPendingAttackers(), "nullify", sourceCard, sourceName)) {
+    addLog(`${sourceName}では${getPendingAttackers()[0]?.card?.name || "この攻撃"}の攻撃は無効化されません。`);
+    return false;
+  }
+  pending.nullified = true;
+  pending.skipAfterAttackTriggers = true;
+  getPendingAttackers().forEach((attacker) => {
+    attacker.card.used = true;
+  });
+  state.lastAttackOutcome = {
+    nullified: true,
+    nullifiedBy: sourceName,
+    attackers: getPendingAttackerSlots(pending),
+    targetOwner: pending.targetOwner,
+    targetZone: pending.targetZone,
+    targetType: pending.targetType,
+  };
+  clearPendingAttack({ nullified: true });
+  return true;
+}
+
+async function resolvePenetrateDamage(attackers, pending) {
+  if (pending.targetZone !== "center") {
+    return;
+  }
+  const penetrateDamage = attackers
+    .filter((attacker) => hasKeyword(attacker.card, "penetrate"))
+    .reduce((total, attacker) => total + visibleCritical(attacker.card), 0);
+  if (penetrateDamage <= 0) {
+    return;
+  }
+  const defender = state.players[pending.defender];
+  const penetrateOptions = { log: false };
+  const reducePenetrateResist = applicableAttackResistances(attackers).filter((e) => (e.effects || []).includes("reduce"));
+  if (reducePenetrateResist.length > 0) {
+    penetrateOptions.resistEntries = reducePenetrateResist;
+  }
+  const dealtDamage = applyDamageToPlayer(pending.defender, penetrateDamage, penetrateOptions);
+  addLog(`貫通により${defender.name}に${dealtDamage}ダメージを与えました。`);
+  await runDamageDealtTriggers(
+    attackers.filter((attacker) => hasKeyword(attacker.card, "penetrate")),
+    pending,
+    dealtDamage,
+  );
+  checkWinner();
+}
+
+async function runDamageDealtTriggers(attackers, pending, damage) {
+  if (damage <= 0) {
+    return;
+  }
+  const damageSources = attackers.map((attacker) => ({
+      card: attacker.card,
+      owner: attacker.owner,
+      zone: attacker.zone,
+      source: "field",
+    }));
+  const damageEvent = {
+    kind: "damageDealt",
+    source: damageSources[0],
+    sources: damageSources,
+    sourceCard: compactCardForLog(damageSources[0]?.card),
+    sourceOwner: damageSources[0]?.owner,
+    defender: pending.defender,
+    damage,
+    turnCount: state.turnCount,
+    phase: pending.phase || state.phase,
+  };
+  state.lastDamageEvent = damageEvent;
+  state.counterEventWindow = damageEvent;
+  for (const damageSource of damageSources) {
+    const attacker = {
+      card: damageSource.card,
+      owner: damageSource.owner,
+      zone: damageSource.zone,
+    };
+    await runTriggeredAbilities(attacker.card, "dealDamage", {
+      card: attacker.card,
+      player: state.players[attacker.owner],
+      owner: attacker.owner,
+      zone: attacker.zone,
+      damage,
+      defender: pending.defender,
+      damageSource,
+    });
+    for (const zone of zones) {
+      const sourceCard = state.players[attacker.owner].field[zone];
+      if (!sourceCard || sourceCard.instanceId === attacker.card.instanceId) {
+        continue;
+      }
+      await runTriggeredAbilities(sourceCard, "allyDealDamage", {
+        card: sourceCard,
+        player: state.players[attacker.owner],
+        owner: attacker.owner,
+        zone,
+        damage,
+        defender: pending.defender,
+        damageSource,
+      });
+    }
+  }
+}
+
+function runAfterAttackTriggers(outcome) {
+  if (outcome.nullified) {
+    return;
+  }
+  (outcome.attackers || []).forEach((slot) => {
+    const card = state.players[slot.owner]?.field[slot.zone];
+    if (!card) {
+      return;
+    }
+    if (hasKeyword(card, "tripleAttack")) {
+      card.tripleAttackStandCount = card.tripleAttackStandCount || 0;
+      if (card.tripleAttackStandCount < 2) {
+        card.used = false;
+        card.tripleAttackStandCount += 1;
+        addLog(`${card.name}は３回攻撃でスタンドしました。`);
+      }
+      return;
+    }
+    if (!hasKeyword(card, "doubleAttack") || card.doubleAttackUsed) {
+      return;
+    }
+    card.used = false;
+    card.doubleAttackUsed = true;
+    addLog(`${card.name}は2回攻撃でスタンドしました。`);
+  });
+}
+
+function clearPendingAttack(outcome = {}) {
+  const returnPhase = state.pendingAttack?.phase || "attack";
+  clearBattleModifiers();
+  state.pendingAttack = null;
+  state.counterHandOwner = null;
+  state.phase = returnPhase;
+  state.selected = null;
+  state.linkAttackers = [];
+}
+
+function toggleCounterHand() {
+  if (!hasPendingResolution() && !isCounterPlayTiming()) {
+    return;
+  }
+  if (state.pendingAttack) {
+    const pending = state.pendingAttack;
+    state.counterHandOwner =
+      handOwnerIndex() === pending.defender ? pending.attackerOwner : pending.defender;
+  } else if (state.pendingAction) {
+    const pending = state.pendingAction;
+    state.counterHandOwner =
+      handOwnerIndex() === pending.responder ? pending.owner : pending.responder;
+  } else {
+    state.counterHandOwner = handOwnerIndex() === state.active ? opponentIndex() : state.active;
+  }
+  state.selected = null;
+  render();
+}
+
+function clearBattleModifiers() {
+  state.players.forEach((player) => {
+    zones.forEach((zone) => {
+      const card = player.field[zone];
+      if (card) {
+        card.battlePowerBonus = 0;
+        card.battleDefenseBonus = 0;
+        card.battleCriticalBonus = 0;
+        card.counterattack = false;
+        card.temporaryKeywords = [];
+      }
+    });
+  });
+}
+
+function handleDestroyedDuringPending(target) {
+  if (!state.pendingAttack) {
+    return;
+  }
+  const pending = state.pendingAttack;
+  const destroyedAttacker = getPendingAttackerSlots(pending).some((attacker) =>
+    sameSlot(attacker, target),
+  );
+  const destroyedTarget =
+    target.owner === pending.targetOwner && target.zone === pending.targetZone;
+  if (destroyedAttacker || destroyedTarget) {
+    addLog("攻撃に関わるカードが場を離れたため、攻撃は終了しました。");
+    clearPendingAttack();
+  }
+}
+
+function getPendingAttacker() {
+  return getPendingAttackers()[0]?.card || null;
+}
+
+function getPendingAttackers() {
+  const pending = state.pendingAttack;
+  if (!pending) {
+    return [];
+  }
+  return getPendingAttackerSlots(pending)
+    .map((slot) => ({ ...slot, card: state.players[slot.owner]?.field[slot.zone] }))
+    .filter((attacker) => attacker.card);
+}
+
+function getPendingAttackerSlots(pending) {
+  return pending.attackers?.length
+    ? pending.attackers
+    : [{ owner: pending.attackerOwner, zone: pending.attackerZone }];
+}
+
+function getAttackDeclarationAttackers() {
+  const slots = state.linkAttackers?.length
+    ? state.linkAttackers
+    : state.selected?.source === "field"
+      ? [{ owner: state.selected.owner, zone: state.selected.zone }]
+      : [];
+  const seen = new Set();
+  return slots
+    .filter((slot) => {
+      const key = `${slot.owner}:${slot.zone}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return slot.owner === state.active;
+    })
+    .map((slot) => ({ ...slot, card: state.players[slot.owner]?.field[slot.zone] }))
+    .filter((attacker) => attacker.card && !attacker.card.used && canDeclareAttack(attacker));
+}
+

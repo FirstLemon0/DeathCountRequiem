@@ -1,0 +1,736 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "td07-asmodai-gathering",
+    "name": "トライアルデッキ第4弾「アスモ大集結☆」",
+    "kind": "トライアルデッキ",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=20"
+  },
+  "cards": [
+    {
+      "id": "td07-0001",
+      "no": "TD07/0001",
+      "name": "チャンピオンレスラー・アスモダイ",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■“気が済むまでバックドロップ”このカードが登場した時、君の手札を好きな枚数捨ててよい。捨てたら、相手の場のカードを捨てた枚数分破壊する。",
+        "『２回攻撃』"
+      ],
+      "size": 3,
+      "power": 9000,
+      "critical": 2,
+      "defense": 1000,
+      "flavor": "オカダ！俺と勝負だ！",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "td07-0001-discard-destroy",
+          "optional": true,
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "discard",
+              "from": "hand",
+              "controller": "self",
+              "amount": 9,
+              "max": 9,
+              "min": 0,
+              "require": false,
+              "allowEmpty": true,
+              "title": "気が済むまでバックドロップで捨てる手札",
+              "lead": "手札から捨てるカードを好きな枚数選んでください(0枚可)。",
+              "emptyMessage": "手札がないため、捨てません。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "discard",
+              "to": "drop",
+              "log": "discard",
+              "require": false,
+              "emptyMessage": "手札を捨てませんでした。"
+            },
+            {
+              "op": "selectCards",
+              "var": "destroyTarget",
+              "from": "field",
+              "controller": "opponent",
+              "amount": 9,
+              "max": 9,
+              "min": 0,
+              "require": false,
+              "allowEmpty": true,
+              "title": "気が済むまでバックドロップで破壊する相手の場のカード",
+              "lead": "捨てた枚数分、相手の場のカードを選んで破壊してください。",
+              "emptyMessage": "破壊できる相手の場のカードがありません。"
+            },
+            {
+              "op": "destroySelected",
+              "var": "destroyTarget",
+              "require": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td07-0002",
+      "no": "TD07/0002",
+      "name": "踊るぜ！アスモダイ",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが登場した時、カード１枚を引く。"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 1000,
+      "flavor": "社交ダンスもいけるぞ？ 相手は自分だったけどな…lllorz",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "td07-0002-enter-draw",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td07-0003",
+      "no": "TD07/0003",
+      "name": "怒りの堕天使 ベレト",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rules": [],
+      "size": 2,
+      "power": 4000,
+      "critical": 3,
+      "defense": 3000,
+      "flavor": "ウオォォォォ！なぐらせろぉぉぉぉッ！"
+    },
+    {
+      "id": "td07-0004",
+      "no": "TD07/0004",
+      "name": "魔界デスメタル ヴァレファール",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rules": [],
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 3000,
+      "flavor": "オレの叫びを聴けえぇぇぇぇぇぇぇ！！！"
+    },
+    {
+      "id": "td07-0005",
+      "no": "TD07/0005",
+      "name": "遊ぶぜ！アスモダイ",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rules": [
+        "■このカードが登場した時、君のドロップゾーンにカード名に「アスモダイ」を含むカードがあるなら、君のライフを＋１する。"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 1000,
+      "flavor": "選ぶ必要なんて無い。 全部まとめて遊ぼうぜ！",
+      "abilities": [
+        {
+          "id": "td07-0005-enter-life",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "ownDropHasCard",
+              "filter": {
+                "nameIncludes": "アスモダイ"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td07-0006",
+      "no": "TD07/0006",
+      "name": "堕天使 パイモン",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rules": [],
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 1000,
+      "flavor": "悪魔もなかなかいいものだ、と。\nそう割り切るのに1200年くらいはかかりましたね。"
+    },
+    {
+      "id": "td07-0007",
+      "no": "TD07/0007",
+      "name": "魔界戦士 ゼパル",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rules": [],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 3000,
+      "flavor": "いくゼ！！ トップサイドブラスター！！"
+    },
+    {
+      "id": "td07-0008",
+      "no": "TD07/0008",
+      "name": "イベントプロデューサー・アイム",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rules": [],
+      "size": 1,
+      "power": 2000,
+      "critical": 1,
+      "defense": 6000,
+      "flavor": "さーて、アゲていきまショ！！"
+    },
+    {
+      "id": "td07-0009",
+      "no": "TD07/0009",
+      "name": "ウープス！",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "魔力"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ２を払う。",
+        "■【対抗】場のモンスターかアイテムか魔法１枚を、持ち主の手札に戻す。"
+      ],
+      "flavor": "「俺のドラ焼き、どこいったんだYO！？」\n「テツヤ、目の前ばかり見ていては、見つかる物も見つからんぞ～」",
+      "castCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "oops-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "target": {
+            "type": "fieldCard"
+          },
+          "effects": [
+            {
+              "op": "returnToHand",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td07-0010",
+      "no": "TD07/0010",
+      "name": "ソロモンの鍵 上巻",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "魔力"
+      ],
+      "rules": [
+        "■【対抗】君のデッキの上から２枚をゲージに置く。"
+      ],
+      "flavor": "上巻では72柱との交渉術を記す。 悪魔は記憶力がよくないので、\n初めて召喚する時でも再会したかのような態度を取るべし。\n『ごっつう久しぶりやんけ！』",
+      "abilities": [
+        {
+          "id": "td07-0010-gauge2",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td07-0011",
+      "no": "TD07/0011",
+      "name": "スピードサモン",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "召喚"
+      ],
+      "rules": [
+        "■相手のターン中に使える。",
+        "■【対抗】君の手札のモンスター１枚を、【コールコスト】を払ってコールし、そのターン中、そのモンスターを攻撃力＋2000、防御力＋2000！"
+      ],
+      "flavor": "どっせい！！",
+      "abilities": [
+        {
+          "id": "td07-0011-speed-summon",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "monster",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster"
+              },
+              "callable": true,
+              "canUseForFlag": true,
+              "canPayCost": "call",
+              "amount": 1,
+              "require": true,
+              "title": "スピードサモンでコールするモンスター",
+              "lead": "手札のモンスター1枚を選んでください。"
+            },
+            {
+              "op": "selectZone",
+              "var": "zone",
+              "cardVar": "monster",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ],
+              "title": "スピードサモンのコール先",
+              "lead": "コールするエリアを選んでください。"
+            },
+            {
+              "op": "payCardCostForSelection",
+              "var": "monster",
+              "purpose": "call"
+            },
+            {
+              "op": "callSelected",
+              "var": "monster",
+              "zoneVar": "zone",
+              "resolveOnEnter": true
+            },
+            {
+              "op": "modifySelectedStats",
+              "var": "monster",
+              "power": 2000,
+              "defense": 2000,
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td07-0012",
+      "no": "TD07/0012",
+      "name": "ナイスワン！（最高だぜ）",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "魔力"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■カード２枚を引く。「ナイスワン！（最高だぜ）」は１ターンに１回だけ使える。"
+      ],
+      "flavor": "イヨッシャァァァァァァァァィイイ！！",
+      "castCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "nice-one-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "nice-one"
+          }
+        }
+      ]
+    },
+    {
+      "id": "td07-0013",
+      "no": "TD07/0013",
+      "name": "ソロモンの盾",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "魔力",
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中に使える。",
+        "■【対抗】その攻撃が連携攻撃でないなら、無効化する。"
+      ],
+      "flavor": "72柱達が使う魔法は自由度が高い。\n盾も使い方次第で様々な用途に応用可能だ。 日除けとか。",
+      "abilities": [
+        {
+          "id": "solomon-shield-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackNotLink"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td07-0014",
+      "no": "TD07/0014",
+      "name": "チェレックス！",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "防御"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】そのターン中、次に君に与えられるダメージを０に減らし、君のライフを＋１する！"
+      ],
+      "flavor": "力の入れ過ぎは良くないYO！",
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "td07-0014-prevent-gain",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "preventNextDamage"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td07-0015",
+      "no": "TD07/0015",
+      "name": "アイム・ウィッキド！",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "強化"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■『設置』（このカードは場に置いて使う）",
+        "■君のセンターの《72柱》を、攻撃力＋2000、防御力＋2000する。",
+        "■「アイム・ウィッキド！」は君の場に１枚だけ『設置』できる。"
+      ],
+      "flavor": "ぃよっ！魔界一！アンタが魔王！THE・裏切り者！",
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "set"
+      ],
+      "uniqueSet": true,
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "72柱"
+          },
+          "power": 2000,
+          "defense": 2000
+        }
+      ]
+    },
+    {
+      "id": "td07-0016",
+      "no": "TD07/0016",
+      "name": "ガンロッド ベヒシュタイン",
+      "type": "item",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "武器"
+      ],
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■【起動】このカードを【レスト】してよい。【レスト】したら、相手にダメージ１。"
+      ],
+      "power": 3000,
+      "critical": 1,
+      "flavor": "初期型のガンロッドは、余計な機能がついてないのもウリの一つ。",
+      "equipCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "gunrod-bechstein-activated",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "ownItemStanding"
+            }
+          ],
+          "effects": [
+            {
+              "op": "restSelf"
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td07-0017",
+      "no": "TD07/0017",
+      "name": "アスモダイ エターナルローリングバックドロップ！",
+      "type": "impact",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ３を払う。",
+        "■君のデッキの上から５枚を公開する。その中のカード名に「アスモダイ」を含むカードの枚数＋１の数値分、相手にダメージ！！その後、公開したカードを君のデッキの下に好きな順番で置く。"
+      ],
+      "flavor": "-",
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 3
+      },
+      "abilities": [
+        {
+          "id": "td07-0017-reveal-damage",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 3
+            }
+          ],
+          "effects": [
+            {
+              "op": "revealTopDamagePerMatchRestToBottom",
+              "count": 5,
+              "filter": {
+                "nameIncludes": "アスモダイ"
+              },
+              "perDamage": 1
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td07-0018",
+      "no": "TD07/0018",
+      "name": "マジックワールド",
+      "type": "flag",
+      "rarity": "デッキ商品",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "このファイターはマジックWのカードを使う。"
+      ]
+    }
+  ]
+}

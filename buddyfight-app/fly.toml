@@ -1,0 +1,31 @@
+# Fly.io 用デプロイ設定。`fly launch`（既存検出）→ `fly deploy`。
+# 永続化(P4)を使う場合は [mounts] でボリュームを AUTH_DATA_DIR にマウントすること。
+app = "buddyfight-authoritative"
+primary_region = "nrt"
+
+[build]
+
+[env]
+  PORT = "8080"
+  # 永続データの保存先（ボリュームをマウントするなら合わせる）
+  AUTH_DATA_DIR = "/data/auth"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # SSE 常時接続を切らないため自動停止は無効・常時1台。
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    method = "get"
+    path = "/healthz"
+    interval = "30s"
+    timeout = "5s"
+
+# 再起動越えの局面復元(P4)を使うなら、永続ボリュームを作成しマウントする:
+#   fly volumes create auth_data --size 1
+# [mounts]
+#   source = "auth_data"
+#   destination = "/data"

@@ -1,0 +1,2560 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "eb02-dragon-vs-danger",
+    "name": "エクストラブースター第2弾「ヤバすぎ大決闘!! ドラゴン VS デンジャー」",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=16"
+  },
+  "cards": [
+    {
+      "id": "eb02-0001",
+      "no": "EB02/0001",
+      "name": "ジャックナイフ “セイヴァー”",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "rarity": "超ガチレア",
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、このカードを君の場のカード名に「ジャックナイフ」を含むモンスター１枚の上に重ねる。",
+        "『移動』『ソウルガード』"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 5000,
+      "flavor": "少年は、過ちを経て世界を知る。だから守り、救うのだ。",
+      "callStack": {
+        "nameIncludes": "ジャックナイフ"
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "move",
+        "soulguard"
+      ]
+    },
+    {
+      "id": "eb02-0002",
+      "no": "EB02/0002",
+      "name": "アーマナイト・バハムート",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "rarity": "超ガチレア",
+      "rules": [
+        "■【コールコスト】君の場のモンスター１枚をドロップゾーンに置き、ゲージ３を払う。",
+        "■このカードが登場した時、君のライフを＋４する！！"
+      ],
+      "size": 3,
+      "power": 11000,
+      "critical": 3,
+      "defense": 11000,
+      "flavor": "馳せ参じよ！ 天上伽藍を支える獣！",
+      "costs": {
+        "call": [
+          {
+            "op": "dropOwnMonster",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "eb02-0002-enter-life",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0003",
+      "no": "EB02/0003",
+      "name": "蒼穹騎士団団長 クリムゾンアロー・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが登場した時、君のドロップゾーンにカード名に「蒼穹騎士団」を含むカードがあるなら、君のライフを＋２する！",
+        "『貫通』"
+      ],
+      "size": 3,
+      "power": 8000,
+      "critical": 2,
+      "defense": 7000,
+      "flavor": "天を焦がす、紅蓮の矢。",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "penetrate"
+      ],
+      "abilities": [
+        {
+          "id": "eb02-0003-enter-life",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "ownDropHasCard",
+              "filter": {
+                "nameIncludes": "蒼穹騎士団"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0004",
+      "no": "EB02/0004",
+      "name": "蒼穹騎士団 ドラムバンカー・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、君の手札のカード名に「蒼穹騎士団」を含むカード１枚をこのカードのソウルに入れてよい。",
+        "■このカードが攻撃した時、君のライフを＋１する！",
+        "『ソウルガード』"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 3000,
+      "flavor": "その場所に立って、初めて見えるものがある。",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "eb02-0004-soul-in",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "s",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "nameIncludes": "蒼穹騎士団"
+              },
+              "amount": 1,
+              "allowEmpty": true,
+              "title": "ドラムバンカー・ドラゴン",
+              "lead": "ソウルに入れる手札の「蒼穹騎士団」を含むカードを選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "s",
+              "to": "soul"
+            }
+          ]
+        },
+        {
+          "id": "eb02-0004-attack-life",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0005",
+      "no": "EB02/0005",
+      "name": "暴竜 ザガラリス",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■君のドロップゾーンに《デュエルドラゴン》４種類以上があるなら、コールできる。",
+        "■“稲妻の嵐”このカードが登場した時、相手の場の防御力2000以下のモンスター全てを破壊する！"
+      ],
+      "size": 3,
+      "power": 9000,
+      "critical": 3,
+      "defense": 8000,
+      "flavor": "奴は生きた発電所だ。",
+      "callConditions": [
+        {
+          "op": "ownDropDistinctAttributeCountGte",
+          "attribute": "デュエルドラゴン",
+          "amount": 4
+        }
+      ],
+      "abilities": [
+        {
+          "id": "eb02-0005-storm",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "destroyAll",
+              "controller": "opponent",
+              "filter": {
+                "cardType": "monster",
+                "defenseLte": 2000
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0006",
+      "no": "EB02/0006",
+      "name": "闘神竜 デモンゴドル・アーク",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■【コールコスト】ゲージ３を払い、このカードを君の場の《デュエルドラゴン》のモンスター１枚の上に重ねる。",
+        "■相手のカードが攻撃した時、その対象をこのモンスターに変更する。",
+        "■【対抗】【起動】相手が《武器》で攻撃した時、手札１枚を捨てる。捨てたら、その《武器》を破壊する。",
+        "『ソウルガード』『反撃』"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 4000,
+      "flavor": "-",
+      "callStack": {
+        "attribute": "デュエルドラゴン"
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      },
+      "keywords": [
+        "soulguard",
+        "counterattack"
+      ],
+      "continuous": [
+        {
+          "op": "redirectAttackToSelf"
+        }
+      ],
+      "abilities": [
+        {
+          "id": "eb02-0006-counter-break",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackByOpponentItem"
+            }
+          ],
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "battleCard",
+            "role": "attacker",
+            "filter": {
+              "cardType": "item"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0007",
+      "no": "EB02/0007",
+      "name": "アーマナイト・アスモダイ",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト",
+        "72柱"
+      ],
+      "rarity": "ガチレア",
+      "rules": [
+        "■【コールコスト】君の場の《アーマナイト》のモンスター１枚をドロップゾーンに置き、ゲージ１を払う。",
+        "■このカードが登場した時、相手のレフトとライトのモンスターを破壊する。"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000,
+      "flavor": "デンジャーな遊びの前に、体を鍛えようぜ！",
+      "costs": {
+        "call": [
+          {
+            "op": "dropOwnMonster",
+            "amount": 1,
+            "filter": {
+              "attribute": "アーマナイト"
+            }
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "eb02-0007-enter-destroy",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "destroyAll",
+              "controller": "opponent",
+              "zones": [
+                "left",
+                "right"
+              ],
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0008",
+      "no": "EB02/0008",
+      "name": "ディルクショーテル・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが１枚で攻撃しているなら、このカードの攻撃はカード名に「ドラゴンシールド」を含むカードによって無効化されない。"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 5000,
+      "flavor": "ショーテル――相手の盾をかいくぐって攻撃する特殊武器。",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "ignoresDragonShieldWhenAlone": true
+    },
+    {
+      "id": "eb02-0009",
+      "no": "EB02/0009",
+      "name": "ドラゴニック・バラッジ",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "破壊"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【使用コスト】ゲージ２を払う。",
+        "■相手の場のサイズ１以下のモンスター全てを破壊する。"
+      ],
+      "flavor": "殲滅戦、開始！",
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "eb02-0009-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroyAll",
+              "controller": "opponent",
+              "filter": {
+                "cardType": "monster",
+                "sizeLte": 1
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0010",
+      "no": "EB02/0010",
+      "name": "超竜剣 ドラゴエターナル",
+      "type": "item",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "武器"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■君のライフが５以下なら装備できる。",
+        "■【装備コスト】ゲージ２を払い、君の手札全てを捨てる。",
+        "■このカードを装備した時、君のライフを＋２する。",
+        "『貫通』"
+      ],
+      "power": 7000,
+      "critical": 2,
+      "flavor": "エターナル…「永遠」",
+      "equipConditions": [
+        {
+          "op": "lifeLte",
+          "amount": 5
+        }
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "equipCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "penetrate"
+      ],
+      "abilities": [
+        {
+          "id": "eb02-0010-equip",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "discardAllHand"
+            },
+            {
+              "op": "gainLife",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0011",
+      "no": "EB02/0011",
+      "name": "竜撃奥義 デュアル・ムービングフォース",
+      "type": "impact",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■君の《武器》が攻撃で相手にダメージを与えたターン中に使える。",
+        "■【使用コスト】ゲージ２を払う。",
+        "■君のライフを＋２し、相手にダメージ２！"
+      ],
+      "flavor": "流れを操れ。高きは低きへ。低きは高くへ。",
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "eb02-0011-impact",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "conditions": [
+            {
+              "op": "damageDealtThisTurnMatches",
+              "controller": "self",
+              "filter": {
+                "cardType": "item",
+                "attribute": "武器"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 2
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0012",
+      "no": "EB02/0012",
+      "name": "覇王竜 ヴァルファレス・ブラッド",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、君のデッキの上から１枚をこのモンスターのソウルに入れる。",
+        "■このカードはセンターにコールできず、連携攻撃されない。",
+        "『ソウルガード』『反撃』"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 3,
+      "defense": 7000,
+      "flavor": "覇王竜に敬意を。すなわち、全力で戦え。",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "cannotCallZones": [
+        "center"
+      ],
+      "keywords": [
+        "soulguard",
+        "counterattack",
+        "cannotBeLinkAttacked"
+      ]
+    },
+    {
+      "id": "eb02-0013",
+      "no": "EB02/0013",
+      "name": "アーマナイト・ケルベロス “A”",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■【起動】君のライフが５以下なら、場のこのカードを君の《武器》のソウルに入れてよい。",
+        "■このカードが君の《武器》のソウルにあるなら、その《武器》を、打撃力＋２する。",
+        "■【起動】“ガルチャージ！” このカードが君の《武器》のソウルにあるなら、ゲージ３を払ってよい。払ったら、そのターン中、その《武器》を、打撃力＋３する。"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 6000,
+      "flavor": "-",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "eb02-0013-to-soul",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 5
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "item",
+              "attribute": "武器"
+            }
+          },
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "soulContinuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "cardType": "item",
+            "attribute": "武器"
+          },
+          "critical": 2
+        },
+        {
+          "op": "grantKeyword",
+          "filter": {
+            "cardType": "item",
+            "attribute": "武器"
+          },
+          "keyword": "cerberusASoul"
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "eb02-0013-gal-charge",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 3
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$host",
+              "critical": 3,
+              "duration": "turn"
+            }
+          ],
+          "conditions": [
+            {
+              "op": "hostMatches",
+              "filter": {
+                "cardType": "item",
+                "attribute": "武器"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0014",
+      "no": "EB02/0014",
+      "name": "斬魔烈斬",
+      "type": "spell",
+      "world": "デンジャーW",
+      "attributes": [
+        "斬魔",
+        "破壊"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■相手のモンスターの攻撃中、君のセンターにモンスターがいないなら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】君の場の《武器》の攻撃力以下の攻撃力を持つ相手の場のモンスター１枚を破壊する！"
+      ],
+      "flavor": "斬魔の気迫が、空間をも断ち切る！",
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "eb02-0014-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackByOpponentMonster"
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroyOpponentMonsterWithPowerLteOwnWeapon"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0015",
+      "no": "EB02/0015",
+      "name": "牙竜喝破",
+      "type": "spell",
+      "world": "デンジャーW",
+      "attributes": [
+        "闘気",
+        "防御"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■君の場のカードが１枚で攻撃していて、相手が魔法を使った時に使える。",
+        "■【使用コスト】ゲージ２を払い、ライフ１を払う。",
+        "■【対抗】相手が使ったその魔法を無効化する。"
+      ],
+      "flavor": "喝ッッ！",
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "eb02-0015-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "pendingAttackNotLink"
+            },
+            {
+              "op": "pendingActionIsOpponent"
+            },
+            {
+              "op": "pendingActionCardType",
+              "cardType": "spell"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            },
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyPendingAction"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0016",
+      "no": "EB02/0016",
+      "name": "爆斧 リクドウ斬魔",
+      "type": "item",
+      "world": "デンジャーW",
+      "attributes": [
+        "斬魔",
+        "闘気",
+        "武器"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■君はセンターにモンスターをコールできない。"
+      ],
+      "power": 6000,
+      "critical": 3,
+      "flavor": "死をも厭わぬ、誓いと共に。",
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "equipCost": {
+        "gauge": 1
+      },
+      "continuous": [
+        {
+          "op": "preventCenterCall",
+          "controller": "self"
+        }
+      ]
+    },
+    {
+      "id": "eb02-0017",
+      "no": "EB02/0017",
+      "name": "最終闘技 MEGA斬魔",
+      "type": "impact",
+      "world": "デンジャーW",
+      "attributes": [
+        "斬魔",
+        "闘気"
+      ],
+      "rarity": "レア",
+      "rules": [
+        "■君のドロップゾーンに《斬魔》４枚以上があり、お互いのセンターにモンスターがいないなら使える。",
+        "■【使用コスト】ゲージ４を払う。",
+        "■相手にダメージ４！"
+      ],
+      "flavor": "見よ、俺が地獄だ。地獄そのものだ。",
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 4
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "eb02-0017-impact",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 4
+            }
+          ],
+          "conditions": [
+            {
+              "op": "ownDropAttributeCountGte",
+              "attribute": "斬魔",
+              "amount": 4
+            },
+            {
+              "op": "bothCentersEmpty"
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0018",
+      "no": "EB02/0018",
+      "name": "蒼穹騎士団 スラッシュイーグル・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "金竜"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■このカードが登場した時、君のセンターにモンスターがいないなら、君のライフを＋１する。"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 3000,
+      "flavor": "蒼穹騎士団。飛竜によって組織された、最速の飛翔騎士団。",
+      "abilities": [
+        {
+          "id": "eb02-0018-enter-life",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0019",
+      "no": "EB02/0019",
+      "name": "フラクチャーヘッド・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "金竜"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 3,
+      "defense": 1000,
+      "flavor": "俺の頭突きで、消し飛びやがれ！",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      }
+    },
+    {
+      "id": "eb02-0020",
+      "no": "EB02/0020",
+      "name": "ドラゴニック・メディック",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "回復"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■君のライフが４以下なら使える。",
+        "■君のライフを＋３する！"
+      ],
+      "flavor": "壊れた武器は、後で直せばいい。しかし傷付いた命を救うには、一刻を争う。",
+      "abilities": [
+        {
+          "id": "eb02-0020-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 4
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0021",
+      "no": "EB02/0021",
+      "name": "密林竜 ラディカ",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、君のデッキの上から１枚をこのモンスターのソウルに入れる。",
+        "『ソウルガード』"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 3,
+      "defense": 6000,
+      "flavor": "デンジャーワールドは地球の数千倍…いや、もっと広いのだ。",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "soulguard"
+      ]
+    },
+    {
+      "id": "eb02-0022",
+      "no": "EB02/0022",
+      "name": "アーマナイト・スフィンクス",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【対抗】【起動】君が攻撃された時、このカードがレフトかライトにいるならゲージ１を払う。払ったら、相手とジャンケンする。君がジャンケンに勝ったら、その攻撃を無効化する！"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "flavor": "通行税は、ジャンケンだ。",
+      "abilities": [
+        {
+          "id": "eb02-0022-counter",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "right"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack",
+              "rockPaperScissors": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0023",
+      "no": "EB02/0023",
+      "name": "アーマナイト・ガーゴイル “A”",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■【起動】君のライフが５以下なら、場のこのカードを君の《武器》のソウルに入れる。",
+        "■【対抗】【起動】相手のターンの攻撃中、君の《武器》のソウルにあるこのカードをドロップゾーンに置く。置いたら、その攻撃を無効化する。"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 1,
+      "defense": 4000,
+      "flavor": "-",
+      "abilities": [
+        {
+          "id": "eb02-0023-to-soul",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 5
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "item",
+              "attribute": "武器"
+            }
+          },
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "eb02-0023-soul-nullify",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "limit": {
+            "scope": "fight",
+            "key": "eb02-0023-nullify"
+          },
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "hostMatches",
+              "filter": {
+                "cardType": "item",
+                "attribute": "武器"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dischargeSelfFromHostSoul"
+            },
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0024",
+      "no": "EB02/0024",
+      "name": "魔ッ破斬",
+      "type": "spell",
+      "world": "デンジャーW",
+      "attributes": [
+        "闘気",
+        "破壊"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】相手の場のサイズ１以下のモンスター１枚を破壊する！"
+      ],
+      "flavor": "そこだっ！",
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "eb02-0024-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster",
+              "sizeLte": 1
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0025",
+      "no": "EB02/0025",
+      "name": "斬魔蘇生",
+      "type": "spell",
+      "world": "デンジャーW",
+      "attributes": [
+        "斬魔",
+        "回復"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■君のライフが６以下で、君のセンターにモンスターがいないなら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■君のライフを＋４する！"
+      ],
+      "flavor": "ライフとは、気合だ。",
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "eb02-0025-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 6
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0026",
+      "no": "EB02/0026",
+      "name": "豪胆逆怒",
+      "type": "spell",
+      "world": "デンジャーW",
+      "attributes": [
+        "闘気",
+        "チャージ"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■君がダメージを受けた時に使える。",
+        "■【対抗】君はその受けたダメージと同じ数値分、君のデッキの上からゲージに置く。"
+      ],
+      "flavor": "怒りが力になる。それもひとつの真実。",
+      "abilities": [
+        {
+          "id": "eb02-0026-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGaugeEqualToLastDamage"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0027",
+      "no": "EB02/0027",
+      "name": "斬魔障壁",
+      "type": "spell",
+      "world": "デンジャーW",
+      "attributes": [
+        "斬魔",
+        "防御"
+      ],
+      "rarity": "上",
+      "rules": [
+        "■君の場のカードが破壊される時、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】そのカード１枚を場に残せる。"
+      ],
+      "flavor": "こいつには、まだ使い道がある。",
+      "abilities": [
+        {
+          "id": "eb02-0027-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self"
+          },
+          "effects": [
+            {
+              "op": "setPreventNextDestroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0028",
+      "no": "EB02/0028",
+      "name": "竜騎士 ケンシン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士",
+        "武士"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 6000,
+      "flavor": "保身のみ求める者は死に、死しても成し遂げんとする者は生を得る。"
+    },
+    {
+      "id": "eb02-0029",
+      "no": "EB02/0029",
+      "name": "竜騎士 ロレンス",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 6000,
+      "critical": 1,
+      "defense": 3000,
+      "flavor": "寝て見る夢は虚しい。だが、目を見開いて見る夢は、力を与える。"
+    },
+    {
+      "id": "eb02-0030",
+      "no": "EB02/0030",
+      "name": "蒼穹騎士団 ディオミディア・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "青竜"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 4000,
+      "flavor": "蒼穹騎士団。本来、敵の戦力を調べる偵察が任務だが、そのまま相手を全滅させてしまう事もある。"
+    },
+    {
+      "id": "eb02-0031",
+      "no": "EB02/0031",
+      "name": "蒼穹騎士団 スレインジ・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "青竜"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■このカードが登場した時、君のセンターにモンスターがいないなら、君のライフを＋１する。"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 1,
+      "defense": 2000,
+      "flavor": "センターは空けとけ。俺達の補給物資を受け取るためにな。",
+      "abilities": [
+        {
+          "id": "eb02-0031-enter-life",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0032",
+      "no": "EB02/0032",
+      "name": "ウォーハンマー・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "『貫通』"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 2000,
+      "flavor": "不用意に突っ込むと、首ごと持ってかれるぜ。",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "penetrate"
+      ]
+    },
+    {
+      "id": "eb02-0033",
+      "no": "EB02/0033",
+      "name": "蒼穹騎士団 アイアンウイング・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "白竜"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 6000,
+      "flavor": "蒼穹騎士団は風のエレメントと契約を結ぶ。それにより、重武装に身を包みながら、飛翔する事ができるのだ。"
+    },
+    {
+      "id": "eb02-0034",
+      "no": "EB02/0034",
+      "name": "蒼穹騎士団 シーカーペンギン・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "白竜"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■相手の場のモンスター全ては、『移動』できない。"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 2000,
+      "flavor": "斥候の任務は「知った事を知られぬ事」だ。",
+      "continuous": [
+        {
+          "op": "preventKeyword",
+          "keyword": "move",
+          "controller": "opponent",
+          "filter": {
+            "cardType": "monster"
+          }
+        }
+      ]
+    },
+    {
+      "id": "eb02-0035",
+      "no": "EB02/0035",
+      "name": "ドラゴンシールド 飛竜の盾",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "防御"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■君が攻撃によってダメージを受ける時、君のセンターにモンスターがいないなら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】そのダメージを０に減らし、君のライフを＋１する！"
+      ],
+      "flavor": "飛竜の盾は導きの翼。敵の攻撃を触れさせぬ。",
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "eb02-0035-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "preventNextDamage"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0036",
+      "no": "EB02/0036",
+      "name": "竜剣 ドラゴウイング",
+      "type": "item",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "武器"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■君のライフが回復した時、そのターン中、このカードを打撃力＋１する。この能力は１ターンに１回だけ発動する。"
+      ],
+      "power": 4000,
+      "critical": 2,
+      "flavor": "ウイング…「翼」",
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "equipCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "eb02-0036-life-gained",
+          "kind": "triggered",
+          "event": "allyLifeGained",
+          "limit": {
+            "scope": "turn",
+            "key": "eb02-0036-buff"
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "critical": 1,
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0037",
+      "no": "EB02/0037",
+      "name": "アーマナイト・グリフィン “A”",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■【起動】君のライフが５以下なら、場のこのカードを君の《武器》のソウルに入れる。",
+        "■このカードが君の《武器》のソウルにあるなら、その《武器》は『貫通』を得る。"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 3,
+      "defense": 4000,
+      "flavor": "獅子のように毅く、鷲のように疾く。",
+      "abilities": [
+        {
+          "id": "eb02-0037-to-soul",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 5
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "item",
+              "attribute": "武器"
+            }
+          },
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "soulContinuous": [
+        {
+          "op": "grantKeyword",
+          "filter": {
+            "cardType": "item",
+            "attribute": "武器"
+          },
+          "keyword": "penetrate"
+        }
+      ]
+    },
+    {
+      "id": "eb02-0038",
+      "no": "EB02/0038",
+      "name": "暴竜 ザルド",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■君のドロップゾーンに《デュエルドラゴン》４種類以上があるなら、コールできる。"
+      ],
+      "size": 1,
+      "power": 6000,
+      "critical": 3,
+      "defense": 4000,
+      "flavor": "暴竜。 食物連鎖の果てに生まれた規格外の強者。",
+      "callConditions": [
+        {
+          "op": "ownDropDistinctAttributeCountGte",
+          "attribute": "デュエルドラゴン",
+          "amount": 4
+        }
+      ]
+    },
+    {
+      "id": "eb02-0039",
+      "no": "EB02/0039",
+      "name": "アーマナイト・リザードマン",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■【起動】 ゲージ１を払う。払ったら、そのターン中、このカードを攻撃力＋3000する！"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 3000,
+      "flavor": "必殺の電動チェーンソー。 気合で動くと信じられている。",
+      "abilities": [
+        {
+          "id": "eb02-0039-pump",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "power": 3000,
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0040",
+      "no": "EB02/0040",
+      "name": "有刺竜 スパイクヴァイン",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン"
+      ],
+      "rarity": "並",
+      "rules": [
+        "-"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 6000,
+      "flavor": "生き残れば勝利だ。だが奴らは、それだけでは満足しない。"
+    },
+    {
+      "id": "eb02-0041",
+      "no": "EB02/0041",
+      "name": "アーマナイト・カーリー",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■“修羅降臨の儀”このモンスターが登場したとき、手札のカード名に「“A”」を含むカード１枚を君のアイテムのソウルに入れてよい。"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "flavor": "人を超えし修羅の力、汝に与えよう。",
+      "abilities": [
+        {
+          "id": "eb02-0041-shura",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "a",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "nameIncludes": "“A”"
+              },
+              "amount": 1,
+              "allowEmpty": true,
+              "title": "修羅降臨の儀",
+              "lead": "アイテムのソウルに入れる手札の「“A”」を含むカードを選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "a",
+              "to": "itemSoul"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0042",
+      "no": "EB02/0042",
+      "name": "アーマナイト・ゴブリン",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■このカードが登場した時、君のドロップゾーンのサイズ１の《アーマナイト》のモンスター１枚をこのカードのソウルに入れる。",
+        "■このカードが破壊される場合、このカードのソウル全てを手札に加える。"
+      ],
+      "size": 0,
+      "power": 1000,
+      "critical": 1,
+      "defense": 1000,
+      "flavor": "拾った！俺ンだ！",
+      "returnSoulToHandOnDestroy": true,
+      "abilities": [
+        {
+          "id": "eb02-0042-enter-soul",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "g",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "アーマナイト",
+                "sizeIn": [
+                  1
+                ]
+              },
+              "amount": 1,
+              "allowEmpty": true,
+              "title": "アーマナイト・ゴブリン",
+              "lead": "ソウルに入れるドロップのサイズ１の《アーマナイト》モンスターを選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "g",
+              "to": "soul"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0043",
+      "no": "EB02/0043",
+      "name": "闘魂注入",
+      "type": "spell",
+      "world": "デンジャーW",
+      "attributes": [
+        "闘気",
+        "強化"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■【対抗】バトルしているモンスター１枚を選び、このバトル中、攻撃力＋4000、防御力＋4000する！"
+      ],
+      "flavor": "避けぬ。かわさぬ。受けて立つ！その姿が、敵の心をくじく武器となる。",
+      "abilities": [
+        {
+          "id": "eb02-0043-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "battleCard"
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 4000,
+              "defense": 4000
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0044",
+      "no": "EB02/0044",
+      "name": "斬魔次元斬",
+      "type": "spell",
+      "world": "デンジャーW",
+      "attributes": [
+        "斬魔",
+        "破壊",
+        "チャージ"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■君のセンターにモンスターがいないなら使える。",
+        "■相手のゲージ１枚をドロップゾーンに置き、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "flavor": "貴様のゲージは俺のものだっ！！",
+      "abilities": [
+        {
+          "id": "eb02-0044-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "effects": [
+            {
+              "op": "moveGaugeToDrop",
+              "player": "opponent",
+              "amount": 1
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "player": "self",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0045",
+      "no": "EB02/0045",
+      "name": "鳳凰壁",
+      "type": "spell",
+      "world": "デンジャーW",
+      "attributes": [
+        "闘気",
+        "防御"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■君がダメージを受ける時に使える。",
+        "■【対抗】そのダメージを２減らす。"
+      ],
+      "flavor": "耐えろ！鳳凰壁！",
+      "abilities": [
+        {
+          "id": "eb02-0045-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "effects": [
+            {
+              "op": "reduceNextDamage",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-0046",
+      "no": "EB02/0046",
+      "name": "決戦闘技 MAJI斬魔",
+      "type": "spell",
+      "world": "デンジャーW",
+      "attributes": [
+        "斬魔",
+        "闘気"
+      ],
+      "rarity": "並",
+      "rules": [
+        "『設置』",
+        "■君と相手はセンターにサイズ２以下のモンスターをコールできない。"
+      ],
+      "flavor": "貴様と俺で、地獄へ堕ちよう。",
+      "keywords": [
+        "set"
+      ],
+      "continuous": [
+        {
+          "op": "preventCenterCall",
+          "sizeLte": 2
+        }
+      ]
+    },
+    {
+      "id": "eb02-0047",
+      "no": "EB02/0047",
+      "name": "魔槍 闇紡ぎ",
+      "type": "item",
+      "world": "デンジャーW",
+      "attributes": [
+        "闘気",
+        "武器"
+      ],
+      "rarity": "並",
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。"
+      ],
+      "power": 3000,
+      "critical": 3,
+      "flavor": "その切っ先は、急所を衝く。",
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "equipCost": {
+        "gauge": 1
+      }
+    },
+    {
+      "id": "eb02-0048",
+      "no": "EB02/0048",
+      "name": "死竜 デスゲイズ・ドラゴン",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜",
+        "死",
+        "深淵"
+      ],
+      "rarity": "バディレア",
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■“霊撃”このカードの攻撃で、相手のモンスターを破壊した時、相手にダメージ２。"
+      ],
+      "size": 1,
+      "power": 6000,
+      "critical": 1,
+      "defense": 1000,
+      "flavor": "命あふれるこの世界。我らの贄にふさわしい。",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "eb02-0048-spirit",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-s001",
+      "no": "EB02/S001",
+      "name": "蒼穹騎士団団長 クリムゾンアロー・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが登場した時、君のドロップゾーンにカード名に「蒼穹騎士団」を含むカードがあるなら、君のライフを＋２する！",
+        "『貫通』"
+      ],
+      "size": 3,
+      "power": 8000,
+      "critical": 2,
+      "defense": 7000,
+      "flavor": "威力偵察。誰よりも先に戦い、敵戦力を測る危険な任務。",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "penetrate"
+      ],
+      "abilities": [
+        {
+          "id": "eb02-s001-enter-life",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "ownDropHasCard",
+              "filter": {
+                "nameIncludes": "蒼穹騎士団"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-s002",
+      "no": "EB02/S002",
+      "name": "ジャックナイフ “セイヴァー”",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、このカードを君の場のカード名に「ジャックナイフ」を含むモンスター１枚の上に重ねる。",
+        "『移動』『ソウルガード』"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 5000,
+      "flavor": "君に悪意が無かったならば、それは過ちとして許されよう。",
+      "callStack": {
+        "nameIncludes": "ジャックナイフ"
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "move",
+        "soulguard"
+      ]
+    },
+    {
+      "id": "eb02-s003",
+      "no": "EB02/S003",
+      "name": "蒼穹騎士団 ドラムバンカー・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、君の手札のカード名に「蒼穹騎士団」を含むカード１枚をこのカードのソウルに入れてよい。",
+        "■このカードが攻撃した時、君のライフを＋１する！",
+        "『ソウルガード』"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 3000,
+      "flavor": "窮屈な世界？いつか必ず、自由に飛べる日がくるさ。",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "eb02-s003-soul-in",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "s",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "nameIncludes": "蒼穹騎士団"
+              },
+              "amount": 1,
+              "allowEmpty": true,
+              "title": "ドラムバンカー・ドラゴン",
+              "lead": "ソウルに入れる手札の「蒼穹騎士団」を含むカードを選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "s",
+              "to": "soul"
+            }
+          ]
+        },
+        {
+          "id": "eb02-s003-attack-life",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-s004",
+      "no": "EB02/S004",
+      "name": "闘神竜 デモンゴドル・アーク",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【コールコスト】ゲージ３を払い、このカードを君の場の《デュエルドラゴン》のモンスター１枚の上に重ねる。",
+        "■相手のカードが攻撃した時、その対象をこのモンスターに変更する。",
+        "■【対抗】【起動】相手が《武器》で攻撃した時、手札１枚を捨てる。捨てたら、その《武器》を破壊する。",
+        "『ソウルガード』『反撃』"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 4000,
+      "flavor": "-",
+      "callStack": {
+        "attribute": "デュエルドラゴン"
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      },
+      "keywords": [
+        "soulguard",
+        "counterattack"
+      ],
+      "continuous": [
+        {
+          "op": "redirectAttackToSelf"
+        }
+      ],
+      "abilities": [
+        {
+          "id": "eb02-s004-counter-break",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackByOpponentItem"
+            }
+          ],
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "battleCard",
+            "role": "attacker",
+            "filter": {
+              "cardType": "item"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-s005",
+      "no": "EB02/S005",
+      "name": "アーマナイト・アスモダイ",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト",
+        "72柱"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■【コールコスト】君の場の《アーマナイト》のモンスター１枚をドロップゾーンに置き、ゲージ１を払う。",
+        "■このカードが登場した時、相手のレフトとライトのモンスターを破壊する。"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000,
+      "flavor": "頭がお前の全てじゃない。悩んだら体を動かしな。",
+      "costs": {
+        "call": [
+          {
+            "op": "dropOwnMonster",
+            "amount": 1,
+            "filter": {
+              "attribute": "アーマナイト"
+            }
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "eb02-s005-enter-destroy",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "destroyAll",
+              "controller": "opponent",
+              "zones": [
+                "left",
+                "right"
+              ],
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb02-s006",
+      "no": "EB02/S006",
+      "name": "最終闘技 MEGA斬魔",
+      "type": "impact",
+      "world": "デンジャーW",
+      "attributes": [
+        "斬魔",
+        "闘気"
+      ],
+      "rarity": "究極レア",
+      "rules": [
+        "■君のドロップゾーンに《斬魔》４枚以上があり、お互いのセンターにモンスターがいないなら使える。",
+        "■【使用コスト】ゲージ４を払う。",
+        "■相手にダメージ４！"
+      ],
+      "flavor": "斬魔の誓いを刃と変えて、今こそ放て、最終闘技！",
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 4
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "eb02-s006-impact",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 4
+            }
+          ],
+          "conditions": [
+            {
+              "op": "ownDropAttributeCountGte",
+              "attribute": "斬魔",
+              "amount": 4
+            },
+            {
+              "op": "bothCentersEmpty"
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 4
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

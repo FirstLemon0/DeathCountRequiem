@@ -1,0 +1,412 @@
+// ==========================================================================
+// buddyfight モジュール 17 — 効果対象算出・フィルタ・ターゲット解決
+// 旧 app.js L9479-9885 由来。全モジュールはグローバルスコープを共有し、
+// HTML で番号順に <script> 読み込みする（連結すると旧 app.js とバイト等価）。
+// ==========================================================================
+function renderEffectTargets() {
+  const previous = elements.effectTarget.value;
+  const selectedCard = getSelectedCard();
+  const targets = effectTargetCandidates(selectedCard);
+  elements.effectTarget.innerHTML = "";
+
+  if (targets.length === 0) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "効果対象なし";
+    elements.effectTarget.append(option);
+    elements.effectTarget.disabled = true;
+    return;
+  }
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "効果対象を選択";
+  elements.effectTarget.append(placeholder);
+
+  targets.forEach((target) => {
+    const option = document.createElement("option");
+    option.value = encodeTarget(target.owner, target.zone);
+    option.textContent = `${state.players[target.owner].name} ${zoneLabel(target.zone)}：${target.card.name}`;
+    elements.effectTarget.append(option);
+  });
+  elements.effectTarget.disabled = false;
+  if (targets.some((target) => encodeTarget(target.owner, target.zone) === previous)) {
+    elements.effectTarget.value = previous;
+  } else {
+    elements.effectTarget.value = "";
+  }
+}
+
+function effectTargetCandidates(selectedCard) {
+  if (!selectedCard) {
+    return [];
+  }
+  if (cardCostRequiresOwnMonsterTarget(selectedCard)) {
+    const owner = state.selected?.owner ?? state.active;
+    const dropStep = Object.values(selectedCard?.costs || {})
+      .flat()
+      .find((step) => step.op === "dropOwnMonster");
+    const stepFilter = dropStep?.filter || {};
+    const excludeSelf = Boolean(dropStep?.excludeSource || stepFilter.excludeSource);
+    return allFieldTargets(
+      (card, targetOwner, zone) =>
+        targetOwner === owner &&
+        fieldZones.includes(zone) &&
+        effectiveCardType(card) === "monster" &&
+        (!excludeSelf || card.instanceId !== selectedCard?.instanceId) &&
+        matchesCardFilter(card, stepFilter),
+    );
+  }
+  if (selectedCard.callStack && state.selected?.source === "hand") {
+    const nameIncludes = selectedCard.callStack.nameIncludes;
+    const stackAttribute = selectedCard.callStack.attribute;
+    return allFieldTargets(
+      (card, owner) =>
+        owner === state.active &&
+        effectiveCardType(card) === "monster" &&
+        (!nameIncludes || card.name.includes(nameIncludes)) &&
+        (!stackAttribute || (card.attributes || []).includes(stackAttribute)),
+    );
+  }
+  const genericAbility = firstTargetedAbilityForCurrentTiming(selectedCard);
+  if (genericAbility?.target) {
+    return targetCandidatesFromSpec(genericAbility.target, state.selected?.owner ?? state.active, {
+      card: selectedCard,
+      ability: genericAbility,
+    });
+  }
+  return [];
+}
+
+function cardCostRequiresOwnMonsterTarget(card) {
+  return Object.values(card?.costs || {})
+    .flat()
+    .some((step) => step.op === "dropOwnMonster");
+}
+
+function allFieldTargets(predicate) {
+  const targets = [];
+  state.players.forEach((player, owner) => {
+    zones.forEach((zone) => {
+      const card = player.field[zone];
+      if (card && predicate(card, owner, zone)) {
+        targets.push({ owner, zone, card });
+      }
+    });
+  });
+  return targets;
+}
+
+// 場の対象集合を scope(self/opponent/all)・filter・zones・excludeSource で一元的に収集する。
+// destroy{scope} / modifyStats{scope} など全体対象 op の共通基盤（旧 destroyAll/modifyStatsAll の述語を統一）。
+function collectFieldTargets(spec, context) {
+  const scope = spec.scope || "all";
+  const zoneList = Array.isArray(spec.zones) ? spec.zones : null;
+  return allFieldTargets((card, owner, zone) => {
+    if (zoneList && !zoneList.includes(zone)) {
+      return false;
+    }
+    if (scope === "self" && owner !== context.owner) {
+      return false;
+    }
+    if (scope === "opponent" && owner === context.owner) {
+      return false;
+    }
+    if (spec.excludeSource && card.instanceId === context.card?.instanceId) {
+      return false;
+    }
+    return matchesTargetFilter(card, owner, zone, spec.filter || {});
+  });
+}
+
+function firstTargetedAbilityForCurrentTiming(card) {
+  const timing = state.pendingAttack || state.pendingAction ? "counter" : state.phase;
+  return (card.abilities || []).find((ability) => {
+    if (!ability.target || !abilityTimingIncludes(ability, timing)) {
+      return false;
+    }
+    if (state.selected?.source === "field") {
+      return isFieldActivatedAbility(ability);
+    }
+    return canUseAbilityFromHand(ability);
+  });
+}
+
+function targetCandidatesFromSpec(targetSpec, owner = state.selected?.owner ?? state.active, context = {}) {
+  return targetCandidatesFromSpecForOwner(targetSpec, owner, context);
+}
+
+function targetMatchesSpec(target, targetSpec, specOwner, context = {}) {
+  if (!target?.card || !targetSpec) {
+    return false;
+  }
+  if (Array.isArray(targetSpec.anyOf)) {
+    return targetSpec.anyOf.some((spec) => targetMatchesSpec(target, spec, specOwner, context));
+  }
+  if (!targetSourceConditionMatches(targetSpec, context)) {
+    return false;
+  }
+  if (targetSpec.type === "fieldCard") {
+    if (targetSpec.controller === "self" && target.owner !== specOwner) {
+      return false;
+    }
+    if (targetSpec.controller === "opponent" && target.owner === specOwner) {
+      return false;
+    }
+    return (
+      targetAllowedByAbility(target.card, context) &&
+      matchesTargetFilter(target.card, target.owner, target.zone, targetSpec.filter)
+    );
+  }
+  if (targetSpec.type === "battleCard") {
+    return targetCandidatesFromSpecForOwner(targetSpec, specOwner, context).some((candidate) =>
+      sameSlot(candidate, target),
+    );
+  }
+  return false;
+}
+
+function targetCandidatesFromSpecForOwner(targetSpec, specOwner, context = {}) {
+  if (Array.isArray(targetSpec?.anyOf)) {
+    return uniqueTargetEntries(
+      targetSpec.anyOf.flatMap((spec) => targetCandidatesFromSpecForOwner(spec, specOwner, context)),
+    );
+  }
+  if (!targetSpec || !targetSourceConditionMatches(targetSpec, context)) {
+    return [];
+  }
+  if (targetSpec.type === "battleCard") {
+    const pending = state.pendingAttack;
+    if (!pending) {
+      return [];
+    }
+    let targets = [];
+    if (!targetSpec.role || targetSpec.role === "attacker") {
+      targets.push(...getPendingAttackers());
+    }
+    if (!targetSpec.role || targetSpec.role === "defender") {
+      const battleTarget = getPendingBattleTargetInfo(pending);
+      if (battleTarget) {
+        targets.push(battleTarget);
+      }
+    }
+    return targets.filter(
+      (target) =>
+        targetAllowedByAbility(target.card, context) &&
+        matchesTargetFilter(target.card, target.owner, target.zone, targetSpec.filter),
+    );
+  }
+  if (targetSpec.type === "fieldCard") {
+    return allFieldTargets((card, owner, zone) => {
+      if (targetSpec.controller === "self" && owner !== specOwner) {
+        return false;
+      }
+      if (targetSpec.controller === "opponent" && owner === specOwner) {
+        return false;
+      }
+      if (targetSpec.excludeSource && card.instanceId === context.card?.instanceId) {
+        return false;
+      }
+      return targetAllowedByAbility(card, context) && matchesTargetFilter(card, owner, zone, targetSpec.filter);
+    });
+  }
+  return [];
+}
+
+function targetAllowedByAbility(card, context = {}) {
+  if (!cannotReturnToHand(card)) {
+    return true;
+  }
+  return !(context.ability?.effects || []).some(
+    (effect) => effect.op === "returnToHand" && effect.target === "$target",
+  );
+}
+
+function cannotReturnToHand(card) {
+  if (!card) {
+    return false;
+  }
+  if (card.cannotReturnToHand) {
+    return true;
+  }
+  const slot = findFieldCardSlot(card);
+  if (!slot) {
+    return false;
+  }
+  return state.players.some((player) =>
+    zones.some((zone) => {
+      const sourceCard = player.field[zone];
+      return (sourceCard?.continuous || []).some(
+        (effect) =>
+          effect.op === "preventReturnToHand" &&
+          continuousEffectApplies(effect, card, sourceCard),
+      );
+    }),
+  );
+}
+
+function targetSourceConditionMatches(targetSpec, context = {}) {
+  if (targetSpec.sourceSoulCountGte !== undefined) {
+    return (context.card?.soul?.length || 0) >= targetSpec.sourceSoulCountGte;
+  }
+  return true;
+}
+
+function uniqueTargetEntries(targets) {
+  const seen = new Set();
+  return targets.filter((target) => {
+    const key = `${target.owner}:${target.zone}:${target.card?.instanceId || ""}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+function matchesTargetFilter(card, owner, zone, filter = {}) {
+  if (!matchesCardFilter(card, filter)) {
+    return false;
+  }
+  if (filter.buddy && card.name !== state.players[owner]?.buddy?.name) {
+    return false;
+  }
+  if (filter.zone && zone !== filter.zone) {
+    return false;
+  }
+  if (filter.zoneIn && !filter.zoneIn.includes(zone)) {
+    return false;
+  }
+  if (filter.zoneNot && zone === filter.zoneNot) {
+    return false;
+  }
+  return true;
+}
+
+function matchesCardFilter(card, filter = {}) {
+  if (!card) {
+    return false;
+  }
+  if (Array.isArray(filter.anyOf) && filter.anyOf.length > 0) {
+    const rest = { ...filter };
+    delete rest.anyOf;
+    return filter.anyOf.some((candidate) => matchesCardFilter(card, { ...rest, ...candidate }));
+  }
+  if (filter.cardType && effectiveCardType(card) !== filter.cardType) {
+    return false;
+  }
+  if (filter.cardTypeIn && !filter.cardTypeIn.includes(effectiveCardType(card))) {
+    return false;
+  }
+  if (filter.world && card.world !== filter.world) {
+    return false;
+  }
+  if (filter.powerLte !== undefined && visiblePower(card) > filter.powerLte) {
+    return false;
+  }
+  if (filter.powerGte !== undefined && visiblePower(card) < filter.powerGte) {
+    return false;
+  }
+  if (filter.defenseLte !== undefined && visibleDefense(card) > filter.defenseLte) {
+    return false;
+  }
+  if (filter.defenseGte !== undefined && visibleDefense(card) < filter.defenseGte) {
+    return false;
+  }
+  if (filter.criticalGte !== undefined && visibleCritical(card) < filter.criticalGte) {
+    return false;
+  }
+  if (filter.criticalLte !== undefined && visibleCritical(card) > filter.criticalLte) {
+    return false;
+  }
+  if (filter.sizeLte !== undefined && (card.size || 0) > filter.sizeLte) {
+    return false;
+  }
+  if (filter.sizeGte !== undefined && (card.size || 0) < filter.sizeGte) {
+    return false;
+  }
+  if (filter.sizeIn && !filter.sizeIn.includes(card.size || 0)) {
+    return false;
+  }
+  if (filter.attribute && !card.attributes?.includes(filter.attribute)) {
+    return false;
+  }
+  if (filter.attributeIn && !filter.attributeIn.some((attribute) => card.attributes?.includes(attribute))) {
+    return false;
+  }
+  if (filter.attributeIncludes && !card.attributes?.some((attribute) => attribute.includes(filter.attributeIncludes))) {
+    return false;
+  }
+  if (
+    filter.attributeIncludesAny &&
+    !filter.attributeIncludesAny.some((needle) => card.attributes?.some((attribute) => attribute.includes(needle)))
+  ) {
+    return false;
+  }
+  if (filter.name && card.name !== filter.name) {
+    return false;
+  }
+  if (filter.nameIn && !filter.nameIn.includes(card.name)) {
+    return false;
+  }
+  if (filter.nameIncludes && !card.name.includes(filter.nameIncludes)) {
+    return false;
+  }
+  if (filter.nameNot && card.name === filter.nameNot) {
+    return false;
+  }
+  if (filter.keyword && !hasKeyword(card, filter.keyword)) {
+    return false;
+  }
+  if (filter.standing !== undefined && Boolean(card.used) === Boolean(filter.standing)) {
+    return false;
+  }
+  if (filter.soulCountLte !== undefined && (card.soul?.length || 0) > filter.soulCountLte) {
+    return false;
+  }
+  if (filter.soulCountGte !== undefined && (card.soul?.length || 0) < filter.soulCountGte) {
+    return false;
+  }
+  return true;
+}
+
+function matchingCardsFromPile(pile, filter = {}) {
+  return (pile || []).filter((card) => matchesCardFilter(card, filter));
+}
+
+function takeMatchingCards(pile, filter = {}, amount = 1, excludedCard = null) {
+  const movedCards = [];
+  for (let index = pile.length - 1; index >= 0 && movedCards.length < amount; index -= 1) {
+    const card = pile[index];
+    if (card.instanceId === excludedCard?.instanceId) {
+      continue;
+    }
+    if (matchesCardFilter(card, filter)) {
+      movedCards.push(pile.splice(index, 1)[0]);
+    }
+  }
+  return movedCards;
+}
+
+function encodeTarget(owner, zone) {
+  return `${owner}:${zone}`;
+}
+
+function getEffectTargetInfo() {
+  return getTargetInfoFromValue(elements.effectTarget.value);
+}
+
+function getTargetInfoFromValue(value) {
+  if (!value) {
+    return null;
+  }
+  const [ownerText, zone] = value.split(":");
+  const owner = Number(ownerText);
+  return getFieldTarget(owner, zone);
+}
+
+function getFieldTarget(owner, zone) {
+  const card = state.players[owner]?.field[zone];
+  return card ? { owner, zone, card } : null;
+}
+
