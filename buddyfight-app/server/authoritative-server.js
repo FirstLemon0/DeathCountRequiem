@@ -621,7 +621,7 @@ async function startGame(room) {
 }
 
 function serveStatic(req, res, url) {
-  const requestPath = url.pathname === "/" ? "/netplay.html" : decodeURIComponent(url.pathname);
+  const requestPath = url.pathname === "/" ? "/play.html" : decodeURIComponent(url.pathname);
   const filePath = path.resolve(rootDir, `.${requestPath}`);
   if (filePath !== rootDir && !filePath.startsWith(rootDir + path.sep)) {
     sendJson(res, 403, { error: "forbidden" });
