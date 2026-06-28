@@ -207,7 +207,7 @@ function refreshTargeting() {
     .forEach((element) =>
       element.classList.remove("attack-target-candidate", "effect-target-candidate"),
     );
-  document.body.classList.remove("targeting-active");
+  clearTargetingBanner();
   if (!uiTargeting) {
     return;
   }
@@ -218,7 +218,6 @@ function refreshTargeting() {
       return;
     }
     uiTargeting.candidates = fresh;
-    document.body.classList.add("targeting-active");
     fresh.forEach((candidate) => {
       if (candidate.value === "fighter") {
         highlightFighterPanel(candidate.owner);
@@ -226,7 +225,7 @@ function refreshTargeting() {
         highlightZoneElement(candidate.owner, candidate.zone, "attack-target-candidate");
       }
     });
-    elements.selectionLabel.textContent = "攻撃対象をタップ";
+    setTargetingBanner("攻撃対象をタップ");
   } else if (uiTargeting.mode === "effect") {
     const card = getSelectedCard();
     const fresh = card ? effectTargetCandidates(card) : [];
@@ -235,11 +234,10 @@ function refreshTargeting() {
       return;
     }
     uiTargeting.candidates = fresh.map((candidate) => ({ owner: candidate.owner, zone: candidate.zone }));
-    document.body.classList.add("targeting-active");
     fresh.forEach((candidate) =>
       highlightZoneElement(candidate.owner, candidate.zone, "effect-target-candidate"),
     );
-    elements.selectionLabel.textContent = "効果対象をタップ";
+    setTargetingBanner("効果対象をタップ");
   }
 }
 
@@ -324,7 +322,7 @@ function attachZoneLongPress(zoneButton) {
         suppressNextZoneClick = true;
         openReadOnlyCardSheet(card);
       }
-    }, 500);
+    }, 300); // 長押し閾値は手札カード(12-render.js)と統一
   });
   const cancel = () => {
     if (longPressTimer) {

@@ -362,7 +362,7 @@ function createCardElement(card, interactive = false) {
   }
   const soulNames = stackedCardNames(card);
   const soulPeek = soulNames.length
-    ? `<span class="card-stack-peek" title="${escapeHtml(soulNames.join(" / "))}">下札 ${soulNames.length}</span>`
+    ? `<span class="card-stack-peek" title="${escapeHtml(soulNames.join(" / "))}">ソウル ${soulNames.length}</span>`
     : "";
   cardElement.innerHTML = `
     <span class="card-title">
@@ -372,10 +372,11 @@ function createCardElement(card, interactive = false) {
     ${soulPeek}
     <span class="card-text">${escapeHtml(effectImplementationLabel(card))}</span>
       <span class="card-stats">
-        <span>コスト ${costLabel(card)}</span>
-        <span>サイズ ${statLabel(card.size)}</span>
-        <span>攻 ${statLabel(visiblePower(card))}</span>
-        <span>打 ${statLabel(visibleCritical(card))}</span>
+        <span class="st-cost">コスト ${costLabel(card)}</span>
+        <span class="st-size">サイズ ${statLabel(card.size)}</span>
+        <span class="st-pow">攻 ${statLabel(visiblePower(card))}</span>
+        <span class="st-def">防 ${statLabel(visibleDefense(card))}</span>
+        <span class="st-crit">クリ ${statLabel(visibleCritical(card))}</span>
       </span>
   `;
   // 手札カード(interactive=button)のみ、タッチ長押しでプレビュー（盤面のspanは対象外）。
@@ -403,6 +404,9 @@ function attachTooltip(element, card, options = {}) {
   // タッチ: touchPreview 指定要素（手札カード）だけ、長押し(約300ms)でプレビュー表示。
   //   指を離す/外れる/スクロール開始(pointercancel)で消える。横スクロールは閾値前に cancel されるため誤発火しない。
   element.addEventListener("pointerdown", (event) => {
+    // 新しい操作の開始で前回の抑止フラグを必ずクリア（指が要素外で離れて click が来なかった
+    // 場合の残留で“次タップを飲む”のを防ぐ。長押し成立時はこの後また立て直す）。
+    delete element.dataset.tooltipPreview;
     if (event.pointerType === "mouse") return;
     touchActive = true;
     if (!options.touchPreview) return;
@@ -410,7 +414,8 @@ function attachTooltip(element, card, options = {}) {
     holdTimer = setTimeout(() => {
       holdTimer = null;
       element.dataset.tooltipPreview = "1"; // 長押しプレビュー成立→直後の click(=カードシート)は抑止
-      showCardTooltip(card, event);
+      // 指の下・画面下部に隠れないよう、長押しプレビューは画面上部中央へアンカー。
+      showCardTooltip(card, { clientX: Math.max(10, window.innerWidth / 2 - 130), clientY: 8 });
     }, 300);
   });
   const endTouch = () => {
@@ -732,3 +737,30 @@ function attackAllMonsterTargetZones(attackers, targetOwner, targetValue) {
   });
 }
 
+
+// ===== 対象選択(ターゲティング)の指示バナー: モバイルで指示テキストが消える問題への対応 =====
+// body.targeting-active で CSS が固定バナーを表示。テキストを #targetingText に出す。
+function setTargetingBanner(text) {
+  document.body.classList.add("targeting-active");
+  const el = document.querySelector("#targetingText");
+  if (el) el.textContent = text;
+  if (elements.selectionLabel) elements.selectionLabel.textContent = text;
+}
+function clearTargetingBanner() {
+  document.body.classList.remove("targeting-active");
+}
+
+// 一過性トースト（空マスタップ等の短いヒント。モバイルでログが隠れていても見える）。
+let toastTimer = null;
+function showToast(message, ms = 2600) {
+  const el = document.querySelector("#toast");
+  if (!el) return;
+  el.textContent = message;
+  el.classList.add("show");
+  el.setAttribute("aria-hidden", "false");
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    el.classList.remove("show");
+    el.setAttribute("aria-hidden", "true");
+  }, ms);
+}

@@ -62,6 +62,9 @@ document.querySelectorAll(".zone.field").forEach((zoneButton) => {
       openCardSheet();
     } else if (card) {
       openReadOnlyCardSheet(card);
+    } else {
+      // 空きフィールドのタップ: 置き方が分からず迷う人向けに導線を一言ヒント。
+      showToast("手札のカードをタップ→「コール先」で配置できます");
     }
   });
   attachZoneLongPress(zoneButton);
@@ -78,6 +81,13 @@ document.querySelectorAll(".set-pile").forEach((pile) => {
   pile.addEventListener("click", () => {
     showSetSpellDialog(Number(pile.dataset.owner));
   });
+});
+
+// 対象選択バナーの「キャンセル」: targeting を解除して再描画。
+document.querySelector("#targetingCancelButton")?.addEventListener("click", () => {
+  uiTargeting = null;
+  clearTargetingBanner();
+  render();
 });
 
 document.querySelectorAll("[data-call-zone]").forEach((button) => {
@@ -171,6 +181,41 @@ elements.cardSheet?.addEventListener("click", (event) => {
   }
 });
 elements.closeDeckInfoButton?.addEventListener("click", () => elements.deckInfoDialog?.close());
+// 背景タップで dropDialog(ドロップ/配置魔法一覧)・deckInfoDialog を閉じる（cardSheet と挙動統一）。
+[elements.dropDialog, elements.deckInfoDialog].forEach((dlg) => {
+  dlg?.addEventListener("click", (event) => {
+    if (event.target === dlg) dlg.close();
+  });
+});
+// ☰メニュー: 外側タップ、またはメニュー項目クリックで閉じる＋aria-expanded同期（トグル自体はHTMLのonclickに任せる）。
+// document.addEventListener はブラウザのみ（テスト/エンジンのDOMスタブには無いので存在チェック）。
+if (typeof document.addEventListener === "function") {
+  document.addEventListener("click", (event) => {
+    if (!document.body.classList.contains("nav-open")) return;
+    if (event.target.closest(".nav-toggle")) return;
+    const item = event.target.closest(".toolbar a, .toolbar button");
+    const outside = !event.target.closest(".toolbar");
+    if (outside || (item && !item.closest(".log-toggle, .theme-toggle"))) {
+      document.body.classList.remove("nav-open");
+      document.querySelector(".nav-toggle")?.setAttribute("aria-expanded", "false");
+    }
+  });
+}
+// 初回ガイド(コーチ)を一度だけ表示（ローカル/中継版。localStorage/showModal はブラウザのみ＝try/catch）。
+if (!globalThis.__BUDDYFIGHT_THIN__ && !globalThis.__BUDDYFIGHT_SERVER__) {
+  try {
+    const coach = document.querySelector("#coachDialog");
+    if (coach) {
+      document.querySelector("#coachCloseButton")?.addEventListener("click", () => coach.close());
+      if (coach.showModal && !localStorage.getItem("bf_coach_seen")) {
+        coach.showModal();
+        localStorage.setItem("bf_coach_seen", "1");
+      }
+    }
+  } catch {
+    /* localStorage 不可環境は無視 */
+  }
+}
 elements.confirmOkButton?.addEventListener("click", () => resolveConfirmDialog(true));
 elements.confirmCancelButton?.addEventListener("click", () => resolveConfirmDialog(false));
 elements.confirmDialog?.addEventListener("cancel", (event) => {

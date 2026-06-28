@@ -47,8 +47,8 @@
         </div>
         <div class="toolbar" aria-label="ゲーム操作">
           <button type="button" id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="テーマ切替">☀️</button>
-          <button type="button" class="mobile-only nav-toggle" onclick="document.body.classList.toggle('nav-open')" aria-label="メニュー">☰</button>
-          <button type="button" class="mobile-only log-toggle" onclick="document.body.classList.toggle('log-open')" aria-label="ログ">📜</button>
+          <button type="button" class="mobile-only nav-toggle" aria-expanded="false" onclick="document.body.classList.toggle('nav-open'); this.setAttribute('aria-expanded', document.body.classList.contains('nav-open'))" aria-label="メニュー">☰</button>
+          <button type="button" class="mobile-only log-toggle" aria-expanded="false" onclick="document.body.classList.toggle('log-open'); this.setAttribute('aria-expanded', document.body.classList.contains('log-open'))" aria-label="ログ">📜</button>
           <label class="deck-picker">
             <span>1P</span>
             <select id="p1DeckSelect" aria-label="プレイヤー1のデッキ"></select>
@@ -64,6 +64,24 @@
           <button id="rulesButton" type="button" title="ルール表示">ルール</button>
         </div>
       </header>
+
+      <div class="targeting-banner" id="targetingBanner" role="status" aria-live="polite">
+        <span id="targetingText"></span>
+        <button type="button" class="targeting-cancel" id="targetingCancelButton">キャンセル</button>
+      </div>
+
+      <div id="toast" role="status" aria-live="polite" aria-hidden="true"></div>
+
+      <dialog id="coachDialog" aria-label="操作ガイド">
+        <h2>かんたん操作ガイド</h2>
+        <ul>
+          <li><strong>カードをタップ</strong>＝操作（使う / コール / 攻撃）</li>
+          <li><strong>長押し</strong>＝カードの詳細を表示</li>
+          <li><strong>光るマスをタップ</strong>＝攻撃 / 効果の対象を選ぶ</li>
+          <li><strong>下のボタン</strong>＝フェイズを進める / ターン終了</li>
+        </ul>
+        <button type="button" class="coach-close" id="coachCloseButton">はじめる</button>
+      </dialog>
 
       <section class="network-panel" id="netplayPanel" aria-label="ネット対戦接続">
         <div class="network-main">
@@ -81,7 +99,7 @@
         </div>
       </section>
 
-      <section class="status-strip" aria-label="ターン状況">
+      <section class="status-strip" aria-label="ターン状況" role="status" aria-live="polite">
         <div class="turn-card">
           <span class="label">ターン</span>
           <strong id="turnLabel">プレイヤー1</strong>
@@ -186,7 +204,7 @@
 
       <section class="log-panel" aria-label="対戦ログ">
         <h2>ログ</h2>
-        <ol id="logList"></ol>
+        <ol id="logList" aria-live="polite" aria-relevant="additions" aria-atomic="false"></ol>
       </section>
     </main>
 

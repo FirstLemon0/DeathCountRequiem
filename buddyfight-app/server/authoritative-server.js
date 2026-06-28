@@ -450,6 +450,15 @@ async function handleApi(req, res, url) {
     });
     member.sse = res;
     room.updatedAt = Date.now();
+    // キープアライブ: アイドルSSEはモバイル回線/逆プロキシ(fly.io等)に切られやすいので
+    // 20秒ごとにコメント行を送る（EventSource は無視。再接続の頻発を抑止）。
+    const heartbeat = setInterval(() => {
+      try {
+        res.write(": ping\n\n");
+      } catch {
+        clearInterval(heartbeat);
+      }
+    }, 20000);
     // hello: 現在のロビー＋（開始済みなら）自分のview（type は最後に置いて上書き防止）
     writeSse(res, { ...lobbyPayload(room, member), type: "hello" });
     const view = viewPayloadFor(room, member, "現局面");
@@ -464,6 +473,7 @@ async function handleApi(req, res, url) {
     }
     broadcastLobby(room); // 他メンバーへ online 状態を反映
     req.on("close", () => {
+      clearInterval(heartbeat);
       if (member.sse === res) {
         member.sse = null;
       }

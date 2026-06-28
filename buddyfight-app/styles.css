@@ -65,7 +65,7 @@
   --muted-rgb: 107 100 89;
   /* アクセント / プレイヤー */
   --primary: #1E7A66;
-  --warn: #C8881E;
+  --warn: #8A6410;
   --p1: #2D6FB0;
   --p1-rgb: 45 111 176;
   --p2: #C0453C;
@@ -109,7 +109,7 @@
   --muted-rgb: 107 100 89;
   /* アクセント / プレイヤー */
   --primary: #1E7A66;
-  --warn: #C8881E;
+  --warn: #8A6410;
   --p1: #2D6FB0;
   --p1-rgb: 45 111 176;
   --p2: #C0453C;
@@ -657,8 +657,10 @@ h2 {
   box-shadow: inset 0 0 0 2px rgb(var(--c-spell-rgb) / 0.9);
 }
 
+/* レスト(行動済): 淡色だけでなく脱色で「使用済み＝待機」を明確化（実機のレスト=横向きの代替表現）。 */
 .card.used {
-  opacity: 0.55;
+  opacity: 0.5;
+  filter: grayscale(0.55);
 }
 
 /* 対抗ウィンドウ中の「打てる手」: 防御側が対抗で使える手札を強調（成功色の枠＋淡い面）。 */
@@ -723,6 +725,15 @@ h2 {
   display: none;
 }
 
+/* 手札カードの効果文は2行で切り詰めてカード高を揃える(全文はタップのカードシートで)。 */
+.hand-list .card .card-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .card-stats span {
   min-width: 0;
   overflow: hidden;
@@ -733,6 +744,11 @@ h2 {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ステータスの色分け(攻=赤系 / 防=青系 / クリ=金系)。盤面の攻/防/クリ3値を色で識別しやすくする。 */
+.st-pow { color: rgb(var(--c-monster-rgb)); }
+.st-def { color: rgb(var(--c-item-rgb)); }
+.st-crit { color: rgb(var(--c-impact-rgb)); }
 
 .partner-row {
   display: grid;
@@ -1262,7 +1278,14 @@ dialog.selection-board-peek .selection-dialog-actions {
   /* === B1 スマホ・レスポンシブ(厳格1画面・点対称・☰メニュー/logドロワー) === */
   .mobile-only { display: inline-flex; }
   html,
-  body { overflow-x: hidden; }
+  html { overflow-x: hidden; }
+  /* スマホは縦積み(上=相手/下=自分)。横分割(90deg)では席に合わないので、席に対応した縦グラデへ。 */
+  body {
+    overflow-x: hidden;
+    background:
+      linear-gradient(180deg, rgb(var(--c-monster-rgb) / 0.1) 0 38%, rgb(var(--p1-rgb) / 0.12) 62% 100%),
+      var(--bg);
+  }
 
   .app-shell {
     display: flex;
@@ -1408,8 +1431,8 @@ dialog.selection-board-peek .selection-dialog-actions {
   .flag-item-zone,
   .buddy-cell,
   .deck-zone,
-  .set-pile { min-height: 38px; }
-  .board-grid .card { min-height: 38px; }
+  .set-pile { min-height: 44px; } /* タップ標的 44px(a11y/iOS HIG) */
+  .board-grid .card { min-height: 44px; }
   .card {
     gap: 3px;
     padding: 4px 6px;
@@ -1427,10 +1450,19 @@ dialog.selection-board-peek .selection-dialog-actions {
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  /* design-5: 盤面チップは「名前＋攻/打」(§106)。コスト/サイズを隠し、残り2項目を2列に縮約。 */
-  .board-grid .card .card-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .board-grid .card .card-stats > :nth-child(1),
-  .board-grid .card .card-stats > :nth-child(2) { display: none; }
+  /* 盤面チップ: 攻/防/クリ の3値を常時表示（コスト/サイズは隠す）。狭いセルに収めるため箱を外し
+     プレーンな色付きテキストに。1字ラベル(攻/防/クリ)＋色分けで「どれが何か」を識別可能にする。 */
+  .board-grid .card .card-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; }
+  .board-grid .card .card-stats .st-cost,
+  .board-grid .card .card-stats .st-size { display: none; }
+  .board-grid .card .card-stats span {
+    font-size: 0.55rem;
+    padding: 1px 0;
+    letter-spacing: -0.04em;
+    background: transparent;
+    border-radius: 0;
+    font-weight: 700;
+  }
   /* 盤面のカード裏プレビュー行はモバイルでは枚数表示(手N)に集約して隠す（縦圧縮・1画面化） */
   .hand-preview { display: none; }
 
@@ -1729,4 +1761,152 @@ body.targeting-active .fighter-panel:not(.attack-target-candidate) {
   outline-offset: -3px;
   box-shadow: 0 0 14px rgb(var(--c-spell-rgb) / 0.5);
   cursor: pointer;
+}
+
+/* ===== レビュー反映: a11y / 操作フィードバック ===== */
+
+/* キーボードフォーカスの可視化(テーマ非依存・二重リングで背景差を吸収)。選択(selected)の warn とは別色。 */
+:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px rgb(var(--surface-deep-rgb) / 0.55);
+}
+/* マウスクリック時はリングを出さない(focus-visible のみ)。 */
+
+/* モーション低減の安全弁(将来の演出追加時にも効く)。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 対象選択中の指示バナー(モバイル)。targeting-active 時のみ上部に固定表示。 */
+.targeting-banner {
+  display: none;
+}
+body.targeting-active .targeting-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  position: fixed;
+  left: 50%;
+  top: 8px;
+  transform: translateX(-50%);
+  z-index: 70;
+  max-width: min(94vw, 520px);
+  padding: 8px 12px;
+  border: 1px solid var(--warn);
+  border-radius: 999px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.targeting-banner .targeting-cancel {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+
+/* 文脈ヒント(操作可能ボタンが無い時など、次の一手を一言で案内)。 */
+.context-hint {
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+/* ===== オンライン(thin client)レビュー反映 ===== */
+
+/* 開戦後も見える状態バナー(再接続/相手切断/操作不可など)。lobbyPanel が隠れても残る。 */
+#netStatus { display: none; }
+.thin-client.game-started #netStatus:not(:empty) {
+  display: block;
+  position: fixed;
+  left: 50%;
+  bottom: 64px; /* sticky アクションバー(56px)の上 */
+  transform: translateX(-50%);
+  z-index: 65;
+  max-width: 92vw;
+  padding: 6px 14px;
+  border: 1px solid var(--seat-line);
+  border-radius: 999px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  color: var(--text-2);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+/* thin client では action-panel のカード操作系ボタン(召喚/コール/使用/攻撃 等)は
+   カードシート/メニュー経由で行うため未配線=死にコントロール。フェイズ進行と解決だけ残す。 */
+.thin-client .action-panel .summon-grid,
+.thin-client .action-panel .attack-row,
+.thin-client #castButton,
+.thin-client #counterHandButton,
+.thin-client #linkToggleButton,
+.thin-client #partnerCallButton,
+.thin-client #attackButton,
+.thin-client #chargeButton { display: none; }
+/* thin の不要なツールバー要素(1P/2Pデッキ選択・ログ保存・新規=部屋作成と重複)を隠す。 */
+.thin-client .toolbar .deck-picker,
+.thin-client #newGameButton,
+.thin-client #exportLogButton { display: none; }
+
+/* ===== トースト / 初回ガイド / ロビーロスター ===== */
+
+/* 一過性トースト（空マスタップ等の短いヒント）。 */
+#toast {
+  display: none;
+}
+#toast.show {
+  display: block;
+  position: fixed;
+  left: 50%;
+  bottom: 72px;
+  transform: translateX(-50%);
+  z-index: 80;
+  max-width: 90vw;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: 0.84rem;
+  text-align: center;
+}
+
+/* 初回ガイド(コーチ)ダイアログ。 */
+#coachDialog::backdrop { background: rgb(0 0 0 / 0.5); }
+#coachDialog {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  max-width: min(92vw, 420px);
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+#coachDialog h2 { margin-bottom: 8px; }
+#coachDialog ul { margin: 0 0 14px; padding-left: 1.2em; line-height: 1.7; color: var(--text-2); }
+#coachDialog .coach-close { width: 100%; min-height: 44px; }
+
+/* ロビー参加者リスト: 席バッジ＋オンライン点＋デッキ名でスキャンしやすく。 */
+.lobby-roster { display: grid; gap: 6px; margin: 8px 0; }
+.lobby-member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: rgb(var(--panel-rgb) / 0.6);
+  font-size: 0.85rem;
 }

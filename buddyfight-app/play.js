@@ -73,7 +73,19 @@
     return data;
   }
 
-  const setStatus = (m) => ($("lobbyStatus").textContent = m);
+  const setStatus = (m) => {
+    $("lobbyStatus").textContent = m;
+    // 開戦後はロビーが隠れるので、固定バナー(#netStatus)にも出して状態を見えるようにする。
+    const ns = document.getElementById("netStatus");
+    if (ns) ns.textContent = m || "";
+  };
+  // 今このクライアントが盤面操作できるか（自分の手番、または対抗ウィンドウ）。手番外の無言失敗を防ぐ。
+  const canActNow = () => {
+    const st = thin?.getState?.();
+    if (mySeat() === null || !session.started || !st || st.winner) return false;
+    if (st.active === mySeat()) return true;
+    return Boolean(st.pendingAttack || st.pendingAction); // 対抗/応答中は相手手番でも操作可
+  };
   const mySeat = () => (session.role === 0 || session.role === 1 ? session.role : null);
   const isMyTurnSeat = () => mySeat() !== null && session.started;
   function roleLabel(role) {
@@ -140,6 +152,14 @@
       thin?.applyView?.(message.state);
       document.body.classList.add("game-started");
       $("lobbySeatLabel").textContent = `役割: ${roleLabel(message.role)}`;
+      // 初回ガイド(コーチ)を開戦時に一度だけ。
+      try {
+        const coach = document.getElementById("coachDialog");
+        if (coach?.showModal && !localStorage.getItem("bf_coach_seen")) {
+          coach.showModal();
+          localStorage.setItem("bf_coach_seen", "1");
+        }
+      } catch { /* noop */ }
     } else if (message.type === "prompt_request") {
       // 観戦/非該当席には届かない設計だが、念のため防御。
       if (mySeat() === null) return;
@@ -167,6 +187,20 @@
       div.textContent = `${roleLabel(member.role)}: ${member.name}${me}${member.online ? "" : " [接続なし]"}${deck}`;
       roster.append(div);
     });
+    // 開始ゲート: 両席が埋まり両者デッキ確定するまで「対戦開始」を無効化（事後エラーを防ぐ）。
+    const startBtn = document.getElementById("lobbyStartButton");
+    if (startBtn) {
+      const members = message.members || [];
+      const seat0 = members.find((m) => m.role === 0);
+      const seat1 = members.find((m) => m.role === 1);
+      const ready = Boolean(seat0 && seat1 && seat0.deck && seat1.deck);
+      startBtn.disabled = message.started || !ready;
+      startBtn.title = ready ? "対戦を開始" : "両席が埋まり、両者のデッキが確定すると押せます";
+      if (!message.started && !ready) {
+        const onlyOne = !seat0 || !seat1;
+        setStatus(onlyOne ? "相手の参加を待っています…" : "両者のデッキ確定を待っています…");
+      }
+    }
     // 対局中に相手席が切断していたら「待機中」を明示。
     if (session.started && mySeat() !== null) {
       const opponent = (message.members || []).find((m) => m.role === 1 - mySeat());
@@ -212,8 +246,13 @@
   $("lobbySwapButton").addEventListener("click", () => lobbyAction("swapSeats"));
   $("lobbySetDeckButton").addEventListener("click", () => lobbyAction("setDeck", { deck: selectedDeckPayload() }));
   $("lobbyStartButton").addEventListener("click", () => lobbyAction("start"));
+  // ルール表示(thinでも配線。手札秘匿の説明等を含む)。
+  $("rulesButton")?.addEventListener("click", () => document.getElementById("rulesDialog")?.showModal());
   $("lobbyCopyButton").addEventListener("click", async () => {
-    if (!session.roomId) return;
+    if (!session.roomId) {
+      setStatus("先に「部屋作成」または「参加」をしてください");
+      return;
+    }
     const url = `${location.origin}${location.pathname}?room=${encodeURIComponent(session.roomId)}`;
     try {
       await navigator.clipboard.writeText(url);
@@ -229,12 +268,14 @@
       setStatus("観戦者は操作できません");
       return;
     }
+    closeMenu();
+    // 送信〜解決まで（相手のプロンプトを誘発した場合は最大数十秒ホールドされる）非ブロッキングに待機表示。
+    setStatus("操作を送信中…（相手の応答が必要な場合は待機します）");
     try {
       await api(`auth/rooms/${encodeURIComponent(session.roomId)}/action`, { token: session.token, type, params: params || {} });
+      setStatus(""); // 完了（最新 view は SSE で届く）
     } catch (error) {
       setStatus(`操作不可: ${error.message}`);
-    } finally {
-      closeMenu();
     }
   }
   const wireButton = (id, type) => {
@@ -414,7 +455,7 @@
     ui.targeting = false;
     const sel = ui.selected;
     showMenu([
-      { label: "攻撃（対象を選ぶ）", run: () => { ui.targeting = true; closeMenu(); setStatus("攻撃対象（相手のカード/本体）をクリック"); } },
+      { label: "攻撃（対象を選ぶ）", run: () => { ui.targeting = true; closeMenu(); setTargetingBanner("攻撃対象をタップ"); setStatus("攻撃対象（相手のカード/本体）をタップ"); } },
       { label: "連携に追加", run: () => sendAction("link", { selected: sel }) },
       { label: "使用（能力）", run: () => sendAction("use", { selected: sel }) },
       { label: "使用（効果対象を選ぶ）", run: () => startEffectTargeting(sel, "use") },
@@ -426,6 +467,7 @@
     ui.effectTargeting = { selected: sel, type, callZone: extra.callZone };
     ui.targeting = false;
     closeMenu();
+    setTargetingBanner("効果対象をタップ");
     setStatus("効果対象を盤面のカードでタップしてください");
   }
 
@@ -457,11 +499,15 @@
 
   // 手札クリック（委譲）
   $("handList").addEventListener("click", (event) => {
-    if (!isMyTurnSeat()) return;
+    if (!session.started) return;
     const card = event.target.closest(".card[data-instance-id]");
     if (!card) return;
     if (card.dataset.tooltipPreview) {
       delete card.dataset.tooltipPreview; // 長押しプレビュー後の click はメニューを開かない
+      return;
+    }
+    if (!canActNow()) {
+      setStatus("相手の番です（あなたの操作番ではありません）");
       return;
     }
     handCardMenu(card.dataset.instanceId);
@@ -470,7 +516,7 @@
   // 盤面ゾーンクリック（自分=選択 / 相手=攻撃対象）
   document.querySelectorAll(".zone.field").forEach((zoneButton) => {
     zoneButton.addEventListener("click", () => {
-      if (!isMyTurnSeat()) return;
+      if (!session.started) return;
       const owner = Number(zoneButton.dataset.owner);
       const zone = zoneButton.dataset.zone;
       const cardEl = zoneButton.querySelector(".card[data-instance-id]");
@@ -483,6 +529,7 @@
             ...(et.callZone ? { callZone: et.callZone } : {}),
           });
           ui.effectTargeting = null;
+          clearTargetingBanner();
         }
         return;
       }
@@ -490,10 +537,15 @@
         if (cardEl) {
           sendAction("attack", { selected: ui.selected, attackTarget: zone });
           ui.targeting = false;
+          clearTargetingBanner();
         }
         return;
       }
       if (owner === mySeat() && cardEl) {
+        if (!canActNow()) {
+          setStatus("相手の番です（あなたの操作番ではありません）");
+          return;
+        }
         fieldCardMenu(owner, zone, cardEl.dataset.instanceId);
       }
     });
@@ -521,8 +573,38 @@
       if (owner !== mySeat()) {
         sendAction("attack", { selected: ui.selected, attackTarget: "fighter" });
         ui.targeting = false;
+        clearTargetingBanner();
       }
     });
+  });
+
+  // 対象選択バナーの「キャンセル」(thin): targeting を解除。
+  document.getElementById("targetingCancelButton")?.addEventListener("click", () => {
+    ui.targeting = false;
+    ui.effectTargeting = null;
+    clearTargetingBanner();
+    setStatus("対象選択をキャンセルしました");
+  });
+
+  // thin: ダイアログの閉じ配線（src/21 の非thin側は走らないため自前で）。
+  $("closeDropDialogButton")?.addEventListener("click", () => document.getElementById("dropDialog")?.close());
+  $("coachCloseButton")?.addEventListener("click", () => document.getElementById("coachDialog")?.close());
+  ["dropDialog", "deckInfoDialog"].forEach((id) => {
+    const dlg = document.getElementById(id);
+    dlg?.addEventListener("click", (event) => {
+      if (event.target === dlg) dlg.close();
+    });
+  });
+  // ☰メニュー: 外側タップ/項目タップで閉じる＋aria-expanded同期。
+  document.addEventListener("click", (event) => {
+    if (!document.body.classList.contains("nav-open")) return;
+    if (event.target.closest(".nav-toggle")) return;
+    const item = event.target.closest(".toolbar a, .toolbar button");
+    const outside = !event.target.closest(".toolbar");
+    if (outside || (item && !item.closest(".log-toggle, .theme-toggle"))) {
+      document.body.classList.remove("nav-open");
+      document.querySelector(".nav-toggle")?.setAttribute("aria-expanded", "false");
+    }
   });
 
   // ワールドタイル（ヘッダ）クリック→デッキ情報ポップアップ。攻撃/効果タップ中は対象選択を優先。
