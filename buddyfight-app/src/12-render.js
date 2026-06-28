@@ -232,6 +232,26 @@ function renderHand() {
     elements.handTitle.textContent +=
       counterPlayable > 0 ? ` ・打てる手 ${counterPlayable}` : " ・打てる手なし（解決でパス）";
   }
+  // スマホ手札の横スクロール発見性: 右にまだカードが続く時だけ右端フェードを付ける。
+  updateHandScrollHint();
+}
+
+// .has-overflow を「横にオーバーフローしていて、かつ末尾までスクロールしていない」時のみ付与。
+// モバイルはスクロールバーが出ないため、続きがある手掛かりにする（CSS側 .hand-list.has-overflow）。
+function applyHandScrollHint(list) {
+  const more =
+    list.scrollWidth > list.clientWidth + 2 &&
+    list.scrollLeft + list.clientWidth < list.scrollWidth - 2;
+  list.classList.toggle("has-overflow", more);
+}
+function updateHandScrollHint() {
+  const list = elements.handList;
+  if (!list) return;
+  if (!list.dataset.scrollHintWired) {
+    list.addEventListener("scroll", () => applyHandScrollHint(list), { passive: true });
+    list.dataset.scrollHintWired = "1";
+  }
+  applyHandScrollHint(list);
 }
 
 function createCardElement(card, interactive = false) {

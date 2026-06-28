@@ -193,6 +193,9 @@
       }
       const data = await api(pathname, { name: askName(), deck });
       Object.assign(session, { roomId: data.roomId, token: data.token, clientId: data.clientId, role: data.role });
+      session.started = false;
+      // 新しい部屋へ入り直す＝ロビーが主役。前局の game-started を解除しないとモバイルでロビーが隠れたまま。
+      document.body.classList.remove("game-started");
       saveSession();
       $("lobbyRoomInput").value = data.roomId;
       connectSse();

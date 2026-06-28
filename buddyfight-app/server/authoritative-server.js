@@ -599,6 +599,13 @@ async function startGame(room) {
   // 両席メンバーのデッキを集約（カスタムは deck.custom に定義を載せて持ち寄り）。
   const seat0 = room.members.get(room.seats[0]);
   const seat1 = room.members.get(room.seats[1]);
+  // 両席が同一の自作デッキ（共有コード由来で id が同一）を持ち寄ると、engine が deck.id で
+  // デッキ解決する際に2件が衝突して両席が同じ定義に混線しうる。席1側の id を一意化する。
+  // deck.id と custom.id は照合に両方使うため同時に書き換える（engine-host.startGame 参照）。
+  if (seat0?.deck?.custom && seat1?.deck?.custom && seat0.deck.id === seat1.deck.id) {
+    const uniqueId = `${seat1.deck.id}__seat1`;
+    seat1.deck = { ...seat1.deck, id: uniqueId, custom: { ...seat1.deck.custom, id: uniqueId } };
+  }
   const customDecks = [];
   for (const m of [seat0, seat1]) {
     if (m.deck && m.deck.custom) {
@@ -614,7 +621,7 @@ async function startGame(room) {
 }
 
 function serveStatic(req, res, url) {
-  const requestPath = url.pathname === "/" ? "/play.html" : decodeURIComponent(url.pathname);
+  const requestPath = url.pathname === "/" ? "/netplay.html" : decodeURIComponent(url.pathname);
   const filePath = path.resolve(rootDir, `.${requestPath}`);
   if (filePath !== rootDir && !filePath.startsWith(rootDir + path.sep)) {
     sendJson(res, 403, { error: "forbidden" });
