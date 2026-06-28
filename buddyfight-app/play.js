@@ -459,7 +459,12 @@
   $("handList").addEventListener("click", (event) => {
     if (!isMyTurnSeat()) return;
     const card = event.target.closest(".card[data-instance-id]");
-    if (card) handCardMenu(card.dataset.instanceId);
+    if (!card) return;
+    if (card.dataset.tooltipPreview) {
+      delete card.dataset.tooltipPreview; // 長押しプレビュー後の click はメニューを開かない
+      return;
+    }
+    handCardMenu(card.dataset.instanceId);
   });
 
   // 盤面ゾーンクリック（自分=選択 / 相手=攻撃対象）

@@ -300,6 +300,10 @@ function renderHand() {
     if (!globalThis.__BUDDYFIGHT_THIN__) {
       // 通常モードのみローカル選択＋カードシート。シンクライアントは play.js が配線。
       cardButton.addEventListener("click", () => {
+        if (cardButton.dataset.tooltipPreview) {
+          delete cardButton.dataset.tooltipPreview; // 長押しプレビュー後の click はシートを開かない
+          return;
+        }
         selectHandCard(card.instanceId);
         openCardSheet();
       });
@@ -374,7 +378,8 @@ function createCardElement(card, interactive = false) {
         <span>打 ${statLabel(visibleCritical(card))}</span>
       </span>
   `;
-  attachTooltip(cardElement, card);
+  // 手札カード(interactive=button)のみ、タッチ長押しでプレビュー（盤面のspanは対象外）。
+  attachTooltip(cardElement, card, { touchPreview: interactive });
   return cardElement;
 }
 
@@ -382,12 +387,44 @@ function stackedCardNames(card) {
   return (card.soul || []).map((soulCard) => soulCard.name).filter(Boolean);
 }
 
-function attachTooltip(element, card) {
+function attachTooltip(element, card, options = {}) {
+  // デスクトップ: ホバーで表示。
   element.addEventListener("mouseenter", (event) => showCardTooltip(card, event));
   element.addEventListener("mousemove", moveCardTooltip);
   element.addEventListener("mouseleave", hideCardTooltip);
-  element.addEventListener("focus", (event) => showCardTooltip(card, event));
+  // フォーカス表示はキーボード操作用。タッチ由来のフォーカスでは出さない
+  //（タップでフォーカスが残り blur が来ず「離しても詳細が出続ける」不具合の回避）。
+  let touchActive = false;
+  let holdTimer = null;
+  element.addEventListener("focus", (event) => {
+    if (!touchActive) showCardTooltip(card, event);
+  });
   element.addEventListener("blur", hideCardTooltip);
+  // タッチ: touchPreview 指定要素（手札カード）だけ、長押し(約300ms)でプレビュー表示。
+  //   指を離す/外れる/スクロール開始(pointercancel)で消える。横スクロールは閾値前に cancel されるため誤発火しない。
+  element.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse") return;
+    touchActive = true;
+    if (!options.touchPreview) return;
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => {
+      holdTimer = null;
+      element.dataset.tooltipPreview = "1"; // 長押しプレビュー成立→直後の click(=カードシート)は抑止
+      showCardTooltip(card, event);
+    }, 300);
+  });
+  const endTouch = () => {
+    if (!touchActive && holdTimer === null) return;
+    touchActive = false;
+    if (holdTimer) {
+      clearTimeout(holdTimer);
+      holdTimer = null;
+    }
+    hideCardTooltip();
+  };
+  element.addEventListener("pointerup", endTouch);
+  element.addEventListener("pointerleave", endTouch);
+  element.addEventListener("pointercancel", endTouch);
 }
 
 function renderActions() {
