@@ -67,7 +67,7 @@ function cardTooltipHtml(card) {
     ["属性", card.attributes?.join(" / ") || "-"],
     ["サイズ", statLabel(card.size)],
     ["攻撃力", statLabel(visiblePower(card))],
-    ["クリティカル", statLabel(visibleCritical(card))],
+    ["打撃力", statLabel(visibleCritical(card))],
     ["防御力", statLabel(visibleDefense(card))],
     ["ソウル", String(card.soul?.length || 0)],
     ["レアリティ", card.rarity],

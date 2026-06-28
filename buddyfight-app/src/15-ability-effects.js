@@ -89,6 +89,12 @@ async function executeAbilityEffect(effect, context) {
   if (effect.op === "draw") {
     drawCards(player, effect.amount || 1);
   }
+  if (effect.op === "drawUpToHand") {
+    // 手札が effect.amount 枚になるように引く（既に同数以上なら引かない）。
+    // 例: ドラゴニック・ディレクティブ「手札が２枚以下なら３枚になるように引く」。
+    const targetHand = effect.amount || 0;
+    drawCards(player, Math.max(0, targetHand - player.hand.length));
+  }
   if (effect.op === "putTopDeckToGauge") {
     const receiver = effect.player === "opponent" ? opponent : player;
     const before = receiver.gauge.length;
@@ -323,6 +329,37 @@ async function executeAbilityEffect(effect, context) {
   }
   if (effect.op === "destroySelf") {
     await destroyFieldCard(context.owner, context.zone, { ignoreSoulguard: true });
+  }
+  if (effect.op === "equipSelf") {
+    // 『変身』: 発生源カード自身を（手札/場、または手札能力使用でドロップへ移った直後でも）
+    // アイテムとして装備する。currentType="item" 化・装備変更・装備時誘発は equipCardDirect が処理。
+    const source = context.card;
+    if (source) {
+      const handIndex = player.hand.findIndex((c) => c.instanceId === source.instanceId);
+      if (handIndex >= 0) {
+        player.hand.splice(handIndex, 1);
+      } else {
+        const fieldZone = [...fieldZones, ...setZones].find(
+          (zone) => player.field[zone]?.instanceId === source.instanceId,
+        );
+        if (fieldZone) {
+          player.field[fieldZone] = null;
+        } else {
+          const dropIndex = player.drop.findIndex((c) => c.instanceId === source.instanceId);
+          if (dropIndex >= 0) {
+            player.drop.splice(dropIndex, 1);
+          }
+        }
+      }
+      await equipCardDirect(player, source);
+      context.cardMoved = true;
+    }
+  }
+  if (effect.op === "setLifeZeroSafeguard") {
+    // 「そのターン中、次に君のライフが0になるなら、かわりにライフは1になる」（実は生きていた！）。
+    // プレイヤー単位の一回限り。resolveLifeZeroReplacements が消費し、ターン終了でクリアされる。
+    player.lifeZeroSafeguard = { life: effect.life || 1 };
+    addLog(`${player.name}は次にライフが0になっても${effect.life || 1}で耐える構えをとった。`);
   }
   if (effect.op === "destroy") {
     // 統合形: target(単体) / scope(全体) / target:"$self"(自己) を1opに。

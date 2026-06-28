@@ -711,12 +711,24 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+/* 場のカードのステータス: 攻/防/打 を「数値 / 数値 / 数値」で表示。項目は色で識別(攻=赤/防=青/打=金)
+   するのでラベルは付けない。コスト/サイズはカード面に出さない(詳細にあり)。手札では .card-stats ごと非表示。 */
 .card-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 5px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
   color: var(--muted);
   font-size: 0.72rem;
+}
+.card-stats .st-cost,
+.card-stats .st-size { display: none; }
+.card-stats .st-def::before,
+.card-stats .st-crit::before {
+  content: "/";
+  margin-right: 4px;
+  color: var(--muted);
+  font-weight: 400;
 }
 
 /* 手札カードはコスト/サイズ/攻/打のチップを非表示（スマホ・PC共に枠に収まらず崩れるため）。
@@ -736,16 +748,11 @@ h2 {
 
 .card-stats span {
   min-width: 0;
-  overflow: hidden;
-  border-radius: 5px;
-  background: var(--inset-bg);
-  padding: 4px;
-  text-align: center;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 700;
 }
 
-/* ステータスの色分け(攻=赤系 / 防=青系 / クリ=金系)。盤面の攻/防/クリ3値を色で識別しやすくする。 */
+/* ステータスの色分け(攻=赤系 / 防=青系 / 打=金系)。ラベル無しでも色＋並び順で項目を識別。 */
 .st-pow { color: rgb(var(--c-monster-rgb)); }
 .st-def { color: rgb(var(--c-item-rgb)); }
 .st-crit { color: rgb(var(--c-impact-rgb)); }
@@ -1450,19 +1457,15 @@ dialog.selection-board-peek .selection-dialog-actions {
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  /* 盤面チップ: 攻/防/クリ の3値を常時表示（コスト/サイズは隠す）。狭いセルに収めるため箱を外し
-     プレーンな色付きテキストに。1字ラベル(攻/防/クリ)＋色分けで「どれが何か」を識別可能にする。 */
-  .board-grid .card .card-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; }
-  .board-grid .card .card-stats .st-cost,
-  .board-grid .card .card-stats .st-size { display: none; }
-  .board-grid .card .card-stats span {
-    font-size: 0.55rem;
-    padding: 1px 0;
-    letter-spacing: -0.04em;
-    background: transparent;
-    border-radius: 0;
-    font-weight: 700;
+  /* 盤面チップ: 攻/防/打 の3値を「数値 / 数値 / 数値」で(色で識別)。狭いセルに収まるよう少し小さく中央寄せ。 */
+  .board-grid .card .card-stats {
+    justify-content: center;
+    gap: 3px;
+    font-size: 0.62rem;
+    letter-spacing: -0.02em;
   }
+  .board-grid .card .card-stats .st-def::before,
+  .board-grid .card .card-stats .st-crit::before { margin-right: 3px; }
   /* 盤面のカード裏プレビュー行はモバイルでは枚数表示(手N)に集約して隠す（縦圧縮・1画面化） */
   .hand-preview { display: none; }
 
@@ -1626,12 +1629,12 @@ dialog.selection-board-peek .selection-dialog-actions {
 }
 
 
-/* (4) カード内ステータス文字の拡大(読みやすさ)。 */
+/* (4) カード内ステータス文字の拡大(読みやすさ)。数値/区切りの行なので箱padなし。 */
 .card-stats {
   font-size: 0.8rem;
 }
 .card-stats span {
-  padding: 5px 4px;
+  padding: 0;
 }
 
 /* === B2: タッチ操作刷新（カードシート/対象タップ/確認/デッキ情報） === */

@@ -374,9 +374,9 @@ function createCardElement(card, interactive = false) {
       <span class="card-stats">
         <span class="st-cost">コスト ${costLabel(card)}</span>
         <span class="st-size">サイズ ${statLabel(card.size)}</span>
-        <span class="st-pow">攻 ${statLabel(visiblePower(card))}</span>
-        <span class="st-def">防 ${statLabel(visibleDefense(card))}</span>
-        <span class="st-crit">クリ ${statLabel(visibleCritical(card))}</span>
+        <span class="st-pow">${statLabel(visiblePower(card))}</span>
+        <span class="st-def">${statLabel(visibleDefense(card))}</span>
+        <span class="st-crit">${statLabel(visibleCritical(card))}</span>
       </span>
   `;
   // 手札カード(interactive=button)のみ、タッチ長押しでプレビュー（盤面のspanは対象外）。

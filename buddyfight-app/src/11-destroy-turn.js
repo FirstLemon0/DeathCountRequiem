@@ -208,6 +208,7 @@ async function destroyFieldCard(owner, zone, options = {}) {
   recordDestroyedEventWindow(card, owner);
   recordSpecialCallOpportunity(card, owner, zone, options);
   queueDestroyedTriggers(card, owner, zone);
+  queueAllyDestroyedTriggers(card, owner, zone);
   return card;
 }
 
@@ -370,6 +371,39 @@ function queueDestroyedTriggers(card, owner, zone) {
     .catch((error) => {
       console.error(error);
       addLog(`${card.name}の破壊時能力の処理中にエラーが発生しました。`);
+      render();
+    });
+}
+
+// 「君の場の(他の)モンスターが破壊された時」など、場の他カードが反応する破壊フィールドイベント。
+// 破壊されたカード自身の destroyed 誘発(queueDestroyedTriggers)とは別に、ally/opponent Destroyed を
+// 場の全枠(set枠含む)へ配送する。設置呪文「飢えたるヤミゲドウ」等が set ゾーンで反応するための経路。
+// 反応するカードが場に無ければ何もしない。発火対象はモンスターに限らず(条件 eventCardMatches で絞る)。
+function queueAllyDestroyedTriggers(card, owner, zone) {
+  const hasListener = [0, 1].some((playerIndex) =>
+    zones.some((fieldZone) => {
+      const sourceCard = state.players[playerIndex]?.field?.[fieldZone];
+      return (
+        sourceCard &&
+        (sourceCard.abilities || []).some(
+          (ability) =>
+            ability.kind === "triggered" &&
+            (ability.event === "allyDestroyed" || ability.event === "opponentDestroyed"),
+        )
+      );
+    }),
+  );
+  if (!hasListener) {
+    return;
+  }
+  Promise.resolve()
+    .then(async () => {
+      await runFieldEventTriggers("destroyed", owner, card, zone);
+      render();
+    })
+    .catch((error) => {
+      console.error(error);
+      addLog(`${card?.name ?? "カード"}の破壊フィールド誘発の処理中にエラーが発生しました。`);
       render();
     });
 }
@@ -631,6 +665,10 @@ async function endTurn() {
   clearTurnModifiers();
   state.monsterAttackForbidden = [false, false];
   state.monsterAttackForbiddenSources = [[], []];
+  // 「そのターン中」限定のライフ0セーフガード（実は生きていた！）はターン終了で失効。
+  state.players.forEach((player) => {
+    player.lifeZeroSafeguard = null;
+  });
   activePlayer().oncePerTurn = {};
   if (state.extraTurnOwner === endingOwner) {
     state.extraTurnOwner = null;
@@ -720,6 +758,13 @@ function resolveLifeZeroReplacements() {
       .map((zone) => ({ zone, card: player.field[zone] }))
       .find(({ card }) => card?.lifeZeroReplacement);
     if (!replacementSlot) {
+      // プレイヤー単位の一回限りセーフガード（実は生きていた！）。場札の置換が無い場合に消費する。
+      if (player.lifeZeroSafeguard) {
+        const safeguard = player.lifeZeroSafeguard;
+        player.lifeZeroSafeguard = null;
+        player.life = safeguard.life || 1;
+        addLog(`${player.name}は「実は生きていた！」でライフが${player.life}になりました。`);
+      }
       return;
     }
     const { zone, card } = replacementSlot;

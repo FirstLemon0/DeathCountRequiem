@@ -26,6 +26,7 @@ const elements = {
   typeFilter: document.querySelector("#typeFilter"),
   worldFilter: document.querySelector("#worldFilter"),
   productFilter: document.querySelector("#productFilter"),
+  generationTabs: document.querySelector("#generationTabs"),
   resultCountLabel: document.querySelector("#resultCountLabel"),
   cardResults: document.querySelector("#cardResults"),
   deckList: document.querySelector("#deckList"),
@@ -49,12 +50,14 @@ let cards = [];
 let officialDecks = [];
 let currentDeck = emptyDeck();
 let flagIdAliases = new Map();
+let activeGeneration = ""; // 世代タブの選択（空=すべて）。製品が増えても世代で製品リストを絞る。
 
 async function initializeBuilder() {
   setStatus("カードデータ読込中");
   try {
     await loadGameData();
     populateFilters();
+    renderGenerationTabs();
     populateDeckOptions();
     populateSavedDecks();
     loadFirstAvailableDeck();
@@ -106,6 +109,7 @@ function normalizeCard(card, set = {}) {
     ...card,
     productId: card.productId || set.id || "",
     productName: card.productName || set.name || "",
+    generation: card.generation || set.generation || "",
     aliases: [...(card.aliases || [])],
     attributes: [...(card.attributes || [])],
     keywords: [...(card.keywords || [])],
@@ -206,13 +210,52 @@ function populateFilters() {
     ["", "すべてのワールド"],
     ...unique(cards.map((card) => card.world).filter(Boolean)).map((world) => [world, world]),
   ]);
-  setOptions(elements.productFilter, [
-    ["", "すべての製品"],
-    ...unique(cards.map((card) => card.productId).filter(Boolean)).map((productId) => {
-      const card = cards.find((candidate) => candidate.productId === productId);
-      return [productId, card?.productName || productId];
-    }),
-  ]);
+  populateProductFilter();
+}
+
+// 選択中の世代(空=すべて)に属する製品 [productId, productName] 一覧。
+function productsForGeneration(generation) {
+  const seen = new Map();
+  cards.forEach((card) => {
+    if (!card.productId) return;
+    if (generation && card.generation !== generation) return;
+    if (!seen.has(card.productId)) seen.set(card.productId, card.productName || card.productId);
+  });
+  return [...seen.entries()];
+}
+
+// 製品ドロップダウンを現在の世代タブで絞って再構築。以前の選択が新世代に無ければ「すべて」へ。
+function populateProductFilter() {
+  const prev = elements.productFilter.value;
+  const opts = productsForGeneration(activeGeneration);
+  setOptions(elements.productFilter, [["", "すべての製品"], ...opts]);
+  elements.productFilter.value = opts.some(([id]) => id === prev) ? prev : "";
+}
+
+// 世代タブ（製品が増えても製品リストが長くなりすぎないよう、世代で先に絞る）。
+function renderGenerationTabs() {
+  const host = elements.generationTabs;
+  if (!host) return;
+  const gens = unique(cards.map((card) => card.generation).filter(Boolean));
+  if (gens.length <= 1) {
+    host.innerHTML = ""; // 1世代しか無いうちはタブを出さない
+    return;
+  }
+  host.innerHTML = "";
+  [["", "すべて"], ...gens.map((g) => [g, g])].forEach(([value, label]) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "generation-tab" + (value === activeGeneration ? " active" : "");
+    btn.textContent = label;
+    btn.setAttribute("aria-pressed", String(value === activeGeneration));
+    btn.addEventListener("click", () => {
+      activeGeneration = value;
+      populateProductFilter();
+      renderGenerationTabs();
+      renderSearchResults();
+    });
+    host.append(btn);
+  });
 }
 
 function populateDeckOptions() {
@@ -451,6 +494,8 @@ function filteredCards() {
   const world = elements.worldFilter.value;
   const productId = elements.productFilter.value;
   return cards
+    // 世代で絞る（フラッグは全世代共通なので常に通す）
+    .filter((card) => !activeGeneration || card.generation === activeGeneration || card.type === "flag")
     .filter((card) => !type || card.type === type)
     .filter((card) => !world || card.world === world)
     .filter((card) => !productId || card.productId === productId)
