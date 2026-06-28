@@ -116,6 +116,10 @@ function renderZones() {
       renderDropZone(zoneButton, player);
       return;
     }
+    if (zone === "setpile") {
+      renderSetPile(zoneButton, player);
+      return;
+    }
     if (zone === "item") {
       renderFlagItemZone(zoneButton, player);
       return;
@@ -138,6 +142,81 @@ function renderZones() {
 function renderDropZone(zoneButton, player) {
   zoneButton.textContent = `ドロップ ${player.drop.length}`;
   zoneButton.title = "クリックして中身を確認";
+}
+
+// 配置魔法は2スロットを1パイルに集約表示（複数設置に対応）。中身はタップ一覧で確認。
+function renderSetPile(zoneButton, player) {
+  const count = setZones.reduce((total, zone) => total + (player.field[zone] ? 1 : 0), 0);
+  zoneButton.textContent = count > 0 ? `配置魔法 ${count}` : "配置魔法";
+  zoneButton.classList.toggle("has-cards", count > 0);
+  zoneButton.title = "タップで配置魔法の一覧";
+}
+
+// 配置魔法の一覧（ドロップダイアログのDOMを流用）。自分の配置魔法は名前＋効果を表示しタップで使用、
+// 相手の伏せ配置魔法(faceDown)は「裏向き」で非公開・操作不可。
+function showSetSpellDialog(owner) {
+  const player = state.players[owner];
+  if (!player || !elements.dropDialog || !elements.dropDialogTitle || !elements.dropDialogList) {
+    return;
+  }
+  hideCardTooltip();
+  const entries = setZones
+    .map((zone) => ({ zone, card: player.field[zone] }))
+    .filter((entry) => entry.card);
+  elements.dropDialogTitle.textContent = `${player.name}の配置魔法（${entries.length}枚）`;
+  elements.dropDialogList.innerHTML = "";
+  if (entries.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "drop-dialog-empty";
+    empty.textContent = "なし";
+    elements.dropDialogList.append(empty);
+    if (!elements.dropDialog.open) {
+      elements.dropDialog.showModal();
+    }
+    return;
+  }
+  entries.forEach(({ zone, card }, index) => {
+    const item = document.createElement("li");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "drop-dialog-card";
+    if (card.faceDown) {
+      button.disabled = true;
+      button.innerHTML = `
+        <span class="drop-dialog-order">${index + 1}</span>
+        <span class="drop-dialog-name">（裏向きの配置魔法）</span>
+      `;
+    } else {
+      button.innerHTML = `
+        <span class="drop-dialog-order">${index + 1}</span>
+        <span class="drop-dialog-name">${escapeHtml(card.name)}<small class="set-effect">${escapeHtml(effectImplementationLabel(card))}</small></span>
+      `;
+      attachTooltip(button, card);
+      button.addEventListener("click", () => activateSetSpellFromPile(owner, zone, card));
+    }
+    item.append(button);
+    elements.dropDialogList.append(item);
+  });
+  if (!elements.dropDialog.open) {
+    elements.dropDialog.showModal();
+  }
+}
+
+// 一覧から配置魔法をタップ→選択/使用へ。thin client は globalThis.__onSetSpellActivate で fieldCardMenu に橋渡し。
+function activateSetSpellFromPile(owner, zone, card) {
+  if (elements.dropDialog?.open) {
+    elements.dropDialog.close();
+  }
+  if (typeof globalThis.__onSetSpellActivate === "function") {
+    globalThis.__onSetSpellActivate(owner, zone, card);
+    return;
+  }
+  const selected = selectFieldCard(owner, zone);
+  if (selected) {
+    openCardSheet();
+  } else {
+    openReadOnlyCardSheet(card);
+  }
 }
 
 function renderFlagItemZone(zoneButton, player) {

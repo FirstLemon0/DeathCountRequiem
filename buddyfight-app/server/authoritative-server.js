@@ -621,6 +621,8 @@ async function startGame(room) {
 }
 
 function serveStatic(req, res, url) {
+  // 権威サーバのクライアントは play.html（手札秘匿のシンクライアント）。
+  // ルート直打ち時は play.html を返す（netplay.html は中継版=netplay-server.js 用で /auth/* に繋がらない）。
   const requestPath = url.pathname === "/" ? "/play.html" : decodeURIComponent(url.pathname);
   const filePath = path.resolve(rootDir, `.${requestPath}`);
   if (filePath !== rootDir && !filePath.startsWith(rootDir + path.sep)) {

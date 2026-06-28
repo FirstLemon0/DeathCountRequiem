@@ -73,6 +73,13 @@ document.querySelectorAll(".drop-zone").forEach((zoneButton) => {
   });
 });
 
+// 配置魔法パイル: タップで一覧ダイアログ（自分の配置魔法は選択/使用、相手のは裏向き閲覧）。
+document.querySelectorAll(".set-pile").forEach((pile) => {
+  pile.addEventListener("click", () => {
+    showSetSpellDialog(Number(pile.dataset.owner));
+  });
+});
+
 document.querySelectorAll("[data-call-zone]").forEach((button) => {
   button.addEventListener("click", async () => {
     // バディコール（実コール）は不可逆なので確認を1枚挟む

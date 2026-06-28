@@ -494,6 +494,20 @@
     });
   });
 
+  // 配置魔法パイル: タップで一覧（engine の showSetSpellDialog を再利用）。
+  // 一覧から自分の配置魔法を使う時は fieldCardMenu へ橋渡し（src/12 の activateSetSpellFromPile が呼ぶ）。
+  window.__onSetSpellActivate = (owner, zone, card) => {
+    if (owner !== mySeat()) return; // 相手の配置魔法は裏向き非公開・操作不可（観戦も不可）
+    fieldCardMenu(owner, zone, card.instanceId);
+  };
+  document.querySelectorAll(".set-pile").forEach((pile) => {
+    pile.addEventListener("click", () => {
+      if (typeof showSetSpellDialog === "function") {
+        showSetSpellDialog(Number(pile.dataset.owner));
+      }
+    });
+  });
+
   // 相手本体（ファイター）クリック＝攻撃対象 fighter
   document.querySelectorAll(".fighter-panel[data-fighter-owner]").forEach((panel) => {
     panel.addEventListener("click", () => {

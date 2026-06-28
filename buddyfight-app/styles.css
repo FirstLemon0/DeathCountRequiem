@@ -499,14 +499,21 @@ h2 {
 .set-spell-cell {
   grid-column: span 1;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: 1fr;
 }
 
-.set-spell-zone {
+/* 配置魔法は1パイルに集約（ドロップ等と同じ）。タップで一覧ダイアログ。複数設置に対応。 */
+.set-pile {
   min-height: 122px;
+  display: grid;
+  place-items: center;
+  text-align: center;
   border-color: rgb(var(--c-impact-rgb) / 0.82);
   color: var(--muted);
+}
+.set-pile.has-cards {
+  color: var(--text);
+  font-weight: 700;
 }
 
 .flag-item-zone,
@@ -921,6 +928,16 @@ dialog::backdrop {
   min-width: 0;
   overflow-wrap: anywhere;
   font-weight: 800;
+}
+
+/* 配置魔法一覧: カード名の下に効果要約を表示（ドロップダイアログを流用）。 */
+.set-effect {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-2);
+  font-size: 0.78rem;
+  font-weight: 500;
+  overflow-wrap: anywhere;
 }
 
 .drop-dialog-type {
@@ -1384,7 +1401,8 @@ dialog.selection-board-peek .selection-dialog-actions {
   .zone,
   .flag-item-zone,
   .buddy-cell,
-  .deck-zone { min-height: 38px; }
+  .deck-zone,
+  .set-pile { min-height: 38px; }
   .board-grid .card { min-height: 38px; }
   .card {
     gap: 3px;
@@ -1393,9 +1411,9 @@ dialog.selection-board-peek .selection-dialog-actions {
   }
   /* 盤面の小カードは効果文を隠して高さ節約(詳細はタップ=B2で) */
   .board-grid .card .card-text { display: none; }
-  /* bug2: 狭い盤面セルで種別バッジ(flex:0 0 auto)が名前幅を奪い、overflow-wrap:anywhere で
-     カード名が1字ずつ縦積みになる不格好さを解消。種別は枠色＋タップ詳細で識別可。 */
-  .board-grid .card .card-kind { display: none; }
+  /* スマホでは種別バッジ(モンスター/魔法 等)を全カードで非表示。種別は枠色で識別でき、
+     バッジが名前領域を奪って見栄えを損なうため（盤面では名前の縦積みの主因でもある）。 */
+  .card-kind { display: none; }
   .board-grid .card .card-name {
     min-width: 0;
     overflow-wrap: normal;
