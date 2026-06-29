@@ -434,6 +434,21 @@ async function handleApi(req, res, url) {
     return true;
   }
 
+  // GET /auth/rooms/:id/sync?token=...  （SSE非依存のフォールバック取得。
+  // 逆プロキシ(Render等)でSSEがバッファ/切断され lobby/view が届かない環境でも、
+  // クライアントがポーリングで現在のロビー＋自分のviewを取得して同期できるようにする）。
+  if (req.method === "GET" && parts[3] === "sync") {
+    const member = memberByToken(room, url.searchParams.get("token"));
+    if (!member) {
+      sendJson(res, 403, { error: "invalid token" });
+      return true;
+    }
+    const lobby = { ...lobbyPayload(room, member), type: "lobby" };
+    const view = viewPayloadFor(room, member, "sync");
+    sendJson(res, 200, { lobby, view: view || null });
+    return true;
+  }
+
   // GET /auth/rooms/:id/events?token=...
   if (req.method === "GET" && parts[3] === "events") {
     const token = url.searchParams.get("token");

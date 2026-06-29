@@ -138,6 +138,30 @@
     es.addEventListener("message", (event) => handleMessage(JSON.parse(event.data)));
     // EventSource は自動再接続するので close せず待機（リロード/瞬断からの復帰）。
     es.addEventListener("error", () => setStatus("再接続中… 相手の操作/接続を待っています"));
+    refreshState(); // 接続直後にHTTPでも一度同期（SSE初回が逆プロキシにバッファされても表示が出る）
+    ensureSyncPoll();
+  }
+
+  // SSE非依存のフォールバック同期。逆プロキシ(Render等)でSSEのlobby/viewが届かない環境でも、
+  // /sync をHTTPで取得して現在のロビー＋自分のviewを反映する（役割・席・手札・相手の操作も復帰）。
+  async function refreshState() {
+    if (!session.roomId || !session.token) return;
+    try {
+      const data = await api(
+        `auth/rooms/${encodeURIComponent(session.roomId)}/sync?token=${encodeURIComponent(session.token)}`,
+      );
+      if (data.lobby) applyLobby(data.lobby);
+      if (data.view) handleMessage(data.view);
+    } catch { /* トークン失効等はSSE/復帰側で処理。ここは黙って次のポーリングに任せる */ }
+  }
+
+  // 3秒ごとのフォールバックポーリング（多重起動防止）。ターン制なので頻度はこれで十分。
+  let syncPollTimer = null;
+  function ensureSyncPoll() {
+    if (syncPollTimer) return;
+    syncPollTimer = setInterval(() => {
+      if (session.roomId && session.token) refreshState();
+    }, 3000);
   }
 
   function handleMessage(message) {
@@ -212,9 +236,12 @@
 
   // ---- ロビー操作 ----
   const lobbyAction = (action, extra = {}) =>
-    api(`auth/rooms/${encodeURIComponent(session.roomId)}/lobby`, { token: session.token, action, ...extra }).catch(
-      (error) => setStatus(error.message),
-    );
+    api(`auth/rooms/${encodeURIComponent(session.roomId)}/lobby`, { token: session.token, action, ...extra })
+      .then((result) => {
+        refreshState(); // 開始/席変更/デッキ確定の結果を即時反映（SSE待ちにしない）
+        return result;
+      })
+      .catch((error) => setStatus(error.message));
   const askName = () => window.prompt("プレイヤー名は？", "プレイヤー") || "プレイヤー";
 
   async function createOrJoin(kind) {
@@ -273,7 +300,8 @@
     setStatus("操作を送信中…（相手の応答が必要な場合は待機します）");
     try {
       await api(`auth/rooms/${encodeURIComponent(session.roomId)}/action`, { token: session.token, type, params: params || {} });
-      setStatus(""); // 完了（最新 view は SSE で届く）
+      setStatus(""); // 完了（最新 view は SSE＋フォールバック同期で届く）
+      refreshState(); // 自分の操作結果を即時反映（SSE待ちにしない）
     } catch (error) {
       setStatus(`操作不可: ${error.message}`);
     }
