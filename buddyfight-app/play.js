@@ -168,6 +168,12 @@
     if (message.type === "hello" || message.type === "lobby") {
       applyLobby(message);
     } else if (message.type === "view") {
+      // 局面が変わっていない再適用（3秒ポーリング等）では何もしない。
+      // applyView/clearSelection を毎回呼ぶと、操作ポップアップ(選択メニュー)が
+      // ポーリングのたびに閉じてしまうため、同一stateならスキップする。
+      const viewKey = JSON.stringify(message.state);
+      if (viewKey === ui.lastViewKey) return;
+      ui.lastViewKey = viewKey;
       session.started = true;
       saveSession();
       const seat = message.role === 0 || message.role === 1 ? message.role : null;
@@ -255,6 +261,7 @@
       const data = await api(pathname, { name: askName(), deck });
       Object.assign(session, { roomId: data.roomId, token: data.token, clientId: data.clientId, role: data.role });
       session.started = false;
+      ui.lastViewKey = null; // 別部屋へ入り直したら次のviewを必ず再適用する
       // 新しい部屋へ入り直す＝ロビーが主役。前局の game-started を解除しないとモバイルでロビーが隠れたまま。
       document.body.classList.remove("game-started");
       saveSession();
