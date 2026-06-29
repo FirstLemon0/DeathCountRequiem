@@ -508,7 +508,7 @@
     ui.targeting = false;
     const sel = ui.selected;
     showMenu([
-      { label: "攻撃（対象を選ぶ）", run: () => { ui.targeting = true; closeMenu(); setTargetingBanner("攻撃対象をタップ"); setStatus("攻撃対象（相手のカード/本体）をタップ"); } },
+      { label: "攻撃（対象を選ぶ）", run: () => { ui.targeting = true; closeMenu(); setTargetingBanner("攻撃対象をタップ（本体は相手の『装備』枠）"); setStatus("攻撃対象をタップ：相手モンスター、または本体は相手の『装備』枠をタップ"); } },
       { label: "連携に追加", run: () => sendAction("link", { selected: sel }) },
       { label: "使用（能力）", run: () => sendAction("use", { selected: sel }) },
       { label: "使用（効果対象を選ぶ）", run: () => startEffectTargeting(sel, "use") },
@@ -541,14 +541,46 @@
       ["プレイヤー", player.name],
       ["デッキ名", deckName],
       ["使用ワールド", world],
-      ["バディ", buddyName],
     ];
     body.innerHTML = rows.map(([label, value]) => `<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join("");
+    // バディ行: カードがあればクリックで詳細(read-onlyカードシート)を表示する。
+    const buddyRow = document.createElement("div");
+    const buddyDt = document.createElement("dt");
+    buddyDt.textContent = "バディ";
+    const buddyDd = document.createElement("dd");
+    if (player.buddy) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "buddy-detail-link";
+      btn.textContent = buddyName;
+      btn.title = "タップでバディの詳細を表示";
+      btn.style.cssText =
+        "background:none;border:none;padding:0;font:inherit;color:var(--accent,#7fd1ff);text-decoration:underline;cursor:pointer;text-align:left;";
+      btn.addEventListener("click", () => {
+        if (typeof openReadOnlyCardSheet === "function") openReadOnlyCardSheet(player.buddy);
+      });
+      buddyDd.append(btn);
+    } else {
+      buddyDd.textContent = "なし";
+    }
+    buddyRow.append(buddyDt, buddyDd);
+    body.append(buddyRow);
     const title = $("deckInfoTitle");
     if (title) title.textContent = `${player.name} のデッキ情報`;
     if (!dialog.open) dialog.showModal();
   }
   $("closeDeckInfoButton")?.addEventListener("click", () => $("deckInfoDialog")?.close());
+  // カード詳細シート(バディ詳細等)の閉じ配線。thinモードでは src/21 非thin側の配線が走らないため自前で。
+  $("closeCardSheetButton")?.addEventListener("click", () => {
+    if (typeof closeCardSheet === "function") closeCardSheet();
+    else $("cardSheet")?.close();
+  });
+  const cardSheetEl = $("cardSheet");
+  if (cardSheetEl) {
+    cardSheetEl.addEventListener("click", (event) => {
+      if (event.target === cardSheetEl) cardSheetEl.close(); // 背景タップで閉じる
+    });
+  }
 
   // 手札クリック（委譲）
   $("handList").addEventListener("click", (event) => {
@@ -587,7 +619,13 @@
         return;
       }
       if (ui.targeting && owner !== mySeat()) {
-        if (cardEl) {
+        // 相手の「装備」枠(武器装備枠)タップ＝本体(ファイター)への攻撃。
+        // 武器があればサーバ側で防御に回る。空でも本体攻撃として成立する（カード有無を問わない）。
+        if (zone === "item") {
+          sendAction("attack", { selected: ui.selected, attackTarget: "fighter" });
+          ui.targeting = false;
+          clearTargetingBanner();
+        } else if (cardEl) {
           sendAction("attack", { selected: ui.selected, attackTarget: zone });
           ui.targeting = false;
           clearTargetingBanner();
@@ -660,12 +698,14 @@
     }
   });
 
-  // ワールドタイル（ヘッダ）クリック→デッキ情報ポップアップ。攻撃/効果タップ中は対象選択を優先。
+  // ワールドタイル（ヘッダのデッキ詳細）クリック→デッキ情報ポップアップ。
+  // 対象選択中は「デッキ詳細タイルで本体攻撃」になってしまうのを防ぐため、攻撃へバブリングさせない。
+  // 本体(ファイター)への攻撃は相手の『装備』枠タップで行う。
   document.querySelectorAll(".partner-slot[data-owner]").forEach((cell) => {
     cell.addEventListener("click", (event) => {
       if (!session.started) return;
-      if (ui.targeting || ui.effectTargeting) return; // fighter-panel の攻撃対象選択にバブリングさせる
       event.stopPropagation();
+      if (ui.targeting || ui.effectTargeting) return; // 対象選択中はデッキ詳細を開かず、攻撃にもしない
       showDeckInfo(Number(cell.dataset.owner));
     });
   });
