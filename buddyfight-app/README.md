@@ -39,7 +39,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\server.ps1 -Port 4173
 node .\netplay-server.js --port 4173
 ```
 
-`http://127.0.0.1:4173/netplay.html` を開きます。LAN内の別PCから参加するときは `--host 0.0.0.0` を付け、ホストPCのIPアドレスにアクセスします。インターネット公開は Node.js 対応の公開サーバーへ配置して `npm start`（公開手順は `PUBLIC_DEPLOY.md`）。
+`http://127.0.0.1:4173/netplay.html` を開きます。LAN内の別PCから参加するときは `--host 0.0.0.0` を付け、ホストPCのIPアドレスにアクセスします。インターネット公開は Node.js 対応の公開サーバーへ配置して `npm run start:relay`（公開手順は `PUBLIC_DEPLOY.md`）。※既定の `npm start` は権威版（play.html）です。
 
 ### オンライン対戦・権威サーバ版（手札秘匿/観戦）★開発中
 

@@ -63,6 +63,6 @@ PORT=8080 AUTH_DATA_DIR=/var/lib/buddyfight-auth pm2 start "npm run start:auth"
 
 - ローカル: `npm run start:local` → `http://127.0.0.1:4173/netplay.html`
 - LAN: `npm run start:lan` → `http://<ホストPCのIP>:4173/netplay.html`
-- インターネット公開: Start command `npm start`、Health check `/healthz`。公開URLの `/netplay.html`。
+- インターネット公開: Start command `npm run start:relay`、Health check `/healthz`。公開URLの `/netplay.html`。（注: 既定の `npm start` は権威版＝play.html。中継版は明示的に `start:relay` を指定すること）
 
 中継版は盤面全体のスナップショット同期で、**競技用途の完全な手札秘匿ではありません**（DevToolsで相手手札が見える）。手札秘匿が要るなら上の権威サーバ版（`/play.html`）を使ってください。

@@ -17,6 +17,20 @@ function updateNetworkStatus(message) {
   }
 }
 
+// このページ(中継版 netplay.html)の中継API(api/rooms)に対し、接続先サーバが
+// 405/404 を返す＝中継サーバ(netplay-server.js)ではない(権威サーバや静的サーバ)場合の案内。
+// 権威サーバ版は play.html を開く必要がある（/auth/* しか持たないため api/rooms は通らない）。
+function isRelayApiUnavailableStatus(status) {
+  return status === 404 || status === 405 || status === 501;
+}
+
+function relayApiUnavailableMessage(status) {
+  return (
+    `接続失敗(HTTP ${status})。このページ「中継版 netplay.html」は中継サーバ(netplay-server.js)専用です。` +
+    `権威サーバ版で対戦するには play.html を開いてください。中継版を使う場合は netplay-server.js を起動してください。`
+  );
+}
+
 async function createNetworkRoom() {
   try {
     updateNetworkStatus("部屋を作成しています...");
@@ -25,11 +39,15 @@ async function createNetworkRoom() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ deckValues: currentDeckValues() }),
     });
-    const data = await response.json();
     if (!response.ok) {
+      if (isRelayApiUnavailableStatus(response.status)) {
+        updateNetworkStatus(relayApiUnavailableMessage(response.status));
+        return;
+      }
+      const data = await response.json().catch(() => ({}));
       throw new Error(data.error || "部屋を作成できませんでした。");
     }
-    startNetworkSession(data);
+    startNetworkSession(await response.json());
   } catch (error) {
     updateNetworkStatus(`接続失敗: ${error.message}`);
   }
@@ -48,11 +66,15 @@ async function joinNetworkRoom() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ deckValues: currentDeckValues() }),
     });
-    const data = await response.json();
     if (!response.ok) {
+      if (isRelayApiUnavailableStatus(response.status)) {
+        updateNetworkStatus(relayApiUnavailableMessage(response.status));
+        return;
+      }
+      const data = await response.json().catch(() => ({}));
       throw new Error(data.error || "部屋に参加できませんでした。");
     }
-    startNetworkSession(data);
+    startNetworkSession(await response.json());
   } catch (error) {
     updateNetworkStatus(`接続失敗: ${error.message}`);
   }
