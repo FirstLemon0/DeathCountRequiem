@@ -444,21 +444,26 @@ async function handleApi(req, res, url) {
     }
     res.writeHead(200, {
       "Content-Type": "text/event-stream; charset=utf-8",
-      "Cache-Control": "no-cache",
+      "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
       "X-Accel-Buffering": "no",
     });
+    res.flushHeaders?.();
+    // 逆プロキシ/CDN(Render等)はSSEの最初の数KBをバッファして即時flushしないことがある。
+    // 大きめの初回コメント(パディング)を流してバッファ閾値を超えさせ、hello/view を即届かせる。
+    res.write(`:${" ".repeat(2048)}\n\n`);
     member.sse = res;
     room.updatedAt = Date.now();
-    // キープアライブ: アイドルSSEはモバイル回線/逆プロキシ(fly.io等)に切られやすいので
-    // 20秒ごとにコメント行を送る（EventSource は無視。再接続の頻発を抑止）。
+    // キープアライブ: アイドルSSEはモバイル回線/逆プロキシ(Render/fly.io等)に切られやすく、
+    // バッファ環境では view 等の単発メッセージが次の書き込みまで届かないため、15秒ごとにコメント行を送る
+    // （EventSource は無視。再接続の頻発を抑止＋バッファflushを促す）。
     const heartbeat = setInterval(() => {
       try {
         res.write(": ping\n\n");
       } catch {
         clearInterval(heartbeat);
       }
-    }, 20000);
+    }, 15000);
     // hello: 現在のロビー＋（開始済みなら）自分のview（type は最後に置いて上書き防止）
     writeSse(res, { ...lobbyPayload(room, member), type: "hello" });
     const view = viewPayloadFor(room, member, "現局面");

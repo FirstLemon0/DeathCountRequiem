@@ -169,10 +169,13 @@ async function handleApi(req, res, url) {
     }
     res.writeHead(200, {
       "Content-Type": "text/event-stream; charset=utf-8",
-      "Cache-Control": "no-cache",
+      "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
       "X-Accel-Buffering": "no",
     });
+    res.flushHeaders?.();
+    // 逆プロキシ/CDN(Render等)のSSEバッファ対策: 初回に大きめのコメントを流して即flushさせる。
+    res.write(`:${" ".repeat(2048)}\n\n`);
     room.clients.add(res);
     room.updatedAt = Date.now();
     writeSse(res, {
