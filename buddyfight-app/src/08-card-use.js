@@ -128,10 +128,15 @@ async function equipItem(selectedCard) {
     return;
   }
   const card = removeSelectedFromHand();
-  await equipCardDirect(player, card);
-  state.selected = null;
-  state.phase = "main";
-  state.linkAttackers = [];
+  // 装備も対抗確認を挟む（コール/呪文/起動能力と同様）。相手が対抗を使わなければ解決で装備が確定。
+  beginPendingAction({
+    kind: "equip",
+    owner: state.active,
+    responder: 1 - state.active,
+    card,
+    phase: state.phase,
+  });
+  addLog(`${player.name}は${card.name}の装備を宣言しました。対抗確認を行ってください。`);
   render();
 }
 

@@ -1913,3 +1913,15 @@ body.targeting-active .targeting-banner {
   background: rgb(var(--panel-rgb) / 0.6);
   font-size: 0.85rem;
 }
+
+/* 攻撃対象選択中のハイライト: 攻撃可能な相手の対象（モンスターのいるエリア／センター空時は本体＝装備枠）を強調。 */
+.attack-target-highlight {
+  outline: 3px solid #ff5d6c;
+  outline-offset: -3px;
+  box-shadow: 0 0 0 2px rgba(255, 93, 108, 0.35), 0 0 16px rgba(255, 93, 108, 0.5);
+  animation: attackTargetPulse 1.1s ease-in-out infinite;
+}
+@keyframes attackTargetPulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(255, 93, 108, 0.30), 0 0 10px rgba(255, 93, 108, 0.40); }
+  50% { box-shadow: 0 0 0 2px rgba(255, 93, 108, 0.55), 0 0 22px rgba(255, 93, 108, 0.78); }
+}

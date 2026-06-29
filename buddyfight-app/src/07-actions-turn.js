@@ -476,9 +476,22 @@ async function resolvePendingAction() {
   if (action.kind === "setSpell") {
     await resolvePendingSetSpell(action);
   }
+  if (action.kind === "equip") {
+    await resolvePendingEquip(action);
+  }
   if (action.kind === "ability") {
     await resolvePendingAbility(action);
   }
+}
+
+async function resolvePendingEquip(action) {
+  const player = state.players[action.owner];
+  if (action.nullified) {
+    player.drop.push(action.card);
+    addLog(`${action.card.name}の装備は無効化され、ドロップゾーンに置かれました。`);
+    return;
+  }
+  await equipCardDirect(player, action.card);
 }
 
 async function resolvePendingSpell(action) {
@@ -573,6 +586,9 @@ function pendingActionLabel(action = state.pendingAction) {
   }
   if (action.kind === "ability") {
     return `${action.card.name}の能力`;
+  }
+  if (action.kind === "equip") {
+    return `${action.card.name}の装備`;
   }
   return `${action.card.name}の使用`;
 }

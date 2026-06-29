@@ -180,6 +180,7 @@
       thin?.setViewerSeat?.(seat);
       clearSelection();
       thin?.applyView?.(message.state);
+      updateAttackHighlights(); // 盤面再描画後もハイライト状態を反映（対象選択中なら付け直す）
       document.body.classList.add("game-started");
       $("lobbySeatLabel").textContent = `役割: ${roleLabel(message.role)}`;
       // 初回ガイド(コーチ)を開戦時に一度だけ。
@@ -508,7 +509,7 @@
     ui.targeting = false;
     const sel = ui.selected;
     showMenu([
-      { label: "攻撃（対象を選ぶ）", run: () => { ui.targeting = true; closeMenu(); setTargetingBanner("攻撃対象をタップ（本体は相手の『装備』枠）"); setStatus("攻撃対象をタップ：相手モンスター、または本体は相手の『装備』枠をタップ"); } },
+      { label: "攻撃（対象を選ぶ）", run: () => { ui.targeting = true; closeMenu(); setTargetingBanner("攻撃対象をタップ（本体は相手の『装備』枠）"); setStatus("攻撃対象をタップ：相手モンスター、または本体は相手の『装備』枠をタップ"); updateAttackHighlights(); } },
       { label: "連携に追加", run: () => sendAction("link", { selected: sel }) },
       { label: "使用（能力）", run: () => sendAction("use", { selected: sel }) },
       { label: "使用（効果対象を選ぶ）", run: () => startEffectTargeting(sel, "use") },
@@ -598,6 +599,30 @@
     handCardMenu(card.dataset.instanceId);
   });
 
+  // 攻撃対象選択中、攻撃可能な相手の対象をハイライトする。
+  // ・相手モンスターのいるエリア(左/中/右)をハイライト。
+  // ・相手センターが空なら本体＝相手の『装備』枠をハイライト。
+  function updateAttackHighlights() {
+    document.querySelectorAll(".attack-target-highlight").forEach((el) => el.classList.remove("attack-target-highlight"));
+    if (!ui.targeting) return;
+    const opp = 1 - mySeat();
+    if (opp !== 0 && opp !== 1) return;
+    let centerHasMonster = false;
+    document.querySelectorAll(`.zone.field[data-owner="${opp}"]`).forEach((z) => {
+      const zone = z.dataset.zone;
+      if (zone === "left" || zone === "center" || zone === "right") {
+        if (z.querySelector(".card[data-instance-id]")) {
+          z.classList.add("attack-target-highlight");
+          if (zone === "center") centerHasMonster = true;
+        }
+      }
+    });
+    if (!centerHasMonster) {
+      const itemZone = document.querySelector(`.zone.field.item[data-owner="${opp}"][data-zone="item"]`);
+      if (itemZone) itemZone.classList.add("attack-target-highlight");
+    }
+  }
+
   // 盤面ゾーンクリック（自分=選択 / 相手=攻撃対象）
   document.querySelectorAll(".zone.field").forEach((zoneButton) => {
     zoneButton.addEventListener("click", () => {
@@ -625,10 +650,12 @@
           sendAction("attack", { selected: ui.selected, attackTarget: "fighter" });
           ui.targeting = false;
           clearTargetingBanner();
+          updateAttackHighlights();
         } else if (cardEl) {
           sendAction("attack", { selected: ui.selected, attackTarget: zone });
           ui.targeting = false;
           clearTargetingBanner();
+          updateAttackHighlights();
         }
         return;
       }
@@ -665,6 +692,7 @@
         sendAction("attack", { selected: ui.selected, attackTarget: "fighter" });
         ui.targeting = false;
         clearTargetingBanner();
+        updateAttackHighlights();
       }
     });
   });
@@ -674,6 +702,7 @@
     ui.targeting = false;
     ui.effectTargeting = null;
     clearTargetingBanner();
+    updateAttackHighlights();
     setStatus("対象選択をキャンセルしました");
   });
 
