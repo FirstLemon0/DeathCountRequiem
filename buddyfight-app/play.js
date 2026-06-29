@@ -328,9 +328,25 @@
   }
   function closeMenu() {
     document.getElementById("playActionMenu")?.remove();
+    document.getElementById("playActionBackdrop")?.remove();
+  }
+  // 操作ポップアップの背後にクリック遮断バックドロップを敷く。
+  // これが無いと、ポップアップ表示中に背後の盤面/手札カードへタップが貫通し、
+  // 別カードの詳細/メニューに塗り替わってしまう。onBackdrop指定時は背景タップで閉じる。
+  function mountActionMenu(menu, onBackdrop) {
+    closeMenu();
+    const backdrop = document.createElement("div");
+    backdrop.id = "playActionBackdrop";
+    backdrop.style.cssText =
+      "position:fixed;inset:0;z-index:199;background:rgba(0,0,0,.28);pointer-events:auto;touch-action:none;";
+    backdrop.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (typeof onBackdrop === "function") onBackdrop();
+    });
+    document.body.append(backdrop);
+    document.body.append(menu);
   }
   function showMenu(items) {
-    closeMenu();
     const menu = document.createElement("div");
     menu.id = "playActionMenu";
     menu.style.cssText =
@@ -350,7 +366,8 @@
     close.style.cssText = "min-height:40px;padding:6px 12px;";
     close.addEventListener("click", clearSelection);
     menu.append(close);
-    document.body.append(menu);
+    // 背景タップ＝操作ポップアップを閉じる（カードシート等と挙動統一・誤タップ貫通を防止）。
+    mountActionMenu(menu, clearSelection);
   }
 
   // ---- プロンプト往復（カード選択ダイアログ）モーダル ----
@@ -445,7 +462,8 @@
       cancel.addEventListener("click", () => sendPromptResponse(req.requestId, {}));
       menu.append(cancel);
     }
-    document.body.append(menu);
+    // 背後への貫通タップを遮断。キャンセル可なら背景タップで空応答、不可なら遮断のみ（誤キャンセル防止）。
+    mountActionMenu(menu, allowCancel ? () => sendPromptResponse(req.requestId, {}) : undefined);
   }
 
   async function sendPromptResponse(requestId, response) {
