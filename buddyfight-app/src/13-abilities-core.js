@@ -813,6 +813,19 @@ function checkCondition(condition, owner, context = {}) {
   if (condition.op === "ownItemStanding") {
     return Boolean(player.field.item && !player.field.item.used);
   }
+  if (condition.op === "ownItemSoulCountGte") {
+    // 君のアイテム（filter/attribute一致、既定は装備中アイテム）のソウル枚数が amount 以上か。
+    // 例: アーマナイト・イブリース「君の《武器》のソウルが３枚以上なら貫通」。
+    const amount = condition.amount ?? 1;
+    const filter = condition.filter || (condition.attribute ? { attribute: condition.attribute } : {});
+    const item = player.field.item;
+    return Boolean(item && effectiveCardType(item) === "item" && matchesCardFilter(item, filter) && (item.soul?.length || 0) >= amount);
+  }
+  if (condition.op === "buddyCalled") {
+    // 君がバディをコール済みか。バディゾーンのカードを【レスト】にする＝バディコール済みの印であり、
+    // 本アプリではバディコール宣言時に立つ player.partnerCalled がそのフラグ（src/07 で設定）。
+    return Boolean(player.partnerCalled);
+  }
   return true;
 }
 

@@ -87,13 +87,20 @@ async function executeAbilityEffect(effect, context) {
     return;
   }
   if (effect.op === "draw") {
-    drawCards(player, effect.amount || 1);
+    const drew = drawCards(player, effect.amount || 1);
+    if (drew !== 0 || effect.amount) {
+      await runFieldEventTriggers("drawByEffect", state.players.indexOf(player));
+    }
   }
   if (effect.op === "drawUpToHand") {
     // 手札が effect.amount 枚になるように引く（既に同数以上なら引かない）。
     // 例: ドラゴニック・ディレクティブ「手札が２枚以下なら３枚になるように引く」。
     const targetHand = effect.amount || 0;
-    drawCards(player, Math.max(0, targetHand - player.hand.length));
+    const toDraw = Math.max(0, targetHand - player.hand.length);
+    drawCards(player, toDraw);
+    if (toDraw > 0) {
+      await runFieldEventTriggers("drawByEffect", state.players.indexOf(player));
+    }
   }
   if (effect.op === "putTopDeckToGauge") {
     const receiver = effect.player === "opponent" ? opponent : player;
@@ -201,7 +208,15 @@ async function executeAbilityEffect(effect, context) {
   }
   if (effect.op === "dealDamage") {
     const receiver = effect.player === "self" ? player : opponent;
-    const amount = effect.amountFrom ? resolveAmountFrom(effect.amountFrom, context) : effect.amount || 1;
+    let amount = effect.amountFrom ? resolveAmountFrom(effect.amountFrom, context) : effect.amount || 1;
+    // 霊撃ブースト: バイオレンス・ファミリア等で立てた turn ボーナスを、霊撃(=event destroyByAttack の dealDamage)に加算。
+    if (
+      receiver === opponent &&
+      (context.ability?.event === "destroyByAttack" || effect.spiritStrike) &&
+      state.spiritStrikeDamageBonus?.[context.owner]
+    ) {
+      amount += state.spiritStrikeDamageBonus[context.owner];
+    }
     applyDamageToPlayer(state.players.indexOf(receiver), amount, {
       sourceName: context.card?.name,
       ignorePrevention: Boolean(effect.ignorePrevention),
@@ -683,6 +698,82 @@ async function executeAbilityEffect(effect, context) {
         targetCard.turnSuppressedKeywords.push(effect.keyword);
       }
       addLog(`${context.card?.name || "効果"}で${targetCard.name}の『${effect.keyword}』をそのターン無効化しました。`);
+    }
+  }
+  if (effect.op === "suppressKeywordAll") {
+    // controller の場のカード全て（filter一致）の指定キーワードをそのターン無効化する。
+    // 例: エンタングル・ローパー「相手の場のカード全ての貫通を無効化」。
+    const targetOwner = effect.controller === "opponent" ? 1 - context.owner : context.owner;
+    const targetPlayer = state.players[targetOwner];
+    zones.forEach((zone) => {
+      const fieldCard = targetPlayer?.field?.[zone];
+      if (!fieldCard) {
+        return;
+      }
+      if (effect.filter && !matchesCardFilter(fieldCard, effect.filter)) {
+        return;
+      }
+      fieldCard.turnSuppressedKeywords = fieldCard.turnSuppressedKeywords || [];
+      if (!fieldCard.turnSuppressedKeywords.includes(effect.keyword)) {
+        fieldCard.turnSuppressedKeywords.push(effect.keyword);
+      }
+    });
+    addLog(`${context.card?.name || "効果"}で${targetOwner === context.owner ? "君" : "相手"}の場全ての『${effect.label || effect.keyword}』をそのターン無効化しました。`);
+  }
+  if (effect.op === "preventAttackDamageThisTurn") {
+    // そのターン中、君が攻撃によって受けるダメージを0にする（拳士の覚悟 グラップルソウル）。
+    // onlyAttack=攻撃ダメージ限定、once:false=ターン中持続（turn-end で untilTurnOwner により消える）。
+    addNextDamagePrevention(context.owner, {
+      preventAll: true,
+      once: false,
+      onlyAttack: true,
+      source: context.card?.name,
+      sourceCard: context.card,
+    });
+    addLog(`${context.card?.name || "効果"}で、そのターン中に攻撃で受けるダメージを0にします。`);
+  }
+  if (effect.op === "boostSpiritStrikeDamage") {
+    // そのターン中、“霊撃”（event:"destroyByAttack" の dealDamage）で相手に与えるダメージを +amount。
+    state.spiritStrikeDamageBonus ||= [0, 0];
+    state.spiritStrikeDamageBonus[context.owner] += effect.amount || 1;
+    addLog(`${context.card?.name || "効果"}で、そのターン中の“霊撃”ダメージを+${effect.amount || 1}します。`);
+  }
+  if (effect.op === "rockPaperScissorsBestOfThree") {
+    // 相手と rounds 回（アイコは数えない）ジャンケンし、勝った数 × drawPerWin 枚ドロー。
+    // rounds 回全敗なら相手が opponentDrawOnSweep 枚ドロー（審判アスモダイの超公平３回勝負）。
+    const rounds = effect.rounds || 3;
+    let wins = 0;
+    let losses = 0;
+    let decided = 0;
+    let safety = 0;
+    while (decided < rounds && safety < 50) {
+      safety += 1;
+      const result = await resolveRockPaperScissors(context);
+      if (result === "cancelled") {
+        break;
+      }
+      if (result === "win") {
+        wins += 1;
+        decided += 1;
+      } else if (result === "lose") {
+        losses += 1;
+        decided += 1;
+      }
+      // draw はアイコ=数えず再戦
+    }
+    const selfDraw = wins * (effect.drawPerWin || 1);
+    if (selfDraw > 0) {
+      drawCards(player, selfDraw);
+      addLog(`${context.card?.name || "効果"}: ${player.name}はジャンケンに${wins}勝し、${selfDraw}枚引きました。`);
+      await runFieldEventTriggers("drawByEffect", context.owner);
+    }
+    if (losses >= rounds) {
+      const sweep = effect.opponentDrawOnSweep || 0;
+      if (sweep > 0) {
+        drawCards(opponent, sweep);
+        addLog(`${context.card?.name || "効果"}: ${player.name}は${rounds}回負け、${opponent.name}は${sweep}枚引きました。`);
+        await runFieldEventTriggers("drawByEffect", 1 - context.owner);
+      }
     }
   }
   if (effect.op === "putTargetToGauge" && target?.card) {

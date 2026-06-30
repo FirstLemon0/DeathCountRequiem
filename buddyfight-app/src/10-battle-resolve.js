@@ -268,7 +268,7 @@ async function resolveFighterAttack(pending, attackers, attackerNames) {
       damage = cap;
     }
   }
-  const damageOptions = { log: false };
+  const damageOptions = { log: false, byAttack: true };
   if (state.pendingAttack?.damageCannotBeReduced) {
     damageOptions.ignorePrevention = true; // 「そのダメージは減らない」(ドラム・ザ・フューチャー等)
   }

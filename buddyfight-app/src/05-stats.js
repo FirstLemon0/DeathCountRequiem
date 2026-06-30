@@ -134,7 +134,36 @@ function continuousDropStatAmount(effect, statKey, player) {
   return capped * per;
 }
 
-// 場・ソウルの継続 modifyStats（定数 by と amountFrom:dropAttributeCount）から statKey の合計補正値を算出。
+// 継続 modifyStats の amountFrom:{source:"soulCount"|"soulStatSum"} 分を算出（sourceCard 自身のソウル参照）。
+// - soulCount: filter一致のソウル枚数 × per[statKey]（max で上限）。例: アーマナイト・アークエンジェル「ソウル1枚につき攻撃力+3000」。
+// - soulStatSum: filter一致のソウルの stat 合計を applyTo の各statに加算。例: デンジャラス・クレイドル「打撃力はソウルの《武器》の打撃力合計分」。
+function continuousSoulStatAmount(effect, statKey, sourceCard) {
+  if (effect.op !== "modifyStats" || !effect.amountFrom) {
+    return 0;
+  }
+  const af = effect.amountFrom;
+  const soul = sourceCard?.soul || [];
+  const matched = af.filter ? soul.filter((s) => matchesCardFilter(s, af.filter)) : soul;
+  if (af.source === "soulCount") {
+    const per = af.per?.[statKey] ?? 0;
+    if (!per) {
+      return 0;
+    }
+    const count = af.max !== undefined ? Math.min(matched.length, af.max) : matched.length;
+    return count * per;
+  }
+  if (af.source === "soulStatSum") {
+    const applyTo = af.applyTo || (af.stat ? [af.stat] : []);
+    if (!applyTo.includes(statKey)) {
+      return 0;
+    }
+    const statName = af.stat || statKey;
+    return matched.reduce((sum, s) => sum + (s[statName] || 0), 0);
+  }
+  return 0;
+}
+
+// 場・ソウルの継続 modifyStats（定数 by と amountFrom:dropAttributeCount/soulCount/soulStatSum）から statKey の合計補正値を算出。
 function continuousStatBonus(card, statKey) {
   const slot = findFieldCardSlot(card);
   if (!slot) {
@@ -152,6 +181,7 @@ function continuousStatBonus(card, statKey) {
         bonus += effect[statKey] || 0;
       }
       bonus += continuousDropStatAmount(effect, statKey, player);
+      bonus += continuousSoulStatAmount(effect, statKey, sourceCard);
     });
   });
   // 相手側からの越境継続（opposingFront / controller:"opponent" の明示デバフ）も評価する。
@@ -171,6 +201,7 @@ function continuousStatBonus(card, statKey) {
         bonus += effect[statKey] || 0;
       }
       bonus += continuousDropStatAmount(effect, statKey, state.players[crossOwner]);
+      bonus += continuousSoulStatAmount(effect, statKey, sourceCard);
     });
   });
   soulContinuousEffects(card, slot.owner).forEach(({ effect, sourceCard }) => {

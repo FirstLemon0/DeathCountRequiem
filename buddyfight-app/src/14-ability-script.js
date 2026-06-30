@@ -326,6 +326,27 @@ async function executeAbilityScriptStep(step, context) {
   if (step.op === "declareCardName") {
     return declareCardNameForScript(step, context);
   }
+  if (step.op === "standSelected") {
+    return standSelectedForScript(step, context);
+  }
+  if (step.op === "ifSelectionMatches") {
+    return ifSelectionMatchesForScript(step, context);
+  }
+  if (step.op === "moveSelectedToSelectedSoul") {
+    return moveSelectedToSelectedSoulForScript(step, context);
+  }
+  if (step.op === "putTopDeckToSelectedSoul") {
+    return putTopDeckToSelectedSoulForScript(step, context);
+  }
+  if (step.op === "moveSoulToGauge") {
+    return moveSoulToGaugeForScript(step, context);
+  }
+  if (step.op === "moveSelfToSelectedSoul") {
+    return moveSelfToSelectedSoulForScript(step, context);
+  }
+  if (step.op === "putSelfToGauge") {
+    return putSelfToGaugeForScript(step, context);
+  }
   if (step.op === "stopUnlessMovedToDropMatches") {
     return stopUnlessMovedToDropMatchesForScript(step, context);
   }
@@ -495,6 +516,13 @@ function scriptCardMatches(card, owner, zone, step, context) {
   }
   if (!matchesCardFilter(card, step.filter || {})) {
     return false;
+  }
+  // filter.sameNameAsVar: 先に選んだ別の選択(var)のカードと同じカード名のみ（爆裂魔神丸の術等）。
+  if (step.filter?.sameNameAsVar) {
+    const refName = scriptSelection({ var: step.filter.sameNameAsVar }, context)[0]?.card?.name;
+    if (!refName || card.name !== refName) {
+      return false;
+    }
   }
   if (step.callable && !isCallableMonster(card)) {
     return false;
@@ -1029,6 +1057,134 @@ function moveSoulToDropForScript(step, context) {
   context.movedToDrop.push(...movedCards);
   if (movedCards.length > 0 && step.log !== false) {
     addLog(`${context.card.name}のソウルを全てドロップゾーンに置きました。`);
+  }
+  return true;
+}
+
+// 発生源カードのソウルを全て持ち主のゲージに置く（THE チームワーク「残りのソウル全てをゲージに置く」）。
+function moveSoulToGaugeForScript(step, context) {
+  const movedCards = context.card?.soul?.splice(0) || [];
+  context.player.gauge.push(...movedCards);
+  if (movedCards.length > 0 && step.log !== false) {
+    addLog(`${context.card.name}のソウルを全てゲージに置きました。`);
+  }
+  return true;
+}
+
+// 選択(var)した場のカードを【スタンド】する（used=false）。restSelected の対。
+function standSelectedForScript(step, context) {
+  for (const entry of scriptSelection(step, context)) {
+    if (!entry.card) {
+      continue;
+    }
+    const slot = findFieldCardSlot(entry.card);
+    if (slot) {
+      const live = state.players[slot.owner].field[slot.zone];
+      if (live) {
+        live.used = false;
+        if (step.log !== false) {
+          addLog(`${live.name}を【スタンド】しました。`);
+        }
+      }
+    }
+  }
+  return true;
+}
+
+// 選択(var)したカードが filter に一致するかで then/else を分岐する（『変身』しているなら等）。
+async function ifSelectionMatchesForScript(step, context) {
+  const selected = scriptSelection(step, context);
+  const matches = selected.some((entry) => entry.card && matchesCardFilter(entry.card, step.filter || {}));
+  const branch = matches ? step.then : step.else;
+  if (!Array.isArray(branch) || branch.length === 0) {
+    return true;
+  }
+  return executeAbilityScript(branch, context);
+}
+
+// 選択(var)したカード群を、別の選択(soulOfVar)した場のカードのソウルに入れる。
+function moveSelectedToSelectedSoulForScript(step, context) {
+  const host = scriptSelection({ var: step.soulOfVar }, context)[0]?.card;
+  if (!host) {
+    addLog(step.emptyMessage || `${context.card.name}でソウルの行き先がありません。`);
+    return step.require === false ? true : { ok: false, reason: "no_soul_host" };
+  }
+  const movedEntries = takeScriptSelectionCards(scriptSelection(step, context));
+  host.soul ||= [];
+  movedEntries.forEach((entry) => host.soul.push(entry.card));
+  if (movedEntries.length > 0 && step.log !== false) {
+    addLog(`${movedEntries.map((entry) => entry.card.name).join("、")}を${host.name}のソウルに入れました。`);
+  }
+  return true;
+}
+
+// デッキの上から amount 枚を、選択(var)した場のカードのソウルに（裏向きで）入れる。
+function putTopDeckToSelectedSoulForScript(step, context) {
+  const host = scriptSelection(step, context)[0]?.card;
+  if (!host) {
+    return step.require === false ? true : { ok: false, reason: "no_soul_host" };
+  }
+  const player = state.players[step.controller === "opponent" ? 1 - context.owner : context.owner];
+  const amount = step.amount || 1;
+  host.soul ||= [];
+  let moved = 0;
+  for (let index = 0; index < amount; index += 1) {
+    const card = player.deck.pop();
+    if (card) {
+      host.soul.push(card);
+      moved += 1;
+    }
+  }
+  if (moved > 0 && step.log !== false) {
+    addLog(`デッキの上から${moved}枚を${host.name}のソウルに入れました。`);
+  }
+  if (player.deck.length === 0) {
+    declareDeckLoss(player);
+  }
+  return true;
+}
+
+// 発生源カード自身を取り出す（必殺技/呪文は解決前にドロップへ置かれているため drop から、設置等は場から）。
+function takeSelfFromDropOrField(context) {
+  const player = context.player;
+  const dropIndex = player.drop.findIndex((c) => c.instanceId === context.card.instanceId);
+  if (dropIndex >= 0) {
+    return player.drop.splice(dropIndex, 1)[0];
+  }
+  const slot = findFieldCardSlot(context.card);
+  if (slot) {
+    return detachFieldCardForMove(slot.owner, slot.zone, context.card);
+  }
+  return null;
+}
+
+// このカード自身を持ち主のゲージに置く（暗黒葬「このカードをゲージに置く」等）。
+function putSelfToGaugeForScript(step, context) {
+  const card = takeSelfFromDropOrField(context);
+  if (!card) {
+    return true;
+  }
+  context.player.gauge.push(card);
+  if (step.log !== false) {
+    addLog(`${card.name}をゲージに置きました。`);
+  }
+  return true;
+}
+
+// このカード自身を、選択(var)した場のモンスターのソウルに入れる。
+function moveSelfToSelectedSoulForScript(step, context) {
+  const host = scriptSelection(step, context)[0]?.card;
+  if (!host) {
+    return step.require === false ? true : { ok: false, reason: "no_soul_host" };
+  }
+  const card = takeSelfFromDropOrField(context);
+  if (!card) {
+    return true;
+  }
+  host.soul ||= [];
+  host.soul.push(card);
+  if (step.log !== false) {
+    addLog(`${card.name}を${host.name}のソウルに入れました。`);
   }
   return true;
 }

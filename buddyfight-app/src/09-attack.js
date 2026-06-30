@@ -301,6 +301,17 @@ async function runAttackDeclarationTriggers(attackers) {
     state.players[target.owner].drop.push(soulCard);
     addLog(`${attacker.card.name}の効果で${current.name}のソウルから${soulCard.name}をドロップゾーンに置きました。`);
   }
+  // 連携攻撃（attackers が2枚以上）なら、攻撃側のフィールドイベント allyLinkAttack を発火する。
+  // 攻撃カード自身でなく場全体（設置魔法など）へ届く「味方が連携攻撃した時」（THE チームワーク等）。
+  if (attackers.length > 1) {
+    const linkOwner = attackers[0]?.owner;
+    if (linkOwner !== undefined && linkOwner !== null) {
+      await runFieldEventTriggers("linkAttack", linkOwner, attackers[0].card, attackers[0].zone, {
+        attackers,
+        attack: state.pendingAttack,
+      });
+    }
+  }
 }
 
 // この attackTax エントリが、現在の攻撃宣言に対して発火するかを判定する（誰の・どの攻撃に・何を対象に）。

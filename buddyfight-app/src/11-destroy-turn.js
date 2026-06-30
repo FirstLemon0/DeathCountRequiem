@@ -192,6 +192,10 @@ async function destroyFieldCard(owner, zone, options = {}) {
     // 置換が成立した場合、カードは破壊されていない（破壊数・破壊時誘発・貫通判定に数えない）
     return null;
   }
+  if (!options.ignoreDestroyReplacement && (await applyAllyDestroyReplacement(card, owner, options))) {
+    // 味方を庇う置換（別カードを犠牲にして card を場に残す）が成立した。
+    return null;
+  }
   if (!options.ignoreDestroyReplacement && card.preventNextDestroyCount > 0) {
     card.preventNextDestroyCount -= 1;
     const replacement = card.preventNextDestroyEffects?.shift();
@@ -238,6 +242,48 @@ async function destroyFieldCard(owner, zone, options = {}) {
   queueDestroyedTriggers(card, owner, zone);
   queueAllyDestroyedTriggers(card, owner, zone);
   return card;
+}
+
+// 味方を庇う破壊置換: 場の別カード(replacer)が allyDestroyReplacement を持ち、破壊されようとする card が
+// その filter / from(原因) に一致するなら、replacer のコスト(既定 dropSource=自身をドロップ)を払って card を場に残す。
+// 例: ドラゴントゥース・ウォリアー「君の場のサイズ３のモンスターが破壊される場合、このカードをドロップに置いてよい。置いたら場に残す」。
+async function applyAllyDestroyReplacement(card, owner, options = {}) {
+  if (options.ignoreDestroyReplacement) {
+    return false;
+  }
+  const player = state.players[owner];
+  for (const zone of zones) {
+    const replacer = player.field[zone];
+    if (!replacer || replacer.instanceId === card.instanceId) {
+      continue;
+    }
+    const rule = replacer.allyDestroyReplacement;
+    if (!rule) {
+      continue;
+    }
+    if (rule.filter && !matchesCardFilter(card, rule.filter)) {
+      continue;
+    }
+    if (rule.from) {
+      if (rule.from.byBattle && !options.cause?.byBattle) continue;
+      if (rule.from.byEffect && !options.cause?.byEffect) continue;
+      if (rule.from.byOpponent && !options.cause?.byOpponent) continue;
+    }
+    const cost = rule.cost || [{ op: "dropSource" }];
+    if (!canPayStructuredCost(player, cost, { sourceCard: replacer, selectedCard: replacer }).ok) {
+      continue;
+    }
+    if (rule.optional && !(await confirmChoiceAsync(owner, `${replacer.name}を置いて${card.name}を場に残しますか？`))) {
+      continue;
+    }
+    const payment = payStructuredCost(player, cost, { sourceCard: replacer, selectedCard: replacer });
+    if (!payment.ok) {
+      continue;
+    }
+    addLog(`${replacer.name}を置いて${card.name}は場に残りました。`);
+    return true;
+  }
+  return false;
 }
 
 async function applyDestroyReplacement(card, owner, options = {}) {
@@ -758,6 +804,7 @@ async function runEndTurnEffects(endingOwner) {
 }
 
 function clearTurnModifiers() {
+  state.spiritStrikeDamageBonus = [0, 0]; // 霊撃ブースト（ターンスコープ）をリセット
   state.players.forEach((player) => {
     player.nextActivatedCostMayUseOpponentGauge = false;
     zones.forEach((zone) => {

@@ -390,12 +390,13 @@ function validateDeck(deck) {
   );
 
   const overLimitNames = cardNameCounts()
-    .filter((entry) => entry.count > 4)
-    .map((entry) => `${entry.name} ${entry.count}枚`);
+    .map((entry) => ({ ...entry, limit: cardCopyLimitForFlag(flag, entry.card) }))
+    .filter((entry) => entry.count > entry.limit)
+    .map((entry) => `${entry.name} ${entry.count}枚(上限${entry.limit})`);
   addValidation(
     items,
     overLimitNames.length === 0,
-    overLimitNames.length ? `同名4枚超過: ${overLimitNames.join(" / ")}` : "同名カード: 4枚まで",
+    overLimitNames.length ? `同名上限超過: ${overLimitNames.join(" / ")}` : "同名カード: 上限以内（通常4枚／角王はホーム外1枚）",
   );
 
   const invalidWorlds = flag ? unusableCardsForFlag(flag) : [];
@@ -424,10 +425,16 @@ function addValidation(items, ok, message) {
 function cardNameCounts() {
   const counts = new Map();
   currentDeck.recipe.forEach(([id, count]) => {
-    const name = findCard(id)?.name || id;
-    counts.set(name, (counts.get(name) || 0) + count);
+    const card = findCard(id);
+    const name = card?.name || id;
+    const prev = counts.get(name) || { count: 0, card };
+    counts.set(name, { count: prev.count + count, card: prev.card || card });
   });
-  return [...counts.entries()].map(([name, count]) => ({ name, count }));
+  return [...counts.entries()].map(([name, value]) => ({
+    name,
+    count: value.count,
+    card: value.card,
+  }));
 }
 
 function unusableCardsForFlag(flag) {
@@ -438,6 +445,17 @@ function unusableCardsForFlag(flag) {
 }
 
 function isCardAllowedByFlag(flag, card) {
+  // 『角王』(deckAnyFlag): ワールドに関係なくどのフラッグのデッキにも入れられる。
+  // 投入枚数の制限（ホーム以外なら1枚等）は cardCopyLimitForFlag が別途判定する。
+  if (card?.deckAnyFlag) {
+    return true;
+  }
+  return isCardNativelyAllowedByFlag(flag, card);
+}
+
+// フラッグの本来の使用可能条件（ワールド/属性/カード種）。『角王』の上書きは含まない。
+// この判定が真＝そのフラッグに「ネイティブに」入るカード（＝角王のホーム判定）。
+function isCardNativelyAllowedByFlag(flag, card) {
   if (!flag || !card || card.type === "flag" || flag.allowAllWorlds) {
     return true;
   }
@@ -475,6 +493,58 @@ function isCardAllowedByFlag(flag, card) {
 
 function isGenericWorld(world) {
   return world === "ジェネリック" || world === "Generic";
+}
+
+// フラッグが指定ワールドの「正規フラッグ」か（allowedWorlds に明示しているか）。
+// 重要: ドラゴンアイン/ツヴァイ・百鬼・天国・地獄・カオス等、末尾に「W／ワールド」が付かない
+// 特殊フラッグは allowedWorlds を持たない。これらを安易に特定ワールド（ドラゴンW等）へ同一視しない。
+function flagIsOfWorld(flag, world) {
+  if (!flag || !world) {
+    return false;
+  }
+  if (flag.allowAllWorlds) {
+    return true;
+  }
+  return (flag.allowedWorlds || []).includes(world);
+}
+
+// 『角王』(deckAnyFlag)カードにとって、そのフラッグが「ホーム」か。
+// 公式: 君のフラッグがそのカードのワールド（角王なら竜牙雷帝を含むドラゴンＷのフラッグ）なら通常枚数。
+// データ駆動の判定:
+//   1) フラッグが homeWorld の正規フラッグ（allowedWorlds に明示） … 例 dragon-world
+//   2) フラッグが homeAttribute（角王アーキタイプ）を allowedAttributes に明示 … 例 竜牙雷帝
+// アイン/ツヴァイは竜/ドラゴン属性を許すだけで角王を挙げていないため非ホーム（＝制限）。
+function flagIsHomeForDeckAnyFlag(flag, card) {
+  const rule = card?.deckAnyFlag;
+  if (!flag || !rule) {
+    return false;
+  }
+  if (flag.allowAllWorlds) {
+    return true;
+  }
+  const homeWorld = rule.homeWorld || card?.world;
+  if (flagIsOfWorld(flag, homeWorld)) {
+    return true;
+  }
+  if (rule.homeAttribute && (flag.allowedAttributes || []).includes(rule.homeAttribute)) {
+    return true;
+  }
+  return false;
+}
+
+// カードのデッキ投入上限枚数（既定4）。『角王』(deckAnyFlag)カードは、君のフラッグが
+// ホーム（flagIsHomeForDeckAnyFlag）なら4枚、それ以外なら deckAnyFlag.awayMaxCopies（既定1）。
+// 公式テキスト「君のフラッグが＜ドラゴンＷ＞以外なら1枚」（竜牙雷帝はドラゴンＷの角王フラッグ＝4枚）に対応。
+function cardCopyLimitForFlag(flag, card) {
+  const base = 4;
+  const rule = card?.deckAnyFlag;
+  if (!rule) {
+    return base;
+  }
+  if (flag && !flagIsHomeForDeckAnyFlag(flag, card)) {
+    return rule.awayMaxCopies ?? 1;
+  }
+  return base;
 }
 
 function deckContainsName(name) {

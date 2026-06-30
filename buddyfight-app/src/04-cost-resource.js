@@ -50,6 +50,11 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
       i += 1;
       continue;
     }
+    if (prevention.onlyAttack && !options.byAttack) {
+      // 「攻撃によって受けるダメージ」限定の防止は、攻撃以外のダメージには適用しない（キューには残す）。
+      i += 1;
+      continue;
+    }
     const reduction = prevention.preventAll ? remaining : Math.min(remaining, prevention.amount || 0);
     remaining -= reduction;
     if (!prevention.preventAll) {
@@ -58,7 +63,9 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
     if (reduction > 0) {
       addLog(`${prevention.source || "効果"}により${player.name}へのダメージを${reduction}減らしました。`);
     }
-    if (prevention.preventAll || prevention.amount <= 0 || prevention.once !== false) {
+    // once!==false: 一度きり（消費）。once:false の preventAll/残量ありは消費せずターン中持続。
+    const exhausted = !prevention.preventAll && (prevention.amount || 0) <= 0;
+    if (prevention.once !== false || exhausted) {
       queue.splice(i, 1);
     } else {
       i += 1;
@@ -381,6 +388,12 @@ function canPayStructuredCost(player, costSteps = [], context = {}) {
         return { ok: false, reason: "コストでゲージに置く自分の場のカードが足りません。" };
       }
     }
+    if (step.op === "dropOwnFieldCard") {
+      const candidates = ownFieldCostCandidates(player, step.filter);
+      if (candidates.length < amount) {
+        return { ok: false, reason: "コストでドロップに置く自分の場のカードが足りません。" };
+      }
+    }
   }
   return { ok: true };
 }
@@ -596,6 +609,16 @@ function payStructuredCost(player, costSteps = [], context = {}) {
         .slice(0, amount)
         .forEach((target) => putFieldCardToGauge(player, target.zone));
     }
+    if (step.op === "dropOwnFieldCard") {
+      ownFieldCostCandidates(player, step.filter)
+        .slice(0, amount)
+        .forEach((target) => {
+          const dropped = dropFieldCardByRule(player, target.zone);
+          if (dropped) {
+            addLog(`${dropped.name}をコストでドロップゾーンに置きました。`);
+          }
+        });
+    }
   }
   checkWinner();
   return { ok: true };
@@ -617,6 +640,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
   const reservedCostZones = new Set();
   const dropOwnMonsterSelections = [];
   const fieldToGaugeSelections = [];
+  const dropOwnFieldSelections = [];
   const cardToSoulSelections = [];
   for (const step of applicableCostSteps) {
     if (step.op !== "discardHand") {
@@ -730,6 +754,28 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     fieldToGaugeSelections.push(selected);
   }
   for (const step of applicableCostSteps) {
+    if (step.op !== "dropOwnFieldCard") {
+      continue;
+    }
+    const amount = step.amount || 1;
+    const candidates = ownFieldCostCandidates(player, step.filter).filter(
+      (candidate) => !reservedCostZones.has(`${candidate.owner}:${candidate.zone}`),
+    );
+    const selected = await chooseCardEntries(candidates, {
+      title: `${context.sourceCard?.name || "コスト"}でドロップに置くカード`,
+      lead: `自分の場からドロップゾーンに置くカードを${amount}枚選んでください。`,
+      min: amount,
+      max: amount,
+      forceDialog: true,
+      promptSeat: state.players.indexOf(player),
+    });
+    if (!selected || selected.length < amount) {
+      return { ok: false, reason: "コストでドロップに置く自分の場のカードを選んでください。" };
+    }
+    selected.forEach((candidate) => reservedCostZones.add(`${candidate.owner}:${candidate.zone}`));
+    dropOwnFieldSelections.push(selected);
+  }
+  for (const step of applicableCostSteps) {
     if (step.op !== "putCardToSoul") {
       continue;
     }
@@ -762,6 +808,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
   let cardToSoulStepIndex = 0;
   let dropOwnMonsterStepIndex = 0;
   let fieldToGaugeStepIndex = 0;
+  let dropOwnFieldStepIndex = 0;
   const discarded = [];
   for (const step of applicableCostSteps) {
     const amount = step.amount || 1;
@@ -842,6 +889,16 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       const selectedTargets = fieldToGaugeSelections[fieldToGaugeStepIndex] || [];
       fieldToGaugeStepIndex += 1;
       selectedTargets.forEach((target) => putFieldCardToGauge(player, target.zone));
+    }
+    if (step.op === "dropOwnFieldCard") {
+      const selectedTargets = dropOwnFieldSelections[dropOwnFieldStepIndex] || [];
+      dropOwnFieldStepIndex += 1;
+      selectedTargets.forEach((target) => {
+        const dropped = dropFieldCardByRule(player, target.zone);
+        if (dropped) {
+          addLog(`${dropped.name}をコストでドロップゾーンに置きました。`);
+        }
+      });
     }
   }
   checkWinner();
