@@ -253,6 +253,9 @@ function addAbilityUseLog(player, card, ability) {
 }
 
 function findUsableFieldAbility(card, owner = state.selected?.owner ?? state.active) {
+  if (isAbilitiesNullified(card)) {
+    return null; // 能力無効化(凍てつく星辰)されたカードの起動能力は使えない
+  }
   const timing = state.pendingAttack || state.pendingAction ? "counter" : state.phase;
   const directAbility = (card.abilities || []).find((ability) => {
     if (ability.fromHandOnly) {
@@ -380,6 +383,27 @@ function checkCondition(condition, owner, context = {}) {
   }
   if (condition.op === "not") {
     return !checkCondition(condition.condition || {}, owner, context);
+  }
+  if (condition.op === "declaredNameInZone") {
+    // declareCardName で宣言したカード名が、指定の山(既定:相手の手札)に存在するか。
+    const declaredName = context.declaredCardName ?? context.vars?.declaredCardName;
+    if (!declaredName) {
+      return false;
+    }
+    const side = condition.controller === "opponent" ? opponent : player;
+    if (!side) {
+      return false;
+    }
+    const pile = condition.pile || "hand";
+    let cards;
+    if (pile === "field") {
+      cards = zones.map((z) => side.field[z]).filter(Boolean);
+    } else if (pile === "soul") {
+      cards = zones.flatMap((z) => side.field[z]?.soul || []);
+    } else {
+      cards = side[pile] || [];
+    }
+    return cards.some((card) => card.name === declaredName);
   }
   if (condition.op === "confirmPrompt") {
     // メタ的な自己申告条件（例: ギャラホルンの「君が小学生なら」）を確認ポップアップで判定。
@@ -521,6 +545,14 @@ function checkCondition(condition, owner, context = {}) {
       zones.some((zone) => player.field[zone]?.attributes?.includes(condition.attribute)) ||
       phantomFieldMonsters(player).some((p) => p.attributes.includes(condition.attribute))
     );
+  }
+  if (condition.op === "ownAttributeAttackDestroyedCountGte") {
+    // このターン、自分の指定attributeの攻撃で破壊した相手モンスター数 >= amount。
+    const count = state.attackDestroyedByAttribute?.[owner]?.[condition.attribute] || 0;
+    return count >= (condition.amount || 1);
+  }
+  if (condition.op === "flagNameIs") {
+    return state.players[owner]?.flag?.name === condition.name;
   }
   if (condition.op === "ownHandCountGte") {
     return player.hand.length >= condition.amount;

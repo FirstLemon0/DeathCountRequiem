@@ -1922,6 +1922,13 @@
                 {
                   "key": "nullify",
                   "label": "相手が使った魔法を無効化",
+                  "condition": {
+                    "op": "all",
+                    "conditions": [
+                      { "op": "pendingActionIsOpponent" },
+                      { "op": "pendingActionCardType", "cardType": "spell" }
+                    ]
+                  },
                   "script": [
                     {
                       "op": "nullifyPendingAction"

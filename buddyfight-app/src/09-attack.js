@@ -93,7 +93,7 @@ async function performAttackDeclaration(attackers, targetValue) {
     attackers.length > 1 &&
     zones.some((zone) => {
       const sourceCard = state.players[targetOwner]?.field?.[zone];
-      return (sourceCard?.continuous || []).some(
+      return activeContinuousEffects(sourceCard).some(
         (effect) =>
           effect.op === "fighterCannotBeLinkAttacked" &&
           checkCardConditions(effect.conditions || [], targetOwner, { card: sourceCard, zone }),
@@ -217,7 +217,7 @@ function applyAttackRedirectContinuous() {
     if (!card) {
       continue;
     }
-    const redirects = (card.continuous || []).some(
+    const redirects = activeContinuousEffects(card).some(
       (effect) =>
         effect.op === "redirectAttackToSelf" &&
         checkCardConditions(effect.conditions || [], defenderOwner, { card, zone }),

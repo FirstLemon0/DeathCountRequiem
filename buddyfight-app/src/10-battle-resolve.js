@@ -112,6 +112,19 @@ async function resolveMultiMonsterAttack(pending, attackers, attackerNames) {
 }
 
 async function runAttackDestroyedTriggers(attackers, pending, destroyedCard) {
+  // このターン、攻撃で相手モンスターを破壊した数を「攻撃側の属性」ごとに集計（ターン開始でリセット）。
+  // 例: ヒーロークライマックス「君の《ヒーロー》が攻撃で破壊した相手モンスターが2枚以上」用。
+  // 撃破モンスター1枚につき、攻撃側に存在する各属性を+1（リンク攻撃でも1枚=各属性+1）。
+  const attackerOwnerForCount = attackers[0]?.owner;
+  if (attackerOwnerForCount === 0 || attackerOwnerForCount === 1) {
+    state.attackDestroyedByAttribute ||= [{}, {}];
+    const attrs = new Set();
+    attackers.forEach((a) => (a.card?.attributes || []).forEach((attr) => attrs.add(attr)));
+    attrs.forEach((attr) => {
+      state.attackDestroyedByAttribute[attackerOwnerForCount][attr] =
+        (state.attackDestroyedByAttribute[attackerOwnerForCount][attr] || 0) + 1;
+    });
+  }
   for (const attacker of attackers) {
     await runTriggeredAbilities(attacker.card, "destroyByAttack", {
       card: attacker.card,
@@ -256,6 +269,9 @@ async function resolveFighterAttack(pending, attackers, attackerNames) {
     }
   }
   const damageOptions = { log: false };
+  if (state.pendingAttack?.damageCannotBeReduced) {
+    damageOptions.ignorePrevention = true; // 「そのダメージは減らない」(ドラム・ザ・フューチャー等)
+  }
   const reduceResist = applicableAttackResistances(attackers).filter((e) => (e.effects || []).includes("reduce"));
   if (reduceResist.length > 0) {
     damageOptions.resistEntries = reduceResist;
@@ -381,6 +397,10 @@ function nullifyPendingAttack(sourceName = "効果", sourceCard = null) {
   if (!pending) {
     return false;
   }
+  if (pending.cannotBeNullified) {
+    addLog("この攻撃は無効化されません。");
+    return false;
+  }
   const blocker = pendingAttackNullifyBlocker(pending);
   if (blocker) {
     addLog(`${blocker.name}の攻撃は無効化されません。`);
@@ -420,6 +440,9 @@ async function resolvePenetrateDamage(attackers, pending) {
   }
   const defender = state.players[pending.defender];
   const penetrateOptions = { log: false };
+  if (state.pendingAttack?.damageCannotBeReduced) {
+    penetrateOptions.ignorePrevention = true;
+  }
   const reducePenetrateResist = applicableAttackResistances(attackers).filter((e) => (e.effects || []).includes("reduce"));
   if (reducePenetrateResist.length > 0) {
     penetrateOptions.resistEntries = reducePenetrateResist;

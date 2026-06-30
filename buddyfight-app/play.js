@@ -415,6 +415,23 @@
       menu.append(lead);
     }
 
+    // searchable: 候補が多いカード名宣言などで、名前による絞り込み検索ボックスを出す。
+    if (req.searchable) {
+      const search = document.createElement("input");
+      search.type = "search";
+      search.placeholder = "カード名で絞り込み";
+      search.style.cssText =
+        "width:100%;box-sizing:border-box;min-height:40px;padding:8px 10px;font-size:1em;";
+      search.addEventListener("input", () => {
+        const query = search.value.trim().toLowerCase();
+        menu.querySelectorAll("button[data-cname]").forEach((btn) => {
+          const name = (btn.dataset.cname || "").toLowerCase();
+          btn.style.display = !query || name.includes(query) ? "" : "none";
+        });
+      });
+      menu.append(search);
+    }
+
     const list = document.createElement("div");
     list.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;";
     menu.append(list);
@@ -425,6 +442,7 @@
         const btn = document.createElement("button");
         btn.type = "button";
         btn.textContent = promptCandidateLabel(candidate);
+        btn.dataset.cname = candidate.card?.name || "";
         btn.style.cssText = "min-height:40px;padding:6px 12px;font-weight:800;";
         btn.addEventListener("click", () =>
           sendPromptResponse(req.requestId, { selectedIndexes: [candidate.choiceIndex] }),
@@ -443,6 +461,7 @@
         const btn = document.createElement("button");
         btn.type = "button";
         btn.textContent = promptCandidateLabel(candidate);
+        btn.dataset.cname = candidate.card?.name || "";
         btn.style.cssText = "min-height:40px;padding:6px 12px;";
         btn.addEventListener("click", () => {
           if (selected.has(candidate.choiceIndex)) {

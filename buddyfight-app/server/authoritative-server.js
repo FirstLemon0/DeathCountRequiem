@@ -360,6 +360,7 @@ function dispatchPrompt(room, req) {
     min: req.min,
     max: req.max,
     allowCancel: req.allowCancel,
+    searchable: req.searchable,
     candidates: req.candidates,
   };
   return new Promise((resolve) => {

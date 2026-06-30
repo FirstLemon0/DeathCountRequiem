@@ -565,6 +565,9 @@ function payStructuredCost(player, costSteps = [], context = {}) {
     if (step.op === "putDropToSoul") {
       moveDropToSoul(player, sourceCard, amount, step.filter);
     }
+    if (step.op === "putOwnFieldCardsToSoul") {
+      moveFieldCardsToSoul(player, sourceCard, step.filter);
+    }
     if (step.op === "discardSoul") {
       for (let index = 0; index < amount; index += 1) {
         const soulCard = sourceCard?.soul?.pop();
@@ -808,6 +811,9 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     if (step.op === "putDropToSoul") {
       moveDropToSoul(player, sourceCard, amount, step.filter);
     }
+    if (step.op === "putOwnFieldCardsToSoul") {
+      moveFieldCardsToSoul(player, sourceCard, step.filter);
+    }
     if (step.op === "discardSoul") {
       for (let index = 0; index < amount; index += 1) {
         const soulCard = sourceCard?.soul?.pop();
@@ -873,6 +879,24 @@ function moveDropToSoul(player, card, amount = 1, filter = {}) {
   if (movedCards.length > 0) {
     card.soul.push(...movedCards);
     addLog(`${movedCards.map((soulCard) => soulCard.name).join("、")}を${card.name}のソウルに入れました。`);
+  }
+}
+
+// 君の場の filter 一致カード全てを、発生源カード(card)のソウルに入れる（コスト用）。
+// 例: マセマティック「君の場の《カルテットファイブ》のモンスター全てをこのカードのソウルに入れる」。
+function moveFieldCardsToSoul(player, card, filter = {}) {
+  card.soul ||= [];
+  const moved = [];
+  zones.forEach((zone) => {
+    const fieldCard = player.field[zone];
+    if (fieldCard && fieldCard.instanceId !== card.instanceId && matchesCardFilter(fieldCard, filter)) {
+      player.field[zone] = null;
+      moved.push(fieldCard);
+    }
+  });
+  if (moved.length > 0) {
+    card.soul.push(...moved);
+    addLog(`${moved.map((c) => c.name).join("、")}を${card.name}のソウルに入れました。`);
   }
 }
 

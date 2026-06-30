@@ -655,6 +655,10 @@ async function executeAbilityEffect(effect, context) {
     target.card.used = false;
     addLog(`${context.card.name}の効果で${target.card.name}をスタンドしました。`);
   }
+  if (effect.op === "putTargetToGaugeAtTurnEnd" && target?.card) {
+    // 「ターン終了時、そのモンスターを君のゲージに置く」。フラグを立て runEndTurnEffects で移動。
+    target.card.putToGaugeAtEndOfTurnOwner = context.owner;
+  }
   if (effect.op === "nullifyAttackersKeyword") {
     // 攻撃してきたカードの指定キーワードを、そのターン中 無効化する（turnSuppressedKeywords は hasKeyword が参照し、ターン終了でクリア）。
     const attackers = context.attackers?.length ? context.attackers : getPendingAttackers();
@@ -670,6 +674,17 @@ async function executeAbilityEffect(effect, context) {
     });
     addLog(`${context.card?.name || "効果"}で攻撃側の『${effect.label || effect.keyword}』を無効化しました。`);
   }
+  if (effect.op === "suppressAttackTargetKeyword" && state.pendingAttack) {
+    // 攻撃対象のモンスターの指定キーワードをそのターン中 無効化する（アクワルタ・グワルナフのソウルガード封じ）。
+    const targetCard = state.players[state.pendingAttack.targetOwner]?.field?.[state.pendingAttack.targetZone];
+    if (targetCard && effectiveCardType(targetCard) === "monster") {
+      targetCard.turnSuppressedKeywords = targetCard.turnSuppressedKeywords || [];
+      if (!targetCard.turnSuppressedKeywords.includes(effect.keyword)) {
+        targetCard.turnSuppressedKeywords.push(effect.keyword);
+      }
+      addLog(`${context.card?.name || "効果"}で${targetCard.name}の『${effect.keyword}』をそのターン無効化しました。`);
+    }
+  }
   if (effect.op === "putTargetToGauge" && target?.card) {
     const ownerPlayer = state.players[target.owner];
     const moved = putFieldCardToGauge(ownerPlayer, target.zone);
@@ -679,6 +694,12 @@ async function executeAbilityEffect(effect, context) {
   }
   if (effect.op === "nullifyAttack" && state.pendingAttack) {
     context.lastEffectResult = nullifyPendingAttack(context.card?.name || "効果", context.card);
+  }
+  if (effect.op === "markPendingAttackUnstoppable" && state.pendingAttack) {
+    // 「この攻撃は無効化されず、そのダメージは減らない」(ドラム・ザ・フューチャー)。
+    state.pendingAttack.cannotBeNullified = true;
+    state.pendingAttack.damageCannotBeReduced = true;
+    addLog(`${context.card?.name || "効果"}の効果でこの攻撃は無効化されず、ダメージも減らない。`);
   }
   if (effect.op === "nullifyPendingAction" && state.pendingAction) {
     context.lastEffectResult = nullifyPendingAction(context.card?.name || "効果");

@@ -69,6 +69,7 @@ async function chooseCardEntries(candidates, options = {}) {
       min,
       max,
       allowCancel: options.allowCancel !== false,
+      searchable: Boolean(options.searchable),
       candidates: normalized.map((candidate) => ({
         index: candidate.choiceIndex,
         ...compactChoiceForLog(candidate),
@@ -241,11 +242,29 @@ function showCardSelectionDialog(candidates, options = {}) {
     elements.selectionDialogList.innerHTML = "";
     setBoardPeek(false);
     updateSelectionPreview(null);
+    // searchable: 候補名でインクリメンタルに絞り込む検索ボックス（カード名宣言など候補が多い時用）。
+    if (options.searchable) {
+      const search = document.createElement("input");
+      search.type = "search";
+      search.className = "selection-search";
+      search.placeholder = "カード名で絞り込み";
+      search.style.cssText =
+        "width:100%;box-sizing:border-box;margin-bottom:8px;padding:8px 10px;font-size:1em;";
+      search.addEventListener("input", () => {
+        const query = search.value.trim().toLowerCase();
+        elements.selectionDialogList.querySelectorAll(".selection-choice").forEach((button) => {
+          const name = (button.dataset.choiceName || "").toLowerCase();
+          button.style.display = !query || name.includes(query) ? "" : "none";
+        });
+      });
+      elements.selectionDialogList.append(search);
+    }
     candidates.forEach((candidate, index) => {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "selection-choice";
       button.dataset.choiceIndex = String(candidate.choiceIndex);
+      button.dataset.choiceName = candidate.card?.name || "";
       button.innerHTML = selectionChoiceMarkup(candidate.card, index, candidate.note);
       attachTooltip(button, candidate.card);
       button.addEventListener("mouseenter", () => updateSelectionPreview(candidate.card));

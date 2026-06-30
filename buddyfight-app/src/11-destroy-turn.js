@@ -99,9 +99,37 @@ function makeEffectCause(context, victimOwner) {
   };
 }
 
+// 場のカードの継続 grantDestroyImmunity が、対象 card に破壊耐性を付与しているか。
+// 例: 星神アストライオス「君のレフトとライトの《星》は破壊されない」。controller/zoneIn/filter/from でデータ駆動。
+function grantedDestroyImmunityBlocks(card, cause) {
+  const targetSlot = findFieldCardSlot(card);
+  if (!targetSlot) return false;
+  return state.players.some((player, sourceOwner) =>
+    zones.some((zone) => {
+      const source = player.field[zone];
+      return activeContinuousEffects(source).some((e) => {
+        if (e.op !== "grantDestroyImmunity") return false;
+        if (e.controller === "self" && targetSlot.owner !== sourceOwner) return false;
+        if (e.controller === "opponent" && targetSlot.owner === sourceOwner) return false;
+        if (e.excludeSource && source.instanceId === card.instanceId) return false;
+        if (e.zoneIn && !e.zoneIn.includes(targetSlot.zone)) return false;
+        if (e.filter && !matchesCardFilter(card, e.filter)) return false;
+        if (e.from) {
+          if (e.from.byBattle && !cause.byBattle) return false;
+          if (e.from.byEffect && !cause.byEffect) return false;
+          if (e.from.byOpponent && !cause.byOpponent) return false;
+        }
+        return true;
+      });
+    }),
+  );
+}
+
 function destroyImmunityBlocks(card, cause, owner) {
+  if (!cause) return false;
+  if (grantedDestroyImmunityBlocks(card, cause)) return true;
   const imm = card.destroyImmunity;
-  if (!imm || !cause) return false;
+  if (!imm) return false;
   const entries = Array.isArray(imm) ? imm : [imm];
   const zone = findFieldCardSlot(card)?.zone;
   return entries.some((e) => {
@@ -685,6 +713,7 @@ async function endTurn() {
   state.chargedThisTurn = false;
   state.drewThisTurn = false;
   state.attacksThisTurn = 0;
+  state.attackDestroyedByAttribute = [{}, {}]; // 属性別の攻撃撃破数(このターン)をリセット
   state.lastDamageTaken = [0, 0];
   state.linkAttackers = [];
   state.buddyCallDeclared = null;
@@ -712,6 +741,17 @@ async function runEndTurnEffects(endingOwner) {
         if (destroyed) {
           addLog(`${destroyedName}はターン終了時の効果で破壊されました。`);
         }
+      } else if (card?.putToGaugeAtEndOfTurnOwner === endingOwner) {
+        // 「ターン終了時、そのモンスターを君のゲージに置く」。ソウルはドロップへ、本体をゲージへ。
+        const destOwner = card.putToGaugeAtEndOfTurnOwner;
+        card.putToGaugeAtEndOfTurnOwner = null;
+        player.field[zone] = null;
+        if ((card.soul || []).length > 0) {
+          player.drop.push(...card.soul);
+          card.soul = [];
+        }
+        state.players[destOwner].gauge.push(card);
+        addLog(`${card.name}はターン終了時の効果でゲージに置かれました。`);
       }
     }
   }

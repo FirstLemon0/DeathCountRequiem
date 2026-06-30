@@ -115,6 +115,12 @@ async function placeSetSpellDirect(player, card, zone) {
 
 async function equipItem(selectedCard) {
   const player = activePlayer();
+  // 通常装備禁止（特定カードの能力経由のみ装備可。アクワルタ・グワルナフ等）。
+  // 効果による装備(useSelectedCard→equipCardDirect)はこの制限を通さないためバイパスされる。
+  if (selectedCard.equipOnlyByAbility) {
+    addLog(`${selectedCard.name}は特定の能力からのみ装備できます。`);
+    return;
+  }
   if (
     selectedCard.equipConditions &&
     !checkCardConditions(selectedCard.equipConditions, state.active)

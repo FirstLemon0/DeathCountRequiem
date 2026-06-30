@@ -7,8 +7,74 @@ function getFieldSize(player) {
   return fieldZones.reduce((total, zone) => total + (player.field[zone]?.size || 0), 0);
 }
 
+// このカードの能力(abilities/continuous/soulContinuous/keywords)が、場のいずれかの
+// nullifyAbilities 継続(凍てつく星辰)によって無効化されているか。nullifyImmune のカードは対象外。
+// card は場札 or ソウル内カード(ソウルの場合はホストの所有者・"soul"位置で判定)。
+function isAbilitiesNullified(card) {
+  if (!card || card.nullifyImmune || !state?.players?.length) return false;
+  let cardOwner;
+  let location = "field";
+  const slot = findFieldCardSlot(card);
+  if (slot) {
+    cardOwner = slot.owner;
+  } else {
+    // ソウル内カード: そのソウルを持つホスト(場札)を探す
+    let host = null;
+    for (let p = 0; p < state.players.length && !host; p += 1) {
+      for (const zone of zones) {
+        const fc = state.players[p].field[zone];
+        if (fc?.soul?.some((s) => s.instanceId === card.instanceId)) {
+          host = { owner: p };
+          break;
+        }
+      }
+    }
+    if (!host) return false;
+    cardOwner = host.owner;
+    location = "soul";
+  }
+  return state.players.some((player, nullifierOwner) =>
+    zones.some((zone) => {
+      const src = player.field[zone];
+      return (src?.continuous || []).some((e) => {
+        if (e.op !== "nullifyAbilities") return false;
+        const ownerOk =
+          e.controller === "opponent" ? cardOwner !== nullifierOwner
+          : e.controller === "self" ? cardOwner === nullifierOwner
+          : true;
+        if (!ownerOk) return false;
+        if (e.zones && !e.zones.includes(location)) return false;
+        if (e.filter && Object.keys(e.filter).length && !matchesCardFilter(card, e.filter)) return false;
+        if (e.conditions && !checkCardConditions(e.conditions, nullifierOwner, { card: src, zone })) return false;
+        return true;
+      });
+    }),
+  );
+}
+
+// 付与元カードの継続効果配列を返す。能力無効化(凍てつく星辰)されたカードは空配列。
+// 各所で `(card.continuous || [])` を直接走査している箇所をこれに置き換えると、
+// 無効化されたカードの継続効果(grantKeyword/preventCenterCall/attackRedirect 等)が一律オフになる。
+// ※ isAbilitiesNullified 自身は nullifyAbilities 継続を生で走査するため、これを使ってはならない(無限再帰回避)。
+function activeContinuousEffects(sourceCard) {
+  if (!sourceCard || isAbilitiesNullified(sourceCard)) {
+    return [];
+  }
+  return sourceCard.continuous || [];
+}
+
 function fieldSizeLimit(player) {
-  return player?.flag?.maxFieldSize ?? 3;
+  const base = player?.flag?.maxFieldSize ?? 3;
+  // 場のカードの継続 grantFieldSizeLimit(controller:self 既定)による上限加算（ドラゴンスローン「サイズの合計が4になるまで」等）。
+  let bonus = 0;
+  zones.forEach((zone) => {
+    activeContinuousEffects(player?.field?.[zone]).forEach((effect) => {
+      if (effect.op === "grantFieldSizeLimit" && (effect.controller === undefined || effect.controller === "self")) {
+        bonus += effect.amount || 1;
+      }
+    });
+  });
+  return base + bonus;
 }
 
 function canAddSize(player, card) {
@@ -140,6 +206,9 @@ function soulContinuousEffects(card, owner) {
 }
 
 function continuousEffectAppliesFromSoul(effect, targetCard, sourceCard, owner) {
+  if (isAbilitiesNullified(sourceCard)) {
+    return false; // 能力無効化されたソウル内カードの付与は適用しない
+  }
   if (!matchesCardFilter(targetCard, effect.filter || {})) {
     return false;
   }
@@ -153,6 +222,9 @@ function continuousEffectAppliesFromSoul(effect, targetCard, sourceCard, owner) 
 }
 
 function continuousEffectApplies(effect, targetCard, sourceCard) {
+  if (isAbilitiesNullified(sourceCard)) {
+    return false; // 能力無効化された付与元の継続効果は適用しない
+  }
   if (effect.excludeSource && sourceCard?.instanceId === targetCard?.instanceId) {
     return false;
   }
@@ -196,6 +268,13 @@ function continuousEffectApplies(effect, targetCard, sourceCard) {
       zone: sourceSlot.zone,
       targetCard,
     })) {
+      return false;
+    }
+  }
+  // requireBuddy: 対象が、その対象の所有者が登録したバディ(同名)である場合のみ適用。
+  // 「君の場のバディモンスターは〜を得る」等の継続付与で使う（soulContinuous 側と同仕様）。
+  if (effect.requireBuddy) {
+    if (!targetSlot || targetCard?.name !== state.players[targetSlot.owner]?.buddy?.name) {
       return false;
     }
   }

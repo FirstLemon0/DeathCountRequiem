@@ -216,10 +216,13 @@ function hasKeyword(card, keyword) {
   }
   const aliases = keywordAliases(keyword);
   const slot = findFieldCardSlot(card);
+  // 能力無効化(凍てつく星辰)中は、このカード自身のキーワード/能力由来のキーワードは無効。
+  // 他カードからの付与(continuous/soulContinuous)は付与元の無効化判定(continuousEffectApplies側)に委ねる。
+  const ownNullified = isAbilitiesNullified(card);
   return (
-    (card.keywords || []).some((candidate) => aliases.includes(candidate)) ||
-    (card.temporaryKeywords || []).some((candidate) => aliases.includes(candidate)) ||
-    (card.turnKeywords || []).some((candidate) => aliases.includes(candidate)) ||
+    (!ownNullified && (card.keywords || []).some((candidate) => aliases.includes(candidate))) ||
+    (!ownNullified && (card.temporaryKeywords || []).some((candidate) => aliases.includes(candidate))) ||
+    (!ownNullified && (card.turnKeywords || []).some((candidate) => aliases.includes(candidate))) ||
     (slot &&
       state.players.some((player) =>
         zones.some((zone) => {
@@ -239,9 +242,10 @@ function hasKeyword(card, keyword) {
           aliases.includes(effect.keyword) &&
           continuousEffectAppliesFromSoul(effect, card, sourceCard, slot.owner),
       )) ||
-    (card.abilities || []).some(
-      (ability) => hasAbilityKeyword(ability, keyword) && passiveAbilityConditionsMet(card, ability),
-    )
+    (!ownNullified &&
+      (card.abilities || []).some(
+        (ability) => hasAbilityKeyword(ability, keyword) && passiveAbilityConditionsMet(card, ability),
+      ))
   );
 }
 
@@ -251,7 +255,7 @@ function isCenterCallPrevented(callerOwner, card) {
   return state.players.some((player, pIdx) =>
     zones.some((zone) => {
       const source = player.field[zone];
-      return (source?.continuous || []).some((effect) => {
+      return activeContinuousEffects(source).some((effect) => {
         if (effect.op !== "preventCenterCall") {
           return false;
         }

@@ -4,6 +4,9 @@
 // HTML で番号順に <script> 読み込みする（連結すると旧 app.js とバイト等価）。
 // ==========================================================================
 async function runTriggeredAbilities(card, event, baseContext = {}) {
+  if (isAbilitiesNullified(card)) {
+    return; // 能力無効化(凍てつく星辰)されたカードの誘発能力は発動しない
+  }
   const triggeredAbilities = (card.abilities || []).filter(
     (ability) => ability.kind === "triggered" && ability.event === event,
   );
@@ -290,6 +293,9 @@ async function executeAbilityScriptStep(step, context) {
   if (step.op === "useSelectedCard") {
     return useSelectedCardForScript(step, context);
   }
+  if (step.op === "equipSelectedAsItem") {
+    return equipSelectedAsItemForScript(step, context);
+  }
   if (step.op === "useTopDeckCardIfMatchesElseBottom") {
     return useTopDeckCardIfMatchesElseBottomForScript(step, context);
   }
@@ -316,6 +322,9 @@ async function executeAbilityScriptStep(step, context) {
   }
   if (step.op === "shuffleDeck") {
     return shuffleDeckForScript(step, context);
+  }
+  if (step.op === "declareCardName") {
+    return declareCardNameForScript(step, context);
   }
   if (step.op === "stopUnlessMovedToDropMatches") {
     return stopUnlessMovedToDropMatchesForScript(step, context);
@@ -676,6 +685,54 @@ async function ifConditionForScript(step, context) {
   return executeAbilityScript(branch, context);
 }
 
+// 宣言可能なカード名の一覧（重複排除）。カード名宣言プロンプト(検索付き)の候補に使う。
+function distinctDeclarableCardNames() {
+  const names = new Set();
+  (cardLibrary || []).forEach((card) => {
+    if (card?.name) {
+      names.add(card.name);
+    }
+  });
+  return [...names].sort((a, b) => a.localeCompare(b, "ja"));
+}
+
+// 汎用プリミティブ: 「カード名１つを宣言し、相手(自分)の手札を見る」。
+// 宣言名を context.declaredCardName に記録し、condition declaredNameInZone で参照する。
+// 検索付き選択(searchable)で全カード名から1つ宣言。ネット権威版でも宣言者席へ往復する。
+async function declareCardNameForScript(step, context) {
+  const declarerSeat = context.owner;
+  let chosenName = null;
+  if (globalThis.__BUDDYFIGHT_TEST__ && typeof globalThis.__forcedDeclaredCardName === "string") {
+    chosenName = globalThis.__forcedDeclaredCardName; // テスト専用シーム(検索UIを介さず宣言名を固定)
+  } else {
+    const candidates = distinctDeclarableCardNames().map((name) => ({
+      card: { name, type: "name" },
+    }));
+    const selected = await chooseCardEntries(candidates, {
+      title: `${context.card?.name || ""}のカード名宣言`,
+      lead: "カード名を1つ宣言してください（検索で絞り込めます）。",
+      min: 1,
+      max: 1,
+      forceDialog: true,
+      allowCancel: false,
+      searchable: true,
+      promptSeat: declarerSeat,
+    });
+    chosenName = selected?.[0]?.card?.name ?? null;
+  }
+  context.declaredCardName = chosenName;
+  if (context.vars) {
+    context.vars.declaredCardName = chosenName;
+  }
+  if (chosenName) {
+    addLog(`${state.players[declarerSeat]?.name || ""}は「${chosenName}」を宣言しました。`);
+  }
+  if (step.reveal) {
+    await executeAbilityEffect({ op: "revealHand", player: step.reveal }, context);
+  }
+  return true;
+}
+
 async function chooseBranchForScript(step, context) {
   const options = (Array.isArray(step.options) ? step.options : []).filter(
     (option) =>
@@ -998,6 +1055,21 @@ async function payCardCostForScriptSelection(step, context) {
 //   『設置』を持つ魔法/必殺技 → 設置ゾーンへ配置(castCost を払い placeSetSpellDirect)
 //   それ以外の魔法/必殺技 → その能力を即時解決(useSelectedCardAbility にフォールバック)
 // step.payCost:false でコスト支払いを省略可。例: ヴォータンシャドウ(ドロップから装備/設置)。
+// 選んだカードを「アイテムとして装備」する（搭乗/ライドアウト）。モンスターでも装備可。
+// 別カードがデッキ/手札から特定モンスターを装備させる『搭乗』(カードバーン→アルティメット・カードバーン等)に使う。
+async function equipSelectedAsItemForScript(step, context) {
+  const entry = scriptSelection(step, context)[0];
+  if (!entry?.card) {
+    return step.require === false ? true : { ok: false, reason: "missing_equip_card" };
+  }
+  const owner = entry.owner ?? context.owner;
+  const player = state.players[owner];
+  const card = entry.card;
+  takeScriptSelectionCards([entry]); // ソース(デッキ/手札/場)から取り除く
+  await equipCardDirect(player, card); // currentType="item" 化して装備（装備変更/装備時誘発も通る）
+  return true;
+}
+
 async function useSelectedCardForScript(step, context) {
   const entry = scriptSelection(step, context)[0];
   if (!entry?.card) {

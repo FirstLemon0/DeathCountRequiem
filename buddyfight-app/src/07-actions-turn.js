@@ -146,6 +146,11 @@ async function callMonster(zone) {
   if (!validateCardCanBeUsedByOwner(selectedOwner, selectedCard)) {
     return;
   }
+  // 通常コール禁止（特定カードの効果でのみ場に出せる。アルティメット・カードバーン等）。
+  if (selectedCard.cannotCallNormally) {
+    addLog(`${selectedCard.name}は通常のコールでは場に出せません（特定の効果でのみ）。`);
+    return;
+  }
   const stackTarget = selectedCard.callStack ? getStackCallTarget(player, selectedCard) : null;
   if (selectedCard.callStack && !stackTarget) {
     addLog(`${selectedCard.name}は、重ねる対象を効果対象から選んでください。`);
