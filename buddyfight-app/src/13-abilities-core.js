@@ -182,10 +182,15 @@ async function useHandAbilityAction(card, ability, options = {}) {
 
 async function useFieldAbilityAction(card) {
   const owner = state.selected.owner;
-  const ability = findUsableFieldAbility(card, owner);
-  if (!ability) {
+  const usableAbilities = findUsableFieldAbilities(card, owner);
+  if (usableAbilities.length === 0) {
     addLog("今使える起動能力はありません。");
     return;
+  }
+  const ability =
+    usableAbilities.length === 1 ? usableAbilities[0] : await chooseFieldAbility(card, usableAbilities, owner);
+  if (!ability) {
+    return; // 能力選択がキャンセルされた
   }
   const zone = state.selected.zone;
   const player = state.players[owner];
@@ -277,36 +282,46 @@ function addAbilityUseLog(player, card, ability) {
   }
 }
 
-function findUsableFieldAbility(card, owner = state.selected?.owner ?? state.active) {
-  if (isAbilitiesNullified(card)) {
-    return null; // 能力無効化(凍てつく星辰)されたカードの起動能力は使えない
+function fieldAbilityUsable(card, ability, owner, timing) {
+  if (ability.fromHandOnly) {
+    return false;
   }
-  const timing = state.pendingAttack || state.pendingAction ? "counter" : state.phase;
-  const directAbility = (card.abilities || []).find((ability) => {
-    if (ability.fromHandOnly) {
-      return false;
-    }
-    if (!isFieldActivatedAbility(ability)) {
-      return false;
-    }
-    if (!abilityTimingIncludes(ability, timing)) {
-      return false;
-    }
-    if (isAbilityLimitUsed(owner, card, ability)) {
-      return false;
-    }
-    if (ability.target && targetCandidatesFromSpec(ability.target, owner, { card, ability }).length === 0) {
-      return false;
-    }
-    return (
-      checkAbilityConditions(ability, owner) &&
-      canSatisfyAbilityScript(card, ability, owner, { zone: state.selected?.zone })
-    );
-  });
-  return directAbility || findUsableSoulAbility(card, owner, timing);
+  if (!isFieldActivatedAbility(ability)) {
+    return false;
+  }
+  if (!abilityTimingIncludes(ability, timing)) {
+    return false;
+  }
+  if (isAbilityLimitUsed(owner, card, ability)) {
+    return false;
+  }
+  if (ability.target && targetCandidatesFromSpec(ability.target, owner, { card, ability }).length === 0) {
+    return false;
+  }
+  return (
+    checkAbilityConditions(ability, owner) &&
+    canSatisfyAbilityScript(card, ability, owner, { zone: state.selected?.zone })
+  );
 }
 
-function findUsableSoulAbility(hostCard, owner, timing) {
+// 使用可能な場の起動能力を「すべて」返す（直接＋ソウル）。
+// 変身/搭乗(モンスタースペースからの装備)と別の【起動】が同時に使える場合など、
+// 複数ある時は useFieldAbilityAction で選択させる。
+function findUsableFieldAbilities(card, owner = state.selected?.owner ?? state.active) {
+  if (isAbilitiesNullified(card)) {
+    return []; // 能力無効化(凍てつく星辰)されたカードの起動能力は使えない
+  }
+  const timing = state.pendingAttack || state.pendingAction ? "counter" : state.phase;
+  const direct = (card.abilities || []).filter((ability) => fieldAbilityUsable(card, ability, owner, timing));
+  return [...direct, ...findUsableSoulAbilities(card, owner, timing)];
+}
+
+function findUsableFieldAbility(card, owner = state.selected?.owner ?? state.active) {
+  return findUsableFieldAbilities(card, owner)[0] || null;
+}
+
+function findUsableSoulAbilities(hostCard, owner, timing) {
+  const result = [];
   for (const soulSourceCard of hostCard?.soul || []) {
     for (const ability of soulSourceCard.soulAbilities || []) {
       const soulAbility = {
@@ -333,10 +348,54 @@ function findUsableSoulAbility(hostCard, owner, timing) {
       ) {
         continue;
       }
-      return soulAbility;
+      result.push(soulAbility);
     }
   }
-  return null;
+  return result;
+}
+
+function findUsableSoulAbility(hostCard, owner, timing) {
+  return findUsableSoulAbilities(hostCard, owner, timing)[0] || null;
+}
+
+// 場のカードに使える起動能力が複数ある時、どれを使うか選ばせる。
+// 例: モンスタースペースのキャプテン・アンサーは「変身で装備」と「アンサークエスチョン」の両方が使える。
+async function chooseFieldAbility(card, abilities, owner) {
+  if (globalThis.__BUDDYFIGHT_TEST__ && typeof globalThis.__forcedFieldAbilityId === "string") {
+    return abilities.find((ability) => ability.id === globalThis.__forcedFieldAbilityId) || abilities[0];
+  }
+  const selected = await chooseCardEntries(
+    abilities.map((ability) => ({
+      ability,
+      card: {
+        name: fieldAbilityLabel(card, ability),
+        type: "choice",
+      },
+    })),
+    {
+      title: `${card.name}の起動能力`,
+      lead: "使う能力を選んでください。",
+      min: 1,
+      max: 1,
+      forceDialog: true,
+      allowCancel: true,
+      promptSeat: owner,
+    },
+  );
+  return selected?.[0]?.ability || null;
+}
+
+function fieldAbilityLabel(card, ability) {
+  if (ability.label) {
+    return ability.label;
+  }
+  const isEquipSelf =
+    (ability.effects || []).some((effect) => effect.op === "equipSelf") ||
+    (ability.script || []).some((step) => step.op === "equipSelf");
+  if (isEquipSelf) {
+    return "このカードを装備する（変身／搭乗）";
+  }
+  return ability.name || "起動能力";
 }
 
 function isFieldActivatedAbility(ability) {

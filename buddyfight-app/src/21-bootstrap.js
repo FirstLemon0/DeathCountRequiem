@@ -273,6 +273,7 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     executeAbilityBody,
     hasKeyword,
     findUsableHandAbility,
+    findUsableFieldAbilities,
     getState: () => state,
     legacyAbilityScriptDefinition,
     selectedCounterKind,
