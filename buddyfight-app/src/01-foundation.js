@@ -33,6 +33,13 @@ let cardSetProfiles = [];
 let deckSetProfiles = [];
 let flagIdAliases = new Map();
 
+// カード画像パック（製品ごとの base64 パック data/images/{pack}.imgpack.json）。
+// cardIdToPack: カードid→パック名(=カードJSONのファイル名stem)。loadGameData で構築。
+// cardImagePacks: 読み込み済み cardId→data URL。imagePackPromises: 多重fetch防止の読込Promise。
+let cardIdToPack = {};
+const cardImagePacks = {};
+const imagePackPromises = {};
+
 const dataFiles = {
   cardsets: "data/cardsets.json",
   decksets: "data/decksets.json",

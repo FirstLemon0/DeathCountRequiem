@@ -81,11 +81,16 @@ async function loadGameData() {
   flagIdAliases = buildFlagIdAliases(flags);
   cards = [
     ...flags,
-    ...cardSets.flatMap(({ set, data }) =>
-      (data.cards || [])
+    ...cardSets.flatMap(({ set, data }) => {
+      const packName = (set.file || "").split("/").pop().replace(/\.json$/, "");
+      return (data.cards || [])
         .filter((card) => card.type !== "flag")
-        .map((card) => normalizeCard(card, set)),
-    ),
+        .map((card) => {
+          const c = normalizeCard(card, set);
+          c.imagePack = packName;
+          return c;
+        });
+    }),
   ];
   officialDecks = deckSets.flatMap(({ set, data }) =>
     (data.decks || []).map((deck) => normalizeDeck(deck, set)),
@@ -556,6 +561,7 @@ function renderSearchResults() {
   elements.resultCountLabel.textContent = `${filtered.length}件`;
   elements.cardResults.innerHTML = "";
   filtered.slice(0, 140).forEach((card) => elements.cardResults.append(createCardResult(card)));
+  builderFillThumbs(elements.cardResults);
 }
 
 function filteredCards() {
@@ -581,11 +587,87 @@ function filteredCards() {
     .sort(compareCards);
 }
 
+// カード番号から公式カード画像URLを導出（ローカルWebPが無い場合のフォールバック）。
+function officialCardImageUrl(card) {
+  const no = card?.no;
+  if (!no || no.indexOf("/") < 0) {
+    return "";
+  }
+  const [left, right] = no.split("/");
+  const letters = left.replace(/-/g, "").match(/^([A-Za-z]+)(\d+)$/);
+  const cardnum = String(right).match(/^\d+/);
+  if (!letters || !cardnum) {
+    return "";
+  }
+  const num = String(parseInt(cardnum[0], 10)).padStart(4, "0");
+  return `https://fc-buddyfight.com/wordpress/wp-content/images/card/${letters[1].toLowerCase()}_${letters[2]}_${num}.png`;
+}
+
+// 製品画像パック（data/images/{pack}.imgpack.json）の遅延読み込み。
+const builderPacks = {};
+const builderPackPromises = {};
+function builderEnsurePack(pack) {
+  if (!pack) {
+    return Promise.resolve();
+  }
+  if (builderPackPromises[pack]) {
+    return builderPackPromises[pack];
+  }
+  builderPackPromises[pack] = fetch(`data/images/${pack}.imgpack.json`, { cache: "force-cache" })
+    .then((r) => (r.ok ? r.json() : {}))
+    .then((map) => Object.assign(builderPacks, map))
+    .catch(() => {});
+  return builderPackPromises[pack];
+}
+
+// レンダー後、サムネイルimgに製品パックのdata URLを流し込む（未読込は製品パックを読み込んでから）。
+function builderFillThumbs(root) {
+  if (!root) {
+    return;
+  }
+  root.querySelectorAll("img.builder-card-thumb[data-cid]").forEach((img) => {
+    const cid = img.dataset.cid;
+    if (builderPacks[cid]) {
+      img.src = builderPacks[cid];
+      return;
+    }
+    builderEnsurePack(img.dataset.pack).then(() => {
+      if (builderPacks[cid]) {
+        img.src = builderPacks[cid];
+      } else {
+        builderCardImgError(img);
+      }
+    });
+  });
+}
+
+// カードサムネイルの img マークアップ（製品パックのdata URL→公式URL→失敗で非表示）。
+function cardThumbHtml(card, extraClass = "") {
+  const remote = officialCardImageUrl(card);
+  const cid = card?.id || "";
+  if (!cid && !remote) {
+    return "";
+  }
+  const src = builderPacks[cid] || "";
+  return `<img class="builder-card-thumb ${extraClass}" loading="lazy" decoding="async" alt="${escapeHtml(card.name || "")}" src="${src}" data-cid="${cid}" data-pack="${card?.imagePack || ""}" data-remote="${remote}" onerror="builderCardImgError(this)">`;
+}
+
+// サムネイル読み込み失敗時: 公式URLへ一度フォールバック、それも失敗なら非表示。
+function builderCardImgError(img) {
+  const remote = img.getAttribute("data-remote");
+  if (remote && img.src !== remote) {
+    img.src = remote;
+    return;
+  }
+  img.style.display = "none";
+}
+
 function createCardResult(card) {
   const node = document.createElement("article");
   node.className = "builder-card";
   node.innerHTML = `
     <div class="builder-card-head">
+      ${cardThumbHtml(card)}
       <div class="builder-card-title">
         <strong>${escapeHtml(card.name)}</strong>
         <span class="meta-line">${escapeHtml(cardSummaryLine(card))}</span>
@@ -637,6 +719,7 @@ function renderDeckList() {
     row.className = "deck-row";
     row.innerHTML = `
       <div class="deck-row-head">
+        ${card ? cardThumbHtml(card, "deck-thumb") : ""}
         <div class="deck-row-title">
           <strong>${escapeHtml(card?.name || id)}</strong>
           <span class="meta-line">${escapeHtml(card ? cardSummaryLine(card) : "-")}</span>
@@ -663,6 +746,7 @@ function renderDeckList() {
     row.append(actions);
     elements.deckList.append(row);
   });
+  builderFillThumbs(elements.deckList);
 }
 
 function addCard(id, delta) {

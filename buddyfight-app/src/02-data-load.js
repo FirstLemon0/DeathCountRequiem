@@ -17,13 +17,22 @@ async function loadGameData() {
   const flags = normalizeFlagDefinitions(flagsData);
   flagIdAliases = buildFlagIdAliases(flags);
 
+  // カードid→画像パック名(=カードJSONファイル名stem)。render の画像遅延読込で使う。
+  cardIdToPack = {};
   cardLibrary = [
     ...flags,
-    ...cardSets.flatMap(({ set, data }) =>
-      (data.cards || [])
+    ...cardSets.flatMap(({ set, data }) => {
+      const packName = (set.file || "").split("/").pop().replace(/\.json$/, "");
+      return (data.cards || [])
         .filter((card) => card.type !== "flag")
-        .map((card) => normalizeCardDefinition(card, set)),
-    ),
+        .map((card) => {
+          const def = normalizeCardDefinition(card, set);
+          if (packName && def.id) {
+            cardIdToPack[def.id] = packName;
+          }
+          return def;
+        });
+    }),
   ];
   const officialDecks = deckSets.flatMap(({ set, data }) =>
     (data.decks || []).map((deck) => normalizeDeckProfile(deck, set)),

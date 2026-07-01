@@ -340,7 +340,9 @@ function updateHandScrollHint() {
 function createCardElement(card, interactive = false) {
   const cardElement = document.createElement(interactive ? "button" : "span");
   const displayType = effectiveCardType(card);
-  cardElement.className = `card ${displayType}`;
+  // 必殺技・必殺モンスターは公式カードが横長なので、横長フレームで表示する。
+  const landscape = ["impact", "impactMonster"].includes(displayType) ? " landscape" : "";
+  cardElement.className = `card ${displayType} ${interactive ? "hand-card" : "board-card"}${landscape}`;
   if (card.instanceId) {
     cardElement.dataset.instanceId = card.instanceId; // シンクライアント等が識別に使う
   }
@@ -361,27 +363,142 @@ function createCardElement(card, interactive = false) {
     cardElement.classList.add("used");
   }
   const soulNames = stackedCardNames(card);
-  const soulPeek = soulNames.length
-    ? `<span class="card-stack-peek" title="${escapeHtml(soulNames.join(" / "))}">ソウル ${soulNames.length}</span>`
-    : "";
-  cardElement.innerHTML = `
-    <span class="card-title">
-      <span class="card-name">${escapeHtml(card.name)}</span>
-      <span class="card-kind">${typeLabels[displayType]}</span>
-    </span>
-    ${soulPeek}
-    <span class="card-text">${escapeHtml(effectImplementationLabel(card))}</span>
-      <span class="card-stats">
-        <span class="st-cost">コスト ${costLabel(card)}</span>
-        <span class="st-size">サイズ ${statLabel(card.size)}</span>
-        <span class="st-pow">${statLabel(visiblePower(card))}</span>
-        <span class="st-def">${statLabel(visibleDefense(card))}</span>
-        <span class="st-crit">${statLabel(visibleCritical(card))}</span>
-      </span>
-  `;
+  // カード画像（ローカルWebP優先→公式URLフォールバック→プレースホルダ）。
+  cardElement.append(createCardImageElement(card));
+  if (interactive) {
+    // 手札: 画像＋カード名（効果/コスト/ステータスはタップ時のポップアップ＝attachTooltip に任せる）。
+    const name = document.createElement("span");
+    name.className = "card-name";
+    name.textContent = card.name;
+    cardElement.append(name);
+  } else if (cardHasDisplayStats(card)) {
+    // 盤面: 画像＋攻/防/クリのステータスのみ（名前・効果・種別は非表示）。
+    const stats = document.createElement("span");
+    stats.className = "card-stats-board";
+    stats.innerHTML =
+      `<span class="st-pow">${statLabel(visiblePower(card))}</span>` +
+      `<span class="sep">/</span>` +
+      `<span class="st-def">${statLabel(visibleDefense(card))}</span>` +
+      `<span class="sep">/</span>` +
+      `<span class="st-crit">${statLabel(visibleCritical(card))}</span>`;
+    cardElement.append(stats);
+  }
+  if (soulNames.length) {
+    const peek = document.createElement("span");
+    peek.className = "card-stack-peek";
+    peek.title = soulNames.join(" / ");
+    peek.textContent = `ソウル ${soulNames.length}`;
+    cardElement.append(peek);
+  }
   // 手札カード(interactive=button)のみ、タッチ長押しでプレビュー（盤面のspanは対象外）。
   attachTooltip(cardElement, card, { touchPreview: interactive });
   return cardElement;
+}
+
+// 盤面でステータス（攻/防/クリ）を表示するカードか。モンスター・必殺モンスター・アイテム(武器)は表示、
+// 呪文・必殺技・フラッグは非表示。
+function cardHasDisplayStats(card) {
+  return ["monster", "impactMonster", "item"].includes(effectiveCardType(card));
+}
+
+// カード番号から公式カード画像URLを導出（ローカルWebPが無い場合のフォールバック）。
+// 例: H-EB01/0002 -> .../images/card/heb_01_0002.png
+function officialCardImageUrl(card) {
+  const no = card?.no;
+  if (!no || no.indexOf("/") < 0) {
+    return null;
+  }
+  const [left, right] = no.split("/");
+  const letters = left.replace(/-/g, "").match(/^([A-Za-z]+)(\d+)$/);
+  const cardnum = String(right).match(/^\d+/);
+  if (!letters || !cardnum) {
+    return null;
+  }
+  const num = String(parseInt(cardnum[0], 10)).padStart(4, "0");
+  return `https://fc-buddyfight.com/wordpress/wp-content/images/card/${letters[1].toLowerCase()}_${letters[2]}_${num}.png`;
+}
+
+function createCardImageElement(card) {
+  const img = document.createElement("img");
+  img.className = "card-img";
+  img.loading = "lazy";
+  img.decoding = "async";
+  img.alt = card?.name || "";
+  const remote = officialCardImageUrl(card);
+  img.dataset.remote = remote || "";
+  const packed = card?.id ? cardImagePacks[card.id] : null;
+  if (packed) {
+    img.src = packed;
+    img.addEventListener("error", onCardImageError);
+  } else {
+    // 製品画像パック未読込: 遅延ロードし、読めたら差し込む。無ければ公式URL→プレースホルダ。
+    ensureImagePackLoaded(card).then(() => {
+      const url = card?.id ? cardImagePacks[card.id] : null;
+      if (url) {
+        img.src = url;
+        img.addEventListener("error", onCardImageError);
+      } else if (remote) {
+        img.src = remote;
+        img.addEventListener("error", onCardImageError);
+      } else {
+        showCardImageFallback(img);
+      }
+    });
+  }
+  return img;
+}
+
+// カードの製品画像パック（data/images/{pack}.imgpack.json）を必要時に一度だけ読み込み、
+// cardImagePacks に cardId→dataURL を展開する。多重fetchは imagePackPromises で防止。
+function ensureImagePackLoaded(card) {
+  const pack = card?.id ? cardIdToPack[card.id] : null;
+  if (!pack || typeof fetch !== "function") {
+    return Promise.resolve();
+  }
+  if (imagePackPromises[pack]) {
+    return imagePackPromises[pack];
+  }
+  imagePackPromises[pack] = fetch(`data/images/${pack}.imgpack.json`, { cache: "force-cache" })
+    .then((response) => (response.ok ? response.json() : {}))
+    .then((map) => {
+      Object.assign(cardImagePacks, map);
+    })
+    .catch(() => {});
+  return imagePackPromises[pack];
+}
+
+function onCardImageError(event) {
+  const img = event?.currentTarget;
+  if (!img) {
+    return;
+  }
+  const remote = img.dataset?.remote;
+  // 画像失敗→まだ公式URLを試していなければ公式へ。既に公式なら名前プレースホルダ。
+  if (remote && img.src !== remote) {
+    img.src = remote;
+    return;
+  }
+  showCardImageFallback(img);
+}
+
+// 画像が出せないカード: 画像を名前プレースホルダに差し替える（テストのダミーDOMでも例外を出さない）。
+function showCardImageFallback(img) {
+  if (!img) {
+    return;
+  }
+  if (typeof img.removeEventListener === "function") {
+    img.removeEventListener("error", onCardImageError);
+  }
+  const holder = typeof img.closest === "function" ? img.closest(".card") : null;
+  if (holder && typeof holder.querySelector === "function" && !holder.querySelector(".card-img-fallback")) {
+    holder.classList?.add?.("no-image");
+    const fallback = document.createElement("span");
+    fallback.className = "card-img-fallback";
+    fallback.textContent = img.alt || "";
+    if (typeof img.replaceWith === "function") {
+      img.replaceWith(fallback);
+    }
+  }
 }
 
 function stackedCardNames(card) {

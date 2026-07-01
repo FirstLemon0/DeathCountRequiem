@@ -616,16 +616,85 @@ h2 {
   min-height: 120px;
   height: 100%;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 8px;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 4px;
   border: 1px solid var(--card-line);
   border-radius: 8px;
   background:
     linear-gradient(180deg, var(--sheen), transparent 40%),
     var(--card-bg);
   color: var(--text);
-  padding: 9px;
-  text-align: left;
+  padding: 5px;
+  text-align: center;
+  overflow: hidden;
+}
+
+/* カード画像（盤面・手札共通）。カード枠内に収まるよう contain。読み込み中/失敗は下の no-image で処理。 */
+.card-img {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  object-fit: contain;
+  border-radius: 6px;
+  display: block;
+}
+
+/* 盤面カード: 画像下に 攻/防/クリ のみ（攻=赤・防=青・クリ=金で識別、ラベルなし）。 */
+.card-stats-board {
+  flex: 0 0 auto;
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+.card-stats-board .st-pow { color: var(--stat-pow, #e5534b); }
+.card-stats-board .st-def { color: var(--stat-def, #4c8dff); }
+.card-stats-board .st-crit { color: var(--stat-crit, #e3b341); }
+.card-stats-board .sep { color: var(--muted); margin: 0 1px; font-weight: 400; }
+
+/* 手札カード: 画像下にカード名（効果/コストはタップのポップアップに任せる）。 */
+.hand-card .card-name {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 必殺技・必殺モンスターは公式カードが横長。横長比のフレームで表示し、画像を過度にレターボックスしない。
+   （object-fit:contain のため向きに関わらず歪まないが、横長カードは横長枠に寄せる。） */
+.card.landscape {
+  min-height: 0;
+}
+.card.landscape .card-img {
+  flex: 0 0 auto;
+  height: auto;
+  aspect-ratio: 160 / 115;
+}
+.hand-card.landscape .card-name {
+  -webkit-line-clamp: 1;
+}
+
+/* 画像が無い/取得失敗のカード: 画像枠にカード名を表示（識別のため）。 */
+.card.no-image .card-img-fallback {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.8rem;
+  padding: 6px;
+  overflow-wrap: anywhere;
+  color: var(--text);
 }
 
 .card.monster {
