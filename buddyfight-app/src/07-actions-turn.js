@@ -160,6 +160,11 @@ async function callMonster(zone) {
     addLog(`${selectedCard.name}のコール条件を満たしていません。`);
     return;
   }
+  if (isCallRestricted(selectedOwner, selectedCard)) {
+    // 継続コール制限（戦神機 GIZAI天王『搭乗中は《戦神機》以外をコールできない』等）。
+    addLog(`${selectedCard.name}は今コールできません。`);
+    return;
+  }
   const actualZone = stackTarget?.zone || zone;
   if (
     (selectedCard.callZones && !selectedCard.callZones.includes(actualZone)) ||
@@ -406,6 +411,27 @@ async function runPhaseStartTriggers(event, turnOwner = state.active) {
         owner,
         zone,
         turnOwner,
+      });
+    }
+  }
+  // ドロップゾーンのフェイズ開始誘発（triggerZones:["drop"] / fromDropZone を持つ能力のみ）。
+  // 例: ドーン伯爵0005(ターン開始時に自己蘇生) / 村雨0013(メイン開始時に手札へ)。
+  const isDropTrigger = (ability) =>
+    ability.kind === "triggered" &&
+    ability.event === event &&
+    (ability.fromDropZone || (ability.triggerZones || []).includes("drop"));
+  for (const owner of [turnOwner, 1 - turnOwner]) {
+    for (const card of [...(state.players[owner]?.drop || [])]) {
+      if (!(card.abilities || []).some(isDropTrigger)) {
+        continue;
+      }
+      await runTriggeredAbilities(card, event, {
+        card,
+        player: state.players[owner],
+        owner,
+        zone: "drop",
+        turnOwner,
+        __abilityFilter: isDropTrigger,
       });
     }
   }

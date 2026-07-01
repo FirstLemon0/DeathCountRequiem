@@ -394,6 +394,17 @@ function canPayStructuredCost(player, costSteps = [], context = {}) {
         return { ok: false, reason: "コストでドロップに置く自分の場のカードが足りません。" };
       }
     }
+    if (step.op === "putSelectedOwnFieldCardsToSoul") {
+      const candidates = ownFieldCostCandidates(player, step.filter).filter(
+        (candidate) => candidate.card.instanceId !== context.sourceCard?.instanceId,
+      );
+      if (candidates.length < (step.min ?? 1)) {
+        return { ok: false, reason: "コストでソウルに入れる自分の場のカードが足りません。" };
+      }
+    }
+    if (step.op === "lookTopSelectToSoulRestToDrop" && player.deck.length < 1) {
+      return { ok: false, reason: "見るデッキのカードがありません。" };
+    }
   }
   return { ok: true };
 }
@@ -619,6 +630,17 @@ function payStructuredCost(player, costSteps = [], context = {}) {
           }
         });
     }
+    if (step.op === "putSelectedOwnFieldCardsToSoul") {
+      // 非対話経路では最小枚数だけ自動選択してソウルへ。
+      const selected = ownFieldCostCandidates(player, step.filter)
+        .filter((candidate) => candidate.card.instanceId !== sourceCard?.instanceId)
+        .slice(0, step.min ?? 1);
+      moveSelectedFieldCardsToSoul(player, sourceCard, selected);
+    }
+    if (step.op === "lookTopSelectToSoulRestToDrop") {
+      // 非対話経路では見た先頭 amount 枚をソウルにする。
+      lookTopSelectToSoulRestToDrop(player, sourceCard, step.count || 1, step.amount || 1);
+    }
   }
   checkWinner();
   return { ok: true };
@@ -641,6 +663,8 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
   const dropOwnMonsterSelections = [];
   const fieldToGaugeSelections = [];
   const dropOwnFieldSelections = [];
+  const putSelectedFieldSoulSelections = [];
+  const lookTopSoulSelections = [];
   const cardToSoulSelections = [];
   for (const step of applicableCostSteps) {
     if (step.op !== "discardHand") {
@@ -776,6 +800,56 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     dropOwnFieldSelections.push(selected);
   }
   for (const step of applicableCostSteps) {
+    if (step.op !== "putSelectedOwnFieldCardsToSoul") {
+      continue;
+    }
+    const candidates = ownFieldCostCandidates(player, step.filter).filter(
+      (candidate) =>
+        candidate.card.instanceId !== context.sourceCard?.instanceId &&
+        !reservedCostZones.has(`${candidate.owner}:${candidate.zone}`),
+    );
+    const minimum = step.min ?? 1;
+    const maximum = Math.min(step.max ?? candidates.length, candidates.length);
+    const selected = await chooseCardEntries(candidates, {
+      title: `${context.sourceCard?.name || "コスト"}でソウルに入れる場のカード`,
+      lead: `自分の場からソウルに入れるカードを${minimum}枚以上選んでください。`,
+      min: minimum,
+      max: maximum,
+      forceDialog: true,
+      promptSeat: state.players.indexOf(player),
+    });
+    if (!selected || selected.length < minimum) {
+      return { ok: false, reason: "コストでソウルに入れる自分の場のカードを選んでください。" };
+    }
+    selected.forEach((candidate) => reservedCostZones.add(`${candidate.owner}:${candidate.zone}`));
+    putSelectedFieldSoulSelections.push(selected);
+  }
+  for (const step of applicableCostSteps) {
+    if (step.op !== "lookTopSelectToSoulRestToDrop") {
+      continue;
+    }
+    const count = step.count || 1;
+    const amount = step.amount || 1;
+    const revealed = [];
+    for (let index = 0; index < count && player.deck.length > 0; index += 1) {
+      revealed.push(player.deck.pop());
+    }
+    const pickCount = Math.min(amount, revealed.length);
+    const selected = await chooseCardEntries(
+      revealed.map((card) => ({ card })),
+      {
+        title: `${context.sourceCard?.name || "コスト"}: デッキ上${revealed.length}枚を見る`,
+        lead: `ソウルに入れる${pickCount}枚を選んでください（残りはドロップゾーンに置かれます）。`,
+        min: pickCount,
+        max: pickCount,
+        forceDialog: true,
+        promptSeat: state.players.indexOf(player),
+      },
+    );
+    const soulSelected = selected && selected.length ? selected.map((entry) => entry.card) : revealed.slice(0, pickCount);
+    lookTopSoulSelections.push({ revealed, soulSelected });
+  }
+  for (const step of applicableCostSteps) {
     if (step.op !== "putCardToSoul") {
       continue;
     }
@@ -809,6 +883,8 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
   let dropOwnMonsterStepIndex = 0;
   let fieldToGaugeStepIndex = 0;
   let dropOwnFieldStepIndex = 0;
+  let putSelectedFieldSoulStepIndex = 0;
+  let lookTopSoulStepIndex = 0;
   const discarded = [];
   for (const step of applicableCostSteps) {
     const amount = step.amount || 1;
@@ -874,6 +950,15 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       if (slot) {
         dropFieldCardByRule(player, slot.zone);
       }
+    }
+    if (step.op === "putSelectedOwnFieldCardsToSoul") {
+      moveSelectedFieldCardsToSoul(player, sourceCard, putSelectedFieldSoulSelections[putSelectedFieldSoulStepIndex] || []);
+      putSelectedFieldSoulStepIndex += 1;
+    }
+    if (step.op === "lookTopSelectToSoulRestToDrop") {
+      const pick = lookTopSoulSelections[lookTopSoulStepIndex] || { revealed: [], soulSelected: [] };
+      lookTopSoulStepIndex += 1;
+      lookTopSelectToSoulRestToDrop(player, sourceCard, step.count || 1, step.amount || 1, pick.revealed, pick.soulSelected);
     }
     if (step.op === "dropOwnMonster") {
       const selectedTargets = dropOwnMonsterSelections[dropOwnMonsterStepIndex] || [];
@@ -954,6 +1039,51 @@ function moveFieldCardsToSoul(player, card, filter = {}) {
   if (moved.length > 0) {
     card.soul.push(...moved);
     addLog(`${moved.map((c) => c.name).join("、")}を${card.name}のソウルに入れました。`);
+  }
+}
+
+// 選択された自分の場のカード（entries: {zone} を含む）を発生源のソウルへ入れる（putSelectedOwnFieldCardsToSoul用）。
+function moveSelectedFieldCardsToSoul(player, sourceCard, entries = []) {
+  sourceCard.soul ||= [];
+  const moved = [];
+  entries.forEach(({ zone }) => {
+    const fieldCard = player.field[zone];
+    if (fieldCard && fieldCard.instanceId !== sourceCard.instanceId) {
+      player.field[zone] = null;
+      moved.push(fieldCard);
+    }
+  });
+  if (moved.length > 0) {
+    sourceCard.soul.push(...moved);
+    addLog(`${moved.map((card) => card.name).join("、")}を${sourceCard.name}のソウルに入れました。`);
+  }
+  return moved;
+}
+
+// デッキ上から count 枚を見て、soulCards をソウルへ、残りをドロップへ（lookTopSelectToSoulRestToDrop用）。
+// revealed 未指定時はここでデッキ上から count 枚めくる。soulCards 未指定時は先頭 amount 枚をソウルにする。
+function lookTopSelectToSoulRestToDrop(player, sourceCard, count = 1, amount = 1, revealed = null, soulCards = null) {
+  const cards = revealed || [];
+  if (!revealed) {
+    for (let index = 0; index < count && player.deck.length > 0; index += 1) {
+      cards.push(player.deck.pop());
+    }
+  }
+  sourceCard.soul ||= [];
+  const soulPick = soulCards || cards.slice(0, amount);
+  const soulSet = new Set(soulPick.map((card) => card.instanceId));
+  const toSoul = cards.filter((card) => soulSet.has(card.instanceId));
+  const toDrop = cards.filter((card) => !soulSet.has(card.instanceId));
+  sourceCard.soul.push(...toSoul);
+  player.drop.push(...toDrop);
+  if (toSoul.length > 0) {
+    addLog(`${toSoul.map((card) => card.name).join("、")}を${sourceCard.name}のソウルに入れました。`);
+  }
+  if (toDrop.length > 0) {
+    addLog(`残りの${toDrop.map((card) => card.name).join("、")}をドロップゾーンに置きました。`);
+  }
+  if (player.deck.length === 0) {
+    declareDeckLoss(player);
   }
 }
 

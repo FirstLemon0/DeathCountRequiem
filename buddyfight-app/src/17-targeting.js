@@ -328,6 +328,19 @@ function matchesCardFilter(card, filter = {}) {
   if (filter.sizeIn && !filter.sizeIn.includes(card.size || 0)) {
     return false;
   }
+  // basePower*: 印字（元々の）攻撃力を見る。powerLte/Gte は visiblePower(バフ込み)なので別途。
+  if (filter.basePower !== undefined && (card.power || 0) !== filter.basePower) {
+    return false;
+  }
+  if (filter.basePowerGte !== undefined && (card.power || 0) < filter.basePowerGte) {
+    return false;
+  }
+  if (filter.basePowerLte !== undefined && (card.power || 0) > filter.basePowerLte) {
+    return false;
+  }
+  if (filter.hasAbilityLabel !== undefined && !(card.abilities || []).some((ability) => ability.label === filter.hasAbilityLabel)) {
+    return false;
+  }
   if (filter.attribute && !card.attributes?.includes(filter.attribute)) {
     return false;
   }

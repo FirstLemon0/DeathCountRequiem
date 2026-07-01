@@ -33,7 +33,7 @@ function isAbilitiesNullified(card) {
     cardOwner = host.owner;
     location = "soul";
   }
-  return state.players.some((player, nullifierOwner) =>
+  const fieldNullified = state.players.some((player, nullifierOwner) =>
     zones.some((zone) => {
       const src = player.field[zone];
       return (src?.continuous || []).some((e) => {
@@ -49,6 +49,42 @@ function isAbilitiesNullified(card) {
         return true;
       });
     }),
+  );
+  return fieldNullified || isNullifiedByBattlingHostSoul(card);
+}
+
+// soulContinuous nullifyBattlingMonsterAbilities（星合体 竜装機アーティライガー 0072）:
+// card が、ソウルに当該効果を持つモンスター(ホスト=ネオドラゴン)とバトルしており、
+// card の元々の(印字)サイズが originalSizeLte 以下なら、card の能力を全て無効化する。
+// 効果元の竜装機は nullifyImmune のためここで isAbilitiesNullified を再帰呼び出しせず判定する。
+function isNullifiedByBattlingHostSoul(card) {
+  const pending = state.pendingAttack;
+  if (!pending || !card) {
+    return false;
+  }
+  const attackerSlots = getPendingAttackerSlots(pending);
+  const attackerCards = attackerSlots
+    .map((slot) => state.players[slot.owner]?.field?.[slot.zone])
+    .filter(Boolean);
+  const targetCard =
+    pending.targetType === "monster" ? state.players[pending.targetOwner]?.field?.[pending.targetZone] : null;
+  const isAttacker = attackerCards.some((c) => c.instanceId === card.instanceId);
+  const isTarget = Boolean(targetCard && targetCard.instanceId === card.instanceId);
+  const hosts = [];
+  if (isAttacker && targetCard) {
+    hosts.push(targetCard);
+  }
+  if (isTarget) {
+    hosts.push(...attackerCards);
+  }
+  return hosts.some((host) =>
+    (host.soul || []).some((soulCard) =>
+      (soulCard.soulContinuous || []).some(
+        (effect) =>
+          effect.op === "nullifyBattlingMonsterAbilities" &&
+          (card.size || 0) <= (effect.originalSizeLte ?? Infinity),
+      ),
+    ),
   );
 }
 

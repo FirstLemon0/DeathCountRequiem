@@ -680,6 +680,31 @@ function checkCondition(condition, owner, context = {}) {
   if (condition.op === "ownDropAttributeCountGte") {
     return player.drop.filter((card) => card.attributes?.includes(condition.attribute)).length >= condition.amount;
   }
+  if (condition.op === "ownDropAttributeSumCountGte") {
+    // 複数属性のドロップ枚数の合計が amount 以上か（両属性持ちは各属性で1枚ずつ計上＝二重計上）。
+    const total = (condition.attributes || []).reduce(
+      (sum, attr) => sum + player.drop.filter((card) => card.attributes?.includes(attr)).length,
+      0,
+    );
+    return total >= condition.amount;
+  }
+  if (condition.op === "enteredFromZoneIn") {
+    // コールされたカードの発生元ゾーン（callMonster が card.enteredFromZone に記録）を判定。
+    const entered = context.enteredCard || context.card || getSelectedCard();
+    return Boolean(entered && (condition.zones || []).includes(entered.enteredFromZone));
+  }
+  if (condition.op === "eventCardIsSource") {
+    // フィールドイベント（allyMove/allyDealDamage 等）の主体カードが能力の発生源自身か。
+    const eventCard =
+      context.eventCard?.card || context.eventFieldCard || context.destroyedCard || context.enteredCard;
+    return Boolean(eventCard && context.card && eventCard.instanceId === context.card.instanceId);
+  }
+  if (condition.op === "isFirstBattleEndWindow") {
+    // 「(相手のターン中、)1回目のバトル終了時に使える」(ヴァイシュタッツ 0095) の近似。
+    // アプリの対抗ウィンドウはバトル解決前(pendingAttack中)のため、1回目のバトル(attacksThisTurn===1)の
+    // 対抗ウィンドウで true を返す（厳密な「バトル終了時」より僅かに早いが、アタックフェイズ終了の意図は満たす）。
+    return Boolean(state.pendingAttack) && (state.attacksThisTurn || 0) === 1;
+  }
   if (condition.op === "ownDropDistinctAttributeCountGte") {
     const names = new Set(
       player.drop

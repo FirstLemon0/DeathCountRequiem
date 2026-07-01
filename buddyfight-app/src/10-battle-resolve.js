@@ -428,6 +428,32 @@ function nullifyPendingAttack(sourceName = "効果", sourceCard = null) {
   return true;
 }
 
+// 「君の場のカードの攻撃が相手に無効化された時」(爆雷 ヤミゲドウ 0109/0110) の誘発を、攻撃側の場札へ発火する。
+// nullifyPendingAttack は同期なので、無効化を成立させた非同期経路(counter効果解決)から呼ぶ。
+async function fireAllyAttackNullifiedTriggers() {
+  const outcome = state.lastAttackOutcome;
+  if (!outcome?.nullified || outcome.allyAttackNullifiedFired) {
+    return;
+  }
+  outcome.allyAttackNullifiedFired = true;
+  const attackerOwner = outcome.attackers?.[0]?.owner;
+  if (attackerOwner === undefined || attackerOwner === null) {
+    return;
+  }
+  for (const zone of zones) {
+    const card = state.players[attackerOwner]?.field?.[zone];
+    if (!card) {
+      continue;
+    }
+    await runTriggeredAbilities(card, "allyAttackNullified", {
+      card,
+      player: state.players[attackerOwner],
+      owner: attackerOwner,
+      zone,
+    });
+  }
+}
+
 async function resolvePenetrateDamage(attackers, pending) {
   if (pending.targetZone !== "center") {
     return;

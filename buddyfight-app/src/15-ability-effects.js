@@ -87,9 +87,10 @@ async function executeAbilityEffect(effect, context) {
     return;
   }
   if (effect.op === "draw") {
-    const drew = drawCards(player, effect.amount || 1);
+    const drawer = effect.player === "opponent" ? opponent : player;
+    const drew = drawCards(drawer, effect.amount || 1);
     if (drew !== 0 || effect.amount) {
-      await runFieldEventTriggers("drawByEffect", state.players.indexOf(player));
+      await runFieldEventTriggers("drawByEffect", state.players.indexOf(drawer));
     }
   }
   if (effect.op === "drawUpToHand") {
@@ -159,6 +160,16 @@ async function executeAbilityEffect(effect, context) {
     addLog(`${context.card.name}の効果で、もう1度アタックフェイズを行います。`);
     await runPhaseStartTriggers("attackStart", state.active);
     await runMoveKeywordsAtAttackPhaseStart();
+  }
+  if (effect.op === "endAttackPhase") {
+    // 進行中のアタックフェイズを終了しファイナルフェイズへ（残りの攻撃を行わない。ヴァイシュタッツ 0095）。
+    state.phase = "final";
+    state.pendingAttack = null;
+    state.selected = null;
+    state.counterHandOwner = null;
+    state.linkAttackers = [];
+    state.buddyCallDeclared = null;
+    addLog(`${context.card?.name || "効果"}の効果でアタックフェイズを終了しました。`);
   }
   if (effect.op === "gainLife") {
     const gained = effect.amount || 1;
@@ -373,7 +384,8 @@ async function executeAbilityEffect(effect, context) {
   if (effect.op === "setLifeZeroSafeguard") {
     // 「そのターン中、次に君のライフが0になるなら、かわりにライフは1になる」（実は生きていた！）。
     // プレイヤー単位の一回限り。resolveLifeZeroReplacements が消費し、ターン終了でクリアされる。
-    player.lifeZeroSafeguard = { life: effect.life || 1 };
+    // effects 指定時は消費時に追加効果（手札全捨て・相手にダメージ等。蒼舞天滝陣 0037）を実行する。
+    player.lifeZeroSafeguard = { life: effect.life || 1, effects: effect.effects || null, owner: state.players.indexOf(player) };
     addLog(`${player.name}は次にライフが0になっても${effect.life || 1}で耐える構えをとった。`);
   }
   if (effect.op === "destroy") {
@@ -785,12 +797,23 @@ async function executeAbilityEffect(effect, context) {
   }
   if (effect.op === "nullifyAttack" && state.pendingAttack) {
     context.lastEffectResult = nullifyPendingAttack(context.card?.name || "効果", context.card);
+    if (context.lastEffectResult) {
+      // 相手の効果で自軍の攻撃が無効化された時の誘発（爆雷 ヤミゲドウ 0109/0110）を発火する。
+      await fireAllyAttackNullifiedTriggers();
+    }
   }
   if (effect.op === "markPendingAttackUnstoppable" && state.pendingAttack) {
     // 「この攻撃は無効化されず、そのダメージは減らない」(ドラム・ザ・フューチャー)。
+    // onlyNullify:true は「無効化されない」のみ（ダメージ減少耐性は付けない。例: ジウン0002）。
     state.pendingAttack.cannotBeNullified = true;
-    state.pendingAttack.damageCannotBeReduced = true;
-    addLog(`${context.card?.name || "効果"}の効果でこの攻撃は無効化されず、ダメージも減らない。`);
+    if (!effect.onlyNullify) {
+      state.pendingAttack.damageCannotBeReduced = true;
+    }
+    addLog(
+      effect.onlyNullify
+        ? `${context.card?.name || "効果"}の効果でこの攻撃は無効化されない。`
+        : `${context.card?.name || "効果"}の効果でこの攻撃は無効化されず、ダメージも減らない。`,
+    );
   }
   if (effect.op === "nullifyPendingAction" && state.pendingAction) {
     context.lastEffectResult = nullifyPendingAction(context.card?.name || "効果");
@@ -807,6 +830,19 @@ async function executeAbilityEffect(effect, context) {
           effectiveCardType(context.card) === "monster" ? "monster" : "fieldCard";
         addLog(`${context.card.name}の効果で攻撃対象を${context.card.name}に変更しました。`);
       }
+    }
+  }
+  if (effect.op === "redirectPendingAttackToTarget" && state.pendingAttack) {
+    // 進行中の攻撃の対象を、解決済み $target（自分の場のモンスター等）へその場で変更（馬鹿囃子 0089）。
+    const ref = resolveEffectReference(effect.target, context);
+    const targetCard = ref?.card;
+    const slot = targetCard ? findFieldCardSlot(targetCard) : ref?.zone != null ? { owner: ref.owner, zone: ref.zone } : null;
+    if (slot) {
+      state.pendingAttack.targetOwner = slot.owner;
+      state.pendingAttack.targetZone = slot.zone;
+      const card = targetCard || state.players[slot.owner]?.field?.[slot.zone];
+      state.pendingAttack.targetType = card && effectiveCardType(card) === "monster" ? "monster" : "fieldCard";
+      addLog(`${context.card?.name || "効果"}の効果で攻撃対象を${card?.name || "対象"}に変更しました。`);
     }
   }
   if (effect.op === "putTopDeckToGaugeEqualToLastDamage") {

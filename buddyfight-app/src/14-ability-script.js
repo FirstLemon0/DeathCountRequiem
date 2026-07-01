@@ -7,9 +7,19 @@ async function runTriggeredAbilities(card, event, baseContext = {}) {
   if (isAbilitiesNullified(card)) {
     return; // 能力無効化(凍てつく星辰)されたカードの誘発能力は発動しない
   }
-  const triggeredAbilities = (card.abilities || []).filter(
-    (ability) => ability.kind === "triggered" && ability.event === event,
-  );
+  let triggeredAbilities = [
+    ...(card.abilities || []).filter((ability) => ability.kind === "triggered" && ability.event === event),
+    // ソウルカードの triggered soulAbilities も、乗っているホスト(card)のイベントで発火（星合体 竜装機 0102 等）。
+    ...(card.soul || []).flatMap((soulCard) =>
+      (soulCard.soulAbilities || [])
+        .filter((ability) => ability.kind === "triggered" && ability.event === event)
+        .map((ability) => ({ ...ability, __fromSoul: soulCard })),
+    ),
+  ];
+  // ドロップゾーン走査などで、opt-in した能力だけに絞る（runPhaseStartTriggers から指定）。
+  if (typeof baseContext.__abilityFilter === "function") {
+    triggeredAbilities = triggeredAbilities.filter(baseContext.__abilityFilter);
+  }
   for (const ability of triggeredAbilities) {
       const owner = baseContext.owner ?? findFieldCardSlot(card)?.owner;
       if (owner === undefined || owner === null) {
@@ -19,6 +29,7 @@ async function runTriggeredAbilities(card, event, baseContext = {}) {
         ...baseContext,
         card,
         ability,
+        soulSourceCard: ability.__fromSoul || baseContext.soulSourceCard,
         player: state.players[owner],
         owner,
         zone: baseContext.zone ?? findFieldCardSlot(card)?.zone,
@@ -1465,6 +1476,7 @@ async function callSelectedForScript(step, context) {
   if (step.redirectPendingAttack && state.pendingAttack) {
     addLog(`${context.card.name}の効果で攻撃対象を変更しました。`);
   }
+  calledCard.enteredFromZone = entry.source || step.from || null; // 発生元ゾーン記録（enteredFromZoneIn 用。飛雲丸 0056）
   if (step.resolveOnEnter) {
     await resolveOnEnter(calledCard, player);
   }
@@ -1497,10 +1509,12 @@ async function callSelfFromHandForScript(step, context) {
     }
     return false;
   };
-  if (!removeSelf(player.drop) && !removeSelf(player.hand)) {
+  const fromDrop = removeSelf(player.drop);
+  if (!fromDrop && !removeSelf(player.hand)) {
     addLog(`${card.name}はコールできる場所にありません。`);
     return { ok: false, reason: "self_not_found" };
   }
+  card.enteredFromZone = fromDrop ? "drop" : "hand"; // 発生元ゾーン記録（enteredFromZoneIn 用）
   if (cost.length) {
     payStructuredCost(player, cost, { sourceCard: card });
   }

@@ -98,6 +98,11 @@ async function equipCardDirect(player, card) {
   player.arrivalCardId = null;
   await resolveOnEnter(card, player);
   addLog(`${player.name}は${card.name}を装備しました。`);
+  // アイテム装備完了を場イベントとして通知（allyEquip/opponentEquip）。相手の装備に反応するカード（影鼬 0087）用。
+  await runFieldEventTriggers("equip", owner, card, "item", {
+    enteredCard: card,
+    enteredZone: "item",
+  });
 }
 
 // 共通: 既に取り出した設置(set)カードを設置ゾーンに配置する。

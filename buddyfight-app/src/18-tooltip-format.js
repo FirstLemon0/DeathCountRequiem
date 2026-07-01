@@ -271,6 +271,32 @@ function isCenterCallPrevented(callerOwner, card) {
   );
 }
 
+// 継続 restrictOwnCall による「◯◯以外のモンスターをコールできない」制限（戦神機 GIZAI天王 0047 の搭乗中制限等）。
+// 場札の continuous を走査し、controller が callerOwner を指し conditions を満たす制限のうち、
+// コールしようとしているカードが allowFilter に一致しないものがあれば true（=コール不可）。
+function isCallRestricted(callerOwner, card) {
+  return state.players.some((player, pIdx) =>
+    zones.some((zone) => {
+      const source = player.field[zone];
+      return activeContinuousEffects(source).some((effect) => {
+        if (effect.op !== "restrictOwnCall") {
+          return false;
+        }
+        if (effect.controller === "self" && pIdx !== callerOwner) {
+          return false;
+        }
+        if (effect.controller === "opponent" && pIdx === callerOwner) {
+          return false;
+        }
+        if (effect.conditions?.length && !checkCardConditions(effect.conditions, pIdx, { card: source, zone })) {
+          return false;
+        }
+        return !matchesCardFilter(card, effect.allowFilter || {});
+      });
+    }),
+  );
+}
+
 function isKeywordPrevented(card, keyword) {
   const slot = findFieldCardSlot(card);
   if (!slot) {

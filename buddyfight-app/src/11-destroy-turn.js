@@ -28,6 +28,10 @@ function canDeclareAttack(attacker) {
   ) {
     return false;
   }
+  if ((attacker.card.cannotAttackZones || []).includes(attacker.zone)) {
+    // 「このカードはレフトとライトに攻撃できない」(武装騎神 デュナミス 0001)等。
+    return false;
+  }
   if (!checkCardConditions(attacker.card.attackConditions || [], attacker.owner, {
     card: attacker.card,
     zone: attacker.zone,
@@ -279,6 +283,19 @@ async function applyAllyDestroyReplacement(card, owner, options = {}) {
     const payment = payStructuredCost(player, cost, { sourceCard: replacer, selectedCard: replacer });
     if (!payment.ok) {
       continue;
+    }
+    if (rule.saveTo) {
+      // 破壊のかわりに saveTo（手札等）へ移す（紅蓮のリング 0031「そのアイテムを手札に戻す」）。
+      const slot = findFieldCardSlot(card);
+      if (slot) {
+        player.drop.push(...(card.soul || []));
+        card.soul = [];
+        card.currentType = card.baseType || card.type;
+        player.field[slot.zone] = null;
+        (player[rule.saveTo] ||= []).push(card);
+      }
+      addLog(`${replacer.name}を置いて${card.name}は${rule.saveTo === "hand" ? "手札" : rule.saveTo}に移りました。`);
+      return true;
     }
     addLog(`${replacer.name}を置いて${card.name}は場に残りました。`);
     return true;
@@ -851,6 +868,22 @@ function resolveLifeZeroReplacements() {
         player.lifeZeroSafeguard = null;
         player.life = safeguard.life || 1;
         addLog(`${player.name}は「実は生きていた！」でライフが${player.life}になりました。`);
+        // 追加効果（蒼舞天滝陣 0037: 手札全捨て＋相手にダメージ2）を同期実行する。
+        // resolveLifeZeroReplacements は同期経路のため、ここでは applyDamageToPlayer 等の非同期を使わず
+        // ライフ/手札の直接操作のみ対応する（相手ライフ0は後続の checkWinner 本体が捕捉する）。
+        for (const eff of safeguard.effects || []) {
+          if (eff.op === "discardAllHand") {
+            const discarded = player.hand.splice(0);
+            player.drop.push(...discarded);
+            if (discarded.length) addLog(`${player.name}は手札を全て捨てました。`);
+          } else if (eff.op === "dealDamage") {
+            const receiver = eff.player === "opponent" ? state.players[1 - owner] : player;
+            receiver.life -= eff.amount || 0;
+            addLog(`${player.name}の効果で${receiver.name}に${eff.amount || 0}ダメージ！`);
+          } else if (eff.op === "gainLife") {
+            player.life += eff.amount || 0;
+          }
+        }
       }
       return;
     }
