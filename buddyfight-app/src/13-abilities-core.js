@@ -116,6 +116,31 @@ async function useHandAbilityAction(card, ability, options = {}) {
     render();
     return;
   }
+  // 手札発動の起動能力（変身/搭乗の hand版 等、kind:"activated"）も宣言時に相手へ対抗機会を与える。
+  // 場発動(useFieldAbilityAction)は既に対抗ウィンドウを開くが、手札発動は spell/impact 以外で
+  // 即解決していた（＝変身時に対抗確認が出ない）ため、activated も pendingAction 経由にする。
+  // fromHand で resolvePendingAbility 側がカードのドロップ着地/ロールバックを扱う。
+  if (
+    !options.counterTiming &&
+    ability.kind === "activated" &&
+    !isCounterAbility(ability) &&
+    !hasPendingResolution()
+  ) {
+    markAbilityLimit(owner, usedCard, ability);
+    beginPendingAction({
+      kind: "ability",
+      owner,
+      responder: 1 - owner,
+      card: usedCard,
+      ability,
+      phase: state.phase,
+      fromHand: true,
+      effectTargetValue: target ? encodeTarget(target.owner, target.zone) : elements.effectTarget.value,
+    });
+    addLog(`${player.name}は${usedCard.name}の能力を宣言しました。対抗確認を行ってください。`);
+    render();
+    return;
+  }
   player.drop.push(usedCard);
   if (options.counterKind) {
     markCounterUsed(owner, options.counterKind);

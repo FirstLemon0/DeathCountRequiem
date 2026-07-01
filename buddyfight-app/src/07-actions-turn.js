@@ -525,8 +525,19 @@ async function resolvePendingAbility(action) {
   const player = state.players[action.owner];
   if (action.nullified) {
     markAbilityLimit(action.owner, action.card, action.ability || {});
-    addLog(`${pendingActionLabel(action)}は無効化されました。`);
+    // 手札発動(変身/搭乗等)が無効化された場合、宣言時に手札から抜いた本体はドロップへ置く。
+    if (action.fromHand) {
+      player.drop.push(action.card);
+      addLog(`${action.card.name}は無効化され、ドロップゾーンに置かれました。`);
+    } else {
+      addLog(`${pendingActionLabel(action)}は無効化されました。`);
+    }
     return;
+  }
+  // 手札発動: 宣言時に手札から抜いた本体を一旦ドロップへ置く（equipSelf 等が回収/着地する。
+  // 何も移動しない効果なら「使った起動能力カード」としてドロップに残る＝手札発動パスと同順序）。
+  if (action.fromHand) {
+    player.drop.push(action.card);
   }
   const context = {
     card: action.card,
@@ -539,7 +550,26 @@ async function resolvePendingAbility(action) {
     hostZone: action.hostZone,
     target: getTargetInfoFromValue(action.effectTargetValue),
   };
-  await executeAbilityBody(context);
+  const bodyResult = await executeAbilityBody(context);
+  // 手札発動の callSelfFromHand 中断（コール先選択キャンセル等）は宣言不成立として手札へ戻す。
+  if (action.fromHand) {
+    const usesCallSelf =
+      Array.isArray(action.ability?.script) && action.ability.script.some((step) => step?.op === "callSelfFromHand");
+    if (bodyResult === false && usesCallSelf) {
+      const onField = [...fieldZones, ...setZones, "item"].some(
+        (zone) => player.field[zone]?.instanceId === action.card.instanceId,
+      );
+      const dropIndex = player.drop.findIndex((c) => c.instanceId === action.card.instanceId);
+      if (!onField && dropIndex >= 0) {
+        player.drop.splice(dropIndex, 1);
+        player.hand.push(action.card);
+        addLog(`${action.card.name}のコールを取りやめ、手札に戻しました。`);
+        markAbilityLimit(action.owner, action.card, action.ability || {});
+        state.phase = action.phase || state.phase;
+        return;
+      }
+    }
+  }
   markAbilityLimit(action.owner, action.card, action.ability || {});
   state.phase = action.phase || state.phase;
   addLog(`${pendingActionLabel(action)}を解決しました。`);

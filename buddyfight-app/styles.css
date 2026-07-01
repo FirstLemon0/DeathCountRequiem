@@ -1818,7 +1818,9 @@ dialog.selection-board-peek .selection-dialog-actions {
 }
 
 /* 対象選択モードのハイライト */
-body.targeting-active .zone.field:not(.attack-target-candidate):not(.effect-target-candidate),
+/* 権威版(play.js)の攻撃対象ハイライト .attack-target-highlight も減光の除外に含める
+   （含めないと対象も opacity:0.5 になり、特にダークモードで赤枠が背景に埋もれて見えない）。 */
+body.targeting-active .zone.field:not(.attack-target-candidate):not(.effect-target-candidate):not(.attack-target-highlight),
 body.targeting-active .fighter-panel:not(.attack-target-candidate) {
   opacity: 0.5;
 }
