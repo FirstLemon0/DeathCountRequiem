@@ -258,6 +258,19 @@ function linkAttackDamageCapFor(defenderOwner) {
   return cap;
 }
 
+// 攻撃で受けるダメージの上限（連携に限らない汎用版。合体戦士ディジエム 0013「4以上なら3に減らす」）。
+function attackDamageCapFor(defenderOwner) {
+  const player = state.players[defenderOwner];
+  let cap = null;
+  zones.forEach((zone) => {
+    const card = player.field[zone];
+    if (card && typeof card.attackDamageReceivedTo === "number") {
+      cap = cap === null ? card.attackDamageReceivedTo : Math.min(cap, card.attackDamageReceivedTo);
+    }
+  });
+  return cap;
+}
+
 async function resolveFighterAttack(pending, attackers, attackerNames) {
   const defender = state.players[pending.defender];
   const defenseItemInfo = getPendingBattleTargetInfo(pending);
@@ -267,6 +280,10 @@ async function resolveFighterAttack(pending, attackers, attackerNames) {
     if (cap !== null && damage > cap) {
       damage = cap;
     }
+  }
+  const attackCap = attackDamageCapFor(pending.defender);
+  if (attackCap !== null && damage > attackCap) {
+    damage = attackCap;
   }
   const damageOptions = { log: false, byAttack: true };
   if (state.pendingAttack?.damageCannotBeReduced) {

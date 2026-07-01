@@ -451,6 +451,25 @@ async function executeAbilityEffect(effect, context) {
       addLog(`${removed.name}を${context.hostCard.name}のソウルからドロップに置きました。`);
     }
   }
+  if (effect.op === "returnSelfToDeckBottom" && context.card) {
+    // このカード自身をデッキの下に置く（シーフ・キャット 0049）。deck.pop()が山上なので unshift=最下。
+    const selfPlayer = context.player || state.players[context.owner];
+    const card = context.card;
+    if (selfPlayer) {
+      const slot = findFieldCardSlot(card);
+      if (slot && slot.owner === state.players.indexOf(selfPlayer)) {
+        selfPlayer.drop.push(...(card.soul || []));
+        card.soul = [];
+        selfPlayer.field[slot.zone] = null;
+      } else {
+        const dropIndex = selfPlayer.drop.findIndex((c) => c.instanceId === card.instanceId);
+        if (dropIndex >= 0) selfPlayer.drop.splice(dropIndex, 1);
+      }
+      card.currentType = card.baseType || card.type;
+      selfPlayer.deck.unshift(card);
+      addLog(`${card.name}をデッキの下に置きました。`);
+    }
+  }
   if (effect.op === "returnSelfToHand" && context.card) {
     // 使用中のこのカード自身を手札に戻す（対抗呪文等は解決時点で既にドロップにある）。
     const selfPlayer = context.player || state.players[context.owner];
@@ -1263,6 +1282,16 @@ function resolveAmountFrom(spec, context) {
     const count = (state.players[owner]?.drop || []).filter((card) => matchesCardFilter(card, spec.filter || {})).length;
     const capped = spec.max !== undefined ? Math.min(count, spec.max) : count;
     return capped * (spec.per ?? 1);
+  }
+  if (spec.source === "fieldCardSoulCount") {
+    // 指定ゾーン(既定 item)の filter 一致フィールドカードのソウル枚数（搭乗しているカードのソウル分ダメージ 0033）。
+    const owner = ownerOf(spec.controller);
+    const zone = spec.zone || "item";
+    const card = state.players[owner]?.field?.[zone];
+    if (!card || !matchesTargetFilter(card, owner, zone, spec.filter || {})) {
+      return 0;
+    }
+    return (card.soul || []).length * (spec.per ?? 1);
   }
   return 0;
 }

@@ -341,6 +341,13 @@ function matchesCardFilter(card, filter = {}) {
   if (filter.hasAbilityLabel !== undefined && !(card.abilities || []).some((ability) => ability.label === filter.hasAbilityLabel)) {
     return false;
   }
+  if (filter.mounted !== undefined) {
+    // mounted: 『搭乗』/『変身』しているカード（印字はモンスターだが currentType が item ＝装備枠に装備中）。
+    const isMounted = card.currentType === "item" && card.type === "monster";
+    if (filter.mounted !== isMounted) {
+      return false;
+    }
+  }
   if (filter.attribute && !card.attributes?.includes(filter.attribute)) {
     return false;
   }
@@ -356,16 +363,18 @@ function matchesCardFilter(card, filter = {}) {
   ) {
     return false;
   }
-  if (filter.name && card.name !== filter.name) {
+  // 追加のカード名(gainNameAsSelected 等)も名前判定に含める。
+  const cardNames = card.additionalNames?.length ? [card.name, ...card.additionalNames] : [card.name];
+  if (filter.name && !cardNames.includes(filter.name)) {
     return false;
   }
-  if (filter.nameIn && !filter.nameIn.includes(card.name)) {
+  if (filter.nameIn && !filter.nameIn.some((n) => cardNames.includes(n))) {
     return false;
   }
-  if (filter.nameIncludes && !card.name.includes(filter.nameIncludes)) {
+  if (filter.nameIncludes && !cardNames.some((n) => n.includes(filter.nameIncludes))) {
     return false;
   }
-  if (filter.nameNot && card.name === filter.nameNot) {
+  if (filter.nameNot && cardNames.includes(filter.nameNot)) {
     return false;
   }
   if (filter.keyword && !hasKeyword(card, filter.keyword)) {

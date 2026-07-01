@@ -277,6 +277,9 @@ async function executeAbilityScriptStep(step, context) {
   if (step.op === "grantKeywordSelected") {
     return grantKeywordSelectedForScript(step, context);
   }
+  if (step.op === "gainNameAsSelected") {
+    return gainNameAsSelectedForScript(step, context);
+  }
   if (step.op === "modifySelectedStats") {
     return modifySelectedStatsForScript(step, context);
   }
@@ -595,6 +598,19 @@ function scriptSourceLabel(from) {
     soul: "ソウル",
     field: "場",
   }[from] || from;
+}
+
+// 発生源カードが、選択カード(var)と同じカード名を『追加のカード名』として得る（そのターン中。RD メタモルエフェクト 0016）。
+// card.additionalNames[] に積み、clearTurnModifiers(ターン終了)でクリアされる。matchesCardFilter の name系が参照する。
+function gainNameAsSelectedForScript(step, context) {
+  const entry = scriptSelection(step, context)[0];
+  const name = entry?.card?.name;
+  const self = context.card;
+  if (name && self) {
+    self.additionalNames = [...(self.additionalNames || []), name];
+    addLog(`${self.name}はそのターン中「${name}」としても扱われます。`);
+  }
+  return true;
 }
 
 function scriptSelection(step, context) {

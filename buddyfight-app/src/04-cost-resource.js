@@ -405,8 +405,45 @@ function canPayStructuredCost(player, costSteps = [], context = {}) {
     if (step.op === "lookTopSelectToSoulRestToDrop" && player.deck.length < 1) {
       return { ok: false, reason: "見るデッキのカードがありません。" };
     }
+    if (step.op === "destroyOwnMonster") {
+      const candidates = ownFieldCostCandidates(player, { cardType: "monster", ...(step.filter || {}) });
+      if (candidates.length < amount) {
+        return { ok: false, reason: "コストで破壊する自分のモンスターがいません。" };
+      }
+    }
+    if (step.op === "returnOwnFieldCardToHand") {
+      const candidates = returnFieldCostCandidates(player, step);
+      const minimum = step.min ?? amount;
+      if (candidates.length < minimum) {
+        return { ok: false, reason: "コストで手札に戻す自分の場のカードが足りません。" };
+      }
+    }
   }
   return { ok: true };
+}
+
+// returnOwnFieldCardToHand 用の候補（zones 指定があればそのゾーンのみ、既定は全場）。
+function returnFieldCostCandidates(player, step = {}) {
+  const owner = state.players.indexOf(player);
+  const allowedZones = step.zones && step.zones.length ? step.zones : zones;
+  return allowedZones
+    .map((zone) => ({ owner, zone, card: player.field[zone], source: "field" }))
+    .filter(({ card, zone }) => card && matchesTargetFilter(card, owner, zone, step.filter || {}));
+}
+
+// 場のカードを手札へ戻す（ソウルはドロップ・currentTypeを基底へ）。コスト用。
+function returnFieldCardToHandCost(player, zone) {
+  const card = player.field[zone];
+  if (!card) {
+    return null;
+  }
+  player.drop.push(...(card.soul || []));
+  card.soul = [];
+  card.currentType = card.baseType || card.type;
+  player.field[zone] = null;
+  player.hand.push(card);
+  addLog(`${card.name}をコストで手札に戻しました。`);
+  return card;
 }
 
 function getDropOwnMonsterCostTarget(player, context = {}) {
@@ -641,6 +678,19 @@ function payStructuredCost(player, costSteps = [], context = {}) {
       // 非対話経路では見た先頭 amount 枚をソウルにする。
       lookTopSelectToSoulRestToDrop(player, sourceCard, step.count || 1, step.amount || 1);
     }
+    if (step.op === "destroyOwnMonster") {
+      // 非対話経路: 先頭の候補を破壊。ソウルガード/破壊時誘発は同期のため反映されない近似。
+      const target = ownFieldCostCandidates(player, { cardType: "monster", ...(step.filter || {}) })[0];
+      if (target) {
+        const dropped = dropFieldCardByRule(player, target.zone);
+        if (dropped) addLog(`${dropped.name}をコストで破壊しました。`);
+      }
+    }
+    if (step.op === "returnOwnFieldCardToHand") {
+      returnFieldCostCandidates(player, step)
+        .slice(0, step.min ?? amount)
+        .forEach((target) => returnFieldCardToHandCost(player, target.zone));
+    }
   }
   checkWinner();
   return { ok: true };
@@ -665,6 +715,8 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
   const dropOwnFieldSelections = [];
   const putSelectedFieldSoulSelections = [];
   const lookTopSoulSelections = [];
+  const destroyOwnMonsterSelections = [];
+  const returnFieldToHandSelections = [];
   const cardToSoulSelections = [];
   for (const step of applicableCostSteps) {
     if (step.op !== "discardHand") {
@@ -850,6 +902,55 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     lookTopSoulSelections.push({ revealed, soulSelected });
   }
   for (const step of applicableCostSteps) {
+    if (step.op !== "destroyOwnMonster") {
+      continue;
+    }
+    const amount = step.amount || 1;
+    const candidates = ownFieldCostCandidates(player, { cardType: "monster", ...(step.filter || {}) }).filter(
+      (candidate) => !reservedCostZones.has(`${candidate.owner}:${candidate.zone}`),
+    );
+    const selected = await chooseCardEntries(candidates, {
+      title: `${context.sourceCard?.name || "コスト"}で破壊する自分のモンスター`,
+      lead: `コストで破壊する自分の場のモンスターを${amount}枚選んでください。`,
+      min: amount,
+      max: amount,
+      forceDialog: true,
+      promptSeat: state.players.indexOf(player),
+    });
+    if (!selected || selected.length < amount) {
+      return { ok: false, reason: "コストで破壊する自分のモンスターを選んでください。" };
+    }
+    selected.forEach((candidate) => reservedCostZones.add(`${candidate.owner}:${candidate.zone}`));
+    destroyOwnMonsterSelections.push(selected);
+  }
+  for (const step of applicableCostSteps) {
+    if (step.op !== "returnOwnFieldCardToHand") {
+      continue;
+    }
+    const amount = step.amount || 1;
+    const minimum = step.min ?? amount;
+    const candidates = returnFieldCostCandidates(player, step).filter(
+      (candidate) => !reservedCostZones.has(`${candidate.owner}:${candidate.zone}`),
+    );
+    const maximum = Math.min(step.max ?? amount, candidates.length);
+    const selected = await chooseCardEntries(candidates, {
+      title: `${context.sourceCard?.name || "コスト"}で手札に戻すカード`,
+      lead: `自分の場から手札に戻すカードを${minimum}〜${maximum}枚選んでください。`,
+      min: minimum,
+      max: maximum,
+      forceDialog: true,
+      allowCancel: minimum === 0,
+      promptSeat: state.players.indexOf(player),
+    });
+    if (!selected || selected.length < minimum) {
+      if (minimum > 0) {
+        return { ok: false, reason: "コストで手札に戻す自分の場のカードを選んでください。" };
+      }
+    }
+    (selected || []).forEach((candidate) => reservedCostZones.add(`${candidate.owner}:${candidate.zone}`));
+    returnFieldToHandSelections.push(selected || []);
+  }
+  for (const step of applicableCostSteps) {
     if (step.op !== "putCardToSoul") {
       continue;
     }
@@ -885,6 +986,8 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
   let dropOwnFieldStepIndex = 0;
   let putSelectedFieldSoulStepIndex = 0;
   let lookTopSoulStepIndex = 0;
+  let destroyOwnMonsterStepIndex = 0;
+  let returnFieldToHandStepIndex = 0;
   const discarded = [];
   for (const step of applicableCostSteps) {
     const amount = step.amount || 1;
@@ -954,6 +1057,19 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     if (step.op === "putSelectedOwnFieldCardsToSoul") {
       moveSelectedFieldCardsToSoul(player, sourceCard, putSelectedFieldSoulSelections[putSelectedFieldSoulStepIndex] || []);
       putSelectedFieldSoulStepIndex += 1;
+    }
+    if (step.op === "destroyOwnMonster") {
+      const targets = destroyOwnMonsterSelections[destroyOwnMonsterStepIndex] || [];
+      destroyOwnMonsterStepIndex += 1;
+      for (const target of targets) {
+        const dropped = await destroyFieldCard(target.owner, target.zone, { cause: { byEffect: true }, ignoreDestroyReplacement: true });
+        if (dropped) addLog(`${dropped.name}をコストで破壊しました。`);
+      }
+    }
+    if (step.op === "returnOwnFieldCardToHand") {
+      const targets = returnFieldToHandSelections[returnFieldToHandStepIndex] || [];
+      returnFieldToHandStepIndex += 1;
+      targets.forEach((target) => returnFieldCardToHandCost(player, target.zone));
     }
     if (step.op === "lookTopSelectToSoulRestToDrop") {
       const pick = lookTopSoulSelections[lookTopSoulStepIndex] || { revealed: [], soulSelected: [] };

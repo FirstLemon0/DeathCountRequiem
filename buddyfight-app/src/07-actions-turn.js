@@ -338,6 +338,27 @@ async function runAllyEnterTriggers(enteredCard, owner, enteredZone) {
         target: { owner, zone: enteredZone, card: enteredCard },
       });
     }
+    // ドロップゾーンの登場誘発（triggerZones:["drop"]|fromDropZone を持つ能力のみ）。戦闘員 ネバッド 0023 等。
+    const isDropEnter = (ability) =>
+      ability.kind === "triggered" &&
+      ability.event === event &&
+      (ability.fromDropZone || (ability.triggerZones || []).includes("drop"));
+    for (const sourceCard of [...(state.players[triggerOwner]?.drop || [])]) {
+      if (sourceCard.instanceId === enteredCard.instanceId || !(sourceCard.abilities || []).some(isDropEnter)) {
+        continue;
+      }
+      await runTriggeredAbilities(sourceCard, event, {
+        card: sourceCard,
+        player: state.players[triggerOwner],
+        owner: triggerOwner,
+        zone: "drop",
+        enteredCard,
+        enteredOwner: owner,
+        enteredZone,
+        target: { owner, zone: enteredZone, card: enteredCard },
+        __abilityFilter: isDropEnter,
+      });
+    }
   }
 }
 

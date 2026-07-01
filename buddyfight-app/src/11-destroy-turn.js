@@ -237,6 +237,11 @@ async function destroyFieldCard(owner, zone, options = {}) {
   }
   player.drop.push(card);
   player.field[zone] = null;
+  if (effectiveCardType(card) === "monster") {
+    // このターンに破壊されたモンスター数（所有者別）を集計（monstersDestroyedThisTurnGte 用）。
+    state.monstersDestroyedThisTurn ||= [0, 0];
+    state.monstersDestroyedThisTurn[owner] = (state.monstersDestroyedThisTurn[owner] || 0) + 1;
+  }
   if (zone === "item" && player.arrivalCardId === card.instanceId) {
     player.arrivalCardId = null;
   }
@@ -245,7 +250,38 @@ async function destroyFieldCard(owner, zone, options = {}) {
   recordSpecialCallOpportunity(card, owner, zone, options);
   queueDestroyedTriggers(card, owner, zone);
   queueAllyDestroyedTriggers(card, owner, zone);
+  queueLeaveFieldTriggers(card, owner, zone);
   return card;
+}
+
+// 「場から離れた時」(allyLeaveField/opponentLeaveField) の誘発。現状は破壊経路から発火する
+// （攻撃フェイズの自軍モンスター破壊が主要ケース。不可視の断罪銃 0012）。listener がある時のみ。
+function queueLeaveFieldTriggers(card, owner, zone) {
+  const hasListener = [0, 1].some((playerIndex) =>
+    zones.some((fieldZone) => {
+      const sourceCard = state.players[playerIndex]?.field?.[fieldZone];
+      return (
+        sourceCard &&
+        (sourceCard.abilities || []).some(
+          (ability) =>
+            ability.kind === "triggered" &&
+            (ability.event === "allyLeaveField" || ability.event === "opponentLeaveField"),
+        )
+      );
+    }),
+  );
+  if (!hasListener) {
+    return;
+  }
+  Promise.resolve()
+    .then(async () => {
+      await runFieldEventTriggers("leaveField", owner, card, zone);
+      render();
+    })
+    .catch((error) => {
+      console.error(error);
+      render();
+    });
 }
 
 // 味方を庇う破壊置換: 場の別カード(replacer)が allyDestroyReplacement を持ち、破壊されようとする card が
@@ -777,6 +813,7 @@ async function endTurn() {
   state.drewThisTurn = false;
   state.attacksThisTurn = 0;
   state.attackDestroyedByAttribute = [{}, {}]; // 属性別の攻撃撃破数(このターン)をリセット
+  state.monstersDestroyedThisTurn = [0, 0]; // このターン破壊されたモンスター数(所有者別)をリセット
   state.lastDamageTaken = [0, 0];
   state.linkAttackers = [];
   state.buddyCallDeclared = null;
@@ -833,6 +870,7 @@ function clearTurnModifiers() {
         card.turnKeywords = [];
         card.turnSuppressedKeywords = [];
         card.preventNextDestroyCount = 0;
+        card.additionalNames = []; // gainNameAsSelected（追加のカード名・ターンスコープ）をリセット
       }
     });
   });
@@ -889,6 +927,22 @@ function resolveLifeZeroReplacements() {
     }
     const { zone, card } = replacementSlot;
     const replacement = card.lifeZeroReplacement;
+    if (replacement.sacrificeFilter) {
+      // 『搭乗』しているカード等1枚を生贄に破壊してライフを守る（ブレイブフォート 0029）。
+      // 生贄が無ければ守れない（発生源も破壊しない）。
+      const sac = zones
+        .map((z) => ({ z, c: player.field[z] }))
+        .find(({ z, c }) => c && z !== zone && matchesCardFilter(c, replacement.sacrificeFilter));
+      if (!sac) {
+        return;
+      }
+      dropFieldCardByRule(player, sac.z);
+      dropFieldCardByRule(player, zone);
+      player.life = replacement.life || 1;
+      drawCards(player, replacement.draw || 0);
+      addLog(`${card.name}の効果で${sac.c.name}を破壊し、${player.name}のライフは${player.life}になりました。`);
+      return;
+    }
     let hasRequiredSoul = true;
     if (replacement.soulFilter) {
       const soulCards = card.soul?.splice(0) || [];

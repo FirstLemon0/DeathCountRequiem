@@ -699,6 +699,21 @@ function checkCondition(condition, owner, context = {}) {
       context.eventCard?.card || context.eventFieldCard || context.destroyedCard || context.enteredCard;
     return Boolean(eventCard && context.card && eventCard.instanceId === context.card.instanceId);
   }
+  if (condition.op === "movedToDropMatches") {
+    // この解決中に context.movedToDrop へ置かれたカードのいずれかが filter に一致するか（moveTopDeckToDrop 等）。
+    return (context.movedToDrop || []).some((card) => matchesCardFilter(card, condition.filter || {}));
+  }
+  if (condition.op === "ownItemIsMonster") {
+    // 君のアイテム枠のカードが（元）モンスター＝『変身』か『搭乗』している状態か（equipSelfはcurrentTypeのみitem化）。
+    const item = player.field.item;
+    return Boolean(item && item.currentType === "item" && item.type === "monster");
+  }
+  if (condition.op === "monstersDestroyedThisTurnGte") {
+    // このターン中に破壊された controller 側モンスターの総数（攻撃・効果問わず）が amount 以上か。
+    const counts = state.monstersDestroyedThisTurn || [0, 0];
+    const idx = condition.controller === "opponent" ? 1 - owner : owner;
+    return (counts[idx] || 0) >= condition.amount;
+  }
   if (condition.op === "isFirstBattleEndWindow") {
     // 「(相手のターン中、)1回目のバトル終了時に使える」(ヴァイシュタッツ 0095) の近似。
     // アプリの対抗ウィンドウはバトル解決前(pendingAttack中)のため、1回目のバトル(attacksThisTurn===1)の
