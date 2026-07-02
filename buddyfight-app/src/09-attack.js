@@ -316,6 +316,29 @@ async function runAttackDeclarationTriggers(attackers) {
     state.players[target.owner].drop.push(soulCard);
     addLog(`${attacker.card.name}の効果で${current.name}のソウルから${soulCard.name}をドロップゾーンに置きました。`);
   }
+  // destroyAttackedMonsterWithSoulDrop（0039 付与）: 攻撃対象の相手モンスターのソウル1枚をドロップし、そのモンスターを破壊。
+  for (const attacker of attackers) {
+    if (!hasKeyword(attacker.card, "destroyAttackedMonsterWithSoulDrop")) {
+      continue;
+    }
+    const pa = state.pendingAttack;
+    if (!pa || pa.targetType !== "monster" || pa.targetZone == null) {
+      continue;
+    }
+    const defenderOwner = pa.targetOwner;
+    const attacked = state.players[defenderOwner]?.field?.[pa.targetZone];
+    if (!attacked) {
+      continue;
+    }
+    if ((attacked.soul?.length || 0) > 0) {
+      const soulCard = attacked.soul.pop();
+      state.players[defenderOwner].drop.push(soulCard);
+      addLog(`${attacker.card.name}の効果で${attacked.name}のソウルから${soulCard.name}をドロップゾーンに置きました。`);
+    }
+    await destroyFieldCard(defenderOwner, pa.targetZone, {
+      cause: { byEffect: true, byOpponent: true, sourceOwner: attacker.owner, sourceName: attacker.card.name, sourceCard: attacker.card },
+    });
+  }
   // 連携攻撃（attackers が2枚以上）なら、攻撃側のフィールドイベント allyLinkAttack を発火する。
   // 攻撃カード自身でなく場全体（設置魔法など）へ届く「味方が連携攻撃した時」（THE チームワーク等）。
   if (attackers.length > 1) {

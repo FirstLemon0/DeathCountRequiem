@@ -218,9 +218,9 @@ function activateSetSpellFromPile(owner, zone, card) {
 }
 
 function renderFlagItemZone(zoneButton, player) {
-  const itemCard = player.field.item;
+  const items = equippedItems(player); // 複数装備対応（主枠＋追加枠）
   const stack = document.createElement("span");
-  stack.className = `flag-item-stack${itemCard ? " has-item" : ""}`;
+  stack.className = `flag-item-stack${items.length ? " has-item" : ""}${items.length > 1 ? " multi-item" : ""}`;
 
   const flagLayer = document.createElement("span");
   flagLayer.className = "flag-layer";
@@ -231,11 +231,19 @@ function renderFlagItemZone(zoneButton, player) {
   attachTooltip(flagLayer, player.flag);
   stack.append(flagLayer);
 
-  if (itemCard) {
+  // 装備アイテムを重ねて表示（複数時は少しずつずらして全て見えるように）。
+  const owner = Number(zoneButton.dataset.owner);
+  items.forEach((itemCard, index) => {
     const itemLayer = createCardElement(itemCard);
     itemLayer.classList.add("item-layer");
+    // 複数装備時、どのアイテムかを識別できるよう実スロット名を持たせる（攻撃/操作対象の絞り込み用）。
+    itemLayer.dataset.itemZone = itemZoneOf(state.players[owner], itemCard) || "item";
+    if (items.length > 1) {
+      itemLayer.classList.add("item-layer-stacked");
+      itemLayer.style.setProperty("--item-index", String(index));
+    }
     stack.append(itemLayer);
-  }
+  });
   zoneButton.append(stack);
 }
 
@@ -266,6 +274,15 @@ function showDropDialog(owner) {
       `;
       attachTooltip(cardButton, card);
       item.append(cardButton);
+      // ドロップから発動できる起動能力（fromDropZone）を持つ自分のカードには「発動」ボタンを出す。
+      if (findUsableDropAbilities(card, owner).length > 0) {
+        const useButton = document.createElement("button");
+        useButton.type = "button";
+        useButton.className = "drop-dialog-activate";
+        useButton.textContent = "発動";
+        useButton.addEventListener("click", () => activateDropAbilityFromPile(owner, card));
+        item.append(useButton);
+      }
       elements.dropDialogList.append(item);
     });
   }
@@ -273,6 +290,19 @@ function showDropDialog(owner) {
   if (!elements.dropDialog.open) {
     elements.dropDialog.showModal();
   }
+}
+
+// ドロップ一覧の「発動」から、ドロップのカードの起動能力を使う。
+// thin/権威クライアントは globalThis.__onDropAbilityActivate に橋渡し、ローカルは直接実行。
+function activateDropAbilityFromPile(owner, card) {
+  if (elements.dropDialog?.open) {
+    elements.dropDialog.close();
+  }
+  if (typeof globalThis.__onDropAbilityActivate === "function") {
+    globalThis.__onDropAbilityActivate(owner, card);
+    return;
+  }
+  useDropAbilityAction(owner, card);
 }
 
 // 対抗ウィンドウ(相手の攻撃/行動への応答)中、この手札カードが【対抗】で使える種別か。

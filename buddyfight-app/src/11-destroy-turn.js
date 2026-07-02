@@ -96,10 +96,11 @@ function isPendingBattleCard(targetInfo) {
 }
 
 function makeEffectCause(context, victimOwner) {
-  // 効果による破壊の発生源情報（破壊耐性 destroyImmunity の判定に使う）
+  // 効果による破壊の発生源情報（破壊耐性 destroyImmunity・「君のカードで破壊された時」の判定に使う）
   return {
     byEffect: true,
     byOpponent: victimOwner !== context.owner,
+    sourceOwner: context.owner, // 破壊を起こした側（「君のカードで」= sourceOwner が listener と一致）
     sourceType: context.card ? effectiveCardType(context.card) : null,
     sourceCard: context.card || null,
   };
@@ -251,9 +252,33 @@ async function destroyFieldCard(owner, zone, options = {}) {
   recordDestroyedEventWindow(card, owner);
   recordSpecialCallOpportunity(card, owner, zone, options);
   queueDestroyedTriggers(card, owner, zone);
-  queueAllyDestroyedTriggers(card, owner, zone);
+  queueAllyDestroyedTriggers(card, owner, zone, options.cause);
   queueLeaveFieldTriggers(card, owner, zone);
+  queueDestroyReactionTriggers(card);
   return card;
+}
+
+// attachDestroyReaction で付与された遅延リアクション（このカードが破壊された時、付与者が effects を解決）を発火。
+// microtask で遅延実行（destroyFieldCard は同期経路も含むため）。ターン跨ぎは clearTurnModifiers 側で解除。
+function queueDestroyReactionTriggers(card) {
+  const reaction = card?.destroyReaction;
+  if (!reaction) {
+    return;
+  }
+  card.destroyReaction = null;
+  Promise.resolve()
+    .then(async () => {
+      const player = state.players[reaction.owner];
+      const context = { card, player, owner: reaction.owner };
+      for (const effect of reaction.effects) {
+        await executeAbilityEffect(effect, context);
+      }
+      render();
+    })
+    .catch((error) => {
+      console.error(error);
+      render();
+    });
 }
 
 // 「場から離れた時」(allyLeaveField/opponentLeaveField) の誘発。現状は破壊経路から発火する
@@ -380,6 +405,7 @@ async function applyDestroyReplacement(card, owner, options = {}) {
       card.soul = [];
       player.field[slot.zone] = null;
       player.gauge.push(card);
+      queueGaugePlacedTriggers(owner, [card]); // 相手のゲージにカードが置かれた時（0020）
     }
     addLog(`${card.name}は破壊置換によりゲージに置かれました。`);
     return true;
@@ -553,7 +579,7 @@ function queueDamageReceivedTriggers(owner, amount, options = {}) {
 // 破壊されたカード自身の destroyed 誘発(queueDestroyedTriggers)とは別に、ally/opponent Destroyed を
 // 場の全枠(set枠含む)へ配送する。設置呪文「飢えたるヤミゲドウ」等が set ゾーンで反応するための経路。
 // 反応するカードが場に無ければ何もしない。発火対象はモンスターに限らず(条件 eventCardMatches で絞る)。
-function queueAllyDestroyedTriggers(card, owner, zone) {
+function queueAllyDestroyedTriggers(card, owner, zone, cause = null) {
   const hasListener = [0, 1].some((playerIndex) =>
     zones.some((fieldZone) => {
       const sourceCard = state.players[playerIndex]?.field?.[fieldZone];
@@ -572,7 +598,7 @@ function queueAllyDestroyedTriggers(card, owner, zone) {
   }
   Promise.resolve()
     .then(async () => {
-      await runFieldEventTriggers("destroyed", owner, card, zone);
+      await runFieldEventTriggers("destroyed", owner, card, zone, { destroyCause: cause });
       render();
     })
     .catch((error) => {
@@ -719,6 +745,11 @@ function applyLifeLink(card, owner) {
     addLog(`${state.players[owner].name}の場のカードの『ライフリンク』はこのターン無効化されています。`);
     return recordLifeLinkEvent(card, owner, { amount: 0, instantDefeat: false });
   }
+  // 継続 nullifyLifeLink による無効化（百鬼将イヨノラセツリュウ 0001「ドロップ10枚以上で場のこのカードのライフリンク無効」）。
+  if (isLifeLinkNullifiedBy(card, owner)) {
+    addLog(`${card.name}の『ライフリンク』は効果により無効化されています。`);
+    return recordLifeLinkEvent(card, owner, { amount: 0, instantDefeat: false });
+  }
   const event = recordLifeLinkEvent(card, owner, { amount, instantDefeat });
   if (instantDefeat) {
     if (!state.winner) {
@@ -735,6 +766,19 @@ function applyLifeLink(card, owner) {
     addLog(`${card.name}のライフリンクにより${state.players[owner].name}に${amount}ダメージ。`);
   }
   return event;
+}
+
+// 継続 nullifyLifeLink（conditions/filter一致で対象カードのライフリンクを無効化）が card に効いているか。
+function isLifeLinkNullifiedBy(card, owner) {
+  return zones.some((zone) => {
+    const source = state.players[owner]?.field?.[zone];
+    return activeContinuousEffects(source).some((effect) => {
+      if (effect.op !== "nullifyLifeLink") {
+        return false;
+      }
+      return continuousEffectApplies(effect, card, source);
+    });
+  });
 }
 
 // reduceLifeLinkDamage 継続を持つ場札から、owner が card のライフリンクで受けるダメージの軽減量を返す。
@@ -942,6 +986,7 @@ async function runEndTurnEffects(endingOwner) {
           card.soul = [];
         }
         state.players[destOwner].gauge.push(card);
+        queueGaugePlacedTriggers(destOwner, [card]); // 相手のゲージにカードが置かれた時（0020）
         addLog(`${card.name}はターン終了時の効果でゲージに置かれました。`);
       }
     }
@@ -962,6 +1007,23 @@ function clearTurnModifiers() {
         card.turnSuppressedKeywords = [];
         card.preventNextDestroyCount = 0;
         card.additionalNames = []; // gainNameAsSelected（追加のカード名・ターンスコープ）をリセット
+        if (card.destroyReaction?.duration === "turn") {
+          card.destroyReaction = null; // attachDestroyReaction（そのターン中のみ）を解除
+        }
+        // scheduledStatBonus（nextOwnTurnEnd 等）: expireOwner のターン終了で失効。
+        // セットした相手ターンの終了ではまだ失効させず、次の expireOwner ターン終了で消す（armed フラグで1回遅延）。
+        if (card.scheduledStatBonus?.length) {
+          card.scheduledStatBonus = card.scheduledStatBonus.filter((b) => {
+            if (b.expireOwner !== state.active) {
+              return true; // 相手のターン終了では失効しない
+            }
+            if (b.armed) {
+              return false; // expireOwner のターン終了（2回目）で失効
+            }
+            b.armed = true; // expireOwner のターン終了（1回目）はまだ保持
+            return true;
+          });
+        }
       }
     });
   });
@@ -971,7 +1033,14 @@ function standPlayer(player) {
   zones.forEach((zone) => {
     const card = player.field[zone];
     if (card) {
-      card.used = false;
+      // preventStandNextTurn（甲蠍 堅牢砦 0042「次の相手のスタートフェイズ中、相手のアイテムはスタンドできない」）。
+      // 該当カードは1回だけスタンドをスキップ（used=trueのまま）してフラグ消費。
+      if (card.preventStandOnce) {
+        card.preventStandOnce = false;
+        addLog(`${card.name}は効果により【スタンド】できません。`);
+      } else {
+        card.used = false;
+      }
       card.battlePowerBonus = 0;
       card.battleDefenseBonus = 0;
       card.battleCriticalBonus = 0;

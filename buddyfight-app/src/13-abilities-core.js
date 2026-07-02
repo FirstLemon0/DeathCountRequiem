@@ -160,7 +160,7 @@ async function useHandAbilityAction(card, ability, options = {}) {
   // 発生源カードがドロップに取り残された場合は、宣言不成立として手札へ戻す(カード喪失を防ぐ)。
   const usesCallSelf = Array.isArray(ability.script) && ability.script.some((s) => s?.op === "callSelfFromHand");
   if (bodyResult === false && usesCallSelf) {
-    const onField = [...fieldZones, ...setZones, "item"].some(
+    const onField = zones.some(
       (z) => player.field[z]?.instanceId === usedCard.instanceId,
     );
     const dropIndex = player.drop.findIndex((c) => c.instanceId === usedCard.instanceId);
@@ -180,11 +180,16 @@ async function useHandAbilityAction(card, ability, options = {}) {
   render();
 }
 
-async function useFieldAbilityAction(card) {
-  const owner = state.selected.owner;
-  const usableAbilities = findUsableFieldAbilities(card, owner);
+// loc を渡すと場以外（ドロップ等）からの起動にも使える。loc={owner, zone, inDrop, abilities?}。
+// 省略時は state.selected を参照（従来の場の起動能力）。
+async function useFieldAbilityAction(card, loc = null) {
+  const owner = loc ? loc.owner : state.selected.owner;
+  const zone = loc ? loc.zone : state.selected.zone;
+  const inDrop = Boolean(loc?.inDrop);
+  const usableAbilities =
+    loc?.abilities || (inDrop ? findUsableDropAbilities(card, owner) : findUsableFieldAbilities(card, owner));
   if (usableAbilities.length === 0) {
-    addLog("今使える起動能力はありません。");
+    addLog(inDrop ? "今使えるドロップからの起動能力はありません。" : "今使える起動能力はありません。");
     return;
   }
   const ability =
@@ -192,7 +197,6 @@ async function useFieldAbilityAction(card) {
   if (!ability) {
     return; // 能力選択がキャンセルされた
   }
-  const zone = state.selected.zone;
   const player = state.players[owner];
   const sourceCard = ability.fromSoul ? ability.soulSourceCard : card;
   const target = await targetForAbilityUse(sourceCard, ability, owner);
@@ -318,6 +322,53 @@ function findUsableFieldAbilities(card, owner = state.selected?.owner ?? state.a
 
 function findUsableFieldAbility(card, owner = state.selected?.owner ?? state.active) {
   return findUsableFieldAbilities(card, owner)[0] || null;
+}
+
+// ドロップゾーンのカードが持つ、ドロップから発動できる起動能力（fromDropZone:true）で今使えるものを返す。
+// 例: 墓場のDJ ブネ(BT03/0014)・炎王の舎弟リッキー(BT03/0018)・百鬼将ギシンギュウキ(EB03/0002)。
+// 場のカードと違い state.selected を使わず、対象カードがドロップにある前提で条件(sourceZoneIn:[drop]等)を評価する。
+function findUsableDropAbilities(card, owner) {
+  if (isAbilitiesNullified(card)) {
+    return [];
+  }
+  // 手番/応答者ガード（場の起動と同じ規約）: 対抗ウィンドウ中は攻撃/行動の当事者のみ、平時は手番プレイヤーのみ。
+  const mayAct = state.pendingAttack
+    ? [state.pendingAttack.attackerOwner, state.pendingAttack.defender].includes(owner)
+    : state.pendingAction
+      ? owner === state.pendingAction.responder
+      : owner === state.active;
+  if (!mayAct) {
+    return [];
+  }
+  const timing = state.pendingAttack || state.pendingAction ? "counter" : state.phase;
+  return (card.abilities || []).filter(
+    (ability) =>
+      ability.kind === "activated" &&
+      ability.fromDropZone &&
+      !ability.fromHandOnly &&
+      abilityTimingIncludes(ability, timing) &&
+      !isAbilityLimitUsed(owner, card, ability) &&
+      (!ability.target ||
+        targetCandidatesFromSpec(ability.target, owner, { card, ability, zone: "drop" }).length > 0) &&
+      checkAbilityConditions(ability, owner, { card, owner, zone: "drop" }) &&
+      canSatisfyAbilityScript(card, ability, owner, { zone: "drop" }),
+  );
+}
+
+// ドロップのカードの起動能力を発動する（UIのドロップ一覧から呼ぶ）。
+async function useDropAbilityAction(owner, card) {
+  const usableAbilities = findUsableDropAbilities(card, owner);
+  if (usableAbilities.length === 0) {
+    addLog("今使えるドロップからの起動能力はありません。");
+    return false;
+  }
+  await useFieldAbilityAction(card, { owner, zone: "drop", inDrop: true, abilities: usableAbilities });
+  return true;
+}
+
+// ドロップに、今 owner が発動できる起動能力を持つカードがあるか（UIでボタンを出すかの判定）。
+function hasUsableDropAbility(owner) {
+  return (state.players[owner]?.drop || []).some((card) => findUsableDropAbilities(card, owner).length > 0);
 }
 
 function findUsableSoulAbilities(hostCard, owner, timing) {
@@ -507,7 +558,8 @@ function checkCondition(condition, owner, context = {}) {
     sides.forEach((pl) => {
       if (!pl) return;
       if (pile === "field") cards.push(...zones.map((z) => pl.field[z]).filter(Boolean), ...phantomFieldMonsters(pl));
-      else if (pile === "center" || pile === "item") { if (pl.field[pile]) cards.push(pl.field[pile]); }
+      else if (pile === "item") cards.push(...equippedItems(pl)); // 複数装備を全てカウント（「アイテム2枚装備なら」0042等）
+      else if (pile === "center") { if (pl.field[pile]) cards.push(pl.field[pile]); }
       else if (pile === "soul") cards.push(...zones.flatMap((z) => pl.field[z]?.soul || []));
       else cards.push(...(pl[pile] || []));
     });
@@ -574,6 +626,12 @@ function checkCondition(condition, owner, context = {}) {
   if (condition.op === "sourceSoulCountGte") {
     const source = context.card || getSelectedCard();
     return (source?.soul || []).length >= condition.amount;
+  }
+  if (condition.op === "sourceSoulMatchingCountGte") {
+    // 発生源のソウルのうち filter 一致の枚数が amount 以上か（0030の勝利条件系）。
+    const source = context.card || getSelectedCard();
+    const n = (source?.soul || []).filter((card) => matchesCardFilter(card, condition.filter || {})).length;
+    return n >= (condition.amount || 1);
   }
   if (condition.op === "sourceSoulHasSameSizeAsEntered") {
     const source = context.card || getSelectedCard();
@@ -699,6 +757,10 @@ function checkCondition(condition, owner, context = {}) {
       context.eventCard?.card || context.eventFieldCard || context.destroyedCard || context.enteredCard;
     return Boolean(eventCard && context.card && eventCard.instanceId === context.card.instanceId);
   }
+  if (condition.op === "eventDestroyerIsSelf") {
+    // opponentDestroyed/allyDestroyed 誘発時、破壊を起こした側が listener(owner) 自身か（「君のカードで破壊された時」0030）。
+    return context.destroyCause?.sourceOwner === owner;
+  }
   if (condition.op === "damageSourceLabelIs") {
     // opponentDamagedByEffect 誘発時、ダメージ発生源能力のラベル(“爆雷”等)一致を判定（爆雷連鎖）。
     return context.damageSourceLabel === condition.label;
@@ -709,8 +771,7 @@ function checkCondition(condition, owner, context = {}) {
   }
   if (condition.op === "ownItemIsMonster") {
     // 君のアイテム枠のカードが（元）モンスター＝『変身』か『搭乗』している状態か（equipSelfはcurrentTypeのみitem化）。
-    const item = player.field.item;
-    return Boolean(item && item.currentType === "item" && item.type === "monster");
+    return equippedItems(player).some((item) => item.currentType === "item" && item.type === "monster");
   }
   if (condition.op === "monstersDestroyedThisTurnGte") {
     // このターン中に破壊された controller 側モンスターの総数（攻撃・効果問わず）が amount 以上か。
@@ -936,18 +997,19 @@ function checkCondition(condition, owner, context = {}) {
     return Boolean(player.arrivalCardId);
   }
   if (condition.op === "ownItemHasAttribute") {
-    return Boolean(player.field.item?.attributes?.includes(condition.attribute));
+    return equippedItems(player).some((item) => item.attributes?.includes(condition.attribute));
   }
   if (condition.op === "ownItemStanding") {
-    return Boolean(player.field.item && !player.field.item.used);
+    return equippedItems(player).some((item) => !item.used);
   }
   if (condition.op === "ownItemSoulCountGte") {
     // 君のアイテム（filter/attribute一致、既定は装備中アイテム）のソウル枚数が amount 以上か。
     // 例: アーマナイト・イブリース「君の《武器》のソウルが３枚以上なら貫通」。
     const amount = condition.amount ?? 1;
     const filter = condition.filter || (condition.attribute ? { attribute: condition.attribute } : {});
-    const item = player.field.item;
-    return Boolean(item && effectiveCardType(item) === "item" && matchesCardFilter(item, filter) && (item.soul?.length || 0) >= amount);
+    return equippedItems(player).some(
+      (item) => effectiveCardType(item) === "item" && matchesCardFilter(item, filter) && (item.soul?.length || 0) >= amount,
+    );
   }
   if (condition.op === "buddyCalled") {
     // 君がバディをコール済みか。バディゾーンのカードを【レスト】にする＝バディコール済みの印であり、

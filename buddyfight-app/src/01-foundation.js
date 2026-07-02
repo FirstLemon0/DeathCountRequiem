@@ -24,8 +24,28 @@ const phaseLabels = {
 
 const fieldZones = ["left", "center", "right"];
 const setZones = ["set1", "set2"];
-const zones = ["left", "center", "right", "set1", "set2", "item"];
+// アイテムは通常1枚だが、カード効果で複数装備できるため名前付きスロットを複数用意する（"item" が主枠）。
+// zones に全スロットを含めることで、継続/破壊/イベント/無効化などのゾーン走査系が全アイテムを自動処理する。
+// 将来もっと必要なら itemZones に追記するだけでよい（各所のゾーン走査はこの配列を参照する）。
+const itemZones = ["item", "item2", "item3", "item4"];
+const setZonesAndItems = [...setZones, ...itemZones];
+const zones = ["left", "center", "right", ...setZonesAndItems];
 const ruleEraLabel = "2018年6月以前ルール（神バディファイト以前）";
+
+// プレイヤーが装備している全アイテム（主枠＋追加枠、コール順）を返す。
+function equippedItems(player) {
+  return itemZones.map((zone) => player?.field?.[zone]).filter(Boolean);
+}
+
+// 空いている最初のアイテムスロット名（無ければ null）。
+function firstEmptyItemZone(player) {
+  return itemZones.find((zone) => !player?.field?.[zone]) || null;
+}
+
+// 指定カードが今いるアイテムスロット名（無ければ null）。
+function itemZoneOf(player, card) {
+  return itemZones.find((zone) => player?.field?.[zone]?.instanceId === card?.instanceId) || null;
+}
 
 let cardLibrary = [];
 let deckProfiles = [];

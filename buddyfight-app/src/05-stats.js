@@ -12,7 +12,21 @@ function effectiveSize(card) {
   if (!card) {
     return 0;
   }
+  // conditionalSize: 付与元カード(granterInstanceId)が場にある間、サイズを固定値に上書きする
+  // （大首領アンノウン 0029「そのカードはアンノウンが場にいるならサイズ0」）。
+  const override = card.conditionalSize;
+  if (override && granterOnField(override.granterInstanceId)) {
+    return Math.max(0, (override.size || 0) + continuousStatBonus(card, "size"));
+  }
   return Math.max(0, (card.size || 0) + continuousStatBonus(card, "size"));
+}
+
+// 指定インスタンスIDのカードがいずれかのプレイヤーの場（モンスター/アイテム枠）にあるか。
+function granterOnField(instanceId) {
+  if (!instanceId) {
+    return false;
+  }
+  return state.players.some((player) => zones.some((zone) => player.field[zone]?.instanceId === instanceId));
 }
 
 // このカードの能力(abilities/continuous/soulContinuous/keywords)が、場のいずれかの
@@ -125,11 +139,17 @@ function canAddSize(player, card) {
   return getFieldSize(player) + (card.size || 0) <= fieldSizeLimit(player);
 }
 
+// nextOwnTurnEnd 等の遅延失効ボーナス（scheduledStatBonus）の指定 stat 合計。
+function scheduledStatBonusAmount(card, stat) {
+  return (card?.scheduledStatBonus || []).reduce((sum, b) => sum + (b[stat] || 0), 0);
+}
+
 function visiblePower(card) {
   return Math.max(0,
     (card?.power || 0) +
     (card?.battlePowerBonus || 0) +
     (card?.turnPowerBonus || 0) +
+    scheduledStatBonusAmount(card, "power") +
     continuousPowerBonus(card)
   );
 }
@@ -139,6 +159,7 @@ function visibleDefense(card) {
     (card?.defense || 0) +
     (card?.battleDefenseBonus || 0) +
     (card?.turnDefenseBonus || 0) +
+    scheduledStatBonusAmount(card, "defense") +
     continuousDefenseBonus(card)
   );
 }
@@ -148,6 +169,7 @@ function visibleCritical(card) {
     (card?.critical || 0) +
     (card?.battleCriticalBonus || 0) +
     (card?.turnCriticalBonus || 0) +
+    scheduledStatBonusAmount(card, "critical") +
     continuousCriticalBonus(card)
   );
 }
@@ -350,6 +372,12 @@ function continuousEffectApplies(effect, targetCard, sourceCard) {
   // 「君の場のバディモンスターは〜を得る」等の継続付与で使う（soulContinuous 側と同仕様）。
   if (effect.requireBuddy) {
     if (!targetSlot || targetCard?.name !== state.players[targetSlot.owner]?.buddy?.name) {
+      return false;
+    }
+  }
+  // targetZones: 対象の盤面ゾーン(left/center/right)で絞る（万竜不当 0047「レフトとライトのモンスター」）。
+  if (Array.isArray(effect.targetZones)) {
+    if (!targetSlot || !effect.targetZones.includes(targetSlot.zone)) {
       return false;
     }
   }

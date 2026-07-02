@@ -215,6 +215,9 @@ function createPlayer(name, profile) {
       set1: null,
       set2: null,
       item: null,
+      item2: null,
+      item3: null,
+      item4: null,
     },
   };
 

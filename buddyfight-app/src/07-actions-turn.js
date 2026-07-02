@@ -45,6 +45,10 @@ function getSelectedCard() {
   if (state.selected.source === "hand") {
     return player.hand.find((card) => card.instanceId === state.selected.instanceId) || null;
   }
+  if (state.selected.source === "drop") {
+    // ドロップからの起動能力（権威版: setSelected で source:"drop" を渡す）。
+    return player.drop.find((card) => card.instanceId === state.selected.instanceId) || null;
+  }
   return player.field[state.selected.zone];
 }
 
@@ -110,6 +114,8 @@ async function chargeAction() {
   state.counterHandOwner = null;
   state.linkAttackers = [];
   state.buddyCallDeclared = null;
+  // 「相手のゲージにカードが置かれた時」誘発（爆雷 コールドラゴン メギトス 0020）。
+  await runFieldEventTriggers("gaugePlaced", state.active, card, null, { count: 1 });
   await runPhaseStartTriggers("mainStart", state.active);
   addLog(`${activePlayer().name}は${card.name}をチャージし、1枚引きました。`);
   render();
@@ -280,6 +286,11 @@ function getStackCallTarget(player, card) {
   if (stackAttribute && !(target.card.attributes || []).includes(stackAttribute)) {
     return null;
   }
+  // attributeIn: 複数属性のいずれか（《ワイダーサカー》か《百鬼》の上に重ねる 0052）。
+  const stackAttributeIn = card.callStack?.attributeIn;
+  if (Array.isArray(stackAttributeIn) && !stackAttributeIn.some((a) => (target.card.attributes || []).includes(a))) {
+    return null;
+  }
   return target;
 }
 
@@ -397,6 +408,36 @@ async function runFieldEventTriggers(eventBase, eventOwner, eventCard, eventZone
 
 function capitalizeAscii(value = "") {
   return value ? value[0].toUpperCase() + value.slice(1) : "";
+}
+
+// 「相手のゲージにカードが置かれた時」誘発（爆雷 メギトス 0020）を microtask で発火する。
+// 同期のゲージ配置ヘルパー（デッキ/ソウル/自身をゲージへ）からも安全に呼べるよう非同期化。
+// リスナーが無ければ何もしない（gaugePlaced に反応する場札が無い時は空振り）。
+function queueGaugePlacedTriggers(chargingOwner, cards = []) {
+  const list = Array.isArray(cards) ? cards.filter(Boolean) : [cards].filter(Boolean);
+  if (list.length === 0) {
+    return;
+  }
+  const hasListener = [0, 1].some((playerIndex) =>
+    zones.some((zone) => {
+      const c = state.players[playerIndex]?.field?.[zone];
+      return (c?.abilities || []).some(
+        (a) => a.kind === "triggered" && (a.event === "allyGaugePlaced" || a.event === "opponentGaugePlaced"),
+      );
+    }),
+  );
+  if (!hasListener) {
+    return;
+  }
+  Promise.resolve()
+    .then(async () => {
+      await runFieldEventTriggers("gaugePlaced", chargingOwner, list[0], null, { count: list.length });
+      render();
+    })
+    .catch((error) => {
+      console.error(error);
+      render();
+    });
 }
 
 async function restFieldCard(owner, zone, card = state.players[owner]?.field?.[zone], details = {}) {

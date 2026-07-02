@@ -147,6 +147,26 @@ function handCardMenuLocal(instanceId) {
   );
 }
 
+// アイテム枠(DOM上は "item" 単一)を複数アイテムで共有するため、クリック位置から実スロットを解決する。
+// タップが特定アイテムレイヤー(data-item-zone)上なら そのスロット、そうでなければ最初の装備アイテムの枠を返す。
+function resolveClickedItemZone(event, owner, zone) {
+  if (zone !== "item") {
+    return zone;
+  }
+  const layer = event?.target?.closest?.("[data-item-zone]");
+  if (layer?.dataset?.itemZone && state.players[owner]?.field?.[layer.dataset.itemZone]) {
+    return layer.dataset.itemZone;
+  }
+  // レイヤー未特定: 主枠が空なら最初の装備アイテムの実スロットへフォールバック。
+  if (!state.players[owner]?.field?.item) {
+    const firstItem = equippedItems(state.players[owner])[0];
+    if (firstItem) {
+      return itemZoneOf(state.players[owner], firstItem) || zone;
+    }
+  }
+  return zone;
+}
+
 function fieldCardMenuLocal(owner, zone) {
   // 進行中の対象選択と残留効果対象は破棄してから選び直す（handCardMenuLocalと同じ防御）。
   uiTargeting = null;

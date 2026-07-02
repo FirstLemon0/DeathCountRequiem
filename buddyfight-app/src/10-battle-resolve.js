@@ -41,7 +41,7 @@ async function resolvePendingAttack() {
   if (attackPower >= visibleDefense(target)) {
     const destroyedName = target.name;
     const destroyed = await destroyFieldCard(pending.targetOwner, pending.targetZone, {
-      cause: { byBattle: true, byOpponent: true, sourceCard: attackers[0]?.card },
+      cause: { byBattle: true, byOpponent: true, sourceOwner: attackers[0]?.owner, sourceCard: attackers[0]?.card },
     });
     if (destroyed) {
       addLog(`${attackerNames}は${destroyedName}を破壊しました。`);
@@ -80,7 +80,7 @@ async function resolveMultiMonsterAttack(pending, attackers, attackerNames) {
     if (attackPower >= visibleDefense(current)) {
       const destroyedName = current.name;
       const destroyed = await destroyFieldCard(target.owner, target.zone, {
-        cause: { byBattle: true, byOpponent: true, sourceCard: attackers[0]?.card },
+        cause: { byBattle: true, byOpponent: true, sourceOwner: attackers[0]?.owner, sourceCard: attackers[0]?.card },
       });
       if (destroyed) {
         destroyedCount += 1;
@@ -377,7 +377,10 @@ async function resolveCounterattack(targetSlot, attackers) {
     return;
   }
   const attackerName = counterTarget.card.name;
-  const destroyed = await destroyFieldCard(counterTarget.owner, counterTarget.zone);
+  // 反撃側(=破壊を起こす側=targetSlot.owner)を発生源に（「君のカードで破壊された時」0030・破壊耐性判定と整合）。
+  const destroyed = await destroyFieldCard(counterTarget.owner, counterTarget.zone, {
+    cause: { byBattle: true, byOpponent: true, sourceOwner: targetSlot.owner, sourceCard: targetAfterBattle },
+  });
   if (destroyed) {
     addLog(`${targetAfterBattle.name}の反撃で${attackerName}を破壊しました。`);
   }

@@ -1,0 +1,3671 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-h-eb03-hyakurai-no-ou",
+    "name": "ハンドレッド エクストラブースター第３弾「百雷の王」",
+    "kind": "エクストラブースター",
+    "generation": "100",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=32"
+  },
+  "cards": [
+    {
+      "id": "bf-h-eb03-0001",
+      "no": "H-EB03/0001",
+      "name": "百鬼将 イヨノラセツリュウ",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 3,
+      "power": 7000,
+      "critical": 1,
+      "defense": 7000,
+      "rules": [
+        "■君のドロップゾーンに《武装騎竜》か《百鬼》が合計10枚以上があるなら、場のこのカードの『ライフリンク』を無効化する。",
+        "■【対抗】【起動】君のターン中、君の場の《武装騎竜》か《百鬼》１枚をドロップゾーンに置く。置いたら、このカードを【スタンド】する。この能力は１ターンに１回だけ使える。",
+        "『３回攻撃』『ライフリンク３』"
+      ],
+      "keywords": [
+        "tripleAttack",
+        "lifeLink3"
+      ],
+      "continuous": [
+        {
+          "op": "nullifyLifeLink",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "ownDropAttributeSumCountGte",
+              "attributes": [
+                "武装騎竜",
+                "百鬼"
+              ],
+              "amount": 10
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0001-stand",
+          "kind": "activated",
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "cost": [
+            {
+              "op": "dropOwnFieldCard",
+              "amount": 1,
+              "filter": {
+                "attributeIncludesAny": [
+                  "武装騎竜",
+                  "百鬼"
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0001-stand"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0002",
+      "no": "H-EB03/0002",
+      "name": "百鬼将 ギシンギュウキ",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "髑髏武者",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 3,
+      "power": 10000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■【起動】このカードが君のドロップゾーンにあるなら、ライフ１を払い、君の場の《髑髏武者》か《百鬼》１枚をドロップゾーンに置く。そうしたら、ドロップゾーンのこのカードを【コールコスト】を払ってコールする。",
+        "『２回攻撃』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0002-revive",
+          "kind": "activated",
+          "fromDropZone": true,
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "drop"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            },
+            {
+              "op": "dropOwnFieldCard",
+              "amount": 1,
+              "filter": {
+                "attributeIncludesAny": [
+                  "髑髏武者",
+                  "百鬼"
+                ]
+              }
+            }
+          ],
+          "script": [
+            {
+              "op": "selectZone",
+              "var": "z",
+              "emptyOnly": true
+            },
+            {
+              "op": "callSelfFromHand",
+              "zoneVar": "z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0003",
+      "no": "H-EB03/0003",
+      "name": "百鬼将 ブライデン",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 3,
+      "power": 8000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■【対抗】【起動】“我、参上！”君のターン中、君の場の《ダークヒーロー》か《百鬼》１枚をドロップゾーンに置いてよい。置いたら、手札のこのカードを【コールコスト】を払って、コールする。「我、参上！」は１ターンに１回だけ使える。",
+        "■このカードが攻撃したバトルの終了時、このカードを君の手札に戻す。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0003-sanjo",
+          "label": "我、参上！",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "optional": true,
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "cost": [
+            {
+              "op": "dropOwnFieldCard",
+              "amount": 1,
+              "filter": {
+                "attributeIncludesAny": [
+                  "ダークヒーロー",
+                  "百鬼"
+                ]
+              }
+            }
+          ],
+          "script": [
+            {
+              "op": "selectZone",
+              "var": "z",
+              "emptyOnly": true
+            },
+            {
+              "op": "callSelfFromHand",
+              "zoneVar": "z"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0003-sanjo"
+          }
+        },
+        {
+          "id": "bf-h-eb03-0003-battleend-return",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "effects": [
+            {
+              "op": "returnToHand",
+              "target": "$self"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0004",
+      "no": "H-EB03/0004",
+      "name": "復活の邪神 ヤミゲドウ",
+      "type": "monster",
+      "world": "-",
+      "attributes": [
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 3,
+      "power": 8000,
+      "critical": 3,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、君の場の《百鬼》のモンスター１枚以上をこのカードのソウルに入れる。",
+        "■【起動】君の手札の《百鬼》１枚をこのカードのソウルに入れてよい。この能力は１ターンに１回だけ使える。",
+        "■このカードはこのカードのソウルにあるカードが持つ全ての“爆雷”を得る。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putSelectedOwnFieldCardsToSoul",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "百鬼"
+            },
+            "min": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0004-soul-in",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "optional": true,
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0004-soul-in"
+          },
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "s",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "attribute": "百鬼"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "復活の邪神 ヤミゲドウ",
+              "lead": "このカードのソウルに入れる手札の《百鬼》１枚を選んでください（入れなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "s",
+              "to": "soul",
+              "require": false,
+              "log": "{cards}をこのカードのソウルに入れました。"
+            }
+          ]
+        }
+      ],
+      "inheritSoulAbilities": {
+        "label": "爆雷"
+      }
+    },
+    {
+      "id": "bf-h-eb03-0005",
+      "no": "H-EB03/0005",
+      "name": "ゲドウシールド 悪鬼の盾",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "防御",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■相手のターンの攻撃中、君の場に《百鬼》２枚以上があるなら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】その攻撃を無効化し、相手にダメージ１！このカードは無効化されない。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "nullifyImmune": true,
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0005-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "ownFieldCardCountGte",
+              "filter": {
+                "attribute": "百鬼"
+              },
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0006",
+      "no": "H-EB03/0006",
+      "name": "アーマナイト・タイガー “A”",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■【起動】君のライフが５以下なら、場のこのカードを君の《武器》のソウルに入れてよい。",
+        "■【起動】君の《武器》のソウルにあるこのカードをドロップゾーンに置く。置いたら、そのターン中、君の場の《武器》１枚は『２回攻撃』を得る。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0006-tosoul",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "optional": true,
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            },
+            {
+              "op": "lifeLte",
+              "amount": 5
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "zones": [
+              "item"
+            ],
+            "filter": {
+              "attribute": "武器"
+            }
+          },
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "bf-h-eb03-0006-double",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "hostMatches",
+              "filter": {
+                "attribute": "武器"
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "zones": [
+              "item"
+            ],
+            "filter": {
+              "attribute": "武器"
+            }
+          },
+          "effects": [
+            {
+              "op": "dischargeSelfFromHostSoul"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "doubleAttack",
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0007",
+      "no": "H-EB03/0007",
+      "name": "闇使い ダンスタン",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "魔術師",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが登場した時、君のデッキから『設置』を持つ《百鬼》の魔法１枚までを手札に加え、デッキをシャッフルする。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0007-search",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "s",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "spell",
+                "attribute": "百鬼",
+                "keyword": "set"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "闇使い ダンスタン",
+              "lead": "デッキから『設置』を持つ《百鬼》の魔法１枚を選んでください（加えなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "s",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を手札に加えました。"
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0008",
+      "no": "H-EB03/0008",
+      "name": "毒竜王 ミスティエンヴィー",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 0,
+      "power": 1000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■“瘴気の霧”君のカードの効果で、相手がダメージを受けた時、カード１枚を引く！！「瘴気の霧」は１ターンに１回だけ発動する。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0008-shoki",
+          "label": "瘴気の霧",
+          "kind": "triggered",
+          "event": "opponentDamagedByEffect",
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0008-shoki"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0009",
+      "no": "H-EB03/0009",
+      "name": "禁術師 ヴェルガーレン",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒騎士",
+        "深淵",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 0,
+      "power": 1000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■【起動】ライフ２を払う。払ったら、君の手札のサイズ３のモンスター１枚を【コールコスト】を払わずに、コールする。この能力は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0009-call",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "hand",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 2
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              },
+              "min": 1,
+              "max": 1,
+              "amount": 1,
+              "require": true,
+              "callable": true,
+              "title": "禁術師 ヴェルガーレン",
+              "lead": "【コールコスト】を払わずにコールする手札のサイズ３のモンスター１枚を選んでください。"
+            },
+            {
+              "op": "selectZone",
+              "var": "z",
+              "cardVar": "call",
+              "emptyOnly": true
+            },
+            {
+              "op": "callSelected",
+              "var": "call",
+              "zoneVar": "z",
+              "resolveOnEnter": true
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0009-call"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0010",
+      "no": "H-EB03/0010",
+      "name": "ゲート・オブ・ダークネスドラゴン",
+      "type": "spell",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "召喚",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■相手のメインフェイズ開始時、ゲージ１を払ってよい。払ったら、君のドロップゾーンのサイズ１以下のモンスター２枚までを【コールコスト】を払って、レフトかライトにコールする。この能力は１ターンに１回だけ使える。",
+        "■このカードが場からドロップゾーンに置かれた時、相手にダメージ１！",
+        "■「ゲート・オブ・ダークネスドラゴン」は君の場に１枚だけ『設置』できる。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "uniqueSet": true,
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0010-call",
+          "kind": "triggered",
+          "event": "mainStart",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "sizeLte": 1
+              },
+              "min": 0,
+              "max": 2,
+              "amount": 2,
+              "require": false,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "ゲート・オブ・ダークネスドラゴン",
+              "lead": "レフトかライトに【コールコスト】を払ってコールするサイズ１以下のモンスターを最大２枚選んでください。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "call",
+              "zones": [
+                "left",
+                "right"
+              ],
+              "payCost": "call",
+              "chooseZones": true,
+              "resolveOnEnter": true
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0010-call"
+          }
+        },
+        {
+          "id": "bf-h-eb03-0010-leave-damage",
+          "kind": "triggered",
+          "event": "destroyed",
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0011",
+      "no": "H-EB03/0011",
+      "name": "ストレンジャー・ジレンマ",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■“爆雷”相手が魔法を使った時、相手にダメージ１！この能力は１ターンに１回だけ発動する。"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0011-bakurai",
+          "label": "爆雷",
+          "kind": "triggered",
+          "event": "opponentSpellCast",
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0011-bakurai"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0012",
+      "no": "H-EB03/0012",
+      "name": "もはや貴様に逃げ場は無い！",
+      "type": "impact",
+      "world": "ヒーローW",
+      "attributes": [
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■【使用コスト】ゲージ２を払い、君のドロップゾーンのカード２枚をこのカードのソウルに入れる。",
+        "■『設置』（このカードは場に置いて使う）",
+        "■このカードはこのカードのソウルにあるカードが持つ全ての“爆雷”を得る。",
+        "■「もはや貴様に逃げ場は無い！」は君の場に１枚だけ『設置』できる。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "uniqueSet": true,
+      "castCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putDropToSoul",
+            "amount": 2,
+            "min": 2
+          }
+        ]
+      },
+      "inheritSoulAbilities": {
+        "label": "爆雷"
+      }
+    },
+    {
+      "id": "bf-h-eb03-0013",
+      "no": "H-EB03/0013",
+      "name": "ナイトメアスクリーム・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "黒竜",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 2,
+      "power": 6000,
+      "critical": 1,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、君のドロップゾーンのサイズ２以下の《百鬼》２枚までをこのカードのソウルに入れる。",
+        "■このカードはこのカードのソウルにあるカードが持つ全ての“爆雷”を得る。"
+      ],
+      "callCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "putDropToSoul",
+            "amount": 2,
+            "min": 0,
+            "filter": {
+              "attribute": "百鬼",
+              "sizeLte": 2
+            }
+          }
+        ]
+      },
+      "inheritSoulAbilities": {
+        "label": "爆雷"
+      }
+    },
+    {
+      "id": "bf-h-eb03-0014",
+      "no": "H-EB03/0014",
+      "name": "アーマナイト・サーペント",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 3,
+      "power": 8000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】君の場のモンスター１枚をドロップゾーンに置き、ゲージ２を払う。",
+        "■“爆雷”相手の場にモンスターが登場した時、相手にダメージ１。この能力は１ターンに１回だけ発動する。",
+        "『２回攻撃』"
+      ],
+      "callCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "dropOwnMonster",
+            "amount": 1,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0014-bakurai",
+          "label": "爆雷",
+          "kind": "triggered",
+          "event": "opponentEnter",
+          "conditions": [
+            {
+              "op": "enteredCardMatches",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0014-bakurai"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0015",
+      "no": "H-EB03/0015",
+      "name": "百鬼壊力雷牙",
+      "type": "spell",
+      "world": "デンジャーW",
+      "attributes": [
+        "回復",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君の場に《百鬼》があるなら使える。",
+        "■【対抗】君の場のモンスター１枚を破壊する。破壊したら、君のライフを＋３！！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0015-heal",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldHasAttribute",
+              "attribute": "百鬼"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "gainLife",
+              "amount": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0016",
+      "no": "H-EB03/0016",
+      "name": "百鬼槍 鬼崩し",
+      "type": "item",
+      "world": "デンジャーW",
+      "attributes": [
+        "闘気",
+        "武器",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "power": 5000,
+      "critical": 2,
+      "rules": [
+        "■このカードはレフトとライトに攻撃できない。",
+        "■このカードの攻撃で、相手のモンスターを破壊した時か相手にダメージを与えた時、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "equipCost": {
+        "gauge": 0
+      },
+      "costs": {
+        "equip": []
+      },
+      "cannotAttackZones": [
+        "left",
+        "right"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0016-destroy-gauge",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb03-0016-damage-gauge",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0017",
+      "no": "H-EB03/0017",
+      "name": "魔界雑学王 フルカス",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "72柱",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、君のドロップゾーンのサイズ２以下の《百鬼》１枚をこのカードのソウルに入れる。",
+        "■このカードはこのカードのソウルにあるカードが持つ全ての“爆雷”を得る。",
+        "『ソウルガード』"
+      ],
+      "callCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "putDropToSoul",
+            "amount": 1,
+            "filter": {
+              "attribute": "百鬼",
+              "sizeLte": 2
+            }
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "inheritSoulAbilities": {
+        "label": "爆雷"
+      }
+    },
+    {
+      "id": "bf-h-eb03-0018",
+      "no": "H-EB03/0018",
+      "name": "妖ノ太刀 黒村正",
+      "type": "item",
+      "world": "カタナW",
+      "attributes": [
+        "日本刀",
+        "武器",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "power": 6000,
+      "critical": 4,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■このカードが攻撃した時、君にダメージ１！"
+      ],
+      "equipCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0018-attack-selfdamage",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "self",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0019",
+      "no": "H-EB03/0019",
+      "name": "幻竜王 ルクスビジョン",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【対抗】【起動】君の場にサイズ３のモンスターがいるなら、手札のこのカードを捨て、ゲージ１を払う。そうしたら、君のドロップゾーンのサイズ３のモンスター１枚を手札に加える。",
+        "『ライフリンク１』"
+      ],
+      "keywords": [
+        "lifeLink1"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0019-recover",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "moveMatchingDropToHand",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              },
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0020",
+      "no": "H-EB03/0020",
+      "name": "コールドラゴン メギトス",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ネイキッドドラゴン",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■このカードはセンターにコールできない。",
+        "■“爆雷”相手のゲージにカードが置かれた時、相手にダメージ１。この能力は１ターンに１回だけ発動する。",
+        "■相手が“爆雷”の効果でダメージを受けた時、このカードをドロップゾーンに置く。"
+      ],
+      "cannotCallZones": [
+        "center"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0020-bakurai-gauge",
+          "label": "爆雷",
+          "kind": "triggered",
+          "event": "opponentGaugePlaced",
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0020-bakurai-gauge"
+          }
+        },
+        {
+          "id": "bf-h-eb03-0020-selfdrop",
+          "kind": "triggered",
+          "event": "opponentDamagedByBakurai",
+          "effects": [
+            {
+              "op": "dropSelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0021",
+      "no": "H-EB03/0021",
+      "name": "百鬼魔導 輪廻竜生",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン",
+        "チャージ",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■【対抗】君の場のモンスター１枚を破壊し、君のデッキの上から１枚をゲージに置く。「百鬼魔導 輪廻竜生」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0021-cast",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0021-cast"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0022",
+      "no": "H-EB03/0022",
+      "name": "アイアン・サイクロプス",
+      "type": "monster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "Dエネミー",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 3,
+      "power": 11000,
+      "critical": 4,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】ゲージ３を払う。",
+        "『２回攻撃』『ライフリンク４』"
+      ],
+      "callCost": {
+        "gauge": 3
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack",
+        "lifeLink4"
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0023",
+      "no": "H-EB03/0023",
+      "name": "戦場のハイエナ ドルス",
+      "type": "monster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■君の場に《Dエネミー》か《百鬼》のモンスターがいるなら、コールできる。",
+        "■君のカードの効果で、相手がダメージを受けた時、場のこのカードをドロップゾーンに置く。置いたら、君のデッキの上から１枚をゲージに置き、カード１枚を引く。"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "callConditions": [
+        {
+          "op": "ownFieldCardExists",
+          "filter": {
+            "cardType": "monster",
+            "attributeIn": [
+              "Dエネミー",
+              "百鬼"
+            ]
+          }
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0023-payoff",
+          "kind": "triggered",
+          "event": "opponentDamagedByEffect",
+          "effects": [
+            {
+              "op": "dropSelf"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0024",
+      "no": "H-EB03/0024",
+      "name": "プロトゴーレム ジャリーマ",
+      "type": "monster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "Dエネミー",
+        "コンストラクト",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 0,
+      "power": 1000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■君の場に《Dエネミー》か《百鬼》のモンスターがいるなら、コールできる。",
+        "■君のカードの効果で、相手がダメージを受けた時、君のデッキの上から２枚をゲージに置く。この能力は１ターンに１回だけ発動する。"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "callConditions": [
+        {
+          "op": "ownFieldCardExists",
+          "filter": {
+            "cardType": "monster",
+            "attributeIn": [
+              "Dエネミー",
+              "百鬼"
+            ]
+          }
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0024-payoff",
+          "kind": "triggered",
+          "event": "opponentDamagedByEffect",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0024-payoff"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0025",
+      "no": "H-EB03/0025",
+      "name": "百鬼ミッションカード “連鎖を狙え！”",
+      "type": "spell",
+      "world": "ダンジョンW",
+      "attributes": [
+        "破壊",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■君が魔法を使った時、君のデッキの上から１枚を、裏向きでこのカードのソウルに入れる。",
+        "■このカードのソウルが３枚以上になった時、このカードをドロップゾーンに置く。置いたら、相手の場のカード１枚を破壊する。",
+        "■「百鬼ミッションカード “連鎖を狙え！”」は君の場に１枚だけ『設置』できる。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "uniqueSet": true,
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0025-spell-soul",
+          "kind": "triggered",
+          "event": "allySpellCast",
+          "effects": [
+            {
+              "op": "putTopDeckToSoul",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb03-0025-soul-burst",
+          "kind": "triggered",
+          "event": "allySpellCast",
+          "allowMissingTarget": true,
+          "conditions": [
+            {
+              "op": "sourceSoulCountGte",
+              "amount": 3
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {}
+          },
+          "effects": [
+            {
+              "op": "dropSelf"
+            },
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0026",
+      "no": "H-EB03/0026",
+      "name": "魔獣 アーヴァンク",
+      "type": "monster",
+      "world": "レジェンドW",
+      "attributes": [
+        "ワイダーサカー",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 1000,
+      "critical": 3,
+      "defense": 1000,
+      "rules": [
+        "-"
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0027",
+      "no": "H-EB03/0027",
+      "name": "グレムリンの嘲笑",
+      "type": "spell",
+      "world": "レジェンドW",
+      "attributes": [
+        "ワイダーサカー",
+        "防御",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■相手のターンの攻撃中に使える。",
+        "■【対抗】その攻撃が連携攻撃でないなら、無効化する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0027-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "pendingAttackNotLink"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0028",
+      "no": "H-EB03/0028",
+      "name": "ブラックドラゴン ベフライエン",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜",
+        "破壊",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 1000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードが相手のモンスターに攻撃した時、そのモンスター１枚を破壊する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0028-attack-destroy",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            },
+            {
+              "op": "pendingAttackTargetMatches",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$attackTarget"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0029",
+      "no": "H-EB03/0029",
+      "name": "大首領 アンノウン",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 3,
+      "power": 9000,
+      "critical": 2,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが登場した時、君のドロップゾーンのサイズ２以下の《ダークヒーロー》か《百鬼》１枚までを、【コールコスト】を払ってコールする。そのカードは「大首領 アンノウン」が場にいるなら、サイズ０になる。"
+      ],
+      "callCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0029-enter-call",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "sizeLte": 2,
+                "attributeIn": [
+                  "ダークヒーロー",
+                  "百鬼"
+                ]
+              },
+              "amount": 1,
+              "require": true,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "大首領 アンノウン",
+              "lead": "ドロップゾーンからコールするサイズ２以下の《ダークヒーロー》か《百鬼》を１枚選んでください（コールしなくてもよい）。"
+            },
+            {
+              "op": "selectZone",
+              "var": "z",
+              "cardVar": "call",
+              "emptyOnly": true
+            },
+            {
+              "op": "payCardCostForSelection",
+              "var": "call",
+              "purpose": "call"
+            },
+            {
+              "op": "callSelected",
+              "var": "call",
+              "zoneVar": "z",
+              "resolveOnEnter": true,
+              "grantConditionalSize": {
+                "size": 0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0030",
+      "no": "H-EB03/0030",
+      "name": "恐怖の世界支配",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■このカードの能力以外で、このカードのソウルにカードを入れられない。",
+        "■君のカードで、相手のモンスターが破壊された時、君のデッキの上から１枚をこのカードのソウルに入れる。",
+        "■このカードのソウルの《ダークヒーロー》か《百鬼》のモンスターが合計５枚以上になった時、君はファイトに勝利する。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0030-destroy-soul",
+          "kind": "triggered",
+          "event": "opponentDestroyed",
+          "conditions": [
+            {
+              "op": "eventDestroyerIsSelf"
+            },
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToSoul",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb03-0030-win",
+          "kind": "triggered",
+          "event": "opponentDestroyed",
+          "conditions": [
+            {
+              "op": "eventDestroyerIsSelf"
+            },
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "monster"
+              }
+            },
+            {
+              "op": "sourceSoulMatchingCountGte",
+              "filter": {
+                "cardType": "monster",
+                "attributeIn": [
+                  "ダークヒーロー",
+                  "百鬼"
+                ]
+              },
+              "amount": 5
+            }
+          ],
+          "effects": [
+            {
+              "op": "winGame"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0031",
+      "no": "H-EB03/0031",
+      "name": "ギロチンアックス・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■“爆雷”相手の場に属性に「ドラゴン」か「竜」を含むモンスターが登場した時か、相手が属性に「ドラゴン」か「竜」を含む魔法を使った時、相手にダメージ１！この能力は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0031-bakurai-enter",
+          "label": "爆雷",
+          "kind": "triggered",
+          "event": "opponentEnter",
+          "conditions": [
+            {
+              "op": "enteredCardMatches",
+              "filter": {
+                "cardType": "monster",
+                "attributeIncludesAny": [
+                  "ドラゴン",
+                  "竜"
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0031-bakurai"
+          }
+        },
+        {
+          "id": "bf-h-eb03-0031-bakurai-spell",
+          "label": "爆雷",
+          "kind": "triggered",
+          "event": "opponentSpellCast",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "attributeIncludesAny": [
+                  "ドラゴン",
+                  "竜"
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0031-bakurai"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0032",
+      "no": "H-EB03/0032",
+      "name": "百鬼陣 爆雷の構え",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "召喚",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■【対抗】【起動】相手のターンのメインフェイズ中、君のドロップゾーンにあるサイズ２以下の“爆雷”を持つモンスター１枚を【コールコスト】を払って、コールする。この能力は１ターンに１回だけ使える。",
+        "■「百鬼陣 爆雷の構え」は君の場に１枚だけ『設置』できる。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "uniqueSet": true,
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0032-bakurai-call",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "phaseIs",
+              "phase": "main"
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "sizeLte": 2,
+                "hasAbilityLabel": "爆雷"
+              },
+              "amount": 1,
+              "require": true,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "百鬼陣 爆雷の構え",
+              "lead": "ドロップゾーンからコールするサイズ２以下の“爆雷”を持つモンスターを１枚選んでください。"
+            },
+            {
+              "op": "selectZone",
+              "var": "z",
+              "cardVar": "call",
+              "emptyOnly": true
+            },
+            {
+              "op": "payCardCostForSelection",
+              "var": "call",
+              "purpose": "call"
+            },
+            {
+              "op": "callSelected",
+              "var": "call",
+              "zoneVar": "z",
+              "resolveOnEnter": true
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0032-bakurai-call"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0033",
+      "no": "H-EB03/0033",
+      "name": "ゲート・オブ・ドラゴン",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "魔力",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■『設置』（このカードは場に置いて使う）",
+        "■君と相手はドロップゾーンからサイズ１以下のモンスターをコールできない。",
+        "■このカードが場からドロップゾーンに置かれた時、君のデッキの上から２枚をゲージに置く。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "castCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "preventCallFromZone",
+          "zones": [
+            "drop"
+          ],
+          "filter": {
+            "cardType": "monster",
+            "sizeLte": 1
+          }
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0033-leave-gauge",
+          "kind": "triggered",
+          "event": "destroyed",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0034",
+      "no": "H-EB03/0034",
+      "name": "圧殺竜 ザデルガンガー",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 7000,
+      "critical": 1,
+      "defense": 4000,
+      "rules": [
+        "-"
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0035",
+      "no": "H-EB03/0035",
+      "name": "アーマナイト・ナーガ",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■【対抗】【起動】相手のターン中、相手の場にアイテムがあるなら、ゲージ１を払ってよい。払ったら、手札のこのカードをコールし、相手の場のアイテム１枚を選び、次の君のターン終了時まで、そのアイテムの攻撃力と防御力を－3000し、打撃力を－２する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0035-counter-call",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "cardCount",
+              "controller": "opponent",
+              "pile": "item",
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectZone",
+              "var": "z",
+              "emptyOnly": true
+            },
+            {
+              "op": "callSelfFromHand",
+              "zoneVar": "z"
+            },
+            {
+              "op": "selectCards",
+              "var": "it",
+              "from": "field",
+              "controller": "opponent",
+              "filter": {
+                "cardType": "item"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "アーマナイト・ナーガ",
+              "lead": "攻撃力・防御力を－3000／打撃力を－２する相手のアイテムを１枚選んでください。"
+            },
+            {
+              "op": "modifySelectedStats",
+              "var": "it",
+              "power": -3000,
+              "defense": -3000,
+              "critical": -2,
+              "duration": "nextOwnTurnEnd"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0036",
+      "no": "H-EB03/0036",
+      "name": "岩石竜 ガラゴロン",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■相手が“爆雷”の効果でダメージを受けた時、ゲージ１を払ってよい。払ったら、相手の場のアイテムか魔法１枚を破壊する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0036-bakurai-destroy",
+          "kind": "triggered",
+          "event": "opponentDamagedByEffect",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "damageSourceLabelIs",
+              "label": "爆雷"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardTypeIn": [
+                "item",
+                "spell"
+              ]
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0037",
+      "no": "H-EB03/0037",
+      "name": "謎のデカラビア",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "72柱",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■このカードが登場した時、相手とジャンケンする。ジャンケンに勝ったファイターは場のカード１枚を破壊する。",
+        "■君はゲージ２を払うことで、ジャンケン１回をやり直すことができる！（負けてもやり直せるぞ！）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0037-enter-janken",
+          "kind": "triggered",
+          "event": "enter",
+          "target": {
+            "type": "fieldCard",
+            "controller": "any",
+            "filter": {}
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target",
+              "rockPaperScissors": true
+            }
+          ]
+        }
+      ],
+      "rockPaperScissorsRedo": {
+        "cost": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "bf-h-eb03-0038",
+      "no": "H-EB03/0038",
+      "name": "百鬼魔導 ドゥ・オア・ダイ",
+      "type": "spell",
+      "world": "マジックW",
+      "attributes": [
+        "破壊",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君の場のモンスターが破壊された時、君の場に《魔術師》か《百鬼》がいるなら使える。",
+        "■【対抗】相手の場のサイズ２以下のモンスター１枚を破壊する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0038-destroy",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "lastDestroyedCardMatches",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster"
+              }
+            },
+            {
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "ownFieldHasAttribute",
+                  "attribute": "魔術師"
+                },
+                {
+                  "op": "ownFieldHasAttribute",
+                  "attribute": "百鬼"
+                }
+              ]
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster",
+              "sizeLte": 2
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0039",
+      "no": "H-EB03/0039",
+      "name": "百鬼魔導 ノーブレイナー",
+      "type": "spell",
+      "world": "マジックW",
+      "attributes": [
+        "破壊",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君の場のモンスター１枚を選ぶ。そのターン中、そのモンスターが相手のモンスターを攻撃した時、相手の攻撃されているモンスター１枚のソウル１枚をドロップゾーンに置き、そのモンスターを破壊する！！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0039-grant",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "destroyAttackedMonsterWithSoulDrop",
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0040",
+      "no": "H-EB03/0040",
+      "name": "百鬼魔導 マッド・ダンシング！",
+      "type": "spell",
+      "world": "マジックW",
+      "attributes": [
+        "移動",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■君の場のモンスター全ては『移動』を得る。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "move",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0041",
+      "no": "H-EB03/0041",
+      "name": "狼面忍者 紅爪",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "忍者",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "『貫通』（このカードの攻撃で相手センターのモンスターを破壊したら、相手にも打撃力分ダメージを与える）"
+      ],
+      "keywords": [
+        "penetrate"
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0042",
+      "no": "H-EB03/0042",
+      "name": "甲蠍 堅牢砦",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "髑髏武者",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 2,
+      "power": 2000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■このカードの攻撃で相手にダメージを与えた時、次の相手のスタートフェイズ中、相手のアイテムは【スタンド】できない。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0042-lock-item-stand",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "effects": [
+            {
+              "op": "preventStandNextTurn",
+              "player": "opponent",
+              "filter": {
+                "cardType": "item"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0043",
+      "no": "H-EB03/0043",
+      "name": "百鬼魔導 闇物忌",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "鬼道",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君が攻撃されている攻撃中に使える。",
+        "■【対抗】君の場の《百鬼》のモンスター１枚をセンターに移動させ、その攻撃の対象をそのモンスターに変更する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0043-redirect",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "百鬼",
+              "zoneNot": "center"
+            }
+          },
+          "effects": [
+            {
+              "op": "moveTargetToZone",
+              "target": "$target",
+              "zone": "center",
+              "redirectPendingAttack": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0044",
+      "no": "H-EB03/0044",
+      "name": "百鬼魔導 百花繚乱",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "鬼道",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■相手のターンの攻撃中に使える。",
+        "■【対抗】君のデッキの１番上のカードをドロップゾーンに置く。そのカードがモンスターなら、その攻撃を無効化し、君のライフを＋２する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0044-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            }
+          ],
+          "script": [
+            {
+              "op": "moveTopDeckToDrop",
+              "player": "self",
+              "amount": 1
+            },
+            {
+              "op": "stopUnlessMovedToDropMatches",
+              "filter": {
+                "cardType": "monster"
+              },
+              "message": "ドロップゾーンに置いたカードがモンスターではなかったため、無効化とライフ回復は行いません。"
+            },
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "gainLife",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0045",
+      "no": "H-EB03/0045",
+      "name": "レッドドラゴン イグニール",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ネイキッドドラゴン",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■“炎の息”このカードが登場した時、相手にダメージ１！！「炎の息」は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0045-flame-breath",
+          "label": "炎の息",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0045-flame-breath"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0046",
+      "no": "H-EB03/0046",
+      "name": "百鬼魔導 竜善尺魔",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "強化",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■【対抗】バトルしている《ネイキッドドラゴン》か《百鬼》のモンスター１枚を選び、このバトル中、攻撃力＋3000、防御力＋3000し、さらに『反撃』を与える！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0046-buff",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "battleCard",
+            "filter": {
+              "cardType": "monster",
+              "attributeIn": [
+                "ネイキッドドラゴン",
+                "百鬼"
+              ]
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 3000,
+              "defense": 3000,
+              "duration": "battle"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "counterattack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0047",
+      "no": "H-EB03/0047",
+      "name": "百鬼魔導 万竜不当",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン",
+        "強化",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■君の場のレフトとライトのモンスターを、攻撃力＋1000、防御力＋1000！！",
+        "■このカードが場からドロップゾーンに置かれた時、君のデッキからサイズ０のモンスター１枚までを手札に加え、君のデッキをシャッフルする。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "targetZones": [
+            "left",
+            "right"
+          ],
+          "filter": {
+            "cardType": "monster"
+          },
+          "power": 1000,
+          "defense": 1000
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0047-drop-search",
+          "kind": "triggered",
+          "event": "destroyed",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "m",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  0
+                ]
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "百鬼魔導 万竜不当",
+              "lead": "デッキからサイズ０のモンスター１枚までを選んでください（加えなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "m",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を手札に加えました。"
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0048",
+      "no": "H-EB03/0048",
+      "name": "イビルドリアード",
+      "type": "monster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "Dエネミー",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■“爆雷”相手の場にサイズ２のモンスターが登場した時、相手にダメージ１！この能力は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0048-bakurai",
+          "label": "爆雷",
+          "kind": "triggered",
+          "event": "opponentEnter",
+          "conditions": [
+            {
+              "op": "enteredCardMatches",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  2
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0048-bakurai"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0049",
+      "no": "H-EB03/0049",
+      "name": "邪神の祭壇",
+      "type": "spell",
+      "world": "ダンジョンW",
+      "attributes": [
+        "魔王",
+        "召喚",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■【使用コスト】君のデッキの上から３枚をこのカードのソウルに入れる。",
+        "■『設置』（このカードは場に置いて使う）",
+        "■君の場のモンスターが破壊された時、このカードのソウル１枚をドロップゾーンに置く。",
+        "■このカードのソウルがなくなった時、このカードをドロップゾーンに置き、君のドロップゾーンのサイズ３の《魔王》か《百鬼》１枚を【コールコスト】を払って、君のセンターにコールしてよい。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 3
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0049-drain-and-revive",
+          "kind": "triggered",
+          "event": "allyDestroyed",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
+          "script": [
+            {
+              "op": "discardSelfSoul",
+              "amount": 1,
+              "require": false
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "sourceSoulCountGte",
+                "amount": 1
+              },
+              "else": [
+                {
+                  "op": "dropSelf"
+                },
+                {
+                  "op": "ifCondition",
+                  "condition": {
+                    "op": "ownCenterEmpty"
+                  },
+                  "then": [
+                    {
+                      "op": "selectCards",
+                      "var": "call",
+                      "from": "drop",
+                      "controller": "self",
+                      "filter": {
+                        "cardType": "monster",
+                        "sizeIn": [
+                          3
+                        ],
+                        "attributeIn": [
+                          "魔王",
+                          "百鬼"
+                        ]
+                      },
+                      "min": 0,
+                      "max": 1,
+                      "amount": 1,
+                      "require": false,
+                      "callable": true,
+                      "canPayCost": "call",
+                      "title": "邪神の祭壇",
+                      "lead": "君のセンターに【コールコスト】を払ってコールするドロップゾーンのサイズ３の《魔王》か《百鬼》１枚を選んでください（コールしなくてもよい）。"
+                    },
+                    {
+                      "op": "ifSelection",
+                      "var": "call",
+                      "then": [
+                        {
+                          "op": "payCardCostForSelection",
+                          "var": "call",
+                          "purpose": "call"
+                        },
+                        {
+                          "op": "callSelected",
+                          "var": "call",
+                          "zone": "center",
+                          "resolveOnEnter": true
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0050",
+      "no": "H-EB03/0050",
+      "name": "百鬼強襲 ハンドレッド・レギオン！",
+      "type": "impact",
+      "world": "ダンジョンW",
+      "attributes": [
+        "Dエネミー",
+        "破壊",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君の場に《Dエネミー》か《百鬼》のモンスター２枚以上がいるなら使える。",
+        "■【使用コスト】ゲージ２を払う。",
+        "■次の２つから１つを選んで使う。",
+        "・相手の場のサイズ２以下のモンスター全てを破壊し、相手にダメージ２！",
+        "・場の魔法全てを破壊し、相手にダメージ２！"
+      ],
+      "castCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0050-impact",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardCountGte",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ],
+              "filter": {
+                "cardType": "monster",
+                "attributeIn": [
+                  "Dエネミー",
+                  "百鬼"
+                ]
+              },
+              "amount": 2
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "百鬼強襲 ハンドレッド・レギオン！",
+              "lead": "次の２つから１つを選んで使ってください。",
+              "options": [
+                {
+                  "key": "monsters",
+                  "label": "相手の場のサイズ２以下のモンスター全てを破壊し、相手にダメージ２！",
+                  "script": [
+                    {
+                      "op": "destroyAll",
+                      "controller": "opponent",
+                      "filter": {
+                        "cardType": "monster",
+                        "sizeLte": 2
+                      }
+                    },
+                    {
+                      "op": "dealDamage",
+                      "player": "opponent",
+                      "amount": 2
+                    }
+                  ]
+                },
+                {
+                  "key": "spells",
+                  "label": "場の魔法全てを破壊し、相手にダメージ２！",
+                  "script": [
+                    {
+                      "op": "destroyAll",
+                      "filter": {
+                        "cardType": "spell"
+                      }
+                    },
+                    {
+                      "op": "dealDamage",
+                      "player": "opponent",
+                      "amount": 2
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0051",
+      "no": "H-EB03/0051",
+      "name": "世界蛇 ヨルムンガンド",
+      "type": "monster",
+      "world": "レジェンドW",
+      "attributes": [
+        "アースガルド",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 3,
+      "power": 11000,
+      "critical": 4,
+      "defense": 11000,
+      "rules": [
+        "■【コールコスト】手札２枚を捨てる。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "discardHand",
+            "amount": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "bf-h-eb03-0052",
+      "no": "H-EB03/0052",
+      "name": "破壊魔 レイザーバック",
+      "type": "monster",
+      "world": "レジェンドW",
+      "attributes": [
+        "ワイダーサカー",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、このカードを君の場の《ワイダーサカー》か《百鬼》のモンスター１枚の上に重ねる。",
+        "『貫通』『ソウルガード』『反撃』"
+      ],
+      "callCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callStack": {
+        "attributeIn": [
+          "ワイダーサカー",
+          "百鬼"
+        ]
+      },
+      "keywords": [
+        "penetrate",
+        "soulguard",
+        "counterattack"
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0053",
+      "no": "H-EB03/0053",
+      "name": "水霊 ルサルカ",
+      "type": "monster",
+      "world": "レジェンドW",
+      "attributes": [
+        "ワイダーサカー",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■相手の場のモンスター全ては、『移動』できず、手札に戻せない。"
+      ],
+      "continuous": [
+        {
+          "op": "preventKeyword",
+          "keyword": "move",
+          "controller": "opponent",
+          "filter": {
+            "cardType": "monster"
+          }
+        },
+        {
+          "op": "preventReturnToHand",
+          "controller": "opponent",
+          "filter": {
+            "cardType": "monster"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0054",
+      "no": "H-EB03/0054",
+      "name": "百鬼魔導 ネメシス・サンダー",
+      "type": "spell",
+      "world": "レジェンドW",
+      "attributes": [
+        "オリンピア",
+        "火力",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■【使用コスト】ゲージ２を払う。",
+        "■【対抗】場のアイテム１枚を破壊する。"
+      ],
+      "castCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0054-break-item",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "any",
+            "filter": {
+              "cardType": "item"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0055",
+      "no": "H-EB03/0055",
+      "name": "王魔剣 クラレント",
+      "type": "item",
+      "world": "レジェンドW",
+      "attributes": [
+        "英雄",
+        "武器",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "power": 5000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■このカードの攻撃で相手にダメージを与えた時、君のドロップゾーンに《英雄》か《百鬼》が合計４種類以上あるなら、相手の場のアイテム１枚を破壊する。",
+        "『装備変更』"
+      ],
+      "equipCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "equipChange"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0055-break-item",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "conditions": [
+            {
+              "op": "ownDropDistinctCardCountGte",
+              "filter": {
+                "attributeIn": [
+                  "英雄",
+                  "百鬼"
+                ]
+              },
+              "amount": 4
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "item"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0056",
+      "no": "H-EB03/0056",
+      "name": "片翼を憎む竜 レフトスラッシャー",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■“霊撃”このカードの攻撃で、相手のモンスターを破壊した時、相手にダメージ１。",
+        "■“爆雷”相手のレフトにモンスターが登場した時、相手にダメージ１！この能力は１ターンに１回だけ発動する。"
+      ],
+      "callCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0056-reigeki",
+          "label": "霊撃",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb03-0056-bakurai",
+          "label": "爆雷",
+          "kind": "triggered",
+          "event": "opponentEnter",
+          "conditions": [
+            {
+              "op": "enteredCardMatches",
+              "filter": {
+                "cardType": "monster"
+              }
+            },
+            {
+              "op": "enteredZoneIn",
+              "zones": [
+                "left"
+              ]
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0056-bakurai"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0057",
+      "no": "H-EB03/0057",
+      "name": "百鬼魔導 デスサクリファイス",
+      "type": "spell",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "ドロー",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■【使用コスト】君の場のモンスターを好きな枚数破壊する。",
+        "■破壊したモンスターの枚数分、カードを引く。「百鬼魔導 デスサクリファイス」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0057-sacrifice",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "百鬼魔導 デスサクリファイス",
+              "lead": "破壊する自分の場のモンスターの枚数を選んでください。",
+              "options": [
+                {
+                  "key": "none",
+                  "label": "破壊しない",
+                  "script": []
+                },
+                {
+                  "key": "one",
+                  "label": "１枚破壊して１枚引く",
+                  "condition": {
+                    "op": "ownFieldCardCountGte",
+                    "amount": 1,
+                    "filter": {
+                      "cardType": "monster"
+                    }
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "kill",
+                      "from": "field",
+                      "controller": "self",
+                      "filter": {
+                        "cardType": "monster"
+                      },
+                      "amount": 1,
+                      "require": true,
+                      "title": "百鬼魔導 デスサクリファイス",
+                      "lead": "破壊する自分の場のモンスターを１枚選んでください。"
+                    },
+                    {
+                      "op": "destroySelected",
+                      "var": "kill"
+                    },
+                    {
+                      "op": "draw",
+                      "amount": 1
+                    }
+                  ]
+                },
+                {
+                  "key": "two",
+                  "label": "２枚破壊して２枚引く",
+                  "condition": {
+                    "op": "ownFieldCardCountGte",
+                    "amount": 2,
+                    "filter": {
+                      "cardType": "monster"
+                    }
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "kill",
+                      "from": "field",
+                      "controller": "self",
+                      "filter": {
+                        "cardType": "monster"
+                      },
+                      "amount": 2,
+                      "require": true,
+                      "title": "百鬼魔導 デスサクリファイス",
+                      "lead": "破壊する自分の場のモンスターを２枚選んでください。"
+                    },
+                    {
+                      "op": "destroySelected",
+                      "var": "kill"
+                    },
+                    {
+                      "op": "draw",
+                      "amount": 2
+                    }
+                  ]
+                },
+                {
+                  "key": "three",
+                  "label": "３枚破壊して３枚引く",
+                  "condition": {
+                    "op": "ownFieldCardCountGte",
+                    "amount": 3,
+                    "filter": {
+                      "cardType": "monster"
+                    }
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "kill",
+                      "from": "field",
+                      "controller": "self",
+                      "filter": {
+                        "cardType": "monster"
+                      },
+                      "amount": 3,
+                      "require": true,
+                      "title": "百鬼魔導 デスサクリファイス",
+                      "lead": "破壊する自分の場のモンスターを３枚選んでください。"
+                    },
+                    {
+                      "op": "destroySelected",
+                      "var": "kill"
+                    },
+                    {
+                      "op": "draw",
+                      "amount": 3
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0057-sacrifice"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0058",
+      "no": "H-EB03/0058",
+      "name": "百鬼魔導 ダークターゲット",
+      "type": "spell",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "ドロー",
+        "回復",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■相手の場のモンスター１枚を選ぶ。そのターン中、そのモンスターが破壊された時、カード１枚を引き、君のライフを＋１する！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0058-mark",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "attachDestroyReaction",
+              "target": "$target",
+              "duration": "turn",
+              "reactionOwner": "self",
+              "effects": [
+                {
+                  "op": "draw",
+                  "amount": 1
+                },
+                {
+                  "op": "gainLife",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0059",
+      "no": "H-EB03/0059",
+      "name": "鉄拳 ブラックナックル",
+      "type": "item",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "武器",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "power": 3000,
+      "critical": 3,
+      "rules": [
+        "■【装備コスト】ゲージ１を払い、ライフ１を払う。",
+        "■このカードが相手にダメージを与えた時、君のデッキの上から１枚をゲージに置く。",
+        "■【対抗】【起動】ゲージ１を払ってよい。払ったら、そのターン中、このカードの攻撃力を＋2000する！"
+      ],
+      "equipCost": {
+        "gauge": 1,
+        "life": 1
+      },
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0059-damage-gauge",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb03-0059-burst",
+          "kind": "activated",
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "power": 2000,
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0060",
+      "no": "H-EB03/0060",
+      "name": "やってくれたなッ！",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー",
+        "火力",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■相手のカードが君にダメージを与えた時に使える。",
+        "■【対抗】カード１枚を引き、君の場に《ダークヒーロー》か《百鬼》のモンスターがいるなら、さらに相手にダメージ１！！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0060-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "lastDamageSourceMatches",
+              "controller": "opponent"
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "ownFieldCardExists",
+                  "filter": {
+                    "cardType": "monster",
+                    "attributeIn": [
+                      "ダークヒーロー",
+                      "百鬼"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-0061",
+      "no": "H-EB03/0061",
+      "name": "復活の邪神 ヤミゲドウ",
+      "type": "monster",
+      "world": "-",
+      "attributes": [
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 3,
+      "power": 8000,
+      "critical": 3,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、君の場の《百鬼》のモンスター１枚以上をこのカードのソウルに入れる。",
+        "■【起動】君の手札の《百鬼》１枚をこのカードのソウルに入れてよい。この能力は１ターンに１回だけ使える。",
+        "■このカードはこのカードのソウルにあるカードが持つ全ての“爆雷”を得る。",
+        "『ソウルガード』"
+      ],
+      "keywords": [
+        "soulguard"
+      ],
+      "callCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putSelectedOwnFieldCardsToSoul",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "百鬼"
+            },
+            "min": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0061-soul-charge",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "s",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "attribute": "百鬼"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "復活の邪神 ヤミゲドウ",
+              "lead": "このカードのソウルに入れる手札の《百鬼》１枚を選んでください（入れなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "s",
+              "to": "soul",
+              "require": false,
+              "log": "{cards}をこのカードのソウルに入れました。"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0061-soul-charge"
+          }
+        }
+      ],
+      "inheritSoulAbilities": {
+        "label": "爆雷"
+      }
+    }
+  ]
+}

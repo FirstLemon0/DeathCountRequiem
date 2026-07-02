@@ -795,15 +795,16 @@
 
   // 盤面ゾーンクリック（自分=選択 / 相手=攻撃対象 / それ以外のカード=閲覧）
   document.querySelectorAll(".zone.field").forEach((zoneButton) => {
-    zoneButton.addEventListener("click", () => {
+    zoneButton.addEventListener("click", (event) => {
       if (!session.started) return;
       if (typeof suppressNextZoneClick !== "undefined" && suppressNextZoneClick) {
         suppressNextZoneClick = false; // 長押しプレビュー直後のclickは無視（ローカル版と同じ）
         return;
       }
       const owner = Number(zoneButton.dataset.owner);
-      const zone = zoneButton.dataset.zone;
-      const cardEl = zoneButton.querySelector(".card[data-instance-id]");
+      // 複数アイテム対応: タップしたカード要素を優先し、そのアイテムの実スロット(data-item-zone)を使う。
+      const cardEl = event.target?.closest?.(".card[data-instance-id]") || zoneButton.querySelector(".card[data-instance-id]");
+      const zone = cardEl?.dataset?.itemZone || zoneButton.dataset.zone;
       if (ui.effectTargeting) {
         const et = ui.effectTargeting;
         // 候補が算出できている時は候補ゾーンのみ受け付ける（ローカルと同じ。候補外タップは無視）。
@@ -881,6 +882,13 @@
       return;
     }
     fieldCardMenu(owner, zone, card.instanceId);
+  };
+  // ドロップからの起動能力（墓場のDJ等）: 自分の席のみ、"use" アクションに source:"drop" 選択を載せて送る。
+  window.__onDropAbilityActivate = (owner, card) => {
+    if (owner !== mySeat() || !canActNow()) {
+      return;
+    }
+    sendAction("use", { selected: { source: "drop", owner, instanceId: card.instanceId } });
   };
   document.querySelectorAll(".set-pile").forEach((pile) => {
     pile.addEventListener("click", () => {

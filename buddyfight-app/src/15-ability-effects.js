@@ -34,21 +34,44 @@ async function resolveRockPaperScissors(context) {
     });
     return selected?.[0]?.key || null;
   };
-  const selfChoice = await choose(context.owner);
-  const opponentChoice = await choose(1 - context.owner);
   const winsAgainst = {
     rock: "scissors",
     scissors: "paper",
     paper: "rock",
   };
-  const result =
-    !selfChoice || !opponentChoice
-      ? "cancelled"
-      : selfChoice === opponentChoice
-        ? "draw"
-        : winsAgainst[selfChoice] === opponentChoice
-          ? "win"
-          : "lose";
+  let selfChoice;
+  let opponentChoice;
+  let result;
+  // rockPaperScissorsRedo を持つ場札があり、勝敗確定後にコストを払える間、やり直しを選べる（謎のデカラビア 0037）。
+  // 「負けてもやり直せる」ため結果に関わらず提示。1回のやり直しごとにコストを支払う。
+  for (;;) {
+    selfChoice = await choose(context.owner);
+    opponentChoice = await choose(1 - context.owner);
+    result =
+      !selfChoice || !opponentChoice
+        ? "cancelled"
+        : selfChoice === opponentChoice
+          ? "draw"
+          : winsAgainst[selfChoice] === opponentChoice
+            ? "win"
+            : "lose";
+    addLog(`${context.card.name}のジャンケン結果: ${state.players[context.owner].name}は${rockPaperScissorsLabel(selfChoice)}、${state.players[1 - context.owner].name}は${rockPaperScissorsLabel(opponentChoice)}。`);
+    const redoCard = zones
+      .map((zone) => state.players[context.owner]?.field?.[zone])
+      .find((c) => c?.rockPaperScissorsRedo && !isAbilitiesNullified(c));
+    if (result === "cancelled" || !redoCard) {
+      break;
+    }
+    const redoCost = redoCard.rockPaperScissorsRedo.cost || [];
+    if (!canPayStructuredCost(state.players[context.owner], redoCost, { sourceCard: redoCard }).ok) {
+      break;
+    }
+    if (!(await confirmChoiceAsync(context.owner, `${redoCard.name}でジャンケンをやり直しますか？（コストを支払う）`))) {
+      break;
+    }
+    payStructuredCost(state.players[context.owner], redoCost, { sourceCard: redoCard });
+    addLog(`${redoCard.name}の効果でジャンケンをやり直します。`);
+  }
   recordDiagnosticEvent("rock_paper_scissors", {
     source: compactCardForLog(context.card),
     owner: context.owner,
@@ -56,7 +79,6 @@ async function resolveRockPaperScissors(context) {
     opponentChoice,
     result,
   });
-  addLog(`${context.card.name}のジャンケン結果: ${state.players[context.owner].name}は${rockPaperScissorsLabel(selfChoice)}、${state.players[1 - context.owner].name}は${rockPaperScissorsLabel(opponentChoice)}。`);
   return result;
 }
 
@@ -296,6 +318,8 @@ async function executeAbilityEffect(effect, context) {
     player.gauge.push(...movedCards);
     if (movedCards.length > 0) {
       addLog(`${movedCards.map((card) => card.name).join("、")}をゲージに置きました。`);
+      // 「相手のゲージにカードが置かれた時」誘発（爆雷 0020）。効果でゲージに置く経路も対象。
+      await runFieldEventTriggers("gaugePlaced", state.players.indexOf(player), movedCards[0], null, { count: movedCards.length });
     }
   }
   if (effect.op === "moveMatchingDropToHand") {
@@ -869,6 +893,28 @@ async function executeAbilityEffect(effect, context) {
       addLog(`${context.card.name}の効果で${moved.name}をゲージに置きました。`);
     }
   }
+  if (effect.op === "attachDestroyReaction" && target?.card) {
+    // 対象カードに「そのターン中に破壊された時、reactionOwnerが指定effectsを解決する」遅延リアクションを付与（ダークターゲット0058）。
+    const reactionSeat = effect.reactionOwner === "opponent" ? 1 - context.owner : context.owner;
+    target.card.destroyReaction = {
+      owner: reactionSeat,
+      effects: effect.effects || [],
+      duration: effect.duration || "turn",
+      sourceName: context.card?.name,
+    };
+    addLog(`${context.card?.name || "効果"}の効果で${target.card.name}に破壊時リアクションを付与しました。`);
+  }
+  if (effect.op === "preventStandNextTurn") {
+    // 次のスタートフェイズで filter 一致の指定プレイヤーの場札をスタンドさせない（0042）。対象カードにフラグ。
+    const seat = effect.player === "opponent" ? 1 - context.owner : context.owner;
+    zones.forEach((zone) => {
+      const card = state.players[seat]?.field?.[zone];
+      if (card && matchesCardFilter(card, effect.filter || {})) {
+        card.preventStandOnce = true;
+      }
+    });
+    addLog(`${context.card?.name || "効果"}の効果で、次の${state.players[seat].name}のスタートフェイズに対象は【スタンド】できません。`);
+  }
   if (effect.op === "suppressLifeLinkThisTurn") {
     // そのターン中、指定コントローラーの場のカードのライフリンクを無効化（護竜王アミュレイ 0063）。
     const seat = effect.controller === "opponent" ? 1 - context.owner : context.owner;
@@ -1012,7 +1058,8 @@ async function executeAbilityEffect(effect, context) {
       },
     );
     if (selected?.[0]) {
-      await destroyFieldCard(selected[0].owner, selected[0].zone);
+      // 効果破壊として発生源(sourceOwner)を伝播（「君のカードで破壊された時」0030・破壊耐性判定と整合）。
+      await destroyFieldCard(selected[0].owner, selected[0].zone, { cause: makeEffectCause(context, selected[0].owner) });
       addLog(`${context.card.name}の効果で${selected[0].card.name}を破壊しました。`);
     }
   }

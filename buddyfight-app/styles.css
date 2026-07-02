@@ -578,6 +578,13 @@ h2 {
   box-shadow: -9px -9px 0 rgb(var(--c-flag-rgb) / 0.25);
 }
 
+/* 複数アイテム装備時: 2枚目以降を少しずつ右下にずらして全て見えるようにする（--item-index を利用）。 */
+.flag-item-stack.multi-item .item-layer-stacked {
+  margin-top: calc(18px - var(--item-index, 0) * 6px);
+  margin-left: calc(18px + var(--item-index, 0) * 14px);
+  z-index: calc(10 + var(--item-index, 0));
+}
+
 /* センター強調は「モンスターがいる時だけ」。空センターは通常表示（§75）。 */
 .zone.center.center-occupied {
   position: relative;
@@ -1020,6 +1027,17 @@ dialog::backdrop {
   font-size: 0.76rem;
   font-weight: 800;
   text-align: right;
+}
+
+/* ドロップからの起動能力（墓場のDJ等）の「発動」ボタン。 */
+.drop-dialog-activate {
+  margin-top: 4px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #fff;
+  background: var(--accent, #3b6ea5);
+  border-radius: 6px;
 }
 
 .drop-dialog-name {

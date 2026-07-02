@@ -15,6 +15,9 @@ async function runTriggeredAbilities(card, event, baseContext = {}) {
         .filter((ability) => ability.kind === "triggered" && ability.event === event)
         .map((ability) => ({ ...ability, __fromSoul: soulCard })),
     ),
+    // inheritSoulAbilities: ホストが「ソウルにあるカードが持つ全ての“<label>”を得る」（EB03 爆雷継承 0004/0012/0013/0017/0061）。
+    // ソウル札の通常 abilities(kind:triggered, label一致) を、このイベントでホストの誘発として合流させる。
+    ...inheritedSoulAbilitiesFor(card, event),
   ];
   // ドロップゾーン走査などで、opt-in した能力だけに絞る（runPhaseStartTriggers から指定）。
   if (typeof baseContext.__abilityFilter === "function") {
@@ -78,6 +81,36 @@ async function runTriggeredAbilities(card, event, baseContext = {}) {
       await executeAbilityBody(context);
       markAbilityLimit(owner, card, ability);
     }
+}
+
+// inheritSoulAbilities:{label} を持つホスト card について、ソウル札の通常 abilities のうち
+// kind:triggered・label一致・event一致のものを、ホスト誘発として合流する配列で返す（爆雷継承）。
+// limit はソウル札インスタンス単位で管理（__fromSoul により markAbilityLimit/isAbilityLimitUsed が識別）。
+function inheritedSoulAbilitiesFor(card, event) {
+  const label = card?.inheritSoulAbilities?.label;
+  if (!label || !(card.soul || []).length || isAbilitiesNullified(card)) {
+    return [];
+  }
+  return (card.soul || []).flatMap((soulCard) =>
+    (soulCard.abilities || [])
+      .filter((a) => a.kind === "triggered" && a.event === event && a.label === label)
+      .map((a) => ({ ...a, __fromSoul: soulCard })),
+  );
+}
+
+// card（場札）が event に反応する誘発リスナーを持つか。card自身/ソウルのsoulAbilities/爆雷継承を考慮。
+// queue*Triggers の hasListener 早期リターンで使う（inheritSoulAbilities 持ちホストを取りこぼさないため）。
+function cardHasTriggeredListener(card, event) {
+  if (!card) {
+    return false;
+  }
+  if ((card.abilities || []).some((a) => a.kind === "triggered" && a.event === event)) {
+    return true;
+  }
+  if ((card.soul || []).some((s) => (s.soulAbilities || []).some((a) => a.kind === "triggered" && a.event === event))) {
+    return true;
+  }
+  return inheritedSoulAbilitiesFor(card, event).length > 0;
 }
 
 async function chooseAbilityTarget(card, ability, owner) {
@@ -279,6 +312,9 @@ async function executeAbilityScriptStep(step, context) {
   }
   if (step.op === "gainNameAsSelected") {
     return gainNameAsSelectedForScript(step, context);
+  }
+  if (step.op === "moveAllOwnFieldToDrop") {
+    return moveAllOwnFieldToDropForScript(step, context);
   }
   if (step.op === "dealDamageBySelectedStatSum") {
     return dealDamageBySelectedStatSumForScript(step, context);
@@ -612,6 +648,38 @@ function scriptSourceLabel(from) {
 
 // 発生源カードが、選択カード(var)と同じカード名を『追加のカード名』として得る（そのターン中。RD メタモルエフェクト 0016）。
 // card.additionalNames[] に積み、clearTurnModifiers(ターン終了)でクリアされる。matchesCardFilter の name系が参照する。
+// このカード以外(excludeSource)の発生源側の場のカードを「全て」ドロップゾーンに置く（強制・非対話）。
+// 四角炎王バーンノヴァ 0006「このカード以外の君の場のカード全てをドロップゾーンに置き」用。
+function moveAllOwnFieldToDropForScript(step, context) {
+  const player = state.players[context.owner];
+  const moved = [];
+  zones.forEach((zone) => {
+    const card = player.field[zone];
+    if (!card) {
+      return;
+    }
+    if (step.excludeSource && card.instanceId === context.card?.instanceId) {
+      return;
+    }
+    if (step.filter && !matchesCardFilter(card, step.filter)) {
+      return;
+    }
+    player.field[zone] = null;
+    player.drop.push(...(card.soul || []));
+    card.soul = [];
+    player.drop.push(card);
+    // ※「ドロップゾーンに置く」は破壊ではないためライフリンクは発動しない（公式: 破壊≠ドロップ送り）。
+    if (zone === "item" && player.arrivalCardId === card.instanceId) {
+      player.arrivalCardId = null; // 着任アイテムを流す場合は着任フラグをクリア
+    }
+    moved.push(card);
+  });
+  if (moved.length > 0) {
+    addLog(`${context.card?.name || "効果"}の効果で${moved.map((c) => c.name).join("、")}をドロップゾーンに置きました。`);
+  }
+  return true;
+}
+
 // 選択済みの複数var(フィールドカード)の指定stat(既定critical=打撃力)を合計し、その分を1回のダメージとして与える。
 // ギガハウリング・クラッシャー 0026「モンスター1枚＋アイテム1枚の打撃力合計分ダメージ」用。
 function dealDamageBySelectedStatSumForScript(step, context) {
@@ -971,6 +1039,7 @@ function moveScriptCardToDestination(card, destination, owner, context) {
     player.hand.push(card);
   } else if (destination === "gauge") {
     player.gauge.push(card);
+    queueGaugePlacedTriggers(owner, [card]); // 相手のゲージにカードが置かれた時（0020）
   } else if (destination === "deck") {
     player.deck.push(card);
   } else if (destination === "deckBottom") {
@@ -1004,7 +1073,8 @@ async function destroySelectedForScript(step, context) {
       continue;
     }
     const destroyedName = targetCard.name;
-    const destroyed = await destroyFieldCard(entry.owner, entry.zone);
+    // 効果破壊として発生源(sourceOwner)を伝播（「君のカードで破壊された時」0030・破壊耐性判定と整合）。
+    const destroyed = await destroyFieldCard(entry.owner, entry.zone, { cause: makeEffectCause(context, entry.owner) });
     if (destroyed) {
       destroyedCount += 1;
       addLog(`${context.card.name}の効果で${destroyedName}を破壊しました。`);
@@ -1044,12 +1114,26 @@ function grantKeywordSelectedForScript(step, context) {
 function modifySelectedStatsForScript(step, context) {
   const selected = scriptSelection(step, context);
   const duration = step.duration || "battle";
-  const prefix = duration === "turn" ? "turn" : "battle";
   selected.forEach((entry) => {
     const card = entry.card;
     if (!card) {
       return;
     }
+    if (duration === "nextOwnTurnEnd") {
+      // 「次の君のターン終了時まで」（アーマナイト・ナーガ 0035）。expireOwner の「次の」ターン終了で失効。
+      // 相手ターン中にセット(0035は【対抗】)なら、直後の自分ターン終了で失効(armed=true)。
+      // 自分ターン中にセットなら、そのターン終了はスキップし次の自分ターン終了で失効(armed=false)。
+      card.scheduledStatBonus ||= [];
+      card.scheduledStatBonus.push({
+        power: step.power || 0,
+        defense: step.defense || 0,
+        critical: step.critical || 0,
+        expireOwner: context.owner,
+        armed: context.owner !== state.active,
+      });
+      return;
+    }
+    const prefix = duration === "turn" ? "turn" : "battle";
     applyStatBonus(card, prefix, "power", step.power || 0);
     applyStatBonus(card, prefix, "defense", step.defense || 0);
     applyStatBonus(card, prefix, "critical", step.critical || 0);
@@ -1139,6 +1223,7 @@ function moveSoulToDropForScript(step, context) {
 function moveSoulToGaugeForScript(step, context) {
   const movedCards = context.card?.soul?.splice(0) || [];
   context.player.gauge.push(...movedCards);
+  queueGaugePlacedTriggers(context.owner, movedCards);
   if (movedCards.length > 0 && step.log !== false) {
     addLog(`${context.card.name}のソウルを全てゲージに置きました。`);
   }
@@ -1239,6 +1324,7 @@ function putSelfToGaugeForScript(step, context) {
     return true;
   }
   context.player.gauge.push(card);
+  queueGaugePlacedTriggers(context.owner, [card]);
   if (step.log !== false) {
     addLog(`${card.name}をゲージに置きました。`);
   }
@@ -1506,11 +1592,35 @@ async function selectZoneForScript(step, context) {
   return true;
 }
 
+// preventCallFromZone 継続（ゲート・オブ・ドラゴン 0033「君と相手はドロップからサイズ1以下のモンスターをコールできない」）。
+// 場札(設置含む)の継続に op:preventCallFromZone があり、fromZone(既定drop)一致・filter一致なら true。
+function isCallFromZoneRestricted(owner, card, fromZone) {
+  return state.players.some((player) =>
+    zones.some((zone) => {
+      const source = player.field[zone];
+      return (activeContinuousEffects(source) || []).some((effect) => {
+        if (effect.op !== "preventCallFromZone") {
+          return false;
+        }
+        const restrictedZone = effect.fromZone || "drop";
+        if (restrictedZone !== fromZone) {
+          return false;
+        }
+        return matchesCardFilter(card, effect.filter || {});
+      });
+    }),
+  );
+}
+
 async function callSelectedForScript(step, context) {
   const entry = scriptSelection(step, context)[0];
   if (!entry?.card) {
     addLog(`${context.card.name}でコールするカードを選んでください。`);
     return { ok: false, reason: "missing_call_card" };
+  }
+  if ((entry.source || step.from) === "drop" && isCallFromZoneRestricted(entry.owner ?? context.owner, entry.card, "drop")) {
+    addLog(`効果により、ドロップゾーンからそのカードをコールできません。`);
+    return { ok: false, reason: "call_from_zone_restricted" };
   }
   const player = state.players[entry.owner ?? context.owner];
   const zone = context.vars[step.zoneVar] || step.zone;
@@ -1529,6 +1639,11 @@ async function callSelectedForScript(step, context) {
   }
   player.field[zone] = calledCard;
   applyScriptGrantedKeywords(calledCard, step.grantKeywords || []);
+  if (step.grantConditionalSize) {
+    // コールしたカードに「発生源(このカード)が場にある間サイズ<size>」の上書きを付与（大首領アンノウン 0029）。
+    // enforceSizeLimit より前に付与しないと、サイズ0化前の実サイズでサイズ超過と誤判定され発生源が落ちる。
+    calledCard.conditionalSize = { size: step.grantConditionalSize.size ?? 0, granterInstanceId: context.card?.instanceId };
+  }
   enforceSizeLimit(player, zone);
   if (step.redirectPendingAttack && state.pendingAttack) {
     state.pendingAttack.targetOwner = entry.owner ?? context.owner;
@@ -1629,8 +1744,10 @@ async function callSelectedToEmptyZonesForScript(step, context) {
     return step.require === false ? true : { ok: false, reason: "missing_call_cards" };
   }
   const player = context.player;
+  // step.zones でコール先を限定できる（0010「レフトかライトにコール」）。既定は全フィールドゾーン。
+  const allowedZones = Array.isArray(step.zones) ? step.zones : fieldZones;
   for (const entry of selected) {
-    const emptyZones = fieldZones.filter((zone) => !player.field[zone]);
+    const emptyZones = allowedZones.filter((zone) => fieldZones.includes(zone) && !player.field[zone]);
     if (emptyZones.length === 0) {
       break;
     }

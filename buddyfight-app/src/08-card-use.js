@@ -20,6 +20,11 @@ async function useCardAction() {
     await useFieldAbilityAction(selectedCard);
     return;
   }
+  if (state.selected?.source === "drop") {
+    // ドロップからの起動能力（墓場のDJ 0014 / ギシンギュウキ EB03/0002 等）。権威版の "use" 経路もここへ。
+    await useDropAbilityAction(state.selected.owner, selectedCard);
+    return;
+  }
   if (state.selected?.source !== "hand") {
     return;
   }
@@ -89,22 +94,51 @@ function controllerSpellUsePrevented(owner) {
   });
 }
 
+// この card を「追加アイテム」として（主枠を空けずに）装備できるか。
+// 通常アイテムは1枚だが、装備中アイテムの allowExtraItemEquip か、この card 自身の allowExtraItemEquip が
+// 相手側アイテムに一致する場合、空きスロットへ追加装備できる（虎の槍ペア 0019/0045 等）。
+function canEquipAsExtraItem(player, card) {
+  if (firstEmptyItemZone(player) === null) {
+    return false; // 空きスロットが無い
+  }
+  const equipped = equippedItems(player);
+  if (equipped.length === 0) {
+    return false; // まだ1枚も装備していない → 通常装備（主枠）
+  }
+  const asList = (v) => (Array.isArray(v) ? v : v ? [v] : []);
+  const grantedByEquipped = equipped.some((it) =>
+    asList(it.allowExtraItemEquip).some((rule) => matchesCardFilter(card, rule.filter || {})),
+  );
+  const grantedBySelf = asList(card.allowExtraItemEquip).some((rule) =>
+    equipped.some((it) => matchesCardFilter(it, rule.filter || {})),
+  );
+  return grantedByEquipped || grantedBySelf;
+}
+
 // 共通: 既にソース(手札/ドロップ等)から取り出したカードをアイテムとして装備する。
 // equipItem(手札からの通常装備) と script op useSelectedCard(ドロップからの装備) で共有。
 async function equipCardDirect(player, card) {
   const owner = state.players.indexOf(player);
-  if (player.field.item) {
-    if (hasKeyword(card, "equipChange") && !player.oncePerTurn["equipChange"]) {
-      player.hand.push(player.field.item);
-      player.field.item = null;
-      player.oncePerTurn["equipChange"] = true;
-      addLog(`${card.name}の『装備変更』で装備中のアイテムを手札に戻しました。`);
-    } else {
-      dropFieldCardByRule(player, "item");
+  let targetZone;
+  if (canEquipAsExtraItem(player, card)) {
+    // 追加アイテム: 主枠を空けず、空いているスロットへ装備する。
+    targetZone = firstEmptyItemZone(player);
+  } else {
+    // 通常アイテム: 主枠(item)に装備。既に主枠が埋まっていれば装備変更 or ドロップ。
+    if (player.field.item) {
+      if (hasKeyword(card, "equipChange") && !player.oncePerTurn["equipChange"]) {
+        player.hand.push(player.field.item);
+        player.field.item = null;
+        player.oncePerTurn["equipChange"] = true;
+        addLog(`${card.name}の『装備変更』で装備中のアイテムを手札に戻しました。`);
+      } else {
+        dropFieldCardByRule(player, "item");
+      }
     }
+    targetZone = "item";
   }
   card.currentType = "item";
-  player.field.item = card;
+  player.field[targetZone] = card;
   if (card.destroyAtEndOfTurn) {
     card.destroyAtEndOfTurnOwner = owner;
   }
@@ -112,9 +146,9 @@ async function equipCardDirect(player, card) {
   await resolveOnEnter(card, player);
   addLog(`${player.name}は${card.name}を装備しました。`);
   // アイテム装備完了を場イベントとして通知（allyEquip/opponentEquip）。相手の装備に反応するカード（影鼬 0087）用。
-  await runFieldEventTriggers("equip", owner, card, "item", {
+  await runFieldEventTriggers("equip", owner, card, targetZone, {
     enteredCard: card,
-    enteredZone: "item",
+    enteredZone: targetZone,
   });
 }
 

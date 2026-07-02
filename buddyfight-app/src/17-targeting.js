@@ -60,12 +60,15 @@ function effectTargetCandidates(selectedCard) {
   if (selectedCard.callStack && state.selected?.source === "hand") {
     const nameIncludes = selectedCard.callStack.nameIncludes;
     const stackAttribute = selectedCard.callStack.attribute;
+    const stackAttributeIn = selectedCard.callStack.attributeIn;
     return allFieldTargets(
       (card, owner) =>
         owner === state.active &&
         effectiveCardType(card) === "monster" &&
         (!nameIncludes || card.name.includes(nameIncludes)) &&
-        (!stackAttribute || (card.attributes || []).includes(stackAttribute)),
+        (!stackAttribute || (card.attributes || []).includes(stackAttribute)) &&
+        (!Array.isArray(stackAttributeIn) ||
+          stackAttributeIn.some((a) => (card.attributes || []).includes(a))),
     );
   }
   const genericAbility = firstTargetedAbilityForCurrentTiming(selectedCard);

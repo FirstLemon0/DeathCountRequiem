@@ -1181,12 +1181,15 @@ function moveTopDeckToSoul(player, card, amount = 1) {
 }
 
 function moveTopDeckToGauge(player, amount = 1) {
+  const placed = [];
   for (let index = 0; index < amount; index += 1) {
     const gaugeCard = player.deck.pop();
     if (gaugeCard) {
       player.gauge.push(gaugeCard);
+      placed.push(gaugeCard);
     }
   }
+  queueGaugePlacedTriggers(state.players.indexOf(player), placed); // 相手のゲージにカードが置かれた時（0020）
   if (player.deck.length === 0) {
     declareDeckLoss(player);
   }

@@ -29,7 +29,7 @@ if (globalThis.__BUDDYFIGHT_THIN__) {
   };
 } else {
 document.querySelectorAll(".zone.field").forEach((zoneButton) => {
-  zoneButton.addEventListener("click", () => {
+  zoneButton.addEventListener("click", (event) => {
     if (suppressNextZoneClick) {
       suppressNextZoneClick = false;
       return; // ロングプレス直後のclickは無視
@@ -50,9 +50,10 @@ document.querySelectorAll(".zone.field").forEach((zoneButton) => {
         confirmAttackTarget("fighter");
         return;
       }
-      if (owner === state.active && state.players[owner]?.field?.[zone]) {
+      const resolvedAtkZone = resolveClickedItemZone(event, owner, zone);
+      if (owner === state.active && state.players[owner]?.field?.[resolvedAtkZone]) {
         uiTargeting = null;
-        fieldCardMenuLocal(owner, zone);
+        fieldCardMenuLocal(owner, resolvedAtkZone);
       }
       return;
     }
@@ -63,9 +64,10 @@ document.querySelectorAll(".zone.field").forEach((zoneButton) => {
       return; // 候補外タップは無視（権威版と同じ。キャンセルはバナーのボタン）
     }
     // 平時：操作可能なカードは下部アクションメニュー、相手/操作不可のカードは閲覧専用シート。
-    // 空きマスのタップは無反応（権威版と同じ）。
-    const card = state.players[owner]?.field?.[zone];
-    if (card && !fieldCardMenuLocal(owner, zone)) {
+    // 空きマスのタップは無反応（権威版と同じ）。複数アイテム時はタップしたアイテムの実スロットを対象にする。
+    const resolvedZone = resolveClickedItemZone(event, owner, zone);
+    const card = state.players[owner]?.field?.[resolvedZone];
+    if (card && !fieldCardMenuLocal(owner, resolvedZone)) {
       openReadOnlyCardSheet(card);
     }
   });
@@ -261,14 +263,21 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     adjustedLegacyCost,
     applyAttackRedirectContinuous,
     applyDamageToPlayer,
+    applyLifeLink,
     applicableAttackResistances,
     attackSourceResisted,
     callMonster,
     canDeclareAttack,
     checkAbilityConditions,
+    clearTurnModifiers,
     createInstanceId,
     effectiveSize,
+    equipCardDirect,
+    equippedItems,
+    findUsableDropAbilities,
+    useDropAbilityAction,
     getFieldSize,
+    standPlayer,
     visiblePower,
     destroyFieldCard,
     executeAbilityBody,
