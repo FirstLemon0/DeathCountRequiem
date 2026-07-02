@@ -4,7 +4,15 @@
 // HTML で番号順に <script> 読み込みする（連結すると旧 app.js とバイト等価）。
 // ==========================================================================
 function getFieldSize(player) {
-  return fieldZones.reduce((total, zone) => total + (player.field[zone]?.size || 0), 0);
+  return fieldZones.reduce((total, zone) => total + effectiveSize(player.field[zone]), 0);
+}
+
+// 継続 modifyStats の size 増減を反映した実効サイズ（従者ガープ0013「サイズを1減らす」等）。最小0。
+function effectiveSize(card) {
+  if (!card) {
+    return 0;
+  }
+  return Math.max(0, (card.size || 0) + continuousStatBonus(card, "size"));
 }
 
 // このカードの能力(abilities/continuous/soulContinuous/keywords)が、場のいずれかの

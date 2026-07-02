@@ -570,6 +570,10 @@ async function resolvePendingSpell(action) {
   }
   markAbilityLimit(action.owner, action.card, action.ability || {});
   addLog(`${action.card.name}を解決しました。`);
+  // 「君が魔法を使った時」の場全体誘発（allySpellCast/opponentSpellCast）。設置カード等が反応（ルヴィア 0004）。
+  if (effectiveCardType(action.card) === "spell") {
+    await runFieldEventTriggers("spellCast", action.owner, action.card, null, { spellCard: action.card });
+  }
 }
 
 async function resolvePendingAbility(action) {

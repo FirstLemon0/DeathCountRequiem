@@ -514,11 +514,11 @@ function flagIsOfWorld(flag, world) {
 }
 
 // 『角王』(deckAnyFlag)カードにとって、そのフラッグが「ホーム」か。
-// 公式: 君のフラッグがそのカードのワールド（角王なら竜牙雷帝を含むドラゴンＷのフラッグ）なら通常枚数。
-// データ駆動の判定:
-//   1) フラッグが homeWorld の正規フラッグ（allowedWorlds に明示） … 例 dragon-world
-//   2) フラッグが homeAttribute（角王アーキタイプ）を allowedAttributes に明示 … 例 竜牙雷帝
-// アイン/ツヴァイは竜/ドラゴン属性を許すだけで角王を挙げていないため非ホーム（＝制限）。
+// 公式ルール（2018年6月以前）: 君のフラッグがそのカードのワールドなら通常枚数、それ以外なら1枚。
+// ＝ホームは「homeWorld の正規フラッグ（allowedWorlds に明示）」のみ。例 ドラゴンＷ角王→dragon-world。
+// ※以前あった「竜牙雷帝は角王を4枚」の特例（homeAttribute 分岐）は公式に該当ルールが無いため撤去。
+//   竜牙雷帝など特殊フラッグでは角王は「使用可・ただし1枚」（deckAnyFlag=全フラッグで使えるが非ホーム）。
+// アイン/ツヴァイ等の特殊フラッグも同様に非ホーム（＝制限）。
 function flagIsHomeForDeckAnyFlag(flag, card) {
   const rule = card?.deckAnyFlag;
   if (!flag || !rule) {
@@ -528,18 +528,12 @@ function flagIsHomeForDeckAnyFlag(flag, card) {
     return true;
   }
   const homeWorld = rule.homeWorld || card?.world;
-  if (flagIsOfWorld(flag, homeWorld)) {
-    return true;
-  }
-  if (rule.homeAttribute && (flag.allowedAttributes || []).includes(rule.homeAttribute)) {
-    return true;
-  }
-  return false;
+  return flagIsOfWorld(flag, homeWorld);
 }
 
 // カードのデッキ投入上限枚数（既定4）。『角王』(deckAnyFlag)カードは、君のフラッグが
-// ホーム（flagIsHomeForDeckAnyFlag）なら4枚、それ以外なら deckAnyFlag.awayMaxCopies（既定1）。
-// 公式テキスト「君のフラッグが＜ドラゴンＷ＞以外なら1枚」（竜牙雷帝はドラゴンＷの角王フラッグ＝4枚）に対応。
+// ホーム（flagIsHomeForDeckAnyFlag＝homeWorldのフラッグ）なら4枚、それ以外なら deckAnyFlag.awayMaxCopies（既定1）。
+// 公式テキスト「君のフラッグが＜そのカードのワールド＞以外なら1枚」に対応（特殊フラッグは非ホーム＝1枚）。
 function cardCopyLimitForFlag(flag, card) {
   const base = 4;
   const rule = card?.deckAnyFlag;

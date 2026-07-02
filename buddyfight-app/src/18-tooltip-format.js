@@ -389,6 +389,17 @@ function canUseCounterEffect(owner, effect) {
   if (!pending) {
     return false;
   }
+  // preventOpponentCounterThisTurn: ターンスコープの対抗ロック（0053）。
+  // ロック発動者の相手(owner===1-lock.owner)が、lock.while 条件成立中は【対抗】を使えない。
+  if (
+    (state.opponentCounterLockThisTurn || []).some(
+      (lock) =>
+        owner === 1 - lock.owner &&
+        (!lock.while.length || checkCardConditions(lock.while, lock.owner, {})),
+    )
+  ) {
+    return false;
+  }
   const usedKind = pending.counterUsed?.[owner];
   if (!usedKind) {
     return true;

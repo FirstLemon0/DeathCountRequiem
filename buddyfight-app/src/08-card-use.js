@@ -68,12 +68,25 @@ async function useCardAction() {
     return;
   }
   if (selectedCard.type === "spell") {
+    // preventControllerSpellUse: 場に本フラグを持つ自分のカードがあると魔法を使えない（騎甲竜王シュヴァリアス 0016）。
+    if (controllerSpellUsePrevented(state.selected.owner)) {
+      addLog("あなたは今、魔法を使えません。");
+      return;
+    }
     await castSpell(selectedCard);
     return;
   }
   if (selectedCard.type === "impact") {
     await castImpact(selectedCard);
   }
+}
+
+// 場に preventControllerSpellUse フラグを持つ自分のカードがあると、そのコントローラーは魔法を使えない（0016）。
+function controllerSpellUsePrevented(owner) {
+  return zones.some((zone) => {
+    const card = state.players[owner]?.field?.[zone];
+    return card?.preventControllerSpellUse && !isAbilitiesNullified(card);
+  });
 }
 
 // 共通: 既にソース(手札/ドロップ等)から取り出したカードをアイテムとして装備する。

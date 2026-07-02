@@ -178,6 +178,12 @@ async function executeAbilityEffect(effect, context) {
       await runFieldEventTriggers("lifeGained", state.players.indexOf(player));
     }
   }
+  if (effect.op === "setLife") {
+    // ライフを固定値に代入（「ライフを10にする」等。gainLifeの加算では表せない）。
+    const target = effect.player === "opponent" ? opponent : player;
+    target.life = effect.life ?? effect.amount ?? target.life;
+    addLog(`${target.name}のライフは${target.life}になりました。`);
+  }
   if (effect.op === "lookTopSelectToHandRestToBottom") {
     const count = effect.count || 5;
     const revealed = [];
@@ -228,10 +234,25 @@ async function executeAbilityEffect(effect, context) {
     ) {
       amount += state.spiritStrikeDamageBonus[context.owner];
     }
-    applyDamageToPlayer(state.players.indexOf(receiver), amount, {
+    const dealt = applyDamageToPlayer(state.players.indexOf(receiver), amount, {
       sourceName: context.card?.name,
       ignorePrevention: Boolean(effect.ignorePrevention),
+      sourceAbilityLabel: context.ability?.label || null, // damageReceived 側で参照（爆雷等）
     });
+    // 「効果で相手にダメージを与えた時」ダメージ源側の場札へ誘発（爆雷連鎖 0005/0064）。
+    // 発生源(context.owner)の視点イベントなので、runFieldEventTriggers の接頭辞を使わず自陣へ直接配送する。
+    if (receiver === opponent && dealt > 0) {
+      const label = context.ability?.label || null;
+      for (const zone of zones) {
+        const listener = state.players[context.owner]?.field?.[zone];
+        if (!listener) continue;
+        const detail = { card: listener, player, owner: context.owner, zone, damageSourceLabel: label };
+        await runTriggeredAbilities(listener, "opponentDamagedByEffect", detail);
+        if (label === "爆雷") {
+          await runTriggeredAbilities(listener, "opponentDamagedByBakurai", detail);
+        }
+      }
+    }
   }
   if (effect.op === "dealDamageByFieldCardStat") {
     const source = fieldCardForEffect(effect, context);
@@ -422,6 +443,9 @@ async function executeAbilityEffect(effect, context) {
       }
       if (effect.controller === "opponent" && owner === context.owner) {
         return false;
+      }
+      if (effect.excludeSource && card.instanceId === context.card?.instanceId) {
+        return false; // このカード以外を全破壊（0094）
       }
       return matchesTargetFilter(card, owner, zone, effect.filter);
     }).map((candidate) => ({ owner: candidate.owner, zone: candidate.zone }));
@@ -701,6 +725,37 @@ async function executeAbilityEffect(effect, context) {
     target.card.used = false;
     addLog(`${context.card.name}の効果で${target.card.name}をスタンドしました。`);
   }
+  if (effect.op === "standAll") {
+    // controller/filter 一致の場のカード全てをスタンド（「君の場の《冒険者》全てを【スタンド】」0046）。
+    const targets = allFieldTargets((card, owner, zone) => {
+      if (Array.isArray(effect.zones) && !effect.zones.includes(zone)) return false;
+      if (effect.controller === "self" && owner !== context.owner) return false;
+      if (effect.controller === "opponent" && owner === context.owner) return false;
+      return matchesTargetFilter(card, owner, zone, effect.filter || {});
+    });
+    targets.forEach((t) => {
+      if (t.card) t.card.used = false;
+    });
+    if (targets.length > 0) {
+      addLog(`${context.card?.name || "効果"}の効果で${targets.length}枚をスタンドしました。`);
+    }
+  }
+  if (effect.op === "attackWithAll") {
+    // controller/filter 一致の【スタンド】している場のカード全てで一度に(連携)攻撃する（0046）。
+    // 対象は既定でファイター本体。既にpendingAttack中なら安全のため何もしない。
+    if (!state.pendingAttack && typeof performAttackDeclaration === "function") {
+      const seat = effect.controller === "opponent" ? 1 - context.owner : context.owner;
+      const attackers = zones
+        .map((zone) => ({ owner: seat, zone, card: state.players[seat]?.field?.[zone] }))
+        .filter(
+          (a) => a.card && !a.card.used && matchesTargetFilter(a.card, a.owner, a.zone, effect.filter || {}),
+        );
+      if (attackers.length > 0) {
+        state.linkAttackers = attackers.map((a) => ({ owner: a.owner, zone: a.zone }));
+        await performAttackDeclaration(attackers, effect.attackTarget || "fighter");
+      }
+    }
+  }
   if (effect.op === "putTargetToGaugeAtTurnEnd" && target?.card) {
     // 「ターン終了時、そのモンスターを君のゲージに置く」。フラグを立て runEndTurnEffects で移動。
     target.card.putToGaugeAtEndOfTurnOwner = context.owner;
@@ -814,6 +869,43 @@ async function executeAbilityEffect(effect, context) {
       addLog(`${context.card.name}の効果で${moved.name}をゲージに置きました。`);
     }
   }
+  if (effect.op === "suppressLifeLinkThisTurn") {
+    // そのターン中、指定コントローラーの場のカードのライフリンクを無効化（護竜王アミュレイ 0063）。
+    const seat = effect.controller === "opponent" ? 1 - context.owner : context.owner;
+    state.suppressLifeLinkThisTurn ||= [false, false];
+    state.suppressLifeLinkThisTurn[seat] = true;
+    addLog(`${context.card?.name || "効果"}の効果で、このターン${state.players[seat].name}の場の『ライフリンク』は無効化されます。`);
+  }
+  if (effect.op === "preventOpponentCounterThisTurn") {
+    // そのターン中、effect.conditions を満たすバトル中は、発動者の相手は【対抗】を使えない（0053）。
+    // メイン魔法で貼り、後で連携攻撃等が起きた時に効くターンスコープのロック。
+    state.opponentCounterLockThisTurn ||= [];
+    state.opponentCounterLockThisTurn.push({ owner: context.owner, while: effect.conditions || [] });
+    addLog(`${context.card?.name || "効果"}の効果で、このターン相手は指定の状況で【対抗】を使えません。`);
+  }
+  if (effect.op === "eachPlayerMayDiscardElseDamage") {
+    // 「お互いは手札N枚を捨ててよい。捨てなかったファイターにダメージD」（喧嘩両成敗 0095）。
+    // 能動側→相手の順に、手札があれば任意でN枚捨てさせ、捨てなかった側にDダメージ。
+    const n = effect.amount || 1;
+    const dmg = effect.damage || 2;
+    for (const seatOffset of [0, 1]) {
+      const seat = seatOffset === 0 ? context.owner : 1 - context.owner;
+      const p = state.players[seat];
+      const canDiscard = p.hand.filter((c) => c.instanceId !== context.card?.instanceId).length >= n;
+      let discarded = false;
+      if (canDiscard && (await confirmChoiceAsync(seat, `手札${n}枚を捨てますか？（捨てないと${dmg}ダメージ）`))) {
+        const toDrop = p.hand.filter((c) => c.instanceId !== context.card?.instanceId).slice(0, n);
+        const removed = removePileEntries(p.hand, toDrop);
+        discardHandCardsToDrop(p, removed);
+        addLog(`${p.name}は手札${removed.length}枚を捨てました。`);
+        discarded = true;
+      }
+      if (!discarded) {
+        applyDamageToPlayer(seat, dmg, { sourceName: context.card?.name, byEffect: true });
+        addLog(`${p.name}は捨てなかったため${dmg}ダメージ。`);
+      }
+    }
+  }
   if (effect.op === "nullifyAttack" && state.pendingAttack) {
     context.lastEffectResult = nullifyPendingAttack(context.card?.name || "効果", context.card);
     if (context.lastEffectResult) {
@@ -850,6 +942,13 @@ async function executeAbilityEffect(effect, context) {
         addLog(`${context.card.name}の効果で攻撃対象を${context.card.name}に変更しました。`);
       }
     }
+  }
+  if (effect.op === "redirectPendingAttackToFighter" && state.pendingAttack) {
+    // 進行中の攻撃の対象を、この能力のコントローラー本体(ファイター)へ変更する。
+    state.pendingAttack.targetOwner = context.owner;
+    state.pendingAttack.targetZone = null;
+    state.pendingAttack.targetType = "fighter";
+    addLog(`${context.card?.name || "効果"}の効果で攻撃対象を${player.name}本体に変更しました。`);
   }
   if (effect.op === "redirectPendingAttackToTarget" && state.pendingAttack) {
     // 進行中の攻撃の対象を、解決済み $target（自分の場のモンスター等）へその場で変更（馬鹿囃子 0089）。
@@ -1282,6 +1381,31 @@ function resolveAmountFrom(spec, context) {
     const count = (state.players[owner]?.drop || []).filter((card) => matchesCardFilter(card, spec.filter || {})).length;
     const capped = spec.max !== undefined ? Math.min(count, spec.max) : count;
     return capped * (spec.per ?? 1);
+  }
+  if (spec.source === "fieldCardCount") {
+    // 指定controllerの場の filter 一致カード枚数×per＋plus（「場の《X》枚数分ダメージ」0032）。
+    const owner = ownerOf(spec.controller);
+    let count = 0;
+    zones.forEach((zone) => {
+      const card = state.players[owner]?.field?.[zone];
+      if (card && matchesTargetFilter(card, owner, zone, spec.filter || {})) {
+        count += 1;
+      }
+    });
+    return count * (spec.per ?? 1) + (spec.plus || 0);
+  }
+  if (spec.source === "selectedCount") {
+    // script で選択した var の枚数（「破壊した/選んだ枚数分」0020）。
+    return scriptSelection({ var: spec.var }, context).length * (spec.per ?? 1);
+  }
+  if (spec.source === "dropAbilityLabelCount") {
+    // 指定controllerのドロップのカードが持つ、指定label(“爆雷”等)の能力の総数（0020）。
+    const owner = ownerOf(spec.controller);
+    let total = 0;
+    (state.players[owner]?.drop || []).forEach((card) => {
+      total += (card.abilities || []).filter((a) => a.label === spec.label).length;
+    });
+    return total * (spec.per ?? 1);
   }
   if (spec.source === "fieldCardSoulCount") {
     // 指定ゾーン(既定 item)の filter 一致フィールドカードのソウル枚数（搭乗しているカードのソウル分ダメージ 0033）。

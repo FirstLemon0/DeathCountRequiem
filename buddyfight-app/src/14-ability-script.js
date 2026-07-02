@@ -280,6 +280,12 @@ async function executeAbilityScriptStep(step, context) {
   if (step.op === "gainNameAsSelected") {
     return gainNameAsSelectedForScript(step, context);
   }
+  if (step.op === "dealDamageBySelectedStatSum") {
+    return dealDamageBySelectedStatSumForScript(step, context);
+  }
+  if (step.op === "setAttackRedirectThisTurn") {
+    return setAttackRedirectThisTurnForScript(step, context);
+  }
   if (step.op === "modifySelectedStats") {
     return modifySelectedStatsForScript(step, context);
   }
@@ -385,6 +391,10 @@ async function selectCardsForScript(step, context) {
   let max = step.max ?? amount;
   if (step.maxByEmptyFieldZones) {
     max = Math.min(max, fieldZones.filter((zone) => !context.player.field[zone]).length);
+  }
+  if (step.maxFrom) {
+    // 選択上限を amountFrom スペックで動的決定（0020: ドロップの“爆雷”数まで選ぶ）。
+    max = resolveAmountFrom(step.maxFrom, context);
   }
   recordDiagnosticEvent("effect_script", {
     stage: "select_candidates",
@@ -602,6 +612,43 @@ function scriptSourceLabel(from) {
 
 // 発生源カードが、選択カード(var)と同じカード名を『追加のカード名』として得る（そのターン中。RD メタモルエフェクト 0016）。
 // card.additionalNames[] に積み、clearTurnModifiers(ターン終了)でクリアされる。matchesCardFilter の name系が参照する。
+// 選択済みの複数var(フィールドカード)の指定stat(既定critical=打撃力)を合計し、その分を1回のダメージとして与える。
+// ギガハウリング・クラッシャー 0026「モンスター1枚＋アイテム1枚の打撃力合計分ダメージ」用。
+function dealDamageBySelectedStatSumForScript(step, context) {
+  const stat = step.stat || "critical";
+  let sum = 0;
+  (step.vars || []).forEach((v) => {
+    const card = scriptSelection({ var: v }, context)[0]?.card;
+    if (card) {
+      sum += visibleFieldStat(card, stat);
+    }
+  });
+  const seat = step.player === "opponent" ? 1 - context.owner : context.owner;
+  if (sum > 0) {
+    const dealt = applyDamageToPlayer(seat, sum, {
+      sourceName: context.card?.name,
+      ignorePrevention: Boolean(step.ignorePrevention),
+      byEffect: true,
+    });
+    addLog(`${context.card?.name || "効果"}の効果で${state.players[seat].name}に${dealt}ダメージ！`);
+  }
+  return true;
+}
+
+// そのターン中、指定コントローラ(既定opponent)のカードが攻撃した時、対象を選択済みモンスター(var)へ強制変更する
+// ターンスコープの再誘導フラグを張る（0061）。攻撃宣言(src/09)側が生存する限り対象を差し替える。
+function setAttackRedirectThisTurnForScript(step, context) {
+  const target = scriptSelection(step, context)[0];
+  if (!target?.card) {
+    return true;
+  }
+  const seat = step.controller === "self" ? context.owner : 1 - context.owner;
+  state.attackRedirectThisTurn ||= [null, null];
+  state.attackRedirectThisTurn[seat] = { owner: target.owner, instanceId: target.card.instanceId };
+  addLog(`${context.card?.name || "効果"}の効果で、このターン${state.players[seat].name}の攻撃は${target.card.name}へ向かいます。`);
+  return true;
+}
+
 function gainNameAsSelectedForScript(step, context) {
   const entry = scriptSelection(step, context)[0];
   const name = entry?.card?.name;

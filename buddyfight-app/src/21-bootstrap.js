@@ -258,13 +258,17 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
 } else if (globalThis.__BUDDYFIGHT_TEST__) {
   globalThis.__buddyfightTestApi = {
     adjustedCostSteps,
+    adjustedLegacyCost,
     applyAttackRedirectContinuous,
     applyDamageToPlayer,
     applicableAttackResistances,
+    attackSourceResisted,
     callMonster,
     canDeclareAttack,
     checkAbilityConditions,
     createInstanceId,
+    effectiveSize,
+    getFieldSize,
     visiblePower,
     destroyFieldCard,
     executeAbilityBody,

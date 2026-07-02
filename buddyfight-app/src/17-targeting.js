@@ -319,13 +319,13 @@ function matchesCardFilter(card, filter = {}) {
   if (filter.criticalLte !== undefined && visibleCritical(card) > filter.criticalLte) {
     return false;
   }
-  if (filter.sizeLte !== undefined && (card.size || 0) > filter.sizeLte) {
+  if (filter.sizeLte !== undefined && effectiveSize(card) > filter.sizeLte) {
     return false;
   }
-  if (filter.sizeGte !== undefined && (card.size || 0) < filter.sizeGte) {
+  if (filter.sizeGte !== undefined && effectiveSize(card) < filter.sizeGte) {
     return false;
   }
-  if (filter.sizeIn && !filter.sizeIn.includes(card.size || 0)) {
+  if (filter.sizeIn && !filter.sizeIn.includes(effectiveSize(card))) {
     return false;
   }
   // basePower*: 印字（元々の）攻撃力を見る。powerLte/Gte は visiblePower(バフ込み)なので別途。

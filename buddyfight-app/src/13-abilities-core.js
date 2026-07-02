@@ -699,6 +699,10 @@ function checkCondition(condition, owner, context = {}) {
       context.eventCard?.card || context.eventFieldCard || context.destroyedCard || context.enteredCard;
     return Boolean(eventCard && context.card && eventCard.instanceId === context.card.instanceId);
   }
+  if (condition.op === "damageSourceLabelIs") {
+    // opponentDamagedByEffect 誘発時、ダメージ発生源能力のラベル(“爆雷”等)一致を判定（爆雷連鎖）。
+    return context.damageSourceLabel === condition.label;
+  }
   if (condition.op === "movedToDropMatches") {
     // この解決中に context.movedToDrop へ置かれたカードのいずれかが filter に一致するか（moveTopDeckToDrop 等）。
     return (context.movedToDrop || []).some((card) => matchesCardFilter(card, condition.filter || {}));

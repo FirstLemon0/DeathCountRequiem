@@ -235,6 +235,31 @@ function applicableAttackResistances(attackers = []) {
         entries.push(entry);
       }
     });
+    // 場の別カードの継続 grantAttackResistance からも付与（0080: 拳アイテムが1枚で攻撃なら無効化されない）。
+    if (!card) {
+      return;
+    }
+    state.players.forEach((player) => {
+      zones.forEach((zone) => {
+        const source = player.field[zone];
+        (activeContinuousEffects(source) || []).forEach((effect) => {
+          if (effect.op !== "grantAttackResistance") {
+            return;
+          }
+          const srcSlot = findFieldCardSlot(source);
+          if (!srcSlot || (effect.controller === "self" && srcSlot.owner !== atk.owner)) {
+            return;
+          }
+          if (effect.filter && !matchesTargetFilter(card, atk.owner, atk.zone, effect.filter)) {
+            return;
+          }
+          if (effect.conditions && !checkCardConditions(effect.conditions, srcSlot.owner, { card: source, zone })) {
+            return;
+          }
+          entries.push({ effects: effect.effects || ["nullify"], filter: effect.sourceFilter || {} });
+        });
+      });
+    });
   });
   return entries;
 }

@@ -34,6 +34,21 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
   state.damagePrevention ||= [[], []];
   state.damagePrevention[owner] ||= [];
   let remaining = amount;
+  // 継続 damageReceivedReduction（装備者が受けるダメージを amount 減らす。
+  // nonAttackOnly:true は攻撃以外のダメージ限定(マグナグレイス0011)、既定は全ダメージ(0056)）。
+  if (!options.ignorePrevention) {
+    const cap = damageReceivedReductionFor(owner, Boolean(options.byAttack));
+    if (cap) {
+      const reduced = Math.max(0, remaining - cap.amount);
+      if (reduced !== remaining) {
+        addLog(`${cap.source || "効果"}により${player.name}が受けるダメージを${remaining - reduced}減らしました。`);
+      }
+      remaining = reduced;
+    }
+  }
+  if (remaining <= 0) {
+    return 0;
+  }
   // 軽減/無効の無視判定: 名称配列(後方互換) または attackResistances由来の filter エントリ
   const ignoreNames = options.ignoreNamedPreventions
     || (options.ignoreNamedPrevention ? [options.ignoreNamedPrevention] : []);
@@ -80,8 +95,32 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
       addLog(`${options.sourceName}により${player.name}に${remaining}ダメージを与えました。`);
     }
     checkWinner();
+    // 「君がダメージを受けた時」誘発（五角竜王ドラム等）。同期経路のため microtask で遅延発火。
+    queueDamageReceivedTriggers(owner, remaining, options);
   }
   return remaining;
+}
+
+// 継続 damageReceivedReduction を持つ場札から、owner が受けるダメージの軽減設定（最も減らせる1件）を返す。
+// nonAttackOnly:true は byAttack===false の時のみ適用（攻撃以外限定。マグナグレイス0011）。既定は全ダメージ(0056)。
+function damageReceivedReductionFor(owner, byAttack) {
+  let best = null;
+  zones.forEach((zone) => {
+    const source = state.players[owner]?.field?.[zone];
+    activeContinuousEffects(source).forEach((effect) => {
+      if (effect.op !== "damageReceivedReduction" || effect.controller === "opponent") {
+        return;
+      }
+      if (effect.nonAttackOnly && byAttack) {
+        return; // 攻撃以外限定の軽減は攻撃ダメージには効かない
+      }
+      const amount = effect.amount || 0;
+      if (amount > 0 && (!best || amount > best.amount)) {
+        best = { amount, source: source.name };
+      }
+    });
+  });
+  return best;
 }
 
 function addNextDamagePrevention(owner, prevention) {
@@ -268,7 +307,14 @@ function fieldCostReductions(player) {
 }
 
 function costReductionApplies(reduction, card, purpose) {
-  return (reduction.purpose || "cast") === purpose && matchesCardFilter(card, reduction.filter || {});
+  if ((reduction.purpose || "cast") !== purpose || !matchesCardFilter(card, reduction.filter || {})) {
+    return false;
+  }
+  // フェイズ/状況限定のコスト軽減（0070: アタックフェイズ中のみ魔法ゲージ-2）。
+  if (reduction.conditions && !checkCardConditions(reduction.conditions, state.active, {})) {
+    return false;
+  }
+  return true;
 }
 
 function adjustedLegacyCost(player, card, purpose, cost = {}) {
@@ -573,6 +619,14 @@ function payStructuredCost(player, costSteps = [], context = {}) {
     const amount = step.amount || 1;
     if (step.op === "payGauge") {
       spendGaugePool(player, amount, { includeOpponent: includeOpponentGauge });
+    }
+    if (step.op === "discardAllHand") {
+      // 使用中のカードを除く手札を全て捨てるコスト（オールド・ラング・サイン 0029）。手札0でも支払い可。
+      const removed = removeInUseHandExcept(player, selectedCard);
+      discardHandCardsToDrop(player, removed);
+      if (removed.length > 0) {
+        addLog(`${player.name}はコストで手札を全て捨てました。`);
+      }
     }
     if (step.op === "discardHand") {
       const candidates = player.hand
@@ -993,6 +1047,13 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     const amount = step.amount || 1;
     if (step.op === "payGauge") {
       spendGaugePool(player, amount, { includeOpponent: includeOpponentGauge });
+    }
+    if (step.op === "discardAllHand") {
+      const removed = removeInUseHandExcept(player, selectedCard);
+      discardHandCardsToDrop(player, removed);
+      if (removed.length > 0) {
+        addLog(`${player.name}はコストで手札を全て捨てました。`);
+      }
     }
     if (step.op === "discardHand") {
       const movedCards = removePileEntries(player.hand, handDiscards[discardStepIndex] || []);

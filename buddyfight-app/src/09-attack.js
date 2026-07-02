@@ -67,6 +67,17 @@ async function attackAction() {
 
 async function performAttackDeclaration(attackers, targetValue) {
   const opponent = opponentPlayer();
+  // setAttackRedirectThisTurn: このターン、この席の攻撃対象を指定モンスターへ強制変更（0061）。
+  const attackerSeat = attackers[0]?.owner;
+  const redirect = state.attackRedirectThisTurn?.[attackerSeat];
+  if (redirect && targetValue !== redirect.instanceId) {
+    const redirectZone = zones.find(
+      (zone) => state.players[redirect.owner]?.field?.[zone]?.instanceId === redirect.instanceId,
+    );
+    if (redirectZone && redirect.owner === 1 - attackerSeat) {
+      targetValue = redirectZone; // 生存する敵モンスターへ対象を差し替え
+    }
+  }
   if (!attackers.every((attacker) => canAttackTargetValue(attacker, targetValue))) {
     addLog("この攻撃対象には攻撃できません。");
     return false;
@@ -265,6 +276,10 @@ async function runAttackDeclarationTriggers(attackers) {
       player: state.players[attacker.owner],
       owner: attacker.owner,
       zone: attacker.zone,
+      attack: state.pendingAttack,
+    });
+    // 場全体への攻撃誘発（allyAttack/opponentAttack）。設置魔法等の「(味方の)カードが攻撃した時」用（0047/0075）。
+    await runFieldEventTriggers("attack", attacker.owner, attacker.card, attacker.zone, {
       attack: state.pendingAttack,
     });
     if (!hasKeyword(attacker.card, "dropOpponentMonsterSoulOnAttack")) {

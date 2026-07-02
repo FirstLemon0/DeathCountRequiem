@@ -24,7 +24,9 @@ function canDeclareAttack(attacker) {
   if (
     effectiveCardType(attacker.card) === "item" &&
     player?.field.center &&
-      !hasKeyword(attacker.card, "canAttackWithCenter")
+    !hasKeyword(attacker.card, "canAttackWithCenter") &&
+    // canAttackWithSize3Center: センターがサイズ3のモンスターの時だけ武器攻撃を許可（0069）。
+    !(hasKeyword(attacker.card, "canAttackWithSize3Center") && (player.field.center.size || 0) === 3)
   ) {
     return false;
   }
@@ -502,6 +504,51 @@ function queueDestroyedTriggers(card, owner, zone) {
     });
 }
 
+// 「君がダメージを受けた時」の誘発。ダメージを受けたプレイヤー自身の場札の
+// kind:"triggered" event:"damageReceived" を発火する（BT03の五角/角王ダメージ受け系の中核）。
+// applyDamageToPlayer(同期)から呼ぶため microtask で遅延実行。listener が無ければ何もしない。
+function queueDamageReceivedTriggers(owner, amount, options = {}) {
+  const player = state.players[owner];
+  if (!player) {
+    return;
+  }
+  const hasListener = zones.some((zone) => {
+    const card = player.field[zone];
+    return card && (card.abilities || []).some((a) => a.kind === "triggered" && a.event === "damageReceived");
+  });
+  if (!hasListener) {
+    return;
+  }
+  const damageSourceLabel = options.sourceAbilityLabel || null;
+  const byAttack = Boolean(options.byAttack);
+  Promise.resolve()
+    .then(async () => {
+      if (state.winner) {
+        return;
+      }
+      for (const zone of zones) {
+        const card = player.field[zone];
+        if (!card) {
+          continue;
+        }
+        await runTriggeredAbilities(card, "damageReceived", {
+          card,
+          player,
+          owner,
+          zone,
+          damageAmount: amount,
+          byAttack,
+          damageSourceLabel,
+        });
+      }
+      render();
+    })
+    .catch((error) => {
+      console.error(error);
+      render();
+    });
+}
+
 // 「君の場の(他の)モンスターが破壊された時」など、場の他カードが反応する破壊フィールドイベント。
 // 破壊されたカード自身の destroyed 誘発(queueDestroyedTriggers)とは別に、ally/opponent Destroyed を
 // 場の全枠(set枠含む)へ配送する。設置呪文「飢えたるヤミゲドウ」等が set ゾーンで反応するための経路。
@@ -578,6 +625,19 @@ function discardHandCardsToDrop(player, cards) {
   });
 }
 
+// 使用中カード(inUse)を除く手札を全て手札から取り除いて返す（discardAllHandコスト用）。
+// removePileEntriesの{index,card}形式を経由せず直接splice。手札0でも空配列を返す。
+function removeInUseHandExcept(player, inUse) {
+  const removed = [];
+  for (let i = player.hand.length - 1; i >= 0; i -= 1) {
+    if (inUse && player.hand[i].instanceId === inUse.instanceId) {
+      continue;
+    }
+    removed.unshift(player.hand.splice(i, 1)[0]);
+  }
+  return removed;
+}
+
 function dropFieldCardByRule(player, zone) {
   const card = player.field[zone];
   if (!card) {
@@ -649,10 +709,15 @@ function hasInstantLifeLink(card) {
 }
 
 function applyLifeLink(card, owner) {
-  const amount = lifeLinkAmount(card);
+  let amount = lifeLinkAmount(card);
   const instantDefeat = hasInstantLifeLink(card);
   if ((!amount && !instantDefeat) || owner < 0) {
     return null;
+  }
+  // そのターン中ライフリンクを無効化するフラグ（護竜王アミュレイ 0063 suppressLifeLinkThisTurn）。
+  if (state.suppressLifeLinkThisTurn?.[owner]) {
+    addLog(`${state.players[owner].name}の場のカードの『ライフリンク』はこのターン無効化されています。`);
+    return recordLifeLinkEvent(card, owner, { amount: 0, instantDefeat: false });
   }
   const event = recordLifeLinkEvent(card, owner, { amount, instantDefeat });
   if (instantDefeat) {
@@ -662,9 +727,32 @@ function applyLifeLink(card, owner) {
     addLog(`${card.name}'s Life Link causes defeat for ${state.players[owner].name}.`);
     return event;
   }
-  event.appliedDamage = applyDamageToPlayer(owner, amount, { log: false });
-  addLog(`${card.name}のライフリンクにより${state.players[owner].name}に${amount}ダメージ。`);
+  // 継続 reduceLifeLinkDamage による軽減（護竜王 0111「filter一致カードのライフリンクで受けるダメージをN減らす」）。
+  amount = Math.max(0, amount - lifeLinkDamageReductionFor(owner, card));
+  event.amount = amount;
+  event.appliedDamage = amount > 0 ? applyDamageToPlayer(owner, amount, { log: false }) : 0;
+  if (amount > 0) {
+    addLog(`${card.name}のライフリンクにより${state.players[owner].name}に${amount}ダメージ。`);
+  }
   return event;
+}
+
+// reduceLifeLinkDamage 継続を持つ場札から、owner が card のライフリンクで受けるダメージの軽減量を返す。
+function lifeLinkDamageReductionFor(owner, linkCard) {
+  let reduction = 0;
+  zones.forEach((zone) => {
+    const source = state.players[owner]?.field?.[zone];
+    activeContinuousEffects(source).forEach((effect) => {
+      if (effect.op !== "reduceLifeLinkDamage" || effect.controller === "opponent") {
+        return;
+      }
+      if (effect.filter && Object.keys(effect.filter).length && !matchesCardFilter(linkCard, effect.filter)) {
+        return;
+      }
+      reduction += effect.amount || 0;
+    });
+  });
+  return reduction;
 }
 
 function recordLifeLinkEvent(card, owner, details = {}) {
@@ -814,6 +902,9 @@ async function endTurn() {
   state.attacksThisTurn = 0;
   state.attackDestroyedByAttribute = [{}, {}]; // 属性別の攻撃撃破数(このターン)をリセット
   state.monstersDestroyedThisTurn = [0, 0]; // このターン破壊されたモンスター数(所有者別)をリセット
+  state.suppressLifeLinkThisTurn = [false, false]; // ライフリンク無効化(ターンスコープ)をリセット
+  state.attackRedirectThisTurn = [null, null]; // 攻撃再誘導(ターンスコープ)をリセット
+  state.opponentCounterLockThisTurn = []; // 対抗ロック(ターンスコープ)をリセット
   state.lastDamageTaken = [0, 0];
   state.linkAttackers = [];
   state.buddyCallDeclared = null;
