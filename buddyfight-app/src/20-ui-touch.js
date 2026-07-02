@@ -59,6 +59,116 @@ function closeCardSheet() {
   }
 }
 
+// ---- 画面下部アクションメニュー（権威版 play.js と同一の見た目/操作。カードタップ→操作の共通部品）----
+// id は play.js の従来実装と同じ(playActionMenu/playActionBackdrop)にし、両者の closeMenu が互いに効くようにする。
+function closeActionMenu() {
+  document.getElementById("playActionMenu")?.remove();
+  document.getElementById("playActionBackdrop")?.remove();
+}
+
+// items: [{label, run}] を下部ポップアップで表示。項目タップ＝メニューを閉じて実行。
+// 背景タップ/「閉じる」＝閉じて options.onClose（選択解除等）を呼ぶ。
+function showActionMenu(items, options = {}) {
+  closeActionMenu();
+  const close = () => {
+    closeActionMenu();
+    if (typeof options.onClose === "function") {
+      options.onClose();
+    }
+  };
+  const backdrop = document.createElement("div");
+  backdrop.id = "playActionBackdrop";
+  backdrop.className = "play-action-backdrop";
+  backdrop.addEventListener("click", (event) => {
+    // 背後の盤面/手札へのタップ貫通を遮断しつつ閉じる（権威版と同じ）。
+    event.stopPropagation();
+    close();
+  });
+  const menu = document.createElement("div");
+  menu.id = "playActionMenu";
+  menu.className = "play-action-menu";
+  items.forEach((item) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = item.label;
+    button.addEventListener("click", () => {
+      closeActionMenu();
+      item.run();
+    });
+    menu.append(button);
+  });
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "menu-close";
+  closeButton.textContent = "閉じる";
+  closeButton.addEventListener("click", close);
+  menu.append(closeButton);
+  document.body.append(backdrop);
+  document.body.append(menu);
+}
+
+// メニューを閉じた時の選択解除（権威版 clearSelection のローカル版。連携編成は維持する）。
+function clearLocalSelection() {
+  state.selected = null;
+  render();
+}
+
+// ---- ローカル/中継: カードタップ→下部アクションメニュー（権威版 handCardMenu/fieldCardMenu と同項目）----
+function handCardMenuLocal(instanceId) {
+  // 進行中の対象選択(攻撃/効果)と残留効果対象は破棄してから選び直す
+  // （旧カードの pending が新カードの対象タップで誤発動するのを防ぐ）。
+  uiTargeting = null;
+  elements.effectTarget.value = "";
+  selectHandCard(instanceId);
+  if (!getSelectedCard()) {
+    return;
+  }
+  const callVia = (zone) => () => {
+    const card = getSelectedCard();
+    // 重ねてコールする札(callStack)は、先に重ねる対象を盤面タップで選ばせてからコールする
+    // （権威版の「効果対象タップ＋callZone」と同型）。
+    if (card?.callStack && !elements.effectTarget.value && effectTargetCandidates(card).length > 0) {
+      startEffectTargeting({ type: "call", zone });
+      return;
+    }
+    runNetworkMutation("コール", () => callMonster(zone));
+  };
+  showActionMenu(
+    [
+      { label: "チャージ&ドロー", run: () => runNetworkMutation("チャージ&ドロー", chargeAction) },
+      { label: "レフトにコール", run: callVia("left") },
+      { label: "センターにコール", run: callVia("center") },
+      { label: "ライトにコール", run: callVia("right") },
+      { label: "使用/装備", run: () => runNetworkMutation("カード使用", useCardAction) },
+      { label: "使用（効果対象を選ぶ）", run: () => startEffectTargeting({ type: "use" }) },
+      { label: "バディコール宣言", run: () => partnerCall() },
+    ],
+    { onClose: clearLocalSelection },
+  );
+}
+
+function fieldCardMenuLocal(owner, zone) {
+  // 進行中の対象選択と残留効果対象は破棄してから選び直す（handCardMenuLocalと同じ防御）。
+  uiTargeting = null;
+  elements.effectTarget.value = "";
+  if (!selectFieldCard(owner, zone)) {
+    return false;
+  }
+  const linked = (state.linkAttackers || []).some(
+    (slot) => slot.owner === owner && slot.zone === zone,
+  );
+  showActionMenu(
+    [
+      { label: "攻撃（対象を選ぶ）", run: () => startAttackTargeting() },
+      { label: linked ? "連携から外す" : "連携に追加", run: () => toggleLinkAttacker() },
+      { label: "使用（能力）", run: () => runNetworkMutation("カード使用", useCardAction) },
+      { label: "使用（効果対象を選ぶ）", run: () => startEffectTargeting({ type: "use" }) },
+    ],
+    { onClose: clearLocalSelection },
+  );
+  return true;
+}
+
 // シート内に出す操作ボタンの定義（有効なものだけ既存ボタンへ委譲）
 function cardSheetActionSpecs() {
   const card = getSelectedCard();
@@ -72,7 +182,7 @@ function cardSheetActionSpecs() {
     !elements.effectTarget.value &&
     effectTargetCandidates(card).length > 0
   ) {
-    specs.push({ label: "効果対象を選ぶ", run: startEffectTargeting, primary: true });
+    specs.push({ label: "効果対象を選ぶ", run: () => startEffectTargeting({ type: "use" }), primary: true });
   }
   // 既存の共有ボタンを委譲（renderActionsが確定したdisabledを読むだけ）
   const proxied = [
@@ -136,39 +246,50 @@ function refreshCardSheet() {
 // ---- 対象選択（攻撃/効果）：盤面タップで隠しselectの値を設定 ----
 
 function startAttackTargeting() {
+  // 攻撃宣言できない状況では対象選択モードに入らない（バナー/減光だけ残る混乱を防ぐ）。
+  if (state.winner || hasPendingResolution() || !["attack", "final"].includes(state.phase)) {
+    addLog("攻撃はアタックフェイズ／ファイナルフェイズでのみ宣言できます。");
+    showToast("攻撃はアタックフェイズでのみ宣言できます");
+    render();
+    return;
+  }
   const candidates = computeAttackTargetCandidates();
   if (candidates.length === 0) {
+    addLog("攻撃できる対象がありません（行動済み・攻撃制限などを確認してください）。");
+    showToast("攻撃できる対象がありません");
+    render();
     return;
   }
   uiTargeting = { mode: "attack", candidates };
   closeCardSheet();
+  closeActionMenu();
   render();
 }
 
+// 権威版仕様: 対象タップで即・攻撃宣言（確認ダイアログは挟まない）。
 async function confirmAttackTarget(value) {
   uiTargeting = null;
-  const opponent = opponentPlayer();
-  const label = value === "fighter" ? `${opponent.name}本体` : zoneLabel(value);
-  const ok = await confirmAction(`${label}へ攻撃しますか？`);
-  if (!ok) {
-    render();
-    return;
-  }
   elements.attackTarget.value = value;
   await runNetworkMutation("攻撃宣言", attackAction);
 }
 
-function startEffectTargeting() {
+// pending: {type:"use"} または {type:"call", zone}（対象確定後に実行する操作。権威版と同じ1段階フロー）。
+function startEffectTargeting(pending) {
   const card = getSelectedCard();
   const candidates = card ? effectTargetCandidates(card) : [];
   if (candidates.length === 0) {
+    addLog("効果対象の候補がありません。");
+    showToast("効果対象の候補がありません");
+    render();
     return;
   }
   uiTargeting = {
     mode: "effect",
+    pending: pending && pending.type ? pending : { type: "use" },
     candidates: candidates.map((candidate) => ({ owner: candidate.owner, zone: candidate.zone })),
   };
   closeCardSheet();
+  closeActionMenu();
   render();
 }
 
@@ -176,10 +297,16 @@ function pickEffectTarget(owner, zone) {
   if (!uiTargeting || uiTargeting.mode !== "effect") {
     return;
   }
+  const pending = uiTargeting.pending || { type: "use" };
   uiTargeting = null;
   elements.effectTarget.value = encodeTarget(owner, zone);
-  render(); // effectTarget.value反映 → castButton等が有効化
-  openCardSheet(); // シートを再表示して「使用/コール」を出す
+  render(); // effectTarget.value反映
+  // 権威版と同じ1段階: 対象タップで即実行（従来のシート再表示→ボタン押下は廃止）。
+  if (pending.type === "call" && pending.zone) {
+    runNetworkMutation("コール", () => callMonster(pending.zone));
+  } else {
+    runNetworkMutation("カード使用", useCardAction);
+  }
 }
 
 function isAttackCandidateZone(owner, zone) {
@@ -220,12 +347,13 @@ function refreshTargeting() {
     uiTargeting.candidates = fresh;
     fresh.forEach((candidate) => {
       if (candidate.value === "fighter") {
-        highlightFighterPanel(candidate.owner);
+        // 権威版と同じく「本体＝相手の装備枠」をタップ対象として強調（fighter-panelタップも受付は継続）。
+        highlightZoneElement(candidate.owner, "item", "attack-target-candidate");
       } else {
         highlightZoneElement(candidate.owner, candidate.zone, "attack-target-candidate");
       }
     });
-    setTargetingBanner("攻撃対象をタップ");
+    setTargetingBanner("攻撃対象をタップ（本体は相手の『装備』枠）");
   } else if (uiTargeting.mode === "effect") {
     const card = getSelectedCard();
     const fresh = card ? effectTargetCandidates(card) : [];
@@ -244,11 +372,6 @@ function refreshTargeting() {
 function highlightZoneElement(owner, zone, className) {
   const element = document.querySelector(`.zone[data-owner="${owner}"][data-zone="${zone}"]`);
   element?.classList.add(className);
-}
-
-function highlightFighterPanel(owner) {
-  const panel = document.querySelector(`.fighter-panel[data-fighter-owner="${owner}"]`);
-  panel?.classList.add("attack-target-candidate");
 }
 
 // ---- デッキ情報ポップアップ（ワールドタイルから）----

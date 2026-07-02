@@ -200,6 +200,9 @@ function showCardSelectionDialog(candidates, options = {}) {
         return;
       }
       settled = true;
+      if (globalThis.__forceSettleSelectionDialog) {
+        globalThis.__forceSettleSelectionDialog = null; // 外部強制クローズ用フック(thin)を解除
+      }
       hideCardTooltip();
       setBoardPeek(false);
       elements.selectionConfirmButton.removeEventListener("click", confirm);
@@ -229,6 +232,13 @@ function showCardSelectionDialog(candidates, options = {}) {
       settle(min === 0 ? [] : null);
     };
     const close = () => {
+      // stale イベントガード: dialog.close() の close イベントは「キューされたタスク」で発火するため、
+      // 旧ダイアログを強制settle→同一タスク内で新ダイアログを showModal した場合、旧 close() 由来の
+      // イベントが新ダイアログのこのハンドラに届く。自分自身の正規 close は必ず open=false で届くので、
+      // open のままなら他人(旧ダイアログ)のイベントとして無視する。
+      if (elements.selectionDialog.open) {
+        return;
+      }
       if (!allowCancel && !settled) {
         elements.selectionDialog.showModal();
         return;
@@ -292,6 +302,9 @@ function showCardSelectionDialog(candidates, options = {}) {
     elements.selectionDialog.addEventListener("close", close);
     updateConfirm();
     elements.selectionDialog.showModal();
+    // thin(権威版)向け: 新しいプロンプトが届いた時に、開きっぱなしの旧ダイアログを
+    // プログラム側から安全に解決(キャンセル扱い)して閉じるためのフック。
+    globalThis.__forceSettleSelectionDialog = () => settle(min === 0 ? [] : null);
   });
 }
 

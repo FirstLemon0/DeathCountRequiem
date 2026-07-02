@@ -211,10 +211,8 @@ function activateSetSpellFromPile(owner, zone, card) {
     globalThis.__onSetSpellActivate(owner, zone, card);
     return;
   }
-  const selected = selectFieldCard(owner, zone);
-  if (selected) {
-    openCardSheet();
-  } else {
+  // ローカル/中継: 操作可能なら下部アクションメニュー（権威版と同一操作）、不可なら閲覧専用シート。
+  if (!fieldCardMenuLocal(owner, zone)) {
     openReadOnlyCardSheet(card);
   }
 }
@@ -298,14 +296,13 @@ function renderHand() {
       counterPlayable += 1;
     }
     if (!globalThis.__BUDDYFIGHT_THIN__) {
-      // 通常モードのみローカル選択＋カードシート。シンクライアントは play.js が配線。
+      // 通常モードのみローカル選択＋下部アクションメニュー（権威版と同一操作）。シンクライアントは play.js が配線。
       cardButton.addEventListener("click", () => {
         if (cardButton.dataset.tooltipPreview) {
-          delete cardButton.dataset.tooltipPreview; // 長押しプレビュー後の click はシートを開かない
+          delete cardButton.dataset.tooltipPreview; // 長押しプレビュー後の click はメニューを開かない
           return;
         }
-        selectHandCard(card.instanceId);
-        openCardSheet();
+        handCardMenuLocal(card.instanceId);
       });
     }
     elements.handList.append(cardButton);

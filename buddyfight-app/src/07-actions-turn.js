@@ -9,7 +9,11 @@ function selectHandCard(instanceId) {
   const card = player.hand.find((candidate) => candidate.instanceId === instanceId);
   state.selected = card ? { source: "hand", owner, instanceId } : null;
   state.linkAttackers = [];
-  state.buddyCallDeclared = null;
+  // バディコール宣言は「宣言したカード自身の選択し直し」では維持する
+  // （メニュー方式では宣言→再タップ→コール、と同カードを選び直すため。別カード選択では従来どおり破棄）。
+  if (state.buddyCallDeclared !== card?.instanceId) {
+    state.buddyCallDeclared = null;
+  }
   render();
 }
 

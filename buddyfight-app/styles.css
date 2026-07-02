@@ -1821,13 +1821,16 @@ dialog.selection-board-peek .selection-dialog-actions {
 /* 権威版(play.js)の攻撃対象ハイライト .attack-target-highlight も減光の除外に含める
    （含めないと対象も opacity:0.5 になり、特にダークモードで赤枠が背景に埋もれて見えない）。 */
 body.targeting-active .zone.field:not(.attack-target-candidate):not(.effect-target-candidate):not(.attack-target-highlight),
-body.targeting-active .fighter-panel:not(.attack-target-candidate) {
+body.targeting-active .fighter-panel {
   opacity: 0.5;
 }
+/* 攻撃候補は権威版(.attack-target-highlight)と同じ赤枠パルスに統一。
+   本体(ファイター)攻撃の目印は相手の装備枠に付く（fighter-panelタップも受付は継続）。 */
 .attack-target-candidate {
-  outline: 3px solid rgb(var(--p2-rgb));
+  outline: 3px solid #ff5d6c;
   outline-offset: -3px;
-  box-shadow: 0 0 14px rgb(var(--p2-rgb) / 0.55);
+  box-shadow: 0 0 0 2px rgba(255, 93, 108, 0.35), 0 0 16px rgba(255, 93, 108, 0.5);
+  animation: attackTargetPulse 1.1s ease-in-out infinite;
   cursor: pointer;
 }
 .effect-target-candidate {
@@ -1918,16 +1921,50 @@ body.targeting-active .targeting-banner {
   text-align: center;
 }
 
-/* thin client では action-panel のカード操作系ボタン(召喚/コール/使用/攻撃 等)は
-   カードシート/メニュー経由で行うため未配線=死にコントロール。フェイズ進行と解決だけ残す。 */
-.thin-client .action-panel .summon-grid,
-.thin-client .action-panel .attack-row,
-.thin-client #castButton,
-.thin-client #counterHandButton,
-.thin-client #linkToggleButton,
-.thin-client #partnerCallButton,
-.thin-client #attackButton,
-.thin-client #chargeButton { display: none; }
+/* カード操作系ボタン(召喚/コール/使用/攻撃/対象select)は全クライアントで非表示。
+   カード操作は「カードタップ→下部アクションメニュー」（権威版と同一仕様）に一本化し、
+   パネルにはフェイズ進行と解決だけ残す。<select>はタップ選択の値置き場として隠したまま残す。 */
+.action-panel .summon-grid,
+.action-panel .attack-row,
+#castButton,
+#linkToggleButton,
+#partnerCallButton,
+#attackButton,
+#chargeButton { display: none; }
+/* 攻防手札切替はホットシート(ローカル/中継)専用。thin(権威版)は1席1画面なので不要。 */
+.thin-client #counterHandButton { display: none; }
+
+/* 共有: 画面下部アクションメニュー（カードタップ→操作。ローカル/中継/権威版で同一見た目） */
+.play-action-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 199;
+  background: rgb(0 0 0 / 0.28);
+  pointer-events: auto;
+  touch-action: none;
+}
+.play-action-menu {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.4);
+  max-width: 94vw;
+}
+.play-action-menu button {
+  min-height: 40px;
+  padding: 6px 12px;
+  font-weight: 800;
+}
+.play-action-menu button.menu-close { font-weight: 400; }
 /* thin の不要なツールバー要素(1P/2Pデッキ選択・ログ保存・新規=部屋作成と重複)を隠す。 */
 .thin-client .toolbar .deck-picker,
 .thin-client #newGameButton,

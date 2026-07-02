@@ -36,35 +36,37 @@ document.querySelectorAll(".zone.field").forEach((zoneButton) => {
     }
     const owner = Number(zoneButton.dataset.owner);
     const zone = zoneButton.dataset.zone;
-    // 対象選択モード中：候補タップ＝確定、それ以外＝キャンセル
+    // 対象選択モード中（権威版仕様）: 候補タップ＝確定 / 相手の装備枠タップ＝本体攻撃 /
+    // 自分のカードタップ＝選択し直し / それ以外の候補外タップは無視（キャンセルはバナーのボタン）。
     if (uiTargeting?.mode === "attack") {
       if (isAttackCandidateZone(owner, zone)) {
         confirmAttackTarget(zone);
-      } else {
+        return;
+      }
+      if (
+        zone === "item" &&
+        uiTargeting.candidates.some((candidate) => candidate.value === "fighter" && candidate.owner === owner)
+      ) {
+        confirmAttackTarget("fighter");
+        return;
+      }
+      if (owner === state.active && state.players[owner]?.field?.[zone]) {
         uiTargeting = null;
-        render();
+        fieldCardMenuLocal(owner, zone);
       }
       return;
     }
     if (uiTargeting?.mode === "effect") {
       if (isEffectCandidateZone(owner, zone)) {
         pickEffectTarget(owner, zone);
-      } else {
-        uiTargeting = null;
-        render();
       }
-      return;
+      return; // 候補外タップは無視（権威版と同じ。キャンセルはバナーのボタン）
     }
-    // 平時：自分のカードは選択してシート、相手/操作不可は閲覧専用シート
+    // 平時：操作可能なカードは下部アクションメニュー、相手/操作不可のカードは閲覧専用シート。
+    // 空きマスのタップは無反応（権威版と同じ）。
     const card = state.players[owner]?.field?.[zone];
-    const selected = selectFieldCard(owner, zone);
-    if (selected) {
-      openCardSheet();
-    } else if (card) {
+    if (card && !fieldCardMenuLocal(owner, zone)) {
       openReadOnlyCardSheet(card);
-    } else {
-      // 空きフィールドのタップ: 置き方が分からず迷う人向けに導線を一言ヒント。
-      showToast("手札のカードをタップ→「コール先」で配置できます");
     }
   });
   attachZoneLongPress(zoneButton);
@@ -92,21 +94,19 @@ document.querySelector("#targetingCancelButton")?.addEventListener("click", () =
 
 document.querySelectorAll("[data-call-zone]").forEach((button) => {
   button.addEventListener("click", async () => {
-    // バディコール（実コール）は不可逆なので確認を1枚挟む
-    const card = getSelectedCard();
-    const buddyDeclared = Boolean(
-      state?.buddyCallDeclared && state.buddyCallDeclared === card?.instanceId,
-    );
-    if (buddyDeclared && !(await confirmAction(`${card.name}をバディコールしますか？`))) {
-      return;
-    }
+    // 権威版仕様: 確認なしで即コール（メニューのコール項目と同じ）。
     await runNetworkMutation("コール", () => callMonster(button.dataset.callZone));
   });
 });
 
 // B2: ワールドタイル → デッキ情報ポップアップ
 document.querySelectorAll(".buddy-cell").forEach((tile) => {
-  tile.addEventListener("click", () => {
+  tile.addEventListener("click", (event) => {
+    // fighter-panel へのバブリングで本体攻撃と二重発火しないように遮断（権威版 play.js と同じガード）。
+    event.stopPropagation();
+    if (uiTargeting) {
+      return; // 対象選択中はデッキ情報を開かない
+    }
     const owner = Number(tile.dataset.owner);
     if (Number.isInteger(owner)) {
       openDeckInfo(owner);
@@ -150,12 +150,9 @@ elements.attackButton.addEventListener("click", () => {
   }
   runNetworkMutation("攻撃宣言", attackAction);
 });
-elements.endTurnButton.addEventListener("click", async () => {
-  // B2: 不可逆なので確認を1枚挟む
-  if (!(await confirmAction("ターンを終了しますか？"))) {
-    return;
-  }
-  await runNetworkMutation("ターン終了", endTurn);
+elements.endTurnButton.addEventListener("click", () => {
+  // 権威版仕様: 確認なしで即ターン終了。
+  runNetworkMutation("ターン終了", endTurn);
 });
 elements.partnerCallButton.addEventListener("click", partnerCall);
 elements.attackTarget.addEventListener("change", renderActions);
