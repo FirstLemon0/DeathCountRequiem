@@ -1754,7 +1754,9 @@
               "op": "destroyAll",
               "filter": {
                 "cardType": "monster"
-              }
+              },
+              "ignoreSoulguard": true,
+              "ignoreDestroyImmunity": true
             },
             {
               "op": "destroyAll"
@@ -2768,17 +2770,17 @@
               "amount": 2
             }
           ],
-          "target": {
-            "type": "fieldCard",
-            "controller": "self",
-            "filter": {
-              "cardType": "monster"
-            }
-          },
           "effects": [
             {
-              "op": "setPreventNextDestroy",
-              "target": "$target"
+              "op": "grantTurnDestroyImmunity",
+              "controller": "self",
+              "zoneIn": [
+                "left",
+                "right"
+              ],
+              "filter": {
+                "cardType": "monster"
+              }
             }
           ]
         }
@@ -5481,7 +5483,9 @@
               "op": "destroyAll",
               "filter": {
                 "cardType": "monster"
-              }
+              },
+              "ignoreSoulguard": true,
+              "ignoreDestroyImmunity": true
             },
             {
               "op": "destroyAll"
@@ -5509,6 +5513,7 @@
       "power": 6000,
       "critical": 1,
       "flavor": "力とは、強さとは、決して人に与えられるものではない。",
+      "canBeBuddy": true,
       "keywords": [
         "equipChange"
       ],

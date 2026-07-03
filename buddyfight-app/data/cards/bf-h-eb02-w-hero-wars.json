@@ -1063,6 +1063,7 @@
                       "var": "grab",
                       "to": "hand",
                       "amount": 2,
+                      "chooseWithinGroup": true,
                       "require": false,
                       "log": "{cards}を手札に加えました。"
                     }
@@ -3414,10 +3415,17 @@
         {
           "id": "bf-h-eb02-0047-hero-destroy-heal",
           "kind": "triggered",
-          "event": "allyAttackDestroyed",
+          "event": "opponentDestroyed",
           "conditions": [
             {
-              "op": "eventAttackersMatch",
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "monster"
+              }
+            },
+            {
+              "op": "eventDestroyerMatches",
+              "controller": "self",
               "filter": {
                 "attribute": "ヒーロー"
               }
@@ -4261,7 +4269,8 @@
           "script": [
             {
               "op": "rockPaperScissorsDamageLosers",
-              "amount": 3
+              "amount": 3,
+              "noDrawDamage": true
             },
             {
               "op": "chooseBranch",

@@ -421,8 +421,9 @@ function queueGaugePlacedTriggers(chargingOwner, cards = []) {
   const hasListener = [0, 1].some((playerIndex) =>
     zones.some((zone) => {
       const c = state.players[playerIndex]?.field?.[zone];
-      return (c?.abilities || []).some(
-        (a) => a.kind === "triggered" && (a.event === "allyGaugePlaced" || a.event === "opponentGaugePlaced"),
+      // 自身/ソウル/爆雷継承(inheritSoulAbilities)まで見ないと、ソウルの爆雷を継承したホスト(ヤミゲドウ等)を取りこぼす。
+      return (
+        cardHasTriggeredListener(c, "allyGaugePlaced") || cardHasTriggeredListener(c, "opponentGaugePlaced")
       );
     }),
   );

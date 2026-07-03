@@ -132,9 +132,25 @@ function grantedDestroyImmunityBlocks(card, cause) {
   );
 }
 
+// 【対抗】等でそのターン中だけ付与された、ゾーン限定の破壊耐性（state.turnDestroyImmunity）。
+// 例: ドラゴニック・フォースフィールド「このターン中、君のレフトとライトのモンスターは破壊されない」。
+function turnDestroyImmunityBlocks(card) {
+  const list = state.turnDestroyImmunity;
+  if (!list || !list.length) return false;
+  const targetSlot = findFieldCardSlot(card);
+  if (!targetSlot) return false;
+  return list.some((entry) => {
+    if (entry.owner !== targetSlot.owner) return false;
+    if (entry.zoneIn && !entry.zoneIn.includes(targetSlot.zone)) return false;
+    if (entry.filter && !matchesCardFilter(card, entry.filter)) return false;
+    return true;
+  });
+}
+
 function destroyImmunityBlocks(card, cause, owner) {
   if (!cause) return false;
   if (grantedDestroyImmunityBlocks(card, cause)) return true;
+  if (turnDestroyImmunityBlocks(card)) return true;
   const imm = card.destroyImmunity;
   if (!imm) return false;
   const entries = Array.isArray(imm) ? imm : [imm];
@@ -210,6 +226,10 @@ async function destroyFieldCard(owner, zone, options = {}) {
     if (replacement?.gainLife) {
       state.players[replacement.owner ?? owner].life += replacement.gainLife;
       addLog(`${replacement.source || card.name}の効果で${state.players[replacement.owner ?? owner].name}のライフを${replacement.gainLife}回復しました。`);
+    }
+    if (replacement?.grantKeyword) {
+      card.turnKeywords ||= [];
+      card.turnKeywords.push(replacement.grantKeyword);
     }
     addLog(`${card.name}は効果により場に残りました。`);
     if (countsAsDestroyed) {
@@ -954,6 +974,7 @@ async function endTurn() {
   state.suppressLifeLinkThisTurn = [false, false]; // ライフリンク無効化(ターンスコープ)をリセット
   state.attackRedirectThisTurn = [null, null]; // 攻撃再誘導(ターンスコープ)をリセット
   state.opponentCounterLockThisTurn = []; // 対抗ロック(ターンスコープ)をリセット
+  state.turnDestroyImmunity = []; // ターン限定の破壊耐性(対抗フォースフィールド等)をリセット
   state.lastDamageTaken = [0, 0];
   state.linkAttackers = [];
   state.buddyCallDeclared = null;
@@ -1002,6 +1023,7 @@ function clearTurnModifiers() {
   state.spiritStrikeDamageBonus = [0, 0]; // 霊撃ブースト（ターンスコープ）をリセット
   state.players.forEach((player) => {
     player.nextActivatedCostMayUseOpponentGauge = false;
+    player.setLockedIdsThisTurn = []; // 「そのターン中は『設置』できない」ロック(発進準備OK！等)をターン終了で解除
     zones.forEach((zone) => {
       const card = player.field[zone];
       if (card) {
@@ -1011,6 +1033,7 @@ function clearTurnModifiers() {
         card.turnKeywords = [];
         card.turnSuppressedKeywords = [];
         card.preventNextDestroyCount = 0;
+        card.preventNextDestroyEffects = []; // 未発火の破壊置換effect(反撃付与等)が翌ターンへ残留しないようクリア
         card.additionalNames = []; // gainNameAsSelected（追加のカード名・ターンスコープ）をリセット
         if (card.destroyReaction?.duration === "turn") {
           card.destroyReaction = null; // attachDestroyReaction（そのターン中のみ）を解除
@@ -1104,7 +1127,9 @@ function resolveLifeZeroReplacements() {
       dropFieldCardByRule(player, sac.z);
       dropFieldCardByRule(player, zone);
       player.life = replacement.life || 1;
-      drawCards(player, replacement.draw || 0);
+      if ((replacement.draw || 0) > 0 && !isDrawByEffectPrevented(state.players.indexOf(player))) {
+        drawCards(player, replacement.draw || 0);
+      }
       addLog(`${card.name}の効果で${sac.c.name}を破壊し、${player.name}のライフは${player.life}になりました。`);
       return;
     }
@@ -1132,7 +1157,9 @@ function resolveLifeZeroReplacements() {
       return;
     }
     player.life = replacement.life || 1;
-    drawCards(player, replacement.draw || 0);
+    if ((replacement.draw || 0) > 0 && !isDrawByEffectPrevented(state.players.indexOf(player))) {
+      drawCards(player, replacement.draw || 0);
+    }
     addLog(`${card.name}の効果で${player.name}のライフは${player.life}になりました。`);
   });
 }

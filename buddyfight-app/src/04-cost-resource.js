@@ -421,6 +421,9 @@ function canPayStructuredCost(player, costSteps = [], context = {}) {
     if (step.op === "discardSoul" && (context.sourceCard?.soul?.length || 0) < amount) {
       return { ok: false, reason: "ソウルが足りません。" };
     }
+    if (step.op === "discardSoulToDeckBottom" && (context.sourceCard?.soul?.length || 0) < amount) {
+      return { ok: false, reason: "ソウルが足りません。" };
+    }
     if (step.op === "dropSource" && !findFieldCardSlot(context.sourceCard)) {
       return { ok: false, reason: "コストでドロップゾーンに置くカードが場にありません。" };
     }
@@ -684,6 +687,9 @@ function payStructuredCost(player, costSteps = [], context = {}) {
     if (step.op === "payLife") {
       player.life -= amount;
     }
+    if (step.op === "damageSelf") {
+      applyDamageToPlayer(state.players.indexOf(player), amount, { sourceName: sourceCard?.name, byAttack: false });
+    }
     if (step.op === "setLife") {
       player.life = step.life ?? step.amount ?? player.life;
     }
@@ -713,6 +719,14 @@ function payStructuredCost(player, costSteps = [], context = {}) {
         const soulCard = sourceCard?.soul?.pop();
         if (soulCard) {
           player.drop.push(soulCard);
+        }
+      }
+    }
+    if (step.op === "discardSoulToDeckBottom") {
+      for (let index = 0; index < amount; index += 1) {
+        const soulCard = sourceCard?.soul?.pop();
+        if (soulCard) {
+          player.deck.unshift(soulCard);
         }
       }
     }
@@ -1119,6 +1133,9 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     if (step.op === "payLife") {
       player.life -= amount;
     }
+    if (step.op === "damageSelf") {
+      applyDamageToPlayer(state.players.indexOf(player), amount, { sourceName: sourceCard?.name, byAttack: false });
+    }
     if (step.op === "setLife") {
       player.life = step.life ?? step.amount ?? player.life;
     }
@@ -1148,6 +1165,14 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
         const soulCard = sourceCard?.soul?.pop();
         if (soulCard) {
           player.drop.push(soulCard);
+        }
+      }
+    }
+    if (step.op === "discardSoulToDeckBottom") {
+      for (let index = 0; index < amount; index += 1) {
+        const soulCard = sourceCard?.soul?.pop();
+        if (soulCard) {
+          player.deck.unshift(soulCard);
         }
       }
     }

@@ -145,6 +145,12 @@ async function equipCardDirect(player, card) {
   player.arrivalCardId = null;
   await resolveOnEnter(card, player);
   addLog(`${player.name}は${card.name}を装備しました。`);
+  // バディギフト: バディにできるアイテム(canBeBuddy)を自分のバディとして初めて場に出したとき、ライフ+1。
+  if (card.canBeBuddy && isBuddyCard(player, card) && !player.partnerCalled) {
+    player.partnerCalled = true;
+    player.life += 1;
+    addLog(`${player.name}はバディの${card.name}を装備し、バディギフトでライフを1回復しました。`);
+  }
   // アイテム装備完了を場イベントとして通知（allyEquip/opponentEquip）。相手の装備に反応するカード（影鼬 0087）用。
   await runFieldEventTriggers("equip", owner, card, targetZone, {
     enteredCard: card,
@@ -311,6 +317,10 @@ async function castSetSpell(selectedCard) {
   }
   if (selectedCard.uniqueSet && setZones.some((candidate) => player.field[candidate]?.id === selectedCard.id)) {
     addLog(`${selectedCard.name}はすでに配置されています。`);
+    return;
+  }
+  if ((player.setLockedIdsThisTurn || []).includes(selectedCard.id)) {
+    addLog(`${selectedCard.name}はそのターン中は設置できません。`);
     return;
   }
   const payment = await payCardCostWithSelection(player, selectedCard, "cast", selectedCard);
@@ -580,6 +590,7 @@ function resetLeftFieldCardState(card) {
   card.counterattack = false;
   card.doubleAttackUsed = false;
   card.preventNextDestroyCount = 0;
+  card.preventNextDestroyEffects = [];
   card.additionalNames = [];
   card.destroyReaction = null;
   card.scheduledStatBonus = [];

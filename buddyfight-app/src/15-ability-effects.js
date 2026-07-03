@@ -110,9 +110,13 @@ async function executeAbilityEffect(effect, context) {
   }
   if (effect.op === "draw") {
     const drawer = effect.player === "opponent" ? opponent : player;
-    const drew = drawCards(drawer, effect.amount || 1);
-    if (drew !== 0 || effect.amount) {
-      await runFieldEventTriggers("drawByEffect", state.players.indexOf(drawer));
+    if (isDrawByEffectPrevented(state.players.indexOf(drawer))) {
+      addLog(`${drawer.name}はカードの効果でカードを引けません。`);
+    } else {
+      const drew = drawCards(drawer, effect.amount || 1);
+      if (drew !== 0 || effect.amount) {
+        await runFieldEventTriggers("drawByEffect", state.players.indexOf(drawer));
+      }
     }
   }
   if (effect.op === "drawUpToHand") {
@@ -120,9 +124,13 @@ async function executeAbilityEffect(effect, context) {
     // 例: ドラゴニック・ディレクティブ「手札が２枚以下なら３枚になるように引く」。
     const targetHand = effect.amount || 0;
     const toDraw = Math.max(0, targetHand - player.hand.length);
-    drawCards(player, toDraw);
-    if (toDraw > 0) {
-      await runFieldEventTriggers("drawByEffect", state.players.indexOf(player));
+    if (toDraw > 0 && isDrawByEffectPrevented(state.players.indexOf(player))) {
+      addLog(`${player.name}はカードの効果でカードを引けません。`);
+    } else {
+      drawCards(player, toDraw);
+      if (toDraw > 0) {
+        await runFieldEventTriggers("drawByEffect", state.players.indexOf(player));
+      }
     }
   }
   if (effect.op === "putTopDeckToGauge") {
@@ -187,6 +195,11 @@ async function executeAbilityEffect(effect, context) {
   }
   if (effect.op === "endAttackPhase") {
     // 進行中のアタックフェイズを終了しファイナルフェイズへ（残りの攻撃を行わない。ヴァイシュタッツ 0095）。
+    // 「1回目のバトル終了時」に使う対抗のため、係属中の1回目の攻撃は先に解決してダメージを通してから終了する
+    // （直接 pendingAttack を破棄すると1回目の攻撃自体まで無効化してしまう）。
+    if (state.pendingAttack) {
+      await resolvePendingAttack();
+    }
     state.phase = "final";
     state.pendingAttack = null;
     state.selected = null;
@@ -384,10 +397,13 @@ async function executeAbilityEffect(effect, context) {
   if (effect.op === "rockPaperScissorsDamageLosers") {
     const result = await resolveRockPaperScissors(context);
     const amount = effect.amount || 1;
-    if (result === "win" || result === "draw") {
+    // 既定: アイコは両ファイターが敗者(BT03/0065 大入りパンドラ「勝てなかった＝アイコも被弾」)。
+    // noDrawDamage:true のカード(EB02/0063「負けたファイター」)ではアイコで誰も被弾しない。
+    const drawHitsBoth = result === "draw" && !effect.noDrawDamage;
+    if (result === "win" || drawHitsBoth) {
       applyDamageToPlayer(1 - context.owner, amount, { sourceName: context.card?.name });
     }
-    if (result === "lose" || result === "draw") {
+    if (result === "lose" || drawHitsBoth) {
       applyDamageToPlayer(context.owner, amount, { sourceName: context.card?.name });
     }
   }
@@ -405,6 +421,14 @@ async function executeAbilityEffect(effect, context) {
   }
   if (effect.op === "dropSelf") {
     dropFieldCardByRule(player, context.zone);
+  }
+  if (effect.op === "lockOwnSetThisTurn" && context.card) {
+    // 「そのターン中、このカードは『設置』できない」: カード名(id)単位でロック。
+    // castSetSpell / script設置経路の uniqueSet 判定直後に参照し、clearTurnModifiers で解除。
+    player.setLockedIdsThisTurn ||= [];
+    if (!player.setLockedIdsThisTurn.includes(context.card.id)) {
+      player.setLockedIdsThisTurn.push(context.card.id);
+    }
   }
   if (effect.op === "destroySelf") {
     await destroyFieldCard(context.owner, context.zone, { ignoreSoulguard: true });
@@ -488,7 +512,11 @@ async function executeAbilityEffect(effect, context) {
     }).map((candidate) => ({ owner: candidate.owner, zone: candidate.zone }));
     // 逐次破壊（順序・破壊時誘発キューの保持。並列化禁止）。
     for (const candidate of destroyAllTargets) {
-      await destroyFieldCard(candidate.owner, candidate.zone, { cause: makeEffectCause(context, candidate.owner) });
+      await destroyFieldCard(candidate.owner, candidate.zone, {
+        cause: makeEffectCause(context, candidate.owner),
+        ignoreSoulguard: Boolean(effect.ignoreSoulguard),
+        ignoreDestroyImmunity: Boolean(effect.ignoreDestroyImmunity),
+      });
     }
   }
   if (effect.op === "moveTargetToDrop" && target?.card) {
@@ -895,14 +923,18 @@ async function executeAbilityEffect(effect, context) {
       // draw はアイコ=数えず再戦
     }
     const selfDraw = wins * (effect.drawPerWin || 1);
-    if (selfDraw > 0) {
+    if (selfDraw > 0 && isDrawByEffectPrevented(context.owner)) {
+      addLog(`${player.name}はカードの効果でカードを引けません。`);
+    } else if (selfDraw > 0) {
       drawCards(player, selfDraw);
       addLog(`${context.card?.name || "効果"}: ${player.name}はジャンケンに${wins}勝し、${selfDraw}枚引きました。`);
       await runFieldEventTriggers("drawByEffect", context.owner);
     }
     if (losses >= rounds) {
       const sweep = effect.opponentDrawOnSweep || 0;
-      if (sweep > 0) {
+      if (sweep > 0 && isDrawByEffectPrevented(1 - context.owner)) {
+        addLog(`${opponent.name}はカードの効果でカードを引けません。`);
+      } else if (sweep > 0) {
         drawCards(opponent, sweep);
         addLog(`${context.card?.name || "効果"}: ${player.name}は${rounds}回負け、${opponent.name}は${sweep}枚引きました。`);
         await runFieldEventTriggers("drawByEffect", 1 - context.owner);
@@ -963,7 +995,18 @@ async function executeAbilityEffect(effect, context) {
       const canDiscard = p.hand.filter((c) => c.instanceId !== context.card?.instanceId).length >= n;
       let discarded = false;
       if (canDiscard && (await confirmChoiceAsync(seat, `手札${n}枚を捨てますか？（捨てないと${dmg}ダメージ）`))) {
-        const toDrop = p.hand.filter((c) => c.instanceId !== context.card?.instanceId).slice(0, n);
+        const handEntries = p.hand
+          .map((card, index) => ({ card, index }))
+          .filter((entry) => entry.card.instanceId !== context.card?.instanceId);
+        const chosen = await chooseCardEntries(handEntries, {
+          title: context.card?.name || "喧嘩両成敗",
+          lead: `捨てる手札${n}枚を選んでください。`,
+          min: n,
+          max: n,
+          forceDialog: true,
+          promptSeat: seat,
+        });
+        const toDrop = chosen && chosen.length >= n ? chosen : handEntries.slice(0, n);
         const removed = removePileEntries(p.hand, toDrop);
         discardHandCardsToDrop(p, removed);
         addLog(`${p.name}は手札${removed.length}枚を捨てました。`);
@@ -1219,7 +1262,7 @@ async function executeAbilityEffect(effect, context) {
   }
   if (effect.op === "setPreventNextDestroy" && target?.card) {
     target.card.preventNextDestroyCount = (target.card.preventNextDestroyCount || 0) + (effect.amount || 1);
-    if (effect.gainLife || effect.log || effect.countsAsDestroyed) {
+    if (effect.gainLife || effect.log || effect.countsAsDestroyed || effect.grantKeyword) {
       target.card.preventNextDestroyEffects ||= [];
       target.card.preventNextDestroyEffects.push({
         owner: context.owner,
@@ -1227,9 +1270,22 @@ async function executeAbilityEffect(effect, context) {
         source: context.card?.name || "",
         log: effect.log || "",
         countsAsDestroyed: Boolean(effect.countsAsDestroyed),
+        grantKeyword: effect.grantKeyword || null,
       });
     }
     addLog(`${context.card.name}の効果で、次に${target.card.name}が破壊される場合、場に残せるようにしました。`);
+  }
+  if (effect.op === "grantTurnDestroyImmunity") {
+    // 【対抗】このターン中、指定ゾーンのモンスターは破壊されない（ドラゴニック・フォースフィールド）。
+    // state.turnDestroyImmunity に登録し、destroyImmunityBlocks が参照。ターン進行時にリセット。
+    state.turnDestroyImmunity ||= [];
+    const immunityOwner = effect.controller === "opponent" ? 1 - context.owner : context.owner;
+    state.turnDestroyImmunity.push({
+      owner: immunityOwner,
+      zoneIn: effect.zoneIn || null,
+      filter: effect.filter || null,
+    });
+    addLog(`${context.card?.name || "効果"}の効果で、このターン中に対象のモンスターは破壊されなくなりました。`);
   }
   if (effect.op === "setDelayedDestroyAtOpponentTurnEnd" && context.card) {
     context.card.destroyAtEndOfTurnOwner = 1 - context.owner;
@@ -1472,8 +1528,12 @@ function resolveAmountFrom(spec, context) {
     return count * (spec.per ?? 1) + (spec.plus || 0);
   }
   if (spec.source === "selectedCount") {
-    // script で選択した var の枚数（「破壊した/選んだ枚数分」0020）。
+    // script で選択した var の枚数（「選んだ枚数分」。破壊耐性を無視して選択数を数える）。
     return scriptSelection({ var: spec.var }, context).length * (spec.per ?? 1);
+  }
+  if (spec.source === "destroyedCount") {
+    // script の destroySelected が実際に破壊した var の枚数（破壊耐性で免れた分は除外。0020「破壊した枚数分」）。
+    return (context.destroyedCounts?.[spec.var] ?? 0) * (spec.per ?? 1);
   }
   if (spec.source === "dropAbilityLabelCount") {
     // 指定controllerのドロップのカードが持つ、指定label(“爆雷”等)の能力の総数（0020）。

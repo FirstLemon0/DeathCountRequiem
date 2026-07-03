@@ -761,6 +761,15 @@ function checkCondition(condition, owner, context = {}) {
     // opponentDestroyed/allyDestroyed 誘発時、破壊を起こした側が listener(owner) 自身か（「君のカードで破壊された時」0030）。
     return context.destroyCause?.sourceOwner === owner;
   }
+  if (condition.op === "eventDestroyerMatches") {
+    // opponentDestroyed/allyDestroyed 誘発時、破壊を起こした側(sourceCard)が controller/filter に一致するか。
+    // 「君の場の《ヒーロー》が相手のモンスターを破壊した時」等。battle破壊=attacker、効果破壊=makeEffectCause の context.card が sourceCard。
+    const cause = context.destroyCause;
+    if (!cause?.sourceCard) return false;
+    if (condition.controller === "self" && cause.sourceOwner !== owner) return false;
+    if (condition.controller === "opponent" && cause.sourceOwner === owner) return false;
+    return matchesCardFilter(cause.sourceCard, condition.filter || {});
+  }
   if (condition.op === "eventDestroyCauseMatches") {
     // 破壊の原因で誘発を絞る（相手のカードで/効果で/発生源種別）。
     // context.destroyCause は自身の destroyed / ally|opponentDestroyed の双方で参照可能。

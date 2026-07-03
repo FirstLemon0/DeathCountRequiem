@@ -390,7 +390,7 @@ function validateDeck(deck) {
   addValidation(items, Boolean(flag && flag.type === "flag"), "フラッグ: 1枚");
   addValidation(
     items,
-    Boolean(buddy && ["monster", "impactMonster"].includes(buddy.type)),
+    Boolean(buddy && (["monster", "impactMonster"].includes(buddy.type) || buddy.canBeBuddy)),
     "バディ: モンスターまたは必殺モンスター1枚",
   );
 
@@ -695,7 +695,7 @@ function createCardResult(card) {
   const buddyButton = document.createElement("button");
   buddyButton.type = "button";
   buddyButton.textContent = "バディ";
-  buddyButton.disabled = !["monster", "impactMonster"].includes(card.type);
+  buddyButton.disabled = !(["monster", "impactMonster"].includes(card.type) || card.canBeBuddy);
   buddyButton.addEventListener("click", () => {
     currentDeck.buddy = card.id;
     render();
@@ -962,7 +962,7 @@ function flagCards() {
 }
 
 function buddyCards() {
-  return cards.filter((card) => ["monster", "impactMonster"].includes(card.type)).sort(compareCards);
+  return cards.filter((card) => ["monster", "impactMonster"].includes(card.type) || card.canBeBuddy).sort(compareCards);
 }
 
 function findCard(id) {

@@ -273,6 +273,28 @@ function isCenterCallPrevented(callerOwner, card) {
   );
 }
 
+// カードの効果によるドローを禁止する継続効果（ディスターブハンド・ドラゴン PP01/0006「相手はカードの効果でカードを引くことができない」）。
+// controller:"self" は発生源の持ち主のみ、"opponent" はその相手のみを対象（未指定は両者）。preventCenterCall/restrictOwnCall と同じ controller 規約。
+function isDrawByEffectPrevented(drawerOwner) {
+  return state.players.some((player, pIdx) =>
+    zones.some((zone) => {
+      const source = player.field[zone];
+      return activeContinuousEffects(source).some((effect) => {
+        if (effect.op !== "preventDrawByEffect") {
+          return false;
+        }
+        if (effect.controller === "self" && pIdx !== drawerOwner) {
+          return false;
+        }
+        if (effect.controller === "opponent" && pIdx === drawerOwner) {
+          return false;
+        }
+        return true;
+      });
+    }),
+  );
+}
+
 // 継続 restrictOwnCall による「◯◯以外のモンスターをコールできない」制限（戦神機 GIZAI天王 0047 の搭乗中制限等）。
 // 場札の continuous を走査し、controller が callerOwner を指し conditions を満たす制限のうち、
 // コールしようとしているカードが allowFilter に一致しないものがあれば true（=コール不可）。

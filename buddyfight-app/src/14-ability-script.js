@@ -802,14 +802,27 @@ function moveSelectedForScript(step, context) {
   return true;
 }
 
-function moveSelectedGroupForScript(step, context) {
+async function moveSelectedGroupForScript(step, context) {
   const selected = scriptSelection(step, context);
   const movedEntries = [];
-  selected.forEach((entry) => {
+  for (const entry of selected) {
     const group = entry.group || [entry];
     const amount = Math.min(step.amount || group.length, group.length);
-    movedEntries.push(...takeScriptSelectionCards(group.slice(0, amount)));
-  });
+    let picked = group.slice(0, amount);
+    if (step.chooseWithinGroup && group.length > amount) {
+      // 同一グループ(同サイズ等)内で「どのカードを最大 amount 枚動かすか」をプレイヤーに選ばせる。
+      const chosen = await chooseCardEntries(group, {
+        title: step.title || context.card.name,
+        lead: step.chooseLead || `動かすカードを${amount}枚まで選んでください。`,
+        min: step.require === false ? 0 : Math.min(1, amount),
+        max: amount,
+        forceDialog: true,
+        promptSeat: context.owner,
+      });
+      picked = chosen && chosen.length ? chosen : [];
+    }
+    movedEntries.push(...takeScriptSelectionCards(picked));
+  }
   if (movedEntries.length === 0) {
     addLog(step.emptyMessage || `${context.card.name}で動かすカードがありません。`);
     return step.require === false ? true : { ok: false, reason: "no_selected_group_cards" };
@@ -1080,6 +1093,9 @@ async function destroySelectedForScript(step, context) {
       addLog(`${context.card.name}の効果で${destroyedName}を破壊しました。`);
     }
   }
+  // 実際に破壊した枚数を context へ露出（dealDamage の amountFrom:destroyedCount が参照。破壊耐性で免れた分は除外）。
+  context.destroyedCounts = context.destroyedCounts || {};
+  context.destroyedCounts[step.var] = destroyedCount;
   if (destroyedCount === 0 && step.require !== false) {
     return { ok: false, reason: "no_destroyed_cards" };
   }
@@ -1382,6 +1398,27 @@ async function equipSelectedAsItemForScript(step, context) {
   const owner = entry.owner ?? context.owner;
   const player = state.players[owner];
   const card = entry.card;
+  // payCost:true の『変身』(EB01/0060 エマージェンシー・トランス！): 選んだカードの『変身』能力のコストを払ってから装備する。
+  // step.payCost 未指定(既定)は搭乗/ライドアウト(BT01/0037 カードバーン等)としてコスト無支払いで従来通り。
+  if (step.payCost) {
+    const henshinAbility =
+      (card.abilities || []).find(
+        (a) => a.kind === "activated" && a.fromHandOnly && (a.effects || []).some((e) => e.op === "equipSelf"),
+      ) ||
+      (card.abilities || []).find(
+        (a) => a.kind === "activated" && (a.effects || []).some((e) => e.op === "equipSelf"),
+      );
+    if (henshinAbility?.cost?.length) {
+      const payment = await payStructuredCostWithSelection(player, henshinAbility.cost, {
+        sourceCard: card,
+        selectedCard: card, // 装備するカード自身をコスト（手札捨て等）に使わせない
+      });
+      if (!payment.ok) {
+        addLog(payment.reason);
+        return { ok: false, reason: payment.reason };
+      }
+    }
+  }
   takeScriptSelectionCards([entry]); // ソース(デッキ/手札/場)から取り除く
   await equipCardDirect(player, card); // currentType="item" 化して装備（装備変更/装備時誘発も通る）
   return true;
@@ -1423,6 +1460,10 @@ async function useSelectedCardForScript(step, context) {
     if (card.uniqueSet && setZones.some((candidate) => player.field[candidate]?.id === card.id)) {
       addLog(`${card.name}はすでに配置されています。`);
       return { ok: false, reason: "already_set" };
+    }
+    if ((player.setLockedIdsThisTurn || []).includes(card.id)) {
+      addLog(`${card.name}はそのターン中は設置できません。`);
+      return { ok: false, reason: "set_locked_this_turn" };
     }
     if (payCost) {
       const payment = await payCardCostWithSelection(player, card, "cast", card);
@@ -1483,14 +1524,19 @@ async function useSelectedCardAbilityForScript(step, context) {
   }
   const moved = takeScriptSelectionCards([entry]);
   const usedCard = moved[0]?.card || entry.card;
-  await executeAbilityBody({
+  const bodyContext = {
     ...context,
     card: usedCard,
     hostCard: context.card,
     ability: usedAbility,
     target,
-  });
-  context.player.drop.push(usedCard);
+    cardMoved: false,
+  };
+  await executeAbilityBody(bodyContext);
+  // moveSelfToTargetSoul/equipSelf 等で自身が別ゾーンへ移った札はドロップに戻さない(二重存在の防止。上の top-deck 版と同型)。
+  if (!bodyContext.cardMoved) {
+    context.player.drop.push(usedCard);
+  }
   addLog(`${context.card.name}の効果で${usedCard.name}を使いました。`);
   return true;
 }
@@ -1542,6 +1588,14 @@ async function useTopDeckCardIfMatchesElseBottomForScript(step, context) {
     player.deck.unshift(topCard);
     addLog(`${context.card.name}で確認した${topCard.name}は現在使えないためデッキの下に置きました。`);
     return true;
+  }
+  if (step.optional) {
+    const useIt = await confirmChoiceAsync(owner, `${topCard.name}を使いますか？`, { yesLabel: "使う", noLabel: "使わない" });
+    if (!useIt) {
+      player.deck.unshift(topCard);
+      addLog(`${context.card.name}で公開した${topCard.name}を使わずデッキの下に置きました。`);
+      return true;
+    }
   }
   const target = ability.target ? await chooseAbilityTarget(topCard, ability, owner) : null;
   if (ability.target && !target) {
