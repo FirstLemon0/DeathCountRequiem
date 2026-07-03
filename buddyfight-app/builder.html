@@ -48,7 +48,7 @@
         </div>
         <div class="toolbar" aria-label="画面操作">
           <button type="button" id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="テーマ切替">☀️</button>
-          <button type="button" class="mobile-only nav-toggle" onclick="document.body.classList.toggle('nav-open')" aria-label="メニュー">☰</button>
+          <button type="button" class="mobile-only nav-toggle" aria-expanded="false" onclick="document.body.classList.toggle('nav-open'); this.setAttribute('aria-expanded', document.body.classList.contains('nav-open'))" aria-label="メニュー">☰</button>
           <a class="toolbar-link" href="index.html">ローカル対戦</a>
           <a class="toolbar-link" href="play.html">ネット対戦</a>
           <button id="newDeckButton" type="button">新規</button>
@@ -123,6 +123,7 @@
           <p class="status-text" id="builderStatus">カードデータ読込中</p>
         </section>
       </section>
+      <div id="toast" role="status" aria-live="polite" aria-hidden="true"></div>
     </main>
     <script src="builder.js"></script>
   </body>

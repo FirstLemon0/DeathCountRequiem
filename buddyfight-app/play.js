@@ -194,6 +194,18 @@
       thin?.applyView?.(message.state);
       updateAttackHighlights(); // 盤面再描画後もハイライト状態を反映（対象選択中なら付け直す）
       document.body.classList.add("game-started");
+      // 自席の枠強調＋手番の「/ ターン中」表示を有効化。renderNetworkChrome は play.html では
+      // no-op(isNetworkPage=false)なので thin 側で .network-connected と席クラスを付ける
+      // （styles.css の .network-connected .player-zone.local-seat / .turn-seat フックを流用）。
+      document.body.classList.add("network-connected");
+      [0, 1].forEach((i) => {
+        const z = document.getElementById(`player${i + 1}Zone`);
+        z?.classList.toggle("local-seat", seat === i);
+        z?.classList.toggle("remote-seat", seat !== i);
+      });
+      // 席相対フリップ: 後手(P2)席の視点では自分の場(player2Zone=opponentクラス)を下段へ、
+      // 相手(player1Zone=active-player)を上段へ入れ替える（styles.css の body.seat-flip 規則）。
+      document.body.classList.toggle("seat-flip", seat === 1);
       $("lobbySeatLabel").textContent = `役割: ${roleLabel(message.role)}`;
       // 初回ガイド(コーチ)を開戦時に一度だけ。
       try {
@@ -219,7 +231,13 @@
     }
     saveSession();
     $("lobbySeatLabel").textContent = `役割: ${roleLabel(session.role)}`;
-    setStatus(`部屋 ${message.roomId} ${message.started ? "（対戦中）" : "（待機中）"}`);
+    // 「対戦中/待機中」は routine なので lobbyStatus だけに表示する。固定バナー(#netStatus)は
+    // 再接続/相手切断/操作エラーなど“異常時専用”にし、正常同期のたびに空へ戻して盤面下部を覆わない。
+    $("lobbyStatus").textContent = `部屋 ${message.roomId} ${message.started ? "（対戦中）" : "（待機中）"}`;
+    if (session.started) {
+      const banner = document.getElementById("netStatus");
+      if (banner) banner.textContent = "";
+    }
     const roster = $("lobbyRoster");
     roster.innerHTML = "";
     (message.members || []).forEach((member) => {
@@ -266,7 +284,7 @@
   async function createOrJoin(kind) {
     try {
       const deck = selectedDeckPayload();
-      const pathname = kind === "create" ? "auth/rooms" : `auth/rooms/${encodeURIComponent($("lobbyRoomInput").value.trim())}/join`;
+      const pathname = kind === "create" ? "auth/rooms" : `auth/rooms/${encodeURIComponent($("lobbyRoomInput").value.trim().toUpperCase())}/join`;
       if (kind === "join" && !$("lobbyRoomInput").value.trim()) {
         setStatus("参加する部屋番号を入力してください");
         return;
@@ -312,7 +330,8 @@
   // ---- アクション送信 ----
   async function sendAction(type, params) {
     if (!isMyTurnSeat()) {
-      setStatus("観戦者は操作できません");
+      // 着席済みだが未開始のプレイヤーに「観戦者は操作できません」は誤り。席の有無で文言を分ける。
+      setStatus(mySeat() === null ? "観戦者は操作できません" : "対戦開始前です（ロビーで『対戦開始』を押してください）");
       return;
     }
     closeMenu();
@@ -826,7 +845,7 @@
       if (ui.targeting && owner !== mySeat()) {
         // 相手の「装備」枠(武器装備枠)タップ＝本体(ファイター)への攻撃。
         // 武器があればサーバ側で防御に回る。空でも本体攻撃として成立する（カード有無を問わない）。
-        if (zone === "item") {
+        if (zoneButton.dataset.zone === "item") {
           sendAction("attack", { selected: ui.selected, attackTarget: "fighter" });
           ui.targeting = false;
           clearTargetingBanner();

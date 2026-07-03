@@ -573,6 +573,12 @@ async function runDamageDealtTriggers(attackers, pending, damage) {
     phase: pending.phase || state.phase,
   };
   state.lastDamageEvent = damageEvent;
+  // 「そのターン中に自分の武器(等)が攻撃でダメージを与えた」判定用に、当該ターンのダメージイベントを蓄積する。
+  // lastDamageEvent は毎戦闘で上書きされるため、単発参照だと武器ダメージの後に別ダメージが入ると発生源を見失う。
+  if (!Array.isArray(state.turnDamageEvents)) {
+    state.turnDamageEvents = [];
+  }
+  state.turnDamageEvents.push(damageEvent);
   state.counterEventWindow = damageEvent;
   for (const damageSource of damageSources) {
     const attacker = {

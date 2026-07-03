@@ -209,10 +209,14 @@ async function executeAbilityEffect(effect, context) {
     addLog(`${context.card?.name || "効果"}の効果でアタックフェイズを終了しました。`);
   }
   if (effect.op === "gainLife") {
-    const gained = effect.amount || 1;
-    player.life += gained;
-    if (gained > 0) {
-      await runFieldEventTriggers("lifeGained", state.players.indexOf(player));
+    if (isLifeGainByEffectPrevented(state.players.indexOf(player))) {
+      addLog(`${player.name}は効果でライフを回復できません。`);
+    } else {
+      const gained = effect.amount || 1;
+      player.life += gained;
+      if (gained > 0) {
+        await runFieldEventTriggers("lifeGained", state.players.indexOf(player));
+      }
     }
   }
   if (effect.op === "setLife") {
@@ -249,15 +253,40 @@ async function executeAbilityEffect(effect, context) {
     if (dmg > 0) applyDamageToPlayer(1 - context.owner, dmg, { sourceName: context.card?.name });
     revealed.forEach((c) => player.deck.unshift(c));
   }
+  if (effect.op === "lookTopCardPlaceTopOrBottom") {
+    // デッキの1番上のカードを見て、1番上か1番下に置く（ブレイド・オブ・アサメイ 0089 のスクライ）。
+    // デッキ向きは drawCards/lookTopSelectToHandRestToBottom の規約に一致（top=末尾=pop/push、bottom=先頭=unshift）。
+    if (player.deck.length === 0) {
+      addLog(`${context.card?.name || "効果"}で見るカードがありません。`);
+    } else {
+      const top = player.deck.pop();
+      const keepOnTop = await confirmChoiceAsync(
+        context.owner,
+        `${context.card?.name || "効果"}: デッキの1番上の${top.name}を1番上か1番下のどちらに置きますか？`,
+        { yesLabel: "1番上に置く", noLabel: "1番下に置く" },
+      );
+      if (keepOnTop) {
+        player.deck.push(top);
+        addLog(`${context.card?.name || "効果"}でデッキの1番上を見て、1番上に置きました。`);
+      } else {
+        player.deck.unshift(top);
+        addLog(`${context.card?.name || "効果"}でデッキの1番上を見て、1番下に置きました。`);
+      }
+    }
+  }
   if (effect.op === "gainLifeMinusMatchingDropCount") {
-    const copies = player.drop.filter((card) =>
-      matchesRelativeCardFilter(card, effect.filter || {}, context),
-    ).length;
-    const amount = Math.max(0, (effect.baseAmount || 0) - copies);
-    player.life += amount;
-    addLog(`${player.name}は${context.card.name}の効果でライフを${amount}回復しました。`);
-    if (amount > 0) {
-      await runFieldEventTriggers("lifeGained", state.players.indexOf(player));
+    if (isLifeGainByEffectPrevented(state.players.indexOf(player))) {
+      addLog(`${player.name}は効果でライフを回復できません。`);
+    } else {
+      const copies = player.drop.filter((card) =>
+        matchesRelativeCardFilter(card, effect.filter || {}, context),
+      ).length;
+      const amount = Math.max(0, (effect.baseAmount || 0) - copies);
+      player.life += amount;
+      addLog(`${player.name}は${context.card.name}の効果でライフを${amount}回復しました。`);
+      if (amount > 0) {
+        await runFieldEventTriggers("lifeGained", state.players.indexOf(player));
+      }
     }
   }
   if (effect.op === "dealDamage") {
@@ -275,6 +304,7 @@ async function executeAbilityEffect(effect, context) {
       sourceName: context.card?.name,
       ignorePrevention: Boolean(effect.ignorePrevention),
       sourceAbilityLabel: context.ability?.label || null, // damageReceived 側で参照（爆雷等）
+      floorLife: effect.floorLife, // 非致死: このダメージで受け手を floorLife 未満にしない（ミネウチでござる 0109）
     });
     // 「効果で相手にダメージを与えた時」ダメージ源側の場札へ誘発（爆雷連鎖 0005/0064）。
     // 発生源(context.owner)の視点イベントなので、runFieldEventTriggers の接頭辞を使わず自陣へ直接配送する。
@@ -391,6 +421,39 @@ async function executeAbilityEffect(effect, context) {
       } else {
         receiver.life += effect.life || 1;
         addLog(`${context.card.name}の効果で${receiver.name}のライフを${effect.life || 1}回復しました。`);
+      }
+    }
+  }
+  if (effect.op === "destroyChosenByRpsWinner") {
+    // 相手とジャンケンし、勝ったファイターが場のカード1枚を選んで破壊する（デスゲーム 0078）。
+    // 使用者が勝てば使用者が、相手が勝てば相手が対象を選ぶ（promptSeat で選択席を切り替え）。
+    // 引き分けは既存ジャンケン機構（やり直し無し）に合わせて不成立＝破壊なし。
+    const rpsResult = await resolveRockPaperScissors(context);
+    if (rpsResult !== "win" && rpsResult !== "lose") {
+      addLog(`${context.card?.name || "効果"}のジャンケンは決着せず、破壊は行われませんでした。`);
+      return;
+    }
+    const chooserOwner = rpsResult === "win" ? context.owner : 1 - context.owner;
+    const rpsCandidates = allFieldTargets((card) => matchesCardFilter(card, effect.filter || {}));
+    if (rpsCandidates.length === 0) {
+      addLog(`${context.card?.name || "効果"}で破壊できる場のカードがありません。`);
+      return;
+    }
+    const rpsSelected = await chooseCardEntries(rpsCandidates, {
+      title: `${context.card?.name || "効果"}で破壊するカード`,
+      lead: "破壊するカードを1枚選んでください。",
+      min: 1,
+      max: 1,
+      forceDialog: true,
+      promptSeat: chooserOwner,
+    });
+    const rpsChosen = rpsSelected?.[0];
+    if (rpsChosen) {
+      const rpsDestroyed = await destroyFieldCard(rpsChosen.owner, rpsChosen.zone, {
+        cause: makeEffectCause(context, rpsChosen.owner),
+      });
+      if (rpsDestroyed) {
+        addLog(`${state.players[chooserOwner].name}はジャンケンに勝ち、${rpsChosen.card.name}を破壊しました。`);
       }
     }
   }
@@ -514,8 +577,12 @@ async function executeAbilityEffect(effect, context) {
     for (const candidate of destroyAllTargets) {
       await destroyFieldCard(candidate.owner, candidate.zone, {
         cause: makeEffectCause(context, candidate.owner),
-        ignoreSoulguard: Boolean(effect.ignoreSoulguard),
-        ignoreDestroyImmunity: Boolean(effect.ignoreDestroyImmunity),
+        // nullifyAbilities: 「場のモンスターの能力全てを無効化し…破壊する」(大魔法 ラグナロク 0030)。
+        // 能力由来の防御(ソウルガード/破壊耐性/破壊置換)と破壊時誘発を一括で無効化してから破壊する。
+        ignoreSoulguard: Boolean(effect.ignoreSoulguard || effect.nullifyAbilities),
+        ignoreDestroyImmunity: Boolean(effect.ignoreDestroyImmunity || effect.nullifyAbilities),
+        ignoreDestroyReplacement: Boolean(effect.nullifyAbilities),
+        suppressDestroyedTriggers: Boolean(effect.nullifyAbilities),
       });
     }
   }
@@ -1235,6 +1302,8 @@ async function executeAbilityEffect(effect, context) {
   if (effect.op === "reduceNextDamage") {
     addNextDamagePrevention(context.owner, {
       amount: effect.amount || 1,
+      // 「N以上のダメージを受ける時」限定の軽減（PP01/0026）。未指定なら全ダメージ対象。
+      threshold: effect.threshold,
       source: context.card?.name,
       sourceCard: context.card,
     });
@@ -1259,6 +1328,17 @@ async function executeAbilityEffect(effect, context) {
       });
       addLog(`${context.card.name}の効果で、次に受けるダメージを${amount}減らします。`);
     }
+  }
+  if (effect.op === "preventAllDamageThisTurn") {
+    // 「そのターン中、君はダメージを受けない」（四角炎王 バーンノヴァ H-BT03/0006 の救援）。
+    // once:false + preventAll で持続。untilTurnOwner=state.active（発動＝相手ターン）なので、その相手ターン終了で失効。
+    addNextDamagePrevention(context.owner, {
+      preventAll: true,
+      once: false,
+      source: context.card?.name,
+      sourceCard: context.card,
+    });
+    addLog(`${context.card?.name || "効果"}により、このターン中${state.players[context.owner].name}はダメージを受けません。`);
   }
   if (effect.op === "setPreventNextDestroy" && target?.card) {
     target.card.preventNextDestroyCount = (target.card.preventNextDestroyCount || 0) + (effect.amount || 1);
@@ -1553,6 +1633,24 @@ function resolveAmountFrom(spec, context) {
       return 0;
     }
     return (card.soul || []).length * (spec.per ?? 1);
+  }
+  if (spec.source === "itemPowerSum") {
+    // 指定側(controller未指定=両者)の場のアイテムの visiblePower 総和×per（0009 両者アイテム打撃力合計）。
+    const owners =
+      spec.controller === "self"
+        ? [context.owner]
+        : spec.controller === "opponent"
+          ? [1 - context.owner]
+          : [0, 1];
+    let total = 0;
+    owners.forEach((owner) => {
+      equippedItems(state.players[owner]).forEach((card) => {
+        if (effectiveCardType(card) === "item") {
+          total += visiblePower(card);
+        }
+      });
+    });
+    return total * (spec.per ?? 1);
   }
   return 0;
 }

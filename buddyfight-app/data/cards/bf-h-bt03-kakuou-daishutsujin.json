@@ -367,6 +367,42 @@
       ],
       "abilities": [
         {
+          "id": "bf-h-bt03-0006-rescue-call",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            }
+          ],
+          "cost": [],
+          "script": [
+            {
+              "op": "selectZone",
+              "var": "zone",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            },
+            {
+              "op": "callSelfFromHand",
+              "zoneVar": "zone"
+            },
+            {
+              "op": "setLifeZeroSafeguard",
+              "life": 1
+            },
+            {
+              "op": "preventAllDamageThisTurn"
+            }
+          ]
+        },
+        {
           "id": "bf-h-bt03-0006-enter-purge",
           "kind": "triggered",
           "event": "enter",
@@ -1617,6 +1653,11 @@
           "kind": "spell",
           "timing": [
             "counter"
+          ],
+          "conditions": [
+            {
+              "op": "selfReceivedDamage"
+            }
           ],
           "script": [
             {

@@ -238,7 +238,9 @@ function renderFlagItemZone(zoneButton, player) {
     itemLayer.classList.add("item-layer");
     // 複数装備時、どのアイテムかを識別できるよう実スロット名を持たせる（攻撃/操作対象の絞り込み用）。
     itemLayer.dataset.itemZone = itemZoneOf(state.players[owner], itemCard) || "item";
-    if (items.length > 1) {
+    if (items.length > 1 && index > 0) {
+      // 束見せ: 1枚目(itemLayer)を高さの基準にし、2枚目以降を絶対配置で少しずつずらして重ねる
+      //（ゾーンを縦に肥大させない）。重なって隠れたカードは端が覗くのでホバー/タップで確認できる。
       itemLayer.classList.add("item-layer-stacked");
       itemLayer.style.setProperty("--item-index", String(index));
     }
@@ -272,7 +274,7 @@ function showDropDialog(owner) {
         <span class="drop-dialog-name">${escapeHtml(card.name)}</span>
         <span class="drop-dialog-type">${escapeHtml(typeLabels[effectiveCardType(card)] || "")}</span>
       `;
-      attachTooltip(cardButton, card);
+      attachTooltip(cardButton, card, { touchPreview: true });
       item.append(cardButton);
       // ドロップから発動できる起動能力（fromDropZone）を持つ自分のカードには「発動」ボタンを出す。
       if (findUsableDropAbilities(card, owner).length > 0) {
@@ -302,7 +304,9 @@ function activateDropAbilityFromPile(owner, card) {
     globalThis.__onDropAbilityActivate(owner, card);
     return;
   }
-  useDropAbilityAction(owner, card);
+  // ローカル/中継対戦: 他の全操作と同様に runNetworkMutation 経由で実行し、盤面変化を相手へ snapshot 送信する
+  // （素の直接実行だと中継版 netplay.html でドロップ起動が相手に同期されず、相手の次snapshotで巻き戻る）。
+  runNetworkMutation("カード使用", () => useDropAbilityAction(owner, card));
 }
 
 // 対抗ウィンドウ(相手の攻撃/行動への応答)中、この手札カードが【対抗】で使える種別か。

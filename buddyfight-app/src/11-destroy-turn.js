@@ -16,6 +16,14 @@ function canDeclareAttack(attacker) {
     // デイ・オブ・ザ・ドラゴン等の他の攻撃禁止は無視できないため、禁止の発生源を確認する。
     const sources = state.monsterAttackForbiddenSources?.[attacker.owner] || [];
     const ignored = hasKeyword(attacker.card, "ignoreAttackForbidden") ? ["グレイプニル"] : [];
+    // 場の継続 ignoreNamedAttackForbid（ヴァイキングソード0081: 君のモンスターは「デイ・オブ・ザ・ドラゴン」の攻撃禁止効果を受けない）
+    zones.forEach((zone) => {
+      activeContinuousEffects(player?.field?.[zone]).forEach((effect) => {
+        if (effect.op === "ignoreNamedAttackForbid" && effect.sourceName) {
+          ignored.push(effect.sourceName);
+        }
+      });
+    });
     const blocked = sources.length === 0 || sources.some((src) => !ignored.includes(src));
     if (blocked) {
       return false;
@@ -32,6 +40,12 @@ function canDeclareAttack(attacker) {
   }
   if ((attacker.card.cannotAttackZones || []).includes(attacker.zone)) {
     // 「このカードはレフトとライトに攻撃できない」(武装騎神 デュナミス 0001)等。
+    return false;
+  }
+  if (attacker.card.cannotAttackThisTurn && !hasKeyword(attacker.card, "ignoreAttackForbidden")) {
+    // 「そのターン中、そのモンスターは攻撃できない」(グレイプニルのソウルコール等)。
+    // レスト(used)と異なりスタンドしても解除されず、ターン終了(clearTurnModifiers)でのみクリアされる。
+    // ただし「グレイプニルの効果を受けない」カード(魔狼フェンリル/マーナガルム=ignoreAttackForbidden)は記載通り攻撃できる。
     return false;
   }
   if (!checkCardConditions(attacker.card.attackConditions || [], attacker.owner, {
@@ -150,6 +164,18 @@ function turnDestroyImmunityBlocks(card) {
 function destroyImmunityBlocks(card, cause, owner) {
   if (!cause) return false;
   if (grantedDestroyImmunityBlocks(card, cause)) return true;
+  if (
+    soulContinuousGrantsOp(card, "grantDestroyImmunity", (e) => {
+      if (e.from) {
+        if (e.from.byBattle && !cause.byBattle) return false;
+        if (e.from.byEffect && !cause.byEffect) return false;
+        if (e.from.byOpponent && !cause.byOpponent) return false;
+      }
+      return true;
+    })
+  ) {
+    return true;
+  }
   if (turnDestroyImmunityBlocks(card)) return true;
   const imm = card.destroyImmunity;
   if (!imm) return false;
@@ -271,9 +297,19 @@ async function destroyFieldCard(owner, zone, options = {}) {
   applyLifeLink(card, owner);
   recordDestroyedEventWindow(card, owner);
   recordSpecialCallOpportunity(card, owner, zone, options);
-  queueDestroyedTriggers(card, owner, zone, options.cause);
+  // suppressDestroyedTriggers: 「(場のモンスターの)能力全てを無効化してから破壊」(大魔法 ラグナロク 0030)では、
+  // 破壊されたモンスター“自身”の破壊時/場離れ誘発は能力ごと無効化されているため発火させない。
+  if (!options.suppressDestroyedTriggers) {
+    queueDestroyedTriggers(card, owner, zone, options.cause);
+    queueLeaveFieldTriggers(card, owner, zone);
+  } else if ((card.soul || []).length > 0) {
+    // 破壊時誘発を通さないため、遅延させたソウル(destroyTriggerUsesSoul)の回収を自前で行いソウル残留を防ぐ。
+    player.drop.push(...card.soul);
+    card.soul = [];
+  }
+  // 味方破壊時誘発は「破壊されたモンスター自身の能力」ではないため、能力無効化(ラグナロク)でも抑制しない。
+  // 非モンスター(呪文/アイテム)の『味方が破壊された時』反応が正しく発火する（近似: 他モンスターの同種反応も発火し得る）。
   queueAllyDestroyedTriggers(card, owner, zone, options.cause);
-  queueLeaveFieldTriggers(card, owner, zone);
   queueDestroyReactionTriggers(card);
   return card;
 }
@@ -971,11 +1007,13 @@ async function endTurn() {
   state.attacksThisTurn = 0;
   state.attackDestroyedByAttribute = [{}, {}]; // 属性別の攻撃撃破数(このターン)をリセット
   state.monstersDestroyedThisTurn = [0, 0]; // このターン破壊されたモンスター数(所有者別)をリセット
+  state.calledCardNamesThisTurn = [{}, {}]; // 「1ターンにN枚だけコール」(竜騎士 トモエ 0012 等)のカウンタをリセット
   state.suppressLifeLinkThisTurn = [false, false]; // ライフリンク無効化(ターンスコープ)をリセット
   state.attackRedirectThisTurn = [null, null]; // 攻撃再誘導(ターンスコープ)をリセット
   state.opponentCounterLockThisTurn = []; // 対抗ロック(ターンスコープ)をリセット
   state.turnDestroyImmunity = []; // ターン限定の破壊耐性(対抗フォースフィールド等)をリセット
   state.lastDamageTaken = [0, 0];
+  state.turnDamageEvents = []; // 「武器がダメージを与えたターン中」判定用の蓄積をターン境界でクリア
   state.linkAttackers = [];
   state.buddyCallDeclared = null;
   addLog(`${activePlayer().name}のターンです。`);
@@ -1034,6 +1072,7 @@ function clearTurnModifiers() {
         card.turnSuppressedKeywords = [];
         card.preventNextDestroyCount = 0;
         card.preventNextDestroyEffects = []; // 未発火の破壊置換effect(反撃付与等)が翌ターンへ残留しないようクリア
+        card.cannotAttackThisTurn = false; // 「そのターン中攻撃できない」(グレイプニル等)をターン終了で解除
         card.additionalNames = []; // gainNameAsSelected（追加のカード名・ターンスコープ）をリセット
         if (card.destroyReaction?.duration === "turn") {
           card.destroyReaction = null; // attachDestroyReaction（そのターン中のみ）を解除

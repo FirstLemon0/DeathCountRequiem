@@ -212,6 +212,16 @@
           }
         ]
       },
+      "continuous": [
+        {
+          "op": "restrictOwnCall",
+          "controller": "self",
+          "allowFilter": {
+            "cardType": "monster",
+            "attribute": "竜騎士"
+          }
+        }
+      ],
       "abilities": [
         {
           "id": "bt05-0004-destroy-gauge",
@@ -270,6 +280,25 @@
       },
       "keywords": [
         "doubleAttack"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "size": -3,
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "魔術師",
+                "baseSize": 2
+              }
+            }
+          ]
+        }
       ]
     },
     {
@@ -482,7 +511,7 @@
           ],
           "conditions": [
             {
-              "op": "pendingAttackDefenderIsSelf"
+              "op": "pendingAttackTargetIsSource"
             },
             {
               "op": "sourceSoulCountGte",
@@ -541,6 +570,7 @@
       "abilities": [
         {
           "id": "bt05-0009-spirit",
+          "label": "霊撃",
           "kind": "triggered",
           "event": "destroyByAttack",
           "effects": [
@@ -678,6 +708,7 @@
       "critical": 1,
       "defense": 2000,
       "flavor": "吾兄のお心のままに、付き従いましょう。",
+      "callLimitPerTurn": 1,
       "callCost": {
         "gauge": 1
       },
@@ -1253,6 +1284,7 @@
       "abilities": [
         {
           "id": "bt05-0022-spirit-strike",
+          "label": "霊撃",
           "kind": "triggered",
           "event": "destroyByAttack",
           "effects": [
@@ -1931,7 +1963,19 @@
       "keywords": [
         "set"
       ],
-      "uniqueSet": true
+      "uniqueSet": true,
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "72柱",
+            "baseSize": 2
+          },
+          "size": -1
+        }
+      ]
     },
     {
       "id": "bt05-0037",
@@ -4327,16 +4371,10 @@
               "amount": 1
             }
           ],
-          "target": {
-            "type": "fieldCard",
-            "controller": "any",
-            "filter": {}
-          },
           "effects": [
             {
-              "op": "destroy",
-              "target": "$target",
-              "rockPaperScissors": true
+              "op": "destroyChosenByRpsWinner",
+              "filter": {}
             }
           ]
         }
@@ -4594,7 +4632,27 @@
       "keywords": [
         "set"
       ],
-      "uniqueSet": true
+      "uniqueSet": true,
+      "abilities": [
+        {
+          "id": "bt05-0083-nullified-damage",
+          "kind": "triggered",
+          "event": "allyAttackNullified",
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "continuous": [
+        {
+          "op": "preventLifeGainByEffect",
+          "controller": "opponent"
+        }
+      ]
     },
     {
       "id": "bt05-0084",
@@ -4891,6 +4949,34 @@
             {
               "op": "moveTopDeckToDrop",
               "amount": 1
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "movedToDropMatches",
+                  "filter": {
+                    "cardType": "monster"
+                  }
+                }
+              ]
+            },
+            {
+              "op": "gainLife",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "not",
+                  "condition": {
+                    "op": "movedToDropMatches",
+                    "filter": {
+                      "cardType": "monster"
+                    }
+                  }
+                }
+              ]
             }
           ],
           "limit": {
@@ -4922,7 +5008,19 @@
       },
       "costs": {
         "equip": []
-      }
+      },
+      "abilities": [
+        {
+          "id": "bt05-0089-equip-scry",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "lookTopCardPlaceTopOrBottom"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "bt05-0090",
@@ -5321,7 +5419,14 @@
             "amount": 1
           }
         ]
-      }
+      },
+      "continuous": [
+        {
+          "op": "damageReceivedReduction",
+          "amount": 1,
+          "nonAttackOnly": true
+        }
+      ]
     },
     {
       "id": "bt05-0100",
@@ -5680,7 +5785,8 @@
             {
               "op": "dealDamage",
               "player": "opponent",
-              "amount": 2
+              "amount": 2,
+              "floorLife": 1
             }
           ]
         }
@@ -5849,6 +5955,7 @@
       "abilities": [
         {
           "id": "bt05-0114-spirit-strike",
+          "label": "霊撃",
           "kind": "triggered",
           "event": "destroyByAttack",
           "effects": [
@@ -6273,7 +6380,18 @@
       "keywords": [
         "set"
       ],
-      "uniqueSet": true
+      "uniqueSet": true,
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster",
+            "hasAbilityLabel": "霊撃"
+          },
+          "power": 2000
+        }
+      ]
     },
     {
       "id": "bt05-0130",
@@ -6293,7 +6411,28 @@
       "keywords": [
         "set"
       ],
-      "uniqueSet": true
+      "uniqueSet": true,
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "opponent",
+          "targetZones": [
+            "center"
+          ],
+          "filter": {
+            "cardType": "monster"
+          },
+          "defense": -2000,
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "nameIncludes": "煉獄騎士団"
+              }
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "bt05-0131",
@@ -6461,12 +6600,27 @@
       "flavor": "君とは、必ずまた出会う。 楽しみにしていてくれ！",
       "abilities": [
         {
-          "id": "bt05-0135-ride",
+          "id": "bt05-0135-rideout",
+          "label": "アルティメット・カードバーンに乗り換える",
           "kind": "activated",
           "timing": [
             "main"
           ],
           "optional": true,
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "name": "カードライノ"
+              }
+            },
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "name": "カードサーペント"
+              }
+            }
+          ],
           "cost": [
             {
               "op": "payGauge",
@@ -6475,8 +6629,147 @@
           ],
           "script": [
             {
-              "op": "log",
-              "message": "カードバーンの【搭乗】(ライドアウト)は未実装の近似です。"
+              "op": "selectCards",
+              "var": "rhino",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "name": "カードライノ"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "カードバーン",
+              "lead": "ドロップに置く「カードライノ」を選択"
+            },
+            {
+              "op": "moveSelected",
+              "var": "rhino",
+              "to": "drop"
+            },
+            {
+              "op": "selectCards",
+              "var": "serpent",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "name": "カードサーペント"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "カードバーン",
+              "lead": "ドロップに置く「カードサーペント」を選択"
+            },
+            {
+              "op": "moveSelected",
+              "var": "serpent",
+              "to": "drop"
+            },
+            {
+              "op": "dropSelf"
+            },
+            {
+              "op": "chooseBranch",
+              "title": "アルティメット・カードバーンを搭乗",
+              "lead": "デッキか手札から「アルティメット・カードバーン」を搭乗させる",
+              "options": [
+                {
+                  "key": "deck",
+                  "label": "デッキから",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "u",
+                      "from": "deck",
+                      "controller": "self",
+                      "filter": {
+                        "name": "アルティメット・カードバーン"
+                      },
+                      "amount": 1,
+                      "require": false,
+                      "title": "アルティメット・カードバーン",
+                      "lead": "デッキから搭乗させるカードを選択"
+                    },
+                    {
+                      "op": "equipSelectedAsItem",
+                      "var": "u"
+                    },
+                    {
+                      "op": "shuffleDeck"
+                    }
+                  ]
+                },
+                {
+                  "key": "hand",
+                  "label": "手札から",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "u",
+                      "from": "hand",
+                      "controller": "self",
+                      "filter": {
+                        "name": "アルティメット・カードバーン"
+                      },
+                      "amount": 1,
+                      "require": false,
+                      "title": "アルティメット・カードバーン",
+                      "lead": "手札から搭乗させるカードを選択"
+                    },
+                    {
+                      "op": "equipSelectedAsItem",
+                      "var": "u"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "bt05-0135-ride-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "bt05-0135-ride-field",
+          "label": "『搭乗』で装備する",
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
             }
           ]
         }
@@ -6635,6 +6928,16 @@
           }
         ]
       },
+      "continuous": [
+        {
+          "op": "restrictOwnCall",
+          "controller": "self",
+          "allowFilter": {
+            "cardType": "monster",
+            "attribute": "竜騎士"
+          }
+        }
+      ],
       "abilities": [
         {
           "id": "bt05-s003-destroy-gauge",
@@ -6693,6 +6996,27 @@
       },
       "keywords": [
         "doubleAttack"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "size": -3,
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "魔術師",
+                "sizeIn": [
+                  2
+                ]
+              }
+            }
+          ]
+        }
       ]
     },
     {
@@ -7062,7 +7386,7 @@
           ],
           "cost": [
             {
-              "op": "discardSoul",
+              "op": "discardSoulToDeckBottom",
               "amount": 3
             }
           ],
@@ -7112,6 +7436,7 @@
       "abilities": [
         {
           "id": "bt05-s010-spirit",
+          "label": "霊撃",
           "kind": "triggered",
           "event": "destroyByAttack",
           "effects": [

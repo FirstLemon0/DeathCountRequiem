@@ -185,12 +185,17 @@ class GameRoom {
     if (Object.prototype.hasOwnProperty.call(params, "selected")) {
       this.api.setSelected(params.selected);
     }
-    if (Object.prototype.hasOwnProperty.call(params, "attackTarget")) {
-      this.api.elements.attackTarget.value = params.attackTarget ?? "";
-    }
-    if (Object.prototype.hasOwnProperty.call(params, "effectTarget")) {
-      this.api.elements.effectTarget.value = params.effectTarget ?? "";
-    }
+    // params に含まれない攻撃/効果対象は毎回 '' にリセットする。ブラウザは新カード選択時に
+    // effectTarget を空へクリアする(20-ui-touch.js handCardMenuLocal/fieldCardMenuLocal)が、
+    // サーバの applyAction はその経路を通らないため、明示供給しない限り前アクションの対象が
+    // 残留し、targetForAbilityUse が残留値を新カードの target spec と照合して未選択の相手へ
+    // 効果/攻撃を撃つ。供給値で毎回上書きしてブラウザのカード選択時クリアと挙動を揃える。
+    this.api.elements.attackTarget.value = Object.prototype.hasOwnProperty.call(params, "attackTarget")
+      ? (params.attackTarget ?? "")
+      : "";
+    this.api.elements.effectTarget.value = Object.prototype.hasOwnProperty.call(params, "effectTarget")
+      ? (params.effectTarget ?? "")
+      : "";
     const dispatch = {
       draw: a.drawAction,
       charge: a.chargeAction,

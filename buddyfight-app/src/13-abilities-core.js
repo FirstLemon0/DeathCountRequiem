@@ -963,23 +963,47 @@ function checkCondition(condition, owner, context = {}) {
       return Boolean(source.card && matchesCardFilter(source.card, condition.filter || {}));
     });
   }
+  if (condition.op === "selfReceivedDamage") {
+    // 「君がダメージを受けた時に使える」（五角の誓い H-BT03/0025 等）。
+    // 戦闘ダメージ応答窓(counterEventWindow.kind==="damageDealt")で、自分が被弾者(defender)かつダメージ>0のとき真。
+    const event = state.counterEventWindow;
+    return Boolean(
+      event &&
+        event.turnCount === state.turnCount &&
+        event.kind === "damageDealt" &&
+        event.defender === owner &&
+        (event.damage || 0) > 0,
+    );
+  }
   if (condition.op === "damageDealtThisTurnMatches") {
-    // このターン中にダメージを与えた発生源を見る（応答ウィンドウが閉じても残る lastDamageEvent を参照）。
-    // 竜撃奥義 デュアル・ムービングフォース（必殺技＝ファイナルフェイズで使用）が
-    // 「武器がダメージを与えたターン中」を判定するために使う。
-    const event = state.lastDamageEvent;
-    if (!event || event.turnCount !== state.turnCount) {
-      return false;
-    }
-    const sources = event.sources || (event.source ? [event.source] : []);
-    return sources.some((source) => {
-      if (condition.controller === "self" && source.owner !== owner) {
+    // 既定は直近のダメージイベント(lastDamageEvent)のみを参照する（【対抗】応答ウィンドウ用途。
+    // 「君が《武器》で相手にダメージを与えた時に使える」等はその戦闘の直後に使う想定）。
+    // anyTimeThisTurn:true のカード（竜撃奥義 デュアル・ムービングフォース＝必殺技＝ファイナルフェイズで使用）は
+    // 「武器がダメージを与えたターン中」を判定するため、当該ターンの全ダメージイベント(turnDamageEvents)を走査する。
+    // lastDamageEvent は毎戦闘で上書きされ、武器ダメージの後に別のダメージが入ると発生源を見失うため。
+    const events = condition.anyTimeThisTurn
+      ? (state.turnDamageEvents && state.turnDamageEvents.length
+          ? state.turnDamageEvents
+          : state.lastDamageEvent
+            ? [state.lastDamageEvent]
+            : [])
+      : state.lastDamageEvent
+        ? [state.lastDamageEvent]
+        : [];
+    return events.some((event) => {
+      if (!event || event.turnCount !== state.turnCount) {
         return false;
       }
-      if (condition.controller === "opponent" && source.owner === owner) {
-        return false;
-      }
-      return Boolean(source.card && matchesCardFilter(source.card, condition.filter || {}));
+      const sources = event.sources || (event.source ? [event.source] : []);
+      return sources.some((source) => {
+        if (condition.controller === "self" && source.owner !== owner) {
+          return false;
+        }
+        if (condition.controller === "opponent" && source.owner === owner) {
+          return false;
+        }
+        return Boolean(source.card && matchesCardFilter(source.card, condition.filter || {}));
+      });
     });
   }
   if (condition.op === "lastEnteredCardMatches") {

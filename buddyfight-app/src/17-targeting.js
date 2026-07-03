@@ -236,7 +236,7 @@ function cannotReturnToHand(card) {
   if (!slot) {
     return false;
   }
-  return state.players.some((player) =>
+  const fieldPrevents = state.players.some((player) =>
     zones.some((zone) => {
       const sourceCard = player.field[zone];
       return (sourceCard?.continuous || []).some(
@@ -246,6 +246,7 @@ function cannotReturnToHand(card) {
       );
     }),
   );
+  return fieldPrevents || soulContinuousGrantsOp(card, "preventReturnToHand");
 }
 
 function targetSourceConditionMatches(targetSpec, context = {}) {
@@ -339,6 +340,10 @@ function matchesCardFilter(card, filter = {}) {
     return false;
   }
   if (filter.basePowerLte !== undefined && (card.power || 0) > filter.basePowerLte) {
+    return false;
+  }
+  // baseSize: 印字（元々の）サイズを見る（サイズ継続修整を無視し effectiveSize 再入を回避）。
+  if (filter.baseSize !== undefined && (card.size || 0) !== filter.baseSize) {
     return false;
   }
   if (filter.hasAbilityLabel !== undefined && !(card.abilities || []).some((ability) => ability.label === filter.hasAbilityLabel)) {

@@ -17,7 +17,9 @@ function showCardTooltip(card, event) {
     ? elements.cardSheet
     : elements.selectionDialog?.open
       ? elements.selectionDialog
-      : document.body;
+      : elements.dropDialog?.open
+        ? elements.dropDialog
+        : document.body;
   if (tooltipHost?.append && elements.cardTooltip.parentElement !== tooltipHost) {
     tooltipHost.append(elements.cardTooltip);
   }
@@ -149,6 +151,7 @@ function costStepLabel(step) {
     putDropToSoul: `ドロップ${amount}枚をソウル`,
     putTopDeckToGauge: `デッキ上${amount}枚をゲージ`,
     discardSoul: `ソウル${amount}枚を捨てる`,
+    discardSoulToDeckBottom: `ソウル${amount}枚をデッキの下`,
     dropOwnMonster: `自分のモンスター${amount}枚をドロップ`,
     destroyOwnMonster: `自分のモンスター${amount}枚を破壊`,
     destroySource: "このカードを破壊",
@@ -287,6 +290,30 @@ function isDrawByEffectPrevented(drawerOwner) {
           return false;
         }
         if (effect.controller === "opponent" && pIdx === drawerOwner) {
+          return false;
+        }
+        return true;
+      });
+    }),
+  );
+}
+
+// 効果によるライフ回復の禁止（ペイン・フィールド 0083「相手はバディギフト以外でライフを回復できない」）。
+// preventDrawByEffect と同型。継続 preventLifeGainByEffect を持つ場札があり、その controller が
+// gainerOwner を指す時に true（=効果でのライフ回復不可）。バディコール/バディギフトの+1は本ヘルパを
+// 通らない別経路のため、この禁止の対象外（=許可）となる。
+function isLifeGainByEffectPrevented(gainerOwner) {
+  return state.players.some((player, pIdx) =>
+    zones.some((zone) => {
+      const source = player.field[zone];
+      return activeContinuousEffects(source).some((effect) => {
+        if (effect.op !== "preventLifeGainByEffect") {
+          return false;
+        }
+        if (effect.controller === "self" && pIdx !== gainerOwner) {
+          return false;
+        }
+        if (effect.controller === "opponent" && pIdx === gainerOwner) {
           return false;
         }
         return true;

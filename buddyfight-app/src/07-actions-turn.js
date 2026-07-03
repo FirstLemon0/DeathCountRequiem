@@ -136,6 +136,28 @@ async function goMainPhase() {
   render();
 }
 
+// 「このカードは1ターンにN枚だけコールできる」(竜騎士 トモエ 0012 等) のコール回数制限。
+// 同名カードがこのターンに既に callLimitPerTurn 回コールされていれば true（=これ以上コール不可）。
+function isCallCountLimitedThisTurn(owner, card) {
+  const limit = card?.callLimitPerTurn;
+  if (!limit) {
+    return false;
+  }
+  const counts = state.calledCardNamesThisTurn?.[owner] || {};
+  return (counts[card.name] || 0) >= limit;
+}
+
+// コール宣言が成立した（コスト支払い済み）カードを、このターンのコール回数として記録する。
+// 無効化されても「コールした」ことに変わりはないため、宣言成立時点で加算する。
+function recordCardCalledThisTurn(owner, card) {
+  if (!card?.callLimitPerTurn) {
+    return;
+  }
+  state.calledCardNamesThisTurn ||= [{}, {}];
+  const counts = (state.calledCardNamesThisTurn[owner] ||= {});
+  counts[card.name] = (counts[card.name] || 0) + 1;
+}
+
 async function callMonster(zone) {
   const selectedCard = getSelectedCard();
   const selectedOwner = state.selected?.owner;
@@ -175,6 +197,11 @@ async function callMonster(zone) {
     addLog(`${selectedCard.name}は今コールできません。`);
     return;
   }
+  if (isCallCountLimitedThisTurn(selectedOwner, selectedCard)) {
+    // 「このカードは1ターンにN枚だけコールできる」(竜騎士 トモエ 0012 等)。同名でこのターンの上限に達していれば不可。
+    addLog(`${selectedCard.name}はこのターンこれ以上コールできません。`);
+    return;
+  }
   const actualZone = stackTarget?.zone || zone;
   if (
     (selectedCard.callZones && !selectedCard.callZones.includes(actualZone)) ||
@@ -209,6 +236,7 @@ async function callMonster(zone) {
   if (specialCallOpportunity) {
     specialCallOpportunity.used = true;
   }
+  recordCardCalledThisTurn(selectedOwner, card);
   addLog(`${player.name}は${card.name}を${zoneLabel(actualZone)}にコール宣言しました。対抗確認を行ってください。`);
   render();
 }
@@ -695,12 +723,32 @@ function clearPendingAction(returnPhase = "main") {
   state.linkAttackers = [];
 }
 
+// 場のカードの継続 grantNullifyImmunity が、指定 owner のカード card に無効化耐性を付与しているか。
+// 例: 戦乙女 全知のアルヴィドル「君の使うカード名に「大魔法」を含むカードは、無効化されない」。
+function grantedNullifyImmunity(card, owner) {
+  if (!card) {
+    return false;
+  }
+  return state.players.some((player, sourceOwner) =>
+    zones.some((zone) => {
+      const source = player.field[zone];
+      return activeContinuousEffects(source).some((e) => {
+        if (e.op !== "grantNullifyImmunity") return false;
+        if (e.controller === "self" && owner !== sourceOwner) return false;
+        if (e.controller === "opponent" && owner === sourceOwner) return false;
+        if (e.filter && !matchesCardFilter(card, e.filter)) return false;
+        return true;
+      });
+    }),
+  );
+}
+
 function nullifyPendingAction(sourceName = "効果") {
   if (!state.pendingAction) {
     return false;
   }
   const action = state.pendingAction;
-  if (action.card?.cannotBeNullified) {
+  if (action.card?.cannotBeNullified || grantedNullifyImmunity(action.card, action.owner)) {
     addLog(`${action.card.name}は無効化されません。`);
     return false;
   }

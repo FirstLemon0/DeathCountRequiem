@@ -24,6 +24,7 @@
   --p2: #FF5D7A;
   --p2-rgb: 255 93 122;
   --success: #5BD08A;
+  --accent: #3D82C4;
   /* カード種別(rgbチャンネル) */
   --c-monster-rgb: 255 107 122;
   --c-spell-rgb: 56 225 198;
@@ -47,6 +48,7 @@
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
     color-scheme: light;
+    --accent: #2D6FB0;
   /* 基本 */
   --bg: #ECE8DF;
   --panel: #FFFFFF;
@@ -91,6 +93,7 @@
 }
 :root[data-theme="light"] {
   color-scheme: light;
+  --accent: #2D6FB0;
   /* 基本 */
   --bg: #ECE8DF;
   --panel: #FFFFFF;
@@ -394,6 +397,16 @@ h2 {
   color: var(--warn);
 }
 
+/* 席相対フリップ(#20): 後手(P2)席の視点では自分の場を下段・相手を上段に入れ替える。
+   DOM は P2(opponent)=上/P1(active-player)=下 固定なので、seat-flip 時のみ order で反転する
+   （player2Zone=自分→下段, player1Zone=相手→上段）。デスクトップ(col1グリッド)・モバイル(単列flow)共通。 */
+body.seat-flip .player-zone.active-player {
+  order: 2;
+}
+body.seat-flip .player-zone.opponent {
+  order: 3;
+}
+
 .fighter-panel {
   display: flex;
   align-items: center;
@@ -443,6 +456,15 @@ h2 {
   color: var(--text-2);
   background: rgb(var(--surface-deep-rgb) / 0.9);
   font-size: 0.8rem;
+}
+
+/* コスト資源のゲージは山/手より一段強調(ライフに次ぐ情報階層)。プレイヤー配色に連動。 */
+#p1Gauge,
+#p2Gauge {
+  border-color: var(--player-accent);
+  color: var(--player-accent);
+  font-weight: 800;
+  font-size: 0.85rem;
 }
 
 .zones-row {
@@ -579,9 +601,13 @@ h2 {
 }
 
 /* 複数アイテム装備時: 2枚目以降を少しずつ右下にずらして全て見えるようにする（--item-index を利用）。 */
+/* 束見せ(#4): 複数アイテムはゾーンを縦に肥大させず束で重ねる。1枚目(item-layer)が高さの基準となり、
+   2枚目以降(item-layer-stacked)を絶対配置で右下へ少しずつずらす。隠れた札は端が覗きホバー/タップで確認。 */
 .flag-item-stack.multi-item .item-layer-stacked {
-  margin-top: calc(18px - var(--item-index, 0) * 6px);
-  margin-left: calc(18px + var(--item-index, 0) * 14px);
+  position: absolute;
+  top: calc(18px + var(--item-index, 1) * 10px);
+  left: calc(18px + var(--item-index, 1) * 16px);
+  margin: 0;
   z-index: calc(10 + var(--item-index, 0));
 }
 
@@ -657,9 +683,9 @@ h2 {
   white-space: nowrap;
   line-height: 1.1;
 }
-.card-stats-board .st-pow { color: var(--stat-pow, #e5534b); }
-.card-stats-board .st-def { color: var(--stat-def, #4c8dff); }
-.card-stats-board .st-crit { color: var(--stat-crit, #e3b341); }
+.card-stats-board .st-pow { color: rgb(var(--c-monster-rgb)); }
+.card-stats-board .st-def { color: rgb(var(--c-item-rgb)); }
+.card-stats-board .st-crit { color: rgb(var(--c-impact-rgb)); }
 .card-stats-board .sep { color: var(--muted); margin: 0 1px; font-weight: 400; }
 
 /* 手札カード: 画像下にカード名（効果/コストはタップのポップアップに任せる）。 */
@@ -1075,6 +1101,10 @@ dialog::backdrop {
 
 .selection-dialog-body {
   width: min(680px, calc(100vw - 28px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100dvh - 28px);
 }
 
 .selection-dialog-tools {
@@ -1091,6 +1121,7 @@ dialog::backdrop {
 }
 
 .selection-dialog-preview {
+  min-height: 0;
   max-height: 28vh;
   overflow: auto;
   border: 1px solid var(--line-soft);
@@ -1153,6 +1184,7 @@ dialog::backdrop {
 .selection-dialog-list {
   display: grid;
   gap: 8px;
+  min-height: 0;
   max-height: min(58vh, 520px);
   overflow: auto;
 }
@@ -1479,6 +1511,15 @@ dialog.selection-board-peek .selection-dialog-actions {
   }
   body.thin-client.game-started #lobbyPanel { display: none; }
 
+  /* 中継版 netplay.html の接続パネル(#netplayPanel)はモバイルでも必須。
+     部屋作成/参加/URLコピー＋接続状態(#networkStatus)を表示する（.network-panel の
+     display:none 例外）。#netplayPanel は netplay.html だけが持つidなので他画面に影響しない。 */
+  #netplayPanel {
+    display: block;
+    order: 1;
+    margin: 8px 6px;
+  }
+
   /* 盤面: 相手(上)→自分(下)。自分はヘッダを下端へ送りセンターを中央ラインで向かい合わせ */
   .player-zone {
     display: flex;
@@ -1545,14 +1586,12 @@ dialog.selection-board-peek .selection-dialog-actions {
     text-overflow: ellipsis;
   }
   /* 盤面チップ: 攻/防/打 の3値を「数値 / 数値 / 数値」で(色で識別)。狭いセルに収まるよう少し小さく中央寄せ。 */
-  .board-grid .card .card-stats {
-    justify-content: center;
-    gap: 3px;
+  .board-grid .card .card-stats-board {
     font-size: 0.62rem;
     letter-spacing: -0.02em;
+    white-space: normal;
   }
-  .board-grid .card .card-stats .st-def::before,
-  .board-grid .card .card-stats .st-crit::before { margin-right: 3px; }
+  .board-grid .card .card-stats-board .sep { margin: 0; }
   /* 盤面のカード裏プレビュー行はモバイルでは枚数表示(手N)に集約して隠す（縦圧縮・1画面化） */
   .hand-preview { display: none; }
 
@@ -1838,8 +1877,7 @@ dialog.selection-board-peek .selection-dialog-actions {
 /* 対象選択モードのハイライト */
 /* 権威版(play.js)の攻撃対象ハイライト .attack-target-highlight も減光の除外に含める
    （含めないと対象も opacity:0.5 になり、特にダークモードで赤枠が背景に埋もれて見えない）。 */
-body.targeting-active .zone.field:not(.attack-target-candidate):not(.effect-target-candidate):not(.attack-target-highlight),
-body.targeting-active .fighter-panel {
+body.targeting-active .zone.field:not(.attack-target-candidate):not(.effect-target-candidate):not(.attack-target-highlight) {
   opacity: 0.5;
 }
 /* 攻撃候補は権威版(.attack-target-highlight)と同じ赤枠パルスに統一。
@@ -1951,6 +1989,15 @@ body.targeting-active .targeting-banner {
 #chargeButton { display: none; }
 /* 攻防手札切替はホットシート(ローカル/中継)専用。thin(権威版)は1席1画面なので不要。 */
 .thin-client #counterHandButton { display: none; }
+
+/* 対戦開始前は thin(権威版)の偽プレースホルダ盤面/操作/手札を全幅で隠す（PC幅でも）。
+   モバイルは @media 640 にも同等ルールがあるが、PCでは未接続でも static 初期値
+   (ライフ10/ターン プレイヤー1)とフェイズボタンが露出するため top-level にも置く。 */
+body.thin-client:not(.game-started) .status-strip,
+body.thin-client:not(.game-started) .playmat,
+body.thin-client:not(.game-started) .hand-dock {
+  display: none;
+}
 
 /* 共有: 画面下部アクションメニュー（カードタップ→操作。ローカル/中継/権威版で同一見た目） */
 .play-action-backdrop {

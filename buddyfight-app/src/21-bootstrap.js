@@ -58,8 +58,10 @@ document.querySelectorAll(".zone.field").forEach((zoneButton) => {
       return;
     }
     if (uiTargeting?.mode === "effect") {
-      if (isEffectCandidateZone(owner, zone)) {
-        pickEffectTarget(owner, zone);
+      // 複数アイテム時はタップしたアイテムの実スロット(item2..)を解決してから候補判定/確定する（攻撃/平時分岐と同じ）。
+      const resolvedEffZone = resolveClickedItemZone(event, owner, zone);
+      if (isEffectCandidateZone(owner, resolvedEffZone)) {
+        pickEffectTarget(owner, resolvedEffZone);
       }
       return; // 候補外タップは無視（権威版と同じ。キャンセルはバナーのボタン）
     }

@@ -260,6 +260,7 @@ function newGame() {
     lifeLinkEvents: [],
     specialCallOpportunities: [],
     counterEventWindow: null,
+    turnDamageEvents: [],
     destroyedEventWindow: null,
     enteredEventWindow: null,
     extraTurnOwner: null,

@@ -1755,6 +1755,7 @@
               "filter": {
                 "cardType": "monster"
               },
+              "nullifyAbilities": true,
               "ignoreSoulguard": true,
               "ignoreDestroyImmunity": true
             },
@@ -2054,6 +2055,7 @@
       "power": 6000,
       "critical": 1,
       "flavor": "決して破壊されることがないという、不滅の聖剣。",
+      "canBeBuddy": true,
       "keywords": [
         "equipChange"
       ],
@@ -2471,7 +2473,33 @@
       "power": 4000,
       "critical": 2,
       "defense": 6000,
-      "flavor": "デーーーーストロォォォォォイ！！！"
+      "flavor": "デーーーーストロォォォォォイ！！！",
+      "abilities": [
+        {
+          "id": "bt04-0045-destroy-damage",
+          "kind": "triggered",
+          "event": "allySpellCast",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "name": "ドラゴニック・デストロイ"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 3
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bt04-0045-destroy-damage"
+          }
+        }
+      ]
     },
     {
       "id": "bt04-0046",
@@ -4090,7 +4118,13 @@
       "power": 3000,
       "critical": 2,
       "defense": 1000,
-      "flavor": "数多の大戦を生き抜いてきた歴戦の兵士。"
+      "flavor": "数多の大戦を生き抜いてきた歴戦の兵士。",
+      "continuous": [
+        {
+          "op": "ignoreNamedAttackForbid",
+          "sourceName": "デイ・オブ・ザ・ドラゴン"
+        }
+      ]
     },
     {
       "id": "bt04-0082",
@@ -4615,7 +4649,8 @@
               "zoneVar": "zone"
             },
             {
-              "op": "preventOwnMonsterAttacksThisTurn"
+              "op": "preventCardAttackThisTurn",
+              "var": "soulMonster"
             }
           ]
         }
@@ -4691,7 +4726,14 @@
       },
       "equipCost": {
         "gauge": 1
-      }
+      },
+      "continuous": [
+        {
+          "op": "damageReceivedReduction",
+          "amount": 1,
+          "nonAttackOnly": true
+        }
+      ]
     },
     {
       "id": "bt04-0095",
@@ -5484,6 +5526,7 @@
               "filter": {
                 "cardType": "monster"
               },
+              "nullifyAbilities": true,
               "ignoreSoulguard": true,
               "ignoreDestroyImmunity": true
             },

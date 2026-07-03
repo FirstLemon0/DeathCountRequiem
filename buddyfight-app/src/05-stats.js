@@ -8,6 +8,9 @@ function getFieldSize(player) {
 }
 
 // 継続 modifyStats の size 増減を反映した実効サイズ（従者ガープ0013「サイズを1減らす」等）。最小0。
+// 再入ガード: サイズ条件(ownFieldCardExists の filter.sizeIn 等)の評価が、このカード自身の
+// effectiveSize を再帰呼び出しして無限ループになるのを防ぐ（サイズ参照の自己言及を印字サイズで打ち切る）。
+const sizeEvaluationStack = new Set();
 function effectiveSize(card) {
   if (!card) {
     return 0;
@@ -15,10 +18,20 @@ function effectiveSize(card) {
   // conditionalSize: 付与元カード(granterInstanceId)が場にある間、サイズを固定値に上書きする
   // （大首領アンノウン 0029「そのカードはアンノウンが場にいるならサイズ0」）。
   const override = card.conditionalSize;
-  if (override && granterOnField(override.granterInstanceId)) {
-    return Math.max(0, (override.size || 0) + continuousStatBonus(card, "size"));
+  const baseSize = override && granterOnField(override.granterInstanceId) ? override.size || 0 : card.size || 0;
+  if (card.instanceId && sizeEvaluationStack.has(card.instanceId)) {
+    return Math.max(0, baseSize);
   }
-  return Math.max(0, (card.size || 0) + continuousStatBonus(card, "size"));
+  if (card.instanceId) {
+    sizeEvaluationStack.add(card.instanceId);
+  }
+  try {
+    return Math.max(0, baseSize + continuousStatBonus(card, "size"));
+  } finally {
+    if (card.instanceId) {
+      sizeEvaluationStack.delete(card.instanceId);
+    }
+  }
 }
 
 // 指定インスタンスIDのカードがいずれかのプレイヤーの場（モンスター/アイテム枠）にあるか。
@@ -319,6 +332,37 @@ function continuousEffectAppliesFromSoul(effect, targetCard, sourceCard, owner) 
     return false;
   }
   return true;
+}
+
+// ソウル内カードの soulContinuous（preventReturnToHand / grantDestroyImmunity 等）が、
+// フィールドカード card に op を付与しているか。controller(self/opponent) で対象側を絞り、
+// continuousEffectAppliesFromSoul（能力無効化・filter・requireBuddy）で適用可否を判定する。
+// causeCheck: 破壊耐性の from 条件など追加判定が要る op 用（省略時は常に true）。
+function soulContinuousGrantsOp(card, op, causeCheck) {
+  const targetSlot = findFieldCardSlot(card);
+  if (!targetSlot) {
+    return false;
+  }
+  return state.players.some((player, hostOwner) =>
+    zones.some((zone) => {
+      const host = player.field[zone];
+      return soulContinuousEffects(host, hostOwner).some(({ effect, sourceCard }) => {
+        if (effect.op !== op) {
+          return false;
+        }
+        if (effect.controller === "opponent" && targetSlot.owner === hostOwner) {
+          return false;
+        }
+        if ((!effect.controller || effect.controller === "self") && targetSlot.owner !== hostOwner) {
+          return false;
+        }
+        if (!continuousEffectAppliesFromSoul(effect, card, sourceCard, hostOwner)) {
+          return false;
+        }
+        return causeCheck ? causeCheck(effect) : true;
+      });
+    }),
+  );
 }
 
 function continuousEffectApplies(effect, targetCard, sourceCard) {

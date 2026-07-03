@@ -1393,6 +1393,7 @@
             },
             {
               "op": "destroyAll",
+              "nullifyAbilities": true,
               "filter": {
                 "cardType": "monster"
               }
@@ -1465,12 +1466,22 @@
                 {
                   "op": "discardSelfSoul",
                   "amount": 1
-                }
-              ],
-              "else": [
+                },
                 {
-                  "op": "draw",
-                  "amount": 1
+                  "op": "ifCondition",
+                  "condition": {
+                    "op": "not",
+                    "condition": {
+                      "op": "sourceSoulCountGte",
+                      "amount": 1
+                    }
+                  },
+                  "then": [
+                    {
+                      "op": "draw",
+                      "amount": 1
+                    }
+                  ]
                 }
               ]
             }
@@ -1648,7 +1659,8 @@
               "resolveOnEnter": true
             },
             {
-              "op": "preventOwnMonsterAttacksThisTurn"
+              "op": "preventCardAttackThisTurn",
+              "var": "soulMonster"
             }
           ]
         }

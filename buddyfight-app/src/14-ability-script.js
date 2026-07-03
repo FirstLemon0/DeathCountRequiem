@@ -328,6 +328,16 @@ async function executeAbilityScriptStep(step, context) {
   if (step.op === "restSelected") {
     return restSelectedForScript(step, context);
   }
+  if (step.op === "preventCardAttackThisTurn") {
+    // 選択した var のモンスターを「そのターン中攻撃できない」状態にする（グレイプニルのソウルコール等）。
+    // レストと違いスタンドしても解除されず、ターン終了(clearTurnModifiers)でのみ解除される。
+    for (const entry of scriptSelection(step, context)) {
+      if (entry.card) {
+        entry.card.cannotAttackThisTurn = true;
+      }
+    }
+    return true;
+  }
   if (step.op === "putSelectedToGauge") {
     return putSelectedToGaugeForScript(step, context);
   }
@@ -545,24 +555,27 @@ function scriptCardSelectionCandidates(step, context) {
     }));
   }
   const candidates = [];
-  for (const owner of scriptOwnersForController(step.controller || "self", context.owner)) {
-    const pile = scriptPileForSource(owner, from, context);
-    if (!pile) {
-      continue;
-    }
-    pile.forEach((card, index) => {
-      if (!scriptCardMatches(card, owner, null, step, context)) {
-        return;
+  const fromPiles = Array.isArray(from) ? from : [from];
+  for (const pileKey of fromPiles) {
+    for (const owner of scriptOwnersForController(step.controller || "self", context.owner)) {
+      const pile = scriptPileForSource(owner, pileKey, context);
+      if (!pile) {
+        continue;
       }
-      candidates.push({
-        card,
-        index,
-        owner,
-        source: from,
-        sourceCard: from === "soul" ? context.card : null,
-        note: step.note || scriptSourceLabel(from),
+      pile.forEach((card, index) => {
+        if (!scriptCardMatches(card, owner, null, step, context)) {
+          return;
+        }
+        candidates.push({
+          card,
+          index,
+          owner,
+          source: pileKey,
+          sourceCard: pileKey === "soul" ? context.card : null,
+          note: step.note || scriptSourceLabel(pileKey),
+        });
       });
-    });
+    }
   }
   return candidates;
 }
@@ -945,6 +958,8 @@ async function chooseBranchForScript(step, context) {
       min: 1,
       max: 1,
       forceDialog: true,
+      // 権威サーバ: 分岐選択は能力の主体(context.owner)へ往復させる（未指定だと inferPromptSeat が state.active に誤配送）。
+      promptSeat: context.owner,
     },
   );
   const branch = selected?.[0]?.option?.script;
@@ -1640,6 +1655,8 @@ async function selectZoneForScript(step, context) {
       min: 1,
       max: 1,
       forceDialog: step.forceDialog !== false,
+      // 権威サーバ: コール先の選択はコール主体(context.owner)へ往復させる（未指定だと state.active に誤配送）。
+      promptSeat: context.owner,
     },
   );
   const choice = selected?.[0];
@@ -1975,6 +1992,8 @@ function isScriptEffectStep(step) {
     "topTwoRevealOneOpponentRandomToHandOrGauge",
     "startAttackPhase",
     "restSelf",
+    "setLifeZeroSafeguard",
+    "preventAllDamageThisTurn",
     "dropSelf",
     "destroySelf",
     "destroy",

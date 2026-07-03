@@ -70,6 +70,11 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
       i += 1;
       continue;
     }
+    if (prevention.threshold && remaining < prevention.threshold) {
+      // 「N以上のダメージを受ける時」限定の軽減は、N未満のダメージには適用しない（キューには残す）。
+      i += 1;
+      continue;
+    }
     const reduction = prevention.preventAll ? remaining : Math.min(remaining, prevention.amount || 0);
     remaining -= reduction;
     if (!prevention.preventAll) {
@@ -84,6 +89,14 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
       queue.splice(i, 1);
     } else {
       i += 1;
+    }
+  }
+  // 非致死ダメージ: options.floorLife 指定時、このダメージで受け手のライフが floorLife 未満になるなら floorLife で止める。
+  // （ミネウチでござる 0109「このダメージで相手のライフが0になるなら、かわりに相手のライフは1になる」）。
+  if (options.floorLife !== undefined && remaining > 0) {
+    const maxLoss = Math.max(0, player.life - options.floorLife);
+    if (remaining > maxLoss) {
+      remaining = maxLoss;
     }
   }
   if (remaining > 0) {

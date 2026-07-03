@@ -57,6 +57,11 @@
   font-size: 0.9rem;
 }
 
+/* デッキ枚数ラベル: 50枚以上に到達したら達成色に。未達は既定の警告色のまま。 */
+#deckCountLabel.count-ok {
+  color: var(--success);
+}
+
 .field-label {
   display: grid;
   gap: 5px;
@@ -215,27 +220,60 @@
 }
 
 .validation-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
   padding: 8px;
   font-size: 0.82rem;
   line-height: 1.35;
 }
 
+.validation-icon {
+  flex: 0 0 auto;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .validation-item.ok {
   border-color: rgb(var(--c-flag-rgb) / 0.65);
+  background: rgb(var(--c-flag-rgb) / 0.1);
+}
+.validation-item.ok .validation-icon {
+  color: var(--success);
 }
 
 .validation-item.warn {
   border-color: rgb(var(--c-impact-rgb) / 0.75);
+  background: rgb(var(--c-impact-rgb) / 0.12);
+}
+.validation-item.warn .validation-icon {
+  color: var(--warn);
 }
 
 .validation-item.error {
   border-color: rgb(var(--c-monster-rgb) / 0.8);
+  background: rgb(var(--c-monster-rgb) / 0.12);
+}
+.validation-item.error .validation-icon {
+  color: rgb(var(--c-monster-rgb));
 }
 
 .status-text {
   margin-top: 8px;
   color: var(--muted);
   font-size: 0.82rem;
+}
+
+/* 検索結果が上限(140件)で打ち切られたときの案内。件数表示と併せて「途中で終わる=未実装」の誤認を防ぐ。 */
+.results-truncated-note {
+  grid-column: 1 / -1;
+  margin: 2px;
+  padding: 8px 10px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
 }
 
 #deckJsonText {
@@ -272,6 +310,15 @@
 
   .search-controls {
     grid-template-columns: 1fr;
+  }
+
+  /* タップ標的 44px(a11y/iOS HIG)。対戦画面(styles.css)と同じ規約に揃える。 */
+  .card-actions button,
+  .deck-actions button,
+  .io-actions button,
+  .panel-head button,
+  .generation-tab {
+    min-height: 44px;
   }
 }
 

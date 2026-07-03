@@ -585,6 +585,13 @@ async function handleApi(req, res, url) {
         return true;
       }
     }
+    // selected.owner は行動席と一致していなければ受理しない（自分のカードでのみ行動＝相手の場/ドロップ能力の誤発動を防ぐ）。
+    // 設計上チート対策は非目標だが、正規クライアント play.js は常に owner=mySeat を送る（相手参照は effectTarget/attackTarget 経由）ため通常プレイに影響しない安全な多重防御。
+    const selectedOwner = body.params?.selected?.owner;
+    if ((selectedOwner === 0 || selectedOwner === 1) && selectedOwner !== member.role) {
+      sendJson(res, 403, { error: "他プレイヤーのカードでは操作できません" });
+      return true;
+    }
     // 別アクションの処理中（プロンプト往復のホールド含む）は受理しない。
     // 同一エンジンへの applyAction 再入＝vm state 破壊を防ぐ。応答は /prompt 経由で行う。
     if (room.busy) {

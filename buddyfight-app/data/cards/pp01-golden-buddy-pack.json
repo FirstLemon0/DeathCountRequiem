@@ -379,8 +379,7 @@
               "op": "modifyStats",
               "target": "$self",
               "amountFrom": {
-                "source": "weaponPowerMax",
-                "controller": "self"
+                "source": "itemPowerSum"
               },
               "applyTo": [
                 "power"
@@ -529,6 +528,13 @@
       "soulContinuous": [
         {
           "op": "preventReturnToHand",
+          "controller": "self",
+          "filter": {
+            "attribute": "武器"
+          }
+        },
+        {
+          "op": "grantDestroyImmunity",
           "controller": "self",
           "filter": {
             "attribute": "武器"
@@ -819,6 +825,14 @@
           "kind": "triggered",
           "event": "enter",
           "optional": true,
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "nameIncludes": "絶命陣"
+              }
+            }
+          ],
           "script": [
             {
               "op": "selectCards",
@@ -838,14 +852,20 @@
             {
               "op": "selectCards",
               "var": "card",
-              "from": "hand",
+              "from": ["hand", "drop"],
               "controller": "self",
               "min": 0,
               "max": 1,
               "amount": 1,
               "require": false,
               "title": "エージェント忍者 間宮",
-              "lead": "裏向きでソウルに置くカードを手札から選んでください。"
+              "lead": "裏向きでソウルに置くカードを手札かドロップゾーンから選んでください。"
+            },
+            {
+              "op": "moveSelectedToSelectedSoul",
+              "var": "card",
+              "soulOfVar": "host",
+              "require": false
             }
           ]
         }
@@ -1232,7 +1252,8 @@
           "effects": [
             {
               "op": "reduceNextDamage",
-              "amount": 1
+              "amount": 1,
+              "threshold": 2
             }
           ]
         }
@@ -1501,6 +1522,15 @@
             }
           ]
         }
+      ],
+      "continuous": [
+        {
+          "op": "grantNullifyImmunity",
+          "controller": "self",
+          "filter": {
+            "nameIncludes": "大魔法"
+          }
+        }
       ]
     },
     {
@@ -1749,7 +1779,21 @@
       },
       "callCost": {
         "gauge": 0
-      }
+      },
+      "abilities": [
+        {
+          "id": "pp01-0038-nullify-gauge",
+          "kind": "triggered",
+          "event": "allyAttackNullified",
+          "effects": [
+            {
+              "op": "moveGaugeToDrop",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "pp01-0039",
@@ -2665,6 +2709,91 @@
               "target": "$target"
             }
           ]
+        },
+        {
+          "id": "pp01-0056-destroyed-equip",
+          "kind": "triggered",
+          "event": "destroyed",
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "終焉魔竜 アジ・ダハーカ",
+              "lead": "「終焉魔剣 アクワルタ・グワルナフ」をどこから装備しますか？",
+              "options": [
+                {
+                  "key": "hand",
+                  "label": "手札から装備",
+                  "condition": {
+                    "op": "cardCount",
+                    "controller": "self",
+                    "pile": "hand",
+                    "filter": {
+                      "name": "終焉魔剣 アクワルタ・グワルナフ"
+                    },
+                    "cmp": "gte",
+                    "amount": 1
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "aqua",
+                      "from": "hand",
+                      "controller": "self",
+                      "filter": {
+                        "name": "終焉魔剣 アクワルタ・グワルナフ"
+                      },
+                      "amount": 1,
+                      "require": true,
+                      "title": "終焉魔竜 アジ・ダハーカ",
+                      "lead": "装備する「終焉魔剣 アクワルタ・グワルナフ」を選んでください。"
+                    },
+                    {
+                      "op": "useSelectedCard",
+                      "var": "aqua",
+                      "payCost": false
+                    }
+                  ]
+                },
+                {
+                  "key": "deck",
+                  "label": "デッキから装備",
+                  "condition": {
+                    "op": "cardCount",
+                    "controller": "self",
+                    "pile": "deck",
+                    "filter": {
+                      "name": "終焉魔剣 アクワルタ・グワルナフ"
+                    },
+                    "cmp": "gte",
+                    "amount": 1
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "aqua",
+                      "from": "deck",
+                      "controller": "self",
+                      "filter": {
+                        "name": "終焉魔剣 アクワルタ・グワルナフ"
+                      },
+                      "amount": 1,
+                      "require": true,
+                      "title": "終焉魔竜 アジ・ダハーカ",
+                      "lead": "装備する「終焉魔剣 アクワルタ・グワルナフ」を選んでください。"
+                    },
+                    {
+                      "op": "useSelectedCard",
+                      "var": "aqua",
+                      "payCost": false
+                    },
+                    {
+                      "op": "shuffleDeck"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         }
       ]
     },
@@ -2741,7 +2870,133 @@
       },
       "callCost": {
         "gauge": 0
-      }
+      },
+      "keywords": [
+        "henshin"
+      ],
+      "abilities": [
+        {
+          "id": "pp01-0058-answer-question",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "アンサークエスチョン",
+              "lead": "モンスターか魔法を宣言してください。",
+              "options": [
+                {
+                  "key": "monster",
+                  "label": "モンスターを宣言",
+                  "script": [
+                    {
+                      "op": "moveTopDeckToDrop",
+                      "player": "self",
+                      "amount": 1
+                    },
+                    {
+                      "op": "stopUnlessMovedToDropMatches",
+                      "filter": {
+                        "cardType": "monster"
+                      },
+                      "message": "ドロップゾーンに置いたカードが宣言した種類(モンスター)と一致しませんでした。"
+                    },
+                    {
+                      "op": "grantKeyword",
+                      "target": "$self",
+                      "keyword": "doubleAttack",
+                      "duration": "turn"
+                    }
+                  ]
+                },
+                {
+                  "key": "spell",
+                  "label": "魔法を宣言",
+                  "script": [
+                    {
+                      "op": "moveTopDeckToDrop",
+                      "player": "self",
+                      "amount": 1
+                    },
+                    {
+                      "op": "stopUnlessMovedToDropMatches",
+                      "filter": {
+                        "cardType": "spell"
+                      },
+                      "message": "ドロップゾーンに置いたカードが宣言した種類(魔法)と一致しませんでした。"
+                    },
+                    {
+                      "op": "grantKeyword",
+                      "target": "$self",
+                      "keyword": "doubleAttack",
+                      "duration": "turn"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "pp01-0058-answer-question"
+          }
+        },
+        {
+          "id": "pp01-0058-henshin-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "pp01-0058-henshin-field",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

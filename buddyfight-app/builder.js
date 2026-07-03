@@ -51,6 +51,7 @@ let officialDecks = [];
 let currentDeck = emptyDeck();
 let flagIdAliases = new Map();
 let activeGeneration = ""; // 世代タブの選択（空=すべて）。製品が増えても世代で製品リストを絞る。
+let deckJsonDirty = false; // 入出力欄をユーザーが手入力/貼り付けした後は render で自動上書きしない（貼り付けたインポート元を保護）。
 
 async function initializeBuilder() {
   setStatus("カードデータ読込中");
@@ -63,6 +64,7 @@ async function initializeBuilder() {
     loadFirstAvailableDeck();
     bindEvents();
     render();
+    updateDeckSnapshot();
     setStatus("準備完了");
   } catch (error) {
     setStatus(`読込失敗: ${error.message}`);
@@ -185,10 +187,18 @@ function bindEvents() {
   [elements.searchInput, elements.typeFilter, elements.worldFilter, elements.productFilter].forEach(
     (control) => control.addEventListener("input", renderSearchResults),
   );
+  // 入出力欄を手入力/貼り付けしたら以後 render で上書きしない（インポート元の消失を防ぐ）。
+  elements.deckJsonText.addEventListener("input", () => {
+    deckJsonDirty = true;
+  });
   elements.newDeckButton.addEventListener("click", () => {
+    if (!confirmDiscardIfDirty()) {
+      return;
+    }
     currentDeck = emptyDeck();
     currentDeck.flag = flagCards()[0]?.id || "";
     currentDeck.buddy = buddyCards()[0]?.id || "";
+    updateDeckSnapshot();
     render();
     setStatus("新しいデッキを作成しました。");
   });
@@ -204,6 +214,13 @@ function bindEvents() {
   });
   elements.issueShareCodeButton?.addEventListener("click", exportDeckShareCode);
   elements.importShareCodeButton?.addEventListener("click", importDeckShareCode);
+  // 未保存の編集があるまま離脱/再読込しようとしたら確認（ツールバーのリンク遷移・タブ閉じを含む）。
+  window.addEventListener("beforeunload", (event) => {
+    if (isDeckDirty()) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+  });
 }
 
 function populateFilters() {
@@ -324,9 +341,22 @@ function render() {
   renderExportText();
 }
 
+// 全再描画(innerHTML)でフォーカスが body に落ちるため、直近操作したボタンと同じ data-focus-key の
+// 新ノードへフォーカスを戻す（キーボードで +/- 追加を連続操作できるように）。
+function refocusBuilder(key) {
+  if (!key) {
+    return;
+  }
+  const el = document.querySelector(`[data-focus-key="${key}"]`);
+  if (el) {
+    el.focus();
+  }
+}
+
 function renderStats() {
   const stats = deckStats();
   elements.deckCountLabel.textContent = `${stats.total}枚`;
+  elements.deckCountLabel.classList.toggle("count-ok", stats.total >= 50);
   const typeSummary = Object.entries(stats.byType)
     .map(([type, count]) => `${typeLabels[type] || type}: ${count}`)
     .join(" / ");
@@ -376,7 +406,13 @@ function renderValidation() {
   validations.forEach((item) => {
     const row = document.createElement("div");
     row.className = `validation-item ${item.level}`;
-    row.textContent = item.message;
+    const icon = document.createElement("span");
+    icon.className = "validation-icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = item.level === "ok" ? "✓" : item.level === "warn" ? "！" : "✕";
+    const text = document.createElement("span");
+    text.textContent = item.message;
+    row.append(icon, text);
     elements.validationList.append(row);
   });
 }
@@ -552,9 +588,18 @@ function deckContainsName(name) {
 
 function renderSearchResults() {
   const filtered = filteredCards();
-  elements.resultCountLabel.textContent = `${filtered.length}件`;
+  const limit = 140;
+  const shown = filtered.slice(0, limit);
+  elements.resultCountLabel.textContent =
+    filtered.length > limit ? `${filtered.length}件中 先頭${limit}件` : `${filtered.length}件`;
   elements.cardResults.innerHTML = "";
-  filtered.slice(0, 140).forEach((card) => elements.cardResults.append(createCardResult(card)));
+  shown.forEach((card) => elements.cardResults.append(createCardResult(card)));
+  if (filtered.length > limit) {
+    const note = document.createElement("p");
+    note.className = "results-truncated-note";
+    note.textContent = `ほか${filtered.length - limit}件は非表示です。検索語・種類・ワールド・製品で絞り込むと表示されます。`;
+    elements.cardResults.append(note);
+  }
   builderFillThumbs(elements.cardResults);
 }
 
@@ -622,17 +667,27 @@ function builderFillThumbs(root) {
   root.querySelectorAll("img.builder-card-thumb[data-cid]").forEach((img) => {
     const cid = img.dataset.cid;
     if (builderPacks[cid]) {
-      img.src = builderPacks[cid];
+      setBuilderThumbSrc(img, builderPacks[cid]);
       return;
     }
     builderEnsurePack(img.dataset.pack).then(() => {
       if (builderPacks[cid]) {
-        img.src = builderPacks[cid];
+        setBuilderThumbSrc(img, builderPacks[cid]);
       } else {
         builderCardImgError(img);
       }
     });
   });
+}
+
+// サムネイルへ製品パックのdata URLを設定。以前のフォールバックで display:none にされていても復帰させる
+// （ローカル画像があるのにレースで恒久非表示になる不具合の対策）。onerror未設定なら失敗時フォールバックも配線。
+function setBuilderThumbSrc(img, src) {
+  img.style.display = "";
+  if (!img.getAttribute("onerror")) {
+    img.onerror = () => builderCardImgError(img);
+  }
+  img.src = src;
 }
 
 // カードサムネイルの img マークアップ（製品パックのdata URL→公式URL→失敗で非表示）。
@@ -643,7 +698,10 @@ function cardThumbHtml(card, extraClass = "") {
     return "";
   }
   const src = builderPacks[cid] || "";
-  return `<img class="builder-card-thumb ${extraClass}" loading="lazy" decoding="async" alt="${escapeHtml(card.name || "")}" src="${src}" data-cid="${cid}" data-pack="${card?.imagePack || ""}" data-remote="${remote}" onerror="builderCardImgError(this)">`;
+  // 初期srcが無いときは src/onerror を付けない。src="" が即 error を発火し、公式URLフェッチ→非表示になる
+  // レース（オンラインはちらつき、オフラインはローカル画像があるのに恒久非表示）を防ぐ。srcは描画後 builderFillThumbs が流し込む。
+  const srcAttr = src ? ` src="${src}" onerror="builderCardImgError(this)"` : "";
+  return `<img class="builder-card-thumb ${extraClass}" loading="lazy" decoding="async" alt="${escapeHtml(card.name || "")}"${srcAttr} data-cid="${cid}" data-pack="${card?.imagePack || ""}" data-remote="${remote}">`;
 }
 
 // サムネイル読み込み失敗時: 公式URLへ一度フォールバック、それも失敗なら非表示。
@@ -657,6 +715,9 @@ function builderCardImgError(img) {
 }
 
 function createCardResult(card) {
+  const flag = findCard(currentDeck.flag);
+  const copyLimit = card.type === "flag" ? null : cardCopyLimitForFlag(flag, card);
+  const count = deckCardCount(card.id);
   const node = document.createElement("article");
   node.className = "builder-card";
   node.innerHTML = `
@@ -666,7 +727,7 @@ function createCardResult(card) {
         <strong>${escapeHtml(card.name)}</strong>
         <span class="meta-line">${escapeHtml(cardSummaryLine(card))}</span>
       </div>
-      <span class="meta-line">${deckCardCount(card.id)}枚</span>
+      <span class="meta-line">${count}${copyLimit != null ? " / " + copyLimit : ""}枚</span>
     </div>
     <div class="card-stat-grid">${cardStatHtml(card)}</div>
     <div class="meta-line">${escapeHtml(card.productName || "-")} / ${escapeHtml((card.attributes || []).join(" / ") || "-")}</div>
@@ -677,13 +738,24 @@ function createCardResult(card) {
   const addButton = document.createElement("button");
   addButton.type = "button";
   addButton.textContent = "追加";
-  addButton.disabled = card.type === "flag";
-  addButton.addEventListener("click", () => addCard(card.id, 1));
+  addButton.disabled = card.type === "flag" || (copyLimit != null && count >= copyLimit);
+  if (copyLimit != null && count >= copyLimit) {
+    addButton.title = `同名カードの上限 ${copyLimit} 枚に達しています`;
+  }
+  addButton.dataset.focusKey = "res-add-" + card.id;
+  addButton.addEventListener("click", () => {
+    addCard(card.id, 1);
+    refocusBuilder("res-add-" + card.id);
+  });
   const removeButton = document.createElement("button");
   removeButton.type = "button";
   removeButton.textContent = "減らす";
   removeButton.disabled = deckCardCount(card.id) === 0;
-  removeButton.addEventListener("click", () => addCard(card.id, -1));
+  removeButton.dataset.focusKey = "res-sub-" + card.id;
+  removeButton.addEventListener("click", () => {
+    addCard(card.id, -1);
+    refocusBuilder("res-sub-" + card.id);
+  });
   const flagButton = document.createElement("button");
   flagButton.type = "button";
   flagButton.textContent = "フラッグ";
@@ -727,16 +799,36 @@ function renderDeckList() {
     const plus = document.createElement("button");
     plus.type = "button";
     plus.textContent = "+";
-    plus.addEventListener("click", () => addCard(id, 1));
+    plus.dataset.focusKey = "deck-add-" + id;
+    plus.addEventListener("click", () => {
+      addCard(id, 1);
+      refocusBuilder("deck-add-" + id);
+    });
     const minus = document.createElement("button");
     minus.type = "button";
     minus.textContent = "-";
-    minus.addEventListener("click", () => addCard(id, -1));
+    minus.dataset.focusKey = "deck-sub-" + id;
+    minus.addEventListener("click", () => {
+      addCard(id, -1);
+      refocusBuilder("deck-sub-" + id);
+    });
     const remove = document.createElement("button");
     remove.type = "button";
     remove.textContent = "0";
     remove.addEventListener("click", () => removeCard(id));
-    actions.append(plus, minus, remove);
+    if (card && (["monster", "impactMonster"].includes(card.type) || card.canBeBuddy)) {
+      const buddy = document.createElement("button");
+      buddy.type = "button";
+      buddy.textContent = currentDeck.buddy === id ? "バディ★" : "バディ";
+      buddy.title = "このカードをバディに設定";
+      buddy.addEventListener("click", () => {
+        currentDeck.buddy = id;
+        render();
+      });
+      actions.append(plus, minus, remove, buddy);
+    } else {
+      actions.append(plus, minus, remove);
+    }
     row.append(actions);
     elements.deckList.append(row);
   });
@@ -793,12 +885,17 @@ function typeOrder(type) {
   return { flag: 0, monster: 1, impactMonster: 2, spell: 3, item: 4, impact: 5 }[type] ?? 9;
 }
 
-function renderExportText() {
+function renderExportText(force = false) {
+  // 手入力中(貼り付け直後など)は上書きしない。エクスポート操作時のみ force で強制反映。
+  if (deckJsonDirty && !force) {
+    return;
+  }
   elements.deckJsonText.value = JSON.stringify({ schemaVersion: 1, decks: [exportableDeck()] }, null, 2);
+  deckJsonDirty = false;
 }
 
 async function exportDeckToText() {
-  renderExportText();
+  renderExportText(true);
   elements.deckJsonText.focus();
   elements.deckJsonText.select();
   const text = elements.deckJsonText.value;
@@ -822,6 +919,19 @@ function exportableDeck() {
     buddy: currentDeck.buddy,
     recipe: sortedRecipe().filter(([, count]) => count > 0),
   };
+}
+
+// 未保存変更の検知（直近の保存/読込/新規/取込時点のデッキJSONと比較）。破棄前の確認・離脱ガードに使う。
+let deckSnapshot = "";
+function updateDeckSnapshot() {
+  deckSnapshot = JSON.stringify(exportableDeck());
+  deckJsonDirty = false;
+}
+function isDeckDirty() {
+  return deckSnapshot !== JSON.stringify(exportableDeck());
+}
+function confirmDiscardIfDirty() {
+  return !isDeckDirty() || window.confirm("編集中のデッキに保存していない変更があります。破棄して続けますか？");
 }
 
 // ---- デッキ共有コード（versioned base64url。クロスデバイス持ち寄り。flag/buddy/cardId は card.id スラグ＝サーバ custom 経路と整合） ----
@@ -871,13 +981,19 @@ async function exportDeckShareCode() {
 }
 function importDeckShareCode() {
   if (!elements.shareCodeInput) return;
+  if (!confirmDiscardIfDirty()) return;
   try {
     const deck = decodeDeckShareCode(elements.shareCodeInput.value);
     currentDeck = cloneDeck(deck);
+    updateDeckSnapshot();
     render();
     setStatus("共有コードを取り込みました。");
   } catch (error) {
-    setStatus("共有コード取込失敗: " + error.message);
+    const known = /共有コード|バージョン/.test(error.message);
+    setStatus(
+      "共有コード取込失敗: " +
+        (known ? error.message : "コードを読み取れませんでした。BFD1. で始まる全文を貼り付けてください。"),
+    );
   }
 }
 
@@ -886,9 +1002,15 @@ function saveCurrentDeck() {
   currentDeck.id = deck.id;
   const decks = loadSavedDecks().filter((candidate) => candidate.id !== deck.id);
   decks.push(deck);
-  localStorage.setItem(customDeckStorageKey, JSON.stringify(decks));
+  try {
+    localStorage.setItem(customDeckStorageKey, JSON.stringify(decks));
+  } catch (error) {
+    setStatus(`保存に失敗しました（ブラウザの保存容量やプライベートモードをご確認ください）: ${error.message}`);
+    return;
+  }
   populateSavedDecks();
   elements.savedDeckSelect.value = deck.id;
+  updateDeckSnapshot();
   setStatus(`${deck.name}を保存しました。`);
 }
 
@@ -905,16 +1027,31 @@ function loadSelectedSavedDeck() {
   const id = elements.savedDeckSelect.value;
   const deck = [...officialDecks, ...loadSavedDecks()].find((candidate) => candidate.id === id);
   if (!deck) {
+    setStatus("読み込むデッキを選んでください。");
+    return;
+  }
+  if (!confirmDiscardIfDirty()) {
     return;
   }
   currentDeck = cloneDeck(deck);
+  updateDeckSnapshot();
   render();
   setStatus(`${deck.name}を読み込みました。`);
 }
 
 function deleteSelectedSavedDeck() {
   const id = elements.savedDeckSelect.value;
-  if (!id || officialDecks.some((deck) => deck.id === id)) {
+  if (!id) {
+    setStatus("削除する保存済みデッキを選んでください。");
+    return;
+  }
+  if (officialDecks.some((deck) => deck.id === id)) {
+    setStatus("公式デッキは削除できません。");
+    return;
+  }
+  const target = loadSavedDecks().find((deck) => deck.id === id);
+  const name = target?.name || "このデッキ";
+  if (!window.confirm(`保存済みデッキ「${name}」を削除します。元に戻せません。よろしいですか？`)) {
     return;
   }
   const decks = loadSavedDecks().filter((deck) => deck.id !== id);
@@ -935,10 +1072,15 @@ function importDeckFromText() {
       id: imported.id || createDeckId("custom"),
       name: imported.name || "インポートデッキ",
     });
+    updateDeckSnapshot();
     render();
     setStatus("インポートしました。");
   } catch (error) {
-    setStatus(`インポート失敗: ${error.message}`);
+    const hint =
+      error instanceof SyntaxError
+        ? "JSONの形式が正しくありません。テキスト欄に有効なデッキJSONを貼り付けてください。"
+        : error.message;
+    setStatus(`インポート失敗: ${hint}`);
   }
 }
 
@@ -1091,6 +1233,26 @@ function unique(values) {
 
 function setStatus(message) {
   elements.builderStatus.textContent = message;
+  showBuilderToast(message);
+}
+
+// 操作結果を画面下中央のトースト(styles.cssの#toast)でも通知。モバイルで入出力欄が画面外でも見える。
+let builderToastTimer = null;
+function showBuilderToast(message, ms = 2600) {
+  const el = document.querySelector("#toast");
+  if (!el) {
+    return;
+  }
+  el.textContent = message;
+  el.classList.add("show");
+  el.setAttribute("aria-hidden", "false");
+  if (builderToastTimer) {
+    clearTimeout(builderToastTimer);
+  }
+  builderToastTimer = setTimeout(() => {
+    el.classList.remove("show");
+    el.setAttribute("aria-hidden", "true");
+  }, ms);
 }
 
 function escapeHtml(value) {

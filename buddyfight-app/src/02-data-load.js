@@ -288,13 +288,25 @@ function desugarCardFlags(card) {
 }
 
 function normalizeCardDefinition(card, set = {}) {
+  const keywords = [...(card.keywords || [])];
+  // 旧・搭乗/変身モンスターは keywords:["ride"|"henshin"] を明記せず、ability id 規約(-ride-*/-rideout/-henshin-*)
+  // だけで実装されている場合がある。搭乗/変身判別フィルタ(keyword:"ride"/"henshin")や hasKeyword が正しく拾えるよう補完する。
+  (card.abilities || []).forEach((ability) => {
+    const id = ability?.id || "";
+    if (!keywords.includes("ride") && /-ride(-|out)/.test(id)) {
+      keywords.push("ride");
+    }
+    if (!keywords.includes("henshin") && /-henshin(-|$)/.test(id)) {
+      keywords.push("henshin");
+    }
+  });
   return desugarCardFlags({
     ...card,
     productId: card.productId || set.id || "",
     productName: card.productName || set.name || "",
     aliases: [...(card.aliases || [])],
     attributes: [...(card.attributes || [])],
-    keywords: [...(card.keywords || [])],
+    keywords,
     rules: [...(card.rules || [])],
     allowedWorlds: [...(card.allowedWorlds || [])],
     allowedAttributes: [...(card.allowedAttributes || [])],

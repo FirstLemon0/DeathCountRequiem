@@ -54,7 +54,7 @@ async function createNetworkRoom() {
 }
 
 async function joinNetworkRoom() {
-  const roomId = elements.roomInput.value.trim();
+  const roomId = elements.roomInput.value.trim().toUpperCase();
   if (!roomId) {
     updateNetworkStatus("参加する部屋番号を入力してください。");
     return;
