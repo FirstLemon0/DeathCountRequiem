@@ -841,7 +841,11 @@
               "amount": 1
             }
           ],
-          "effects": [
+          "script": [
+            {
+              "op": "callSelfFromHand",
+              "zone": "center"
+            },
             {
               "op": "redirectPendingAttackToSelf"
             }
@@ -1587,19 +1591,14 @@
         {
           "id": "bt05-0029-missile-launch",
           "kind": "triggered",
-          "event": "attack",
-          "conditions": [
-            {
-              "op": "pendingAttackBySource"
-            }
-          ],
+          "event": "battleEnd",
           "effects": [
+            {
+              "op": "returnSelfToDeckBottom"
+            },
             {
               "op": "putTopDeckToGauge",
               "amount": 1
-            },
-            {
-              "op": "dropSelf"
             }
           ]
         }
@@ -1826,7 +1825,8 @@
           ],
           "effects": [
             {
-              "op": "putTopDeckToGaugeEqualToLastDamage"
+              "op": "putTopDeckToGaugeEqualToLastDamage",
+              "reference": "dealt"
             }
           ]
         }
@@ -3245,7 +3245,10 @@
             },
             {
               "op": "putTopDeckToGauge",
-              "amount": 99
+              "amountFrom": {
+                "source": "selectedCount",
+                "var": "g"
+              }
             }
           ]
         }

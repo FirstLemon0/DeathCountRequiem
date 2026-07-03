@@ -37,7 +37,7 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
   // 継続 damageReceivedReduction（装備者が受けるダメージを amount 減らす。
   // nonAttackOnly:true は攻撃以外のダメージ限定(マグナグレイス0011)、既定は全ダメージ(0056)）。
   if (!options.ignorePrevention) {
-    const cap = damageReceivedReductionFor(owner, Boolean(options.byAttack));
+    const cap = damageReceivedReductionFor(owner, Boolean(options.byAttack), remaining);
     if (cap) {
       const reduced = Math.max(0, remaining - cap.amount);
       if (reduced !== remaining) {
@@ -103,7 +103,7 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
 
 // 継続 damageReceivedReduction を持つ場札から、owner が受けるダメージの軽減設定（最も減らせる1件）を返す。
 // nonAttackOnly:true は byAttack===false の時のみ適用（攻撃以外限定。マグナグレイス0011）。既定は全ダメージ(0056)。
-function damageReceivedReductionFor(owner, byAttack) {
+function damageReceivedReductionFor(owner, byAttack, incomingDamage = Infinity) {
   let best = null;
   zones.forEach((zone) => {
     const source = state.players[owner]?.field?.[zone];
@@ -113,6 +113,9 @@ function damageReceivedReductionFor(owner, byAttack) {
       }
       if (effect.nonAttackOnly && byAttack) {
         return; // 攻撃以外限定の軽減は攻撃ダメージには効かない
+      }
+      if (effect.threshold && incomingDamage < effect.threshold) {
+        return; // 「N以上のダメージを受ける場合」限定の軽減はN未満には効かない（0056）
       }
       const amount = effect.amount || 0;
       if (amount > 0 && (!best || amount > best.amount)) {
@@ -349,10 +352,23 @@ function canPayStructuredCost(player, costSteps = [], context = {}) {
   const selectedCard = context.selectedCard;
   const includeOpponentGauge = Boolean(context.includeOpponentGauge);
   const applicableCostSteps = costSteps.filter((step) => costStepApplies(player, step, context));
+  let gaugeNeeded = 0;
   for (const step of applicableCostSteps) {
     const amount = step.amount || 1;
-    if (step.op === "payGauge" && !canSpendGaugePool(player, amount, { includeOpponent: includeOpponentGauge })) {
-      return { ok: false, reason: "ゲージが足りません。" };
+    if (step.op === "payGauge") {
+      // 複数の payGauge ステップは同じゲージを二重に当てにできない。累計で判定する
+      // （例: [payGauge3, payGauge4] はゲージ7が必要。各3/4を別々に見て通してはいけない）。
+      gaugeNeeded += amount;
+      if (!canSpendGaugePool(player, gaugeNeeded, { includeOpponent: includeOpponentGauge })) {
+        return { ok: false, reason: "ゲージが足りません。" };
+      }
+    }
+    if (step.op === "setLife") {
+      // 「君のライフをNにする」コスト。減少になる時のみ支払い可（増加はコストにならない）。
+      const target = step.life ?? step.amount ?? player.life;
+      if (player.life <= target) {
+        return { ok: false, reason: "ライフが足りません。" };
+      }
     }
     if (step.op === "discardHand") {
       const availableHand = player.hand.filter(
@@ -661,6 +677,9 @@ function payStructuredCost(player, costSteps = [], context = {}) {
     }
     if (step.op === "payLife") {
       player.life -= amount;
+    }
+    if (step.op === "setLife") {
+      player.life = step.life ?? step.amount ?? player.life;
     }
     if (step.op === "returnPendingTargetToHand") {
       const target = getPendingBattleTargetInfo(state.pendingAttack);
@@ -1079,6 +1098,9 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     }
     if (step.op === "payLife") {
       player.life -= amount;
+    }
+    if (step.op === "setLife") {
+      player.life = step.life ?? step.amount ?? player.life;
     }
     if (step.op === "returnPendingTargetToHand") {
       const target = getPendingBattleTargetInfo(state.pendingAttack);

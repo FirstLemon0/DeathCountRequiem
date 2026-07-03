@@ -3630,10 +3630,13 @@
           }
         ]
       },
-      "damageReceivedReduction": {
-        "threshold": 3,
-        "amount": 1
-      }
+      "continuous": [
+        {
+          "op": "damageReceivedReduction",
+          "amount": 1,
+          "threshold": 3
+        }
+      ]
     },
     {
       "id": "bf-h-bt03-0057",
@@ -7386,38 +7389,42 @@
               "amount": 3
             }
           ],
-          "effects": [
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "mon",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "竜王直伝 ギガハウリング・クラッシャー!!",
+              "lead": "打撃力を参照する君の場のモンスターを１枚選んでください。"
+            },
+            {
+              "op": "selectCards",
+              "var": "itm",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "item"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "竜王直伝 ギガハウリング・クラッシャー!!",
+              "lead": "打撃力を参照する君の場のアイテムを１枚選んでください。"
+            },
             {
               "op": "dealDamageBySelectedStatSum",
-              "player": "opponent",
+              "vars": [
+                "mon",
+                "itm"
+              ],
               "stat": "critical",
-              "ignorePrevention": true,
-              "picks": [
-                {
-                  "controller": "self",
-                  "zones": [
-                    "left",
-                    "center",
-                    "right"
-                  ],
-                  "filter": {
-                    "cardType": "monster"
-                  },
-                  "title": "竜王直伝 ギガハウリング・クラッシャー!!",
-                  "lead": "打撃力を参照する君の場のモンスターを１枚選んでください。"
-                },
-                {
-                  "controller": "self",
-                  "zones": [
-                    "item"
-                  ],
-                  "filter": {
-                    "cardType": "item"
-                  },
-                  "title": "竜王直伝 ギガハウリング・クラッシャー!!",
-                  "lead": "打撃力を参照する君の場のアイテムを１枚選んでください。"
-                }
-              ]
+              "player": "opponent",
+              "ignorePrevention": true
             }
           ]
         }

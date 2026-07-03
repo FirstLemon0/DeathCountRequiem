@@ -127,8 +127,10 @@ async function executeAbilityEffect(effect, context) {
   }
   if (effect.op === "putTopDeckToGauge") {
     const receiver = effect.player === "opponent" ? opponent : player;
+    // amountFrom（selectedCount 等）で動的枚数を指定可能（0058:「ドロップに置いた枚数分」）。
+    const amount = effect.amountFrom ? resolveAmountFrom(effect.amountFrom, context) : effect.amount || 1;
     const before = receiver.gauge.length;
-    moveTopDeckToGauge(receiver, effect.amount || 1);
+    moveTopDeckToGauge(receiver, amount);
     const moved = receiver.gauge.length - before;
     addLog(`${receiver.name}はデッキの上から${moved}枚をゲージに置きました。`);
   }
@@ -776,7 +778,12 @@ async function executeAbilityEffect(effect, context) {
         );
       if (attackers.length > 0) {
         state.linkAttackers = attackers.map((a) => ({ owner: a.owner, zone: a.zone }));
-        await performAttackDeclaration(attackers, effect.attackTarget || "fighter");
+        // 相手センターにモンスターがいるとファイター本体は攻撃できない。
+        // 既定ではセンターのモンスターを攻撃対象にし、センターが空なら本体を攻撃する（0046）。
+        const oppSeat = 1 - seat;
+        const attackTarget =
+          effect.attackTarget || (state.players[oppSeat]?.field?.center ? "center" : "fighter");
+        await performAttackDeclaration(attackers, attackTarget);
       }
     }
   }
@@ -1012,13 +1019,20 @@ async function executeAbilityEffect(effect, context) {
   if (effect.op === "putTopDeckToGaugeEqualToLastDamage") {
     state.lastDamageTaken ||= [0, 0];
     const idx = state.players.indexOf(player);
-    const amount = state.lastDamageTaken[idx] || 0;
+    // reference:"dealt" は「君が相手に与えたダメージ」(=相手が受けたダメージ)を参照する（0034）。
+    // 既定は「君が受けたダメージ」（0026）。
+    const refIdx = effect.reference === "dealt" ? 1 - idx : idx;
+    const amount = state.lastDamageTaken[refIdx] || 0;
     if (amount > 0) {
       const before = player.gauge.length;
       moveTopDeckToGauge(player, amount);
       const moved = player.gauge.length - before;
       addLog(`${player.name}は${context.card.name}の効果でデッキの上から${moved}枚をゲージに置きました。`);
-      state.lastDamageTaken[idx] = 0;
+      // 「与えたダメージ」参照(dealt)は相手の被ダメージスロットを覗くだけでクリアしない。
+      // クリアすると、同一ダメージを参照する相手の「受けたダメージ分」効果(0026)を潰してしまうため。
+      if (effect.reference !== "dealt") {
+        state.lastDamageTaken[refIdx] = 0;
+      }
     }
   }
   if (effect.op === "destroyOpponentMonsterWithPowerLteOwnWeapon") {

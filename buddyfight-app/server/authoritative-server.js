@@ -576,6 +576,15 @@ async function handleApi(req, res, url) {
       sendJson(res, 409, { error: "今あなたの操作番ではありません" });
       return true;
     }
+    // 攻撃/効果の「解決」は対抗ウィンドウを担当する席（防御側/応答側）のみが送れる。
+    // 攻撃側が resolve を送って防御側の対抗窓を飛ばすのを防ぐ（中継版 src/07 の解決ガード相当）。
+    if (body.type === "resolve" && (state.pendingAttack || state.pendingAction)) {
+      const resolver = inferPromptSeat(state);
+      if (member.role !== resolver) {
+        sendJson(res, 409, { error: "対抗確認を担当する相手席の解決を待っています。" });
+        return true;
+      }
+    }
     // 別アクションの処理中（プロンプト往復のホールド含む）は受理しない。
     // 同一エンジンへの applyAction 再入＝vm state 破壊を防ぐ。応答は /prompt 経由で行う。
     if (room.busy) {

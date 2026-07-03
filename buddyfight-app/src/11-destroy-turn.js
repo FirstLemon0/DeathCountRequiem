@@ -928,7 +928,11 @@ async function endTurn() {
   state.players.forEach((player) => {
     player.lifeZeroSafeguard = null;
   });
-  activePlayer().oncePerTurn = {};
+  // 「1ターンに1回」はターンごとにリセットされる。相手ターン中に【対抗】で使った turn 制限が
+  // 自分の次のターンへ持ち越さないよう、ターン境界で両プレイヤー分をクリアする。
+  state.players.forEach((player) => {
+    player.oncePerTurn = {};
+  });
   if (state.extraTurnOwner === endingOwner) {
     state.extraTurnOwner = null;
     state.active = endingOwner;

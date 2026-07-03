@@ -660,12 +660,19 @@ function handleDestroyedDuringPending(target) {
     return;
   }
   const pending = state.pendingAttack;
-  const destroyedAttacker = getPendingAttackerSlots(pending).some((attacker) =>
-    sameSlot(attacker, target),
-  );
   const destroyedTarget =
     target.owner === pending.targetOwner && target.zone === pending.targetZone;
-  if (destroyedAttacker || destroyedTarget) {
+  if (destroyedTarget) {
+    // 攻撃対象が場を離れた → 攻撃終了。
+    addLog("攻撃に関わるカードが場を離れたため、攻撃は終了しました。");
+    clearPendingAttack();
+    return;
+  }
+  // 攻撃側カードが場を離れた場合、公式裁定は「連携攻撃ではなくなるが、残った1枚が攻撃する」。
+  // 攻撃者が全て場を離れた時のみ攻撃を終了する（1枚でも残れば resolvePendingAttack が残存で続行）。
+  // ※呼び出し時点で除去カードは既に場から外れているため getPendingAttackers() は生存分のみを返す。
+  const wasAttacker = getPendingAttackerSlots(pending).some((attacker) => sameSlot(attacker, target));
+  if (wasAttacker && getPendingAttackers().length === 0) {
     addLog("攻撃に関わるカードが場を離れたため、攻撃は終了しました。");
     clearPendingAttack();
   }
