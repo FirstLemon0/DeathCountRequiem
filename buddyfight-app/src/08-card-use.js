@@ -560,6 +560,33 @@ async function useMagicalGoodbyeCounterCard(selectedCard, caster) {
   render();
 }
 
+// 場を離れて手札/山札へ移るカードは、場依存の一時状態（レスト/戦闘・ターン修整/付与キーワード/変身状態等）を失う。
+// これをリセットしないと、レスト状態のまま手札に戻ったカードが再コール時もレストのまま＝攻撃できない等の不整合が起きる
+// （ブーメラン・ドラゴン等、バトル終了時に自身を手札へ戻すカードで顕在化）。
+function resetLeftFieldCardState(card) {
+  if (!card) {
+    return;
+  }
+  card.used = false;
+  card.battlePowerBonus = 0;
+  card.battleDefenseBonus = 0;
+  card.battleCriticalBonus = 0;
+  card.turnPowerBonus = 0;
+  card.turnDefenseBonus = 0;
+  card.turnCriticalBonus = 0;
+  card.temporaryKeywords = [];
+  card.turnKeywords = [];
+  card.turnSuppressedKeywords = [];
+  card.counterattack = false;
+  card.doubleAttackUsed = false;
+  card.preventNextDestroyCount = 0;
+  card.additionalNames = [];
+  card.destroyReaction = null;
+  card.scheduledStatBonus = [];
+  card.conditionalSize = null;
+  card.currentType = card.baseType || card.type;
+}
+
 function returnFieldTargetToHand(target, sourceName = "効果") {
   const ownerPlayer = state.players[target.owner];
   const returned = ownerPlayer?.field[target.zone];
@@ -577,6 +604,7 @@ function returnFieldTargetToHand(target, sourceName = "効果") {
   if (target.zone === "item" && ownerPlayer.arrivalCardId === returned.instanceId) {
     ownerPlayer.arrivalCardId = null;
   }
+  resetLeftFieldCardState(returned);
   ownerPlayer.hand.push(returned);
   applyLifeLink(returned, target.owner);
   addLog(`${sourceName}で${returned.name}を手札に戻しました。`);

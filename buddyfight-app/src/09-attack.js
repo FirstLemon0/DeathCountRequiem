@@ -125,6 +125,9 @@ async function performAttackDeclaration(attackers, targetValue) {
     targetZone,
     targetType: targetValue === "fighter" ? "fighter" : "monster",
     attackAllTargetZones,
+    // 「相手のモンスター全てと相手（ファイター）に攻撃する」フラグ（アジ・ダハーカ）。
+    attackAllIncludesFighter:
+      attackAllTargetZones.length > 0 && Boolean(firstAttacker.card.attackAllIncludesFighter),
     counterUsed: {
       [state.active]: null,
       [targetOwner]: null,

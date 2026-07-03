@@ -150,6 +150,8 @@ function costStepLabel(step) {
     putTopDeckToGauge: `デッキ上${amount}枚をゲージ`,
     discardSoul: `ソウル${amount}枚を捨てる`,
     dropOwnMonster: `自分のモンスター${amount}枚をドロップ`,
+    destroyOwnMonster: `自分のモンスター${amount}枚を破壊`,
+    destroySource: "このカードを破壊",
     putHandToSoul: `手札${amount}枚をソウル`,
     putOwnFieldCardsToGauge: `自分の場のカード${amount}枚をゲージ`,
   }[step.op] || step.op;

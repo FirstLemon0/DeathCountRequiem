@@ -468,10 +468,16 @@ function canPayStructuredCost(player, costSteps = [], context = {}) {
       return { ok: false, reason: "見るデッキのカードがありません。" };
     }
     if (step.op === "destroyOwnMonster") {
-      const candidates = ownFieldCostCandidates(player, { cardType: "monster", ...(step.filter || {}) });
+      const excludeId = step.excludeSource ? context.sourceCard?.instanceId : null;
+      const candidates = ownFieldCostCandidates(player, { cardType: "monster", ...(step.filter || {}) }).filter(
+        (candidate) => candidate.card.instanceId !== excludeId,
+      );
       if (candidates.length < amount) {
         return { ok: false, reason: "コストで破壊する自分のモンスターがいません。" };
       }
+    }
+    if (step.op === "destroySource" && !findFieldCardSlot(context.sourceCard)) {
+      return { ok: false, reason: "コストで破壊するこのカードが場にありません。" };
     }
     if (step.op === "returnOwnFieldCardToHand") {
       const candidates = returnFieldCostCandidates(player, step);
@@ -501,8 +507,8 @@ function returnFieldCardToHandCost(player, zone) {
   }
   player.drop.push(...(card.soul || []));
   card.soul = [];
-  card.currentType = card.baseType || card.type;
   player.field[zone] = null;
+  resetLeftFieldCardState(card);
   player.hand.push(card);
   addLog(`${card.name}をコストで手札に戻しました。`);
   return card;
@@ -716,6 +722,14 @@ function payStructuredCost(player, costSteps = [], context = {}) {
         dropFieldCardByRule(player, slot.zone);
       }
     }
+    if (step.op === "destroySource") {
+      // 同期経路: 破壊誘発/ソウルガードは反映されない近似（destroyOwnMonster 同期経路と同ポリシー）。
+      const slot = findFieldCardSlot(sourceCard);
+      if (slot) {
+        const dropped = dropFieldCardByRule(player, slot.zone);
+        if (dropped) addLog(`${dropped.name}をコストで破壊しました。`);
+      }
+    }
     if (step.op === "dropOwnMonster") {
       const target = getEffectTargetInfo();
       if (target && target.owner === state.players.indexOf(player) && fieldZones.includes(target.zone)) {
@@ -753,7 +767,10 @@ function payStructuredCost(player, costSteps = [], context = {}) {
     }
     if (step.op === "destroyOwnMonster") {
       // 非対話経路: 先頭の候補を破壊。ソウルガード/破壊時誘発は同期のため反映されない近似。
-      const target = ownFieldCostCandidates(player, { cardType: "monster", ...(step.filter || {}) })[0];
+      const excludeId = step.excludeSource ? context.sourceCard?.instanceId : null;
+      const target = ownFieldCostCandidates(player, { cardType: "monster", ...(step.filter || {}) }).find(
+        (candidate) => candidate.card.instanceId !== excludeId,
+      );
       if (target) {
         const dropped = dropFieldCardByRule(player, target.zone);
         if (dropped) addLog(`${dropped.name}をコストで破壊しました。`);
@@ -979,8 +996,11 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       continue;
     }
     const amount = step.amount || 1;
+    const excludeId = step.excludeSource ? context.sourceCard?.instanceId : null;
     const candidates = ownFieldCostCandidates(player, { cardType: "monster", ...(step.filter || {}) }).filter(
-      (candidate) => !reservedCostZones.has(`${candidate.owner}:${candidate.zone}`),
+      (candidate) =>
+        candidate.card.instanceId !== excludeId &&
+        !reservedCostZones.has(`${candidate.owner}:${candidate.zone}`),
     );
     const selected = await chooseCardEntries(candidates, {
       title: `${context.sourceCard?.name || "コスト"}で破壊する自分のモンスター`,
@@ -1135,6 +1155,14 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       const slot = findFieldCardSlot(sourceCard);
       if (slot) {
         dropFieldCardByRule(player, slot.zone);
+      }
+    }
+    if (step.op === "destroySource") {
+      // このカード自身をコストで「破壊」する（破壊時誘発・ソウルガード・ライフリンクが正しく発生）。
+      const slot = findFieldCardSlot(sourceCard);
+      if (slot) {
+        const dropped = await destroyFieldCard(slot.owner, slot.zone, { cause: { byEffect: true }, ignoreDestroyReplacement: true });
+        if (dropped) addLog(`${dropped.name}をコストで破壊しました。`);
       }
     }
     if (step.op === "putSelectedOwnFieldCardsToSoul") {

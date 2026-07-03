@@ -1542,16 +1542,21 @@
           },
           "effects": [
             {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
               "op": "dealDamage",
               "player": "opponent",
               "amountFrom": {
                 "source": "targetStat",
                 "stat": "size"
-              }
-            },
-            {
-              "op": "destroy",
-              "target": "$target"
+              },
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
             }
           ]
         }
@@ -1774,6 +1779,11 @@
             {
               "op": "phaseIs",
               "phase": "attack"
+            },
+            {
+              "op": "eventDestroyCauseMatches",
+              "byEffect": true,
+              "sourceType": "monster"
             }
           ],
           "effects": [
@@ -1819,6 +1829,11 @@
             {
               "op": "phaseIs",
               "phase": "attack"
+            },
+            {
+              "op": "eventDestroyCauseMatches",
+              "byEffect": true,
+              "sourceType": "monster"
             }
           ],
           "effects": [
@@ -2610,7 +2625,7 @@
       "costs": {
         "call": [
           {
-            "op": "dropOwnMonster",
+            "op": "dropOwnFieldCard",
             "amount": 1,
             "filter": {}
           },
@@ -2624,6 +2639,7 @@
         "gauge": 3
       },
       "attackAllMonstersOnMonsterAttack": true,
+      "attackAllIncludesFighter": true,
       "abilities": [
         {
           "id": "pp01-0056-damage-destroy-item",

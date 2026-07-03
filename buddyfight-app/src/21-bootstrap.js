@@ -307,6 +307,7 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     applyAttackTaxes,
     dropOwnMonsterCostCandidates,
     payStructuredCost,
+    payStructuredCostWithSelection,
     canPayStructuredCost,
     discardHandCardsToDrop,
     linkAttackDamageCapFor,

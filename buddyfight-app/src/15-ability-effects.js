@@ -395,7 +395,13 @@ async function executeAbilityEffect(effect, context) {
     await resolveTopTwoRevealOneOpponentRandomToHandOrGauge(effect, context);
   }
   if (effect.op === "restSelf" && context.card) {
-    context.card.used = true;
+    // 単なる used=true 代入ではなく restFieldCard を通し「レストした時」誘発(opponentRest/allyRest)を発火させる。
+    const slot = findFieldCardSlot(context.card);
+    if (slot) {
+      await restFieldCard(slot.owner, slot.zone, context.card, { reason: "effect" });
+    } else {
+      context.card.used = true;
+    }
   }
   if (effect.op === "dropSelf") {
     dropFieldCardByRule(player, context.zone);
@@ -444,9 +450,13 @@ async function executeAbilityEffect(effect, context) {
         context,
       ).map((entry) => ({ owner: entry.owner, zone: entry.zone }));
       // 逐次破壊（順序・破壊時誘発キューの保持。並列化禁止）。
+      let anyDestroyed = false;
       for (const entry of scopeTargets) {
-        await destroyFieldCard(entry.owner, entry.zone, { cause: makeEffectCause(context, entry.owner), ...(effect.options || {}) });
+        const d = await destroyFieldCard(entry.owner, entry.zone, { cause: makeEffectCause(context, entry.owner), ...(effect.options || {}) });
+        if (d) anyDestroyed = true;
       }
+      // 後続effectの lastDestroySucceeded 条件用（破壊が1枚でも成立したか）。
+      context.lastDestroyed = anyDestroyed;
     } else if (target?.card) {
       const destroyedName = target.card.name;
       const isSelf = effect.target === "$self";
@@ -454,6 +464,7 @@ async function executeAbilityEffect(effect, context) {
         ? { ignoreSoulguard: true, ...(effect.options || {}) }
         : { cause: makeEffectCause(context, target.owner), ...(effect.options || {}) };
       const destroyed = await destroyFieldCard(target.owner, target.zone, options);
+      context.lastDestroyed = Boolean(destroyed);
       if (destroyed && !isSelf && context.card) {
         addLog(`${context.card.name}の効果で${destroyedName}を破壊しました。`);
       }
@@ -529,6 +540,7 @@ async function executeAbilityEffect(effect, context) {
         selfPlayer.drop.splice(dropIndex, 1);
       }
       if (!selfPlayer.hand.some((c) => c.instanceId === context.card.instanceId)) {
+        resetLeftFieldCardState(context.card);
         selfPlayer.hand.push(context.card);
       }
       addLog(`${context.card.name}を手札に戻しました。`);
@@ -562,6 +574,7 @@ async function executeAbilityEffect(effect, context) {
       if (candidate.zone === "item" && ownerPlayer.arrivalCardId === returned.instanceId) {
         ownerPlayer.arrivalCardId = null;
       }
+      resetLeftFieldCardState(returned);
       ownerPlayer.hand.push(returned);
       applyLifeLink(returned, candidate.owner);
       addLog(`${returned.name}を手札に戻しました。`);
@@ -657,9 +670,10 @@ async function executeAbilityEffect(effect, context) {
     target.card[`${prefix}CriticalBonus`] += effect.critical || 0;
   }
   if (effect.op === "grantKeyword" && target?.card) {
-    if (effect.keyword === "counterattack") {
-      target.card.counterattack = true;
-    } else if (effect.duration === "permanent") {
+    // duration を counterattack 特別扱いより先に判定する。counterattack+duration:"turn" は
+    // turnKeywords に載せることで、clearBattleModifiers(バトル終了)ではなく clearTurnModifiers(ターン終了)で
+    // クリアされる（「そのターン中『反撃』を得る」がバトル終了で失効するのを防ぐ）。
+    if (effect.duration === "permanent") {
       target.card.keywords ||= [];
       if (!target.card.keywords.includes(effect.keyword)) {
         target.card.keywords.push(effect.keyword);
@@ -667,6 +681,8 @@ async function executeAbilityEffect(effect, context) {
     } else if (effect.duration === "turn") {
       target.card.turnKeywords ||= [];
       target.card.turnKeywords.push(effect.keyword);
+    } else if (effect.keyword === "counterattack") {
+      target.card.counterattack = true;
     } else {
       target.card.temporaryKeywords ||= [];
       target.card.temporaryKeywords.push(effect.keyword);
@@ -1574,7 +1590,21 @@ function normalizedAbilityLimit(ability) {
 }
 
 function abilityLimitKey(card, ability, limit) {
-  return limit.key || ability.id || card.id;
+  const base = limit.key || ability.id || card.id;
+  // 「1ターンに1回」は印字カード(=場/ソウルのインスタンス)ごとに独立。同名2枚を並べても各1回誘発できるよう
+  // turnスコープはインスタンスIDで分離する。手札から使う spell/impact/変身系(fromHandOnly)は
+  // 同名カード単位(=base)に保つ(再録間で共有する nice-one 等のキー設計を壊さない)。fightスコープは base のまま。
+  if (limit.scope === "turn" && !isHandCastLimitAbility(ability)) {
+    const instanceId = ability.__fromSoul?.instanceId || card?.instanceId;
+    if (instanceId) {
+      return `${base}::${instanceId}`;
+    }
+  }
+  return base;
+}
+
+function isHandCastLimitAbility(ability) {
+  return ability.kind === "spell" || ability.kind === "impact" || ability.fromHandOnly === true;
 }
 
 const abilityHandlers = {};

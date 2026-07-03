@@ -450,6 +450,12 @@
             {
               "op": "pendingActionKind",
               "kind": "spell"
+            },
+            {
+              "op": "hostMatches",
+              "filter": {
+                "nameIncludes": "絶命陣"
+              }
             }
           ],
           "effects": [
@@ -1314,7 +1320,7 @@
         {
           "op": "modifyStats",
           "filter": {
-            "name": "闇の魔法騎士 ドゥンケルハイト"
+            "sameInstanceAsSource": true
           },
           "conditions": [
             {
@@ -1352,7 +1358,7 @@
         {
           "op": "modifyStats",
           "filter": {
-            "name": "光の魔法騎士 リヒト"
+            "sameInstanceAsSource": true
           },
           "conditions": [
             {
@@ -2156,10 +2162,18 @@
           "fromSoulOnly": true,
           "conditions": [
             {
-              "op": "pendingAttackByOpponentItem"
+              "op": "pendingAttackByOpponentCardMatches",
+              "filter": {
+                "cardType": "item",
+                "attribute": "武器"
+              }
             },
             {
               "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
             }
           ],
           "script": [
@@ -3200,6 +3214,9 @@
             {
               "op": "pendingAttackTargetZone",
               "zone": "right"
+            },
+            {
+              "op": "pendingAttackByOpponentMonster"
             }
           ],
           "cost": [
@@ -3264,6 +3281,9 @@
             {
               "op": "pendingAttackTargetZone",
               "zone": "left"
+            },
+            {
+              "op": "pendingAttackByOpponentMonster"
             }
           ],
           "cost": [
@@ -4281,6 +4301,9 @@
             },
             {
               "op": "pendingAttackNotLink"
+            },
+            {
+              "op": "pendingAttackByOpponentMonster"
             }
           ],
           "cost": [
@@ -4463,6 +4486,10 @@
           "conditions": [
             {
               "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
             }
           ],
           "cost": [

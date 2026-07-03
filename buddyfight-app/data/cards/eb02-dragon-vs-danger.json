@@ -1150,6 +1150,10 @@
               "op": "pendingAttackDefenderIsSelf"
             },
             {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
+            },
+            {
               "op": "sourceZoneIn",
               "zones": [
                 "left",
@@ -2002,7 +2006,10 @@
             "counter"
           ],
           "target": {
-            "type": "battleCard"
+            "type": "battleCard",
+            "filter": {
+              "cardType": "monster"
+            }
           },
           "effects": [
             {
@@ -2417,7 +2424,11 @@
           ],
           "conditions": [
             {
-              "op": "pendingAttackByOpponentItem"
+              "op": "pendingAttackByOpponentCardMatches",
+              "filter": {
+                "cardType": "item",
+                "attribute": "武器"
+              }
             }
           ],
           "cost": [
@@ -2430,7 +2441,8 @@
             "type": "battleCard",
             "role": "attacker",
             "filter": {
-              "cardType": "item"
+              "cardType": "item",
+              "attribute": "武器"
             }
           },
           "effects": [

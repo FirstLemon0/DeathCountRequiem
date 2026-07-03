@@ -20,7 +20,7 @@ function findUsableHandAbility(card, options = {}) {
     if (isAbilityLimitUsed(state.selected.owner, card, ability)) {
       return false;
     }
-    if (ability.target && targetCandidatesFromSpec(ability.target, state.selected.owner, { card, ability }).length === 0) {
+    if (ability.target && !ability.target.allowMissingTarget && targetCandidatesFromSpec(ability.target, state.selected.owner, { card, ability }).length === 0) {
       return false;
     }
     return (
@@ -299,7 +299,7 @@ function fieldAbilityUsable(card, ability, owner, timing) {
   if (isAbilityLimitUsed(owner, card, ability)) {
     return false;
   }
-  if (ability.target && targetCandidatesFromSpec(ability.target, owner, { card, ability }).length === 0) {
+  if (ability.target && !ability.target.allowMissingTarget && targetCandidatesFromSpec(ability.target, owner, { card, ability }).length === 0) {
     return false;
   }
   return (
@@ -739,11 +739,11 @@ function checkCondition(condition, owner, context = {}) {
     return player.drop.filter((card) => card.attributes?.includes(condition.attribute)).length >= condition.amount;
   }
   if (condition.op === "ownDropAttributeSumCountGte") {
-    // 複数属性のドロップ枚数の合計が amount 以上か（両属性持ちは各属性で1枚ずつ計上＝二重計上）。
-    const total = (condition.attributes || []).reduce(
-      (sum, attr) => sum + player.drop.filter((card) => card.attributes?.includes(attr)).length,
-      0,
-    );
+    // 指定属性のいずれかを持つドロップの札数（和集合＝両属性持ちは1枚として数える）が amount 以上か。
+    const attrs = condition.attributes || [];
+    const total = player.drop.filter((card) =>
+      attrs.some((attr) => card.attributes?.includes(attr)),
+    ).length;
     return total >= condition.amount;
   }
   if (condition.op === "enteredFromZoneIn") {
@@ -760,6 +760,22 @@ function checkCondition(condition, owner, context = {}) {
   if (condition.op === "eventDestroyerIsSelf") {
     // opponentDestroyed/allyDestroyed 誘発時、破壊を起こした側が listener(owner) 自身か（「君のカードで破壊された時」0030）。
     return context.destroyCause?.sourceOwner === owner;
+  }
+  if (condition.op === "eventDestroyCauseMatches") {
+    // 破壊の原因で誘発を絞る（相手のカードで/効果で/発生源種別）。
+    // context.destroyCause は自身の destroyed / ally|opponentDestroyed の双方で参照可能。
+    // バトル破壊は byBattle のみ(byEffect/sourceType 無し)なので、byEffect や sourceType 指定の条件は自動的に不成立になる。
+    const cause = context.destroyCause;
+    if (!cause) return false;
+    if (condition.byEffect && !cause.byEffect) return false;
+    if (condition.byOpponent && !cause.byOpponent) return false;
+    if (condition.sourceType && cause.sourceType !== condition.sourceType) return false;
+    return true;
+  }
+  if (condition.op === "lastDestroySucceeded") {
+    // 直前の destroy op が実際に破壊を成立させたか（ソウルガード/破壊耐性で生存した場合は false）。
+    // 「破壊し、そうしたら…」の報酬効果を破壊成立時のみ実行するためのゲート。
+    return Boolean(context.lastDestroyed);
   }
   if (condition.op === "damageSourceLabelIs") {
     // opponentDamagedByEffect 誘発時、ダメージ発生源能力のラベル(“爆雷”等)一致を判定（爆雷連鎖）。
@@ -894,6 +910,11 @@ function checkCondition(condition, owner, context = {}) {
     return (state.pendingAction?.card?.size || 0) <= condition.amount;
   }
   if (condition.op === "pendingAttackTargetIs") {
+    // 「相手のモンスター全てと相手に攻撃する」全体攻撃はファイターも攻撃対象に含むため、
+    // fighter 指定の被弾条件（古竜の盾等）はこの攻撃にも反応できる。
+    if (condition.targetType === "fighter" && state.pendingAttack?.attackAllIncludesFighter) {
+      return true;
+    }
     return state.pendingAttack?.targetType === condition.targetType;
   }
   if (condition.op === "pendingAttackTargetZone") {

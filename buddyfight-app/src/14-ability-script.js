@@ -1093,9 +1093,8 @@ function grantKeywordSelectedForScript(step, context) {
     if (!card) {
       return;
     }
-    if (step.keyword === "counterattack") {
-      card.counterattack = true;
-    } else if (step.duration === "permanent") {
+    // duration を counterattack 特別扱いより先に判定（effects版 grantKeyword と挙動一致）。
+    if (step.duration === "permanent") {
       card.keywords ||= [];
       if (!card.keywords.includes(step.keyword)) {
         card.keywords.push(step.keyword);
@@ -1103,6 +1102,8 @@ function grantKeywordSelectedForScript(step, context) {
     } else if (step.duration === "turn") {
       card.turnKeywords ||= [];
       card.turnKeywords.push(step.keyword);
+    } else if (step.keyword === "counterattack") {
+      card.counterattack = true;
     } else {
       card.temporaryKeywords ||= [];
       card.temporaryKeywords.push(step.keyword);
@@ -1452,6 +1453,9 @@ async function useSelectedCardAbilityForScript(step, context) {
     return abilityTimingIncludes(ability, timing) && checkAbilityConditions(ability, context.owner, {
       ...context,
       card: entry.card,
+      // ソウルの秘剣/忍法を使わせているホスト（絶命陣/忍び巻物）を渡す。
+      // hostMatches 条件（「秘剣 絶命陣」のソウルにあるなら等）がホストを判定できるようにする。
+      hostCard: context.card,
       ability,
     });
   });
@@ -1482,6 +1486,7 @@ async function useSelectedCardAbilityForScript(step, context) {
   await executeAbilityBody({
     ...context,
     card: usedCard,
+    hostCard: context.card,
     ability: usedAbility,
     target,
   });

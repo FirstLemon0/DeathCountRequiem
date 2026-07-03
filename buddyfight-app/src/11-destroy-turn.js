@@ -214,7 +214,7 @@ async function destroyFieldCard(owner, zone, options = {}) {
     addLog(`${card.name}は効果により場に残りました。`);
     if (countsAsDestroyed) {
       recordSpecialCallOpportunity(card, owner, zone, options);
-      queueDestroyedTriggers(card, owner, zone);
+      queueDestroyedTriggers(card, owner, zone, options.cause);
       return card;
     }
     return null;
@@ -251,7 +251,7 @@ async function destroyFieldCard(owner, zone, options = {}) {
   applyLifeLink(card, owner);
   recordDestroyedEventWindow(card, owner);
   recordSpecialCallOpportunity(card, owner, zone, options);
-  queueDestroyedTriggers(card, owner, zone);
+  queueDestroyedTriggers(card, owner, zone, options.cause);
   queueAllyDestroyedTriggers(card, owner, zone, options.cause);
   queueLeaveFieldTriggers(card, owner, zone);
   queueDestroyReactionTriggers(card);
@@ -504,7 +504,7 @@ function expireTransientResponseWindows(options = {}) {
   state.enteredEventWindow = null;
 }
 
-function queueDestroyedTriggers(card, owner, zone) {
+function queueDestroyedTriggers(card, owner, zone, cause = null) {
   if (!(card.abilities || []).some((ability) => ability.kind === "triggered" && ability.event === "destroyed")) {
     return;
   }
@@ -515,6 +515,7 @@ function queueDestroyedTriggers(card, owner, zone) {
         player: state.players[owner],
         owner,
         zone,
+        destroyCause: cause,
       });
       // 破壊時能力で使われなかったソウルはドロップへ（destroyFieldCard で遅延した分の回収）。
       if ((card.soul || []).length > 0) {

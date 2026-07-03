@@ -392,11 +392,21 @@
             },
             {
               "op": "putTopDeckToGauge",
-              "amount": 2
+              "amount": 2,
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
             },
             {
               "op": "gainLife",
-              "amount": 1
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
             }
           ]
         }
@@ -425,7 +435,7 @@
             "amount": 4
           },
           {
-            "op": "dropOwnMonster",
+            "op": "destroyOwnMonster",
             "amount": 1,
             "filter": {
               "attribute": "黒竜"
@@ -446,7 +456,7 @@
               "amount": 4
             },
             {
-              "op": "dropOwnMonster",
+              "op": "destroyOwnMonster",
               "amount": 1,
               "filter": {
                 "attribute": "黒竜"
@@ -520,11 +530,25 @@
               "controller": "self",
               "filter": {
                 "cardType": "monster",
-                "size": 2,
+                "sizeIn": [
+                  2
+                ],
                 "attribute": "竜騎士"
               },
               "amount": 1,
               "require": true
+            },
+            {
+              "op": "selectZone",
+              "var": "callZone",
+              "cardVar": "target",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ],
+              "title": "ナポレオンのコール先",
+              "lead": "コールするエリアを選んでください。"
             },
             {
               "op": "payCardCostForSelection",
@@ -534,6 +558,10 @@
             {
               "op": "callSelected",
               "var": "target",
+              "zoneVar": "callZone",
+              "grantConditionalSize": {
+                "size": 0
+              },
               "resolveOnEnter": true
             }
           ]
@@ -2072,6 +2100,19 @@
               "amount": 2
             }
           ]
+        },
+        {
+          "id": "bt04-0037-hand-equip",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "fromHandOnly": true,
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
         }
       ]
     },
@@ -2591,21 +2632,88 @@
               "options": [
                 {
                   "key": "recover",
-                  "description": "ドロップの「ジャックナイフ」を含むモンスター1枚を手札に加える",
+                  "description": "ドロップの「ジャックナイフ」を含むモンスター1枚を、場の「ジャックナイフ」を含むモンスターのソウルに入れ、デッキから「ジャックナイフ “ゴルドリッター”」1枚を手札に加える",
+                  "condition": {
+                    "op": "all",
+                    "conditions": [
+                      {
+                        "op": "ownDropCardCountGte",
+                        "filter": {
+                          "nameIncludes": "ジャックナイフ",
+                          "cardType": "monster"
+                        },
+                        "amount": 1
+                      },
+                      {
+                        "op": "ownFieldCardExists",
+                        "filter": {
+                          "nameIncludes": "ジャックナイフ",
+                          "cardType": "monster"
+                        }
+                      }
+                    ]
+                  },
                   "script": [
                     {
-                      "op": "moveMatchingDropToHand",
-                      "amount": 1,
+                      "op": "selectCards",
+                      "var": "jkDrop",
+                      "from": "drop",
+                      "controller": "self",
                       "filter": {
                         "nameIncludes": "ジャックナイフ",
                         "cardType": "monster"
-                      }
+                      },
+                      "amount": 1,
+                      "require": true
+                    },
+                    {
+                      "op": "selectCards",
+                      "var": "jkHost",
+                      "from": "field",
+                      "controller": "self",
+                      "filter": {
+                        "nameIncludes": "ジャックナイフ",
+                        "cardType": "monster"
+                      },
+                      "amount": 1,
+                      "require": true
+                    },
+                    {
+                      "op": "moveSelectedToSelectedSoul",
+                      "var": "jkDrop",
+                      "soulOfVar": "jkHost"
+                    },
+                    {
+                      "op": "selectCards",
+                      "var": "gold",
+                      "from": "deck",
+                      "controller": "self",
+                      "filter": {
+                        "name": "ジャックナイフ “ゴルドリッター”"
+                      },
+                      "amount": 1,
+                      "require": false
+                    },
+                    {
+                      "op": "moveSelected",
+                      "var": "gold",
+                      "to": "hand",
+                      "log": "デッキから{cards}を手札に加えました。"
+                    },
+                    {
+                      "op": "shuffleDeck"
                     }
                   ]
                 },
                 {
                   "key": "draw",
                   "description": "カード1枚を引き、ライフ+3する",
+                  "condition": {
+                    "op": "ownFieldCardExists",
+                    "filter": {
+                      "name": "ジャックナイフ “ゴルドリッター”"
+                    }
+                  },
                   "script": [
                     {
                       "op": "draw",
@@ -3074,12 +3182,22 @@
                 {
                   "op": "discardSelfSoul",
                   "amount": 1
-                }
-              ],
-              "else": [
+                },
                 {
-                  "op": "draw",
-                  "amount": 1
+                  "op": "ifCondition",
+                  "condition": {
+                    "op": "not",
+                    "condition": {
+                      "op": "sourceSoulCountGte",
+                      "amount": 1
+                    }
+                  },
+                  "then": [
+                    {
+                      "op": "draw",
+                      "amount": 1
+                    }
+                  ]
                 }
               ]
             }
@@ -3474,6 +3592,10 @@
           "conditions": [
             {
               "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
             }
           ],
           "cost": [
@@ -4268,6 +4390,7 @@
             "type": "battleCard",
             "role": null,
             "filter": {
+              "cardType": "monster",
               "attribute": "英雄"
             }
           },
@@ -4914,7 +5037,7 @@
           ],
           "cost": [
             {
-              "op": "dropOwnMonster",
+              "op": "destroyOwnMonster",
               "amount": 1,
               "excludeSource": true,
               "filter": {
@@ -5232,7 +5355,54 @@
       },
       "callCost": {
         "gauge": 3
-      }
+      },
+      "abilities": [
+        {
+          "id": "bt04-s005-discard-recall",
+          "kind": "triggered",
+          "event": "discardedFromHand",
+          "optional": true,
+          "script": [
+            {
+              "op": "payCost",
+              "cost": [
+                {
+                  "op": "payGauge",
+                  "amount": 1
+                }
+              ]
+            },
+            {
+              "op": "selectCards",
+              "var": "self",
+              "from": "drop",
+              "filter": {
+                "name": "アイスブレイド・ジョーカー"
+              },
+              "amount": 1,
+              "require": false,
+              "title": "アイスブレイド・ジョーカー 再コール",
+              "lead": "ドロップのこのカードをコールします。"
+            },
+            {
+              "op": "selectZone",
+              "var": "zone",
+              "cardVar": "self",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ],
+              "emptyOnly": true
+            },
+            {
+              "op": "callSelected",
+              "var": "self",
+              "zoneVar": "zone"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "bt04-s006",
@@ -5567,7 +5737,7 @@
             "amount": 4
           },
           {
-            "op": "dropOwnMonster",
+            "op": "destroyOwnMonster",
             "amount": 1,
             "filter": {
               "attribute": "黒竜"
@@ -5588,7 +5758,7 @@
               "amount": 4
             },
             {
-              "op": "dropOwnMonster",
+              "op": "destroyOwnMonster",
               "amount": 1,
               "filter": {
                 "attribute": "黒竜"

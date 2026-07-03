@@ -837,11 +837,12 @@ function canAttackFighterThroughCenter(attackers) {
 }
 
 function canAttackTargetValue(attacker, targetValue) {
-  if (!attacker?.card || targetValue === "fighter") {
+  if (!attacker?.card) {
     return true;
   }
   // cannotAttackZones は desugarCardFlags で continuous restrictAttackTargets(自身のみ) へ
   // 変換済みのため、ここでは汎用の攻撃対象制限のみを参照する。
+  // fighter も restrictAttackTargets の対象に含む（zones:["...","fighter"] や竜騎士スレイマンの攻撃不可）。
   return !isAttackTargetRestricted(attacker, targetValue);
 }
 

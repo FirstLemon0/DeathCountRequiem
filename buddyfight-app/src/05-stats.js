@@ -180,6 +180,7 @@ function continuousDropStatAmount(effect, statKey, player) {
   let filter;
   let max;
   let per;
+  let distinct;
   if (effect.op === "modifyStatsByDropAttributeCount") {
     filter = effect.dropFilter || { attribute: effect.attribute };
     max = effect.max;
@@ -189,13 +190,15 @@ function continuousDropStatAmount(effect, statKey, player) {
     filter = af.filter || { attribute: af.attribute };
     max = af.max;
     per = af.per?.[statKey] ?? 0;
+    distinct = af.distinct; // 「1種類につき」＝同名を1枚として数える（0041）
   } else {
     return 0;
   }
   if (!per) {
     return 0;
   }
-  const count = player.drop.filter((dropCard) => matchesCardFilter(dropCard, filter)).length;
+  const matching = player.drop.filter((dropCard) => matchesCardFilter(dropCard, filter));
+  const count = distinct ? new Set(matching.map((c) => c.name)).size : matching.length;
   const capped = max !== undefined ? Math.min(count, max) : count;
   return capped * per;
 }

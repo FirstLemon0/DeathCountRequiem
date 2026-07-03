@@ -111,6 +111,9 @@ function canUseCardForFlag(player, card) {
   if (!player || !card || effectiveCardType(card) === "flag") {
     return true;
   }
+  if (card.deckAnyFlag) {
+    return true; // 角王(deckAnyFlag)はどのフラッグのデッキに入れても使用できる
+  }
   const flag = player.flag;
   if (!flag || flag.allowAllWorlds) {
     return true;

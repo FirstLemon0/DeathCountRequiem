@@ -153,6 +153,12 @@
             },
             {
               "op": "pendingAttackIsLink"
+            },
+            {
+              "op": "pendingAttackIncludesOtherMatching",
+              "filter": {
+                "cardType": "item"
+              }
             }
           ],
           "cost": [
@@ -1801,35 +1807,17 @@
       "keywords": [
         "lifeLink1"
       ],
-      "abilities": [
+      "abilities": [],
+      "continuous": [
         {
-          "id": "bf-h-bt01-0029-nullify-lifelink",
-          "kind": "triggered",
-          "event": "allyDestroyed",
-          "conditions": [
-            {
-              "op": "eventCardMatches",
-              "filter": {
-                "cardType": "monster",
-                "attribute": "怒羅魂頭",
-                "sizeIn": [
-                  3
-                ]
-              }
-            }
-          ],
-          "effects": [
-            {
-              "op": "cancelRecentLifeLink",
-              "filter": {
-                "cardType": "monster",
-                "attribute": "怒羅魂頭",
-                "sizeIn": [
-                  3
-                ]
-              }
-            }
-          ]
+          "op": "nullifyLifeLink",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "怒羅魂頭",
+            "sizeIn": [
+              3
+            ]
+          }
         }
       ]
     },
@@ -2280,6 +2268,20 @@
             "main"
           ],
           "optional": true,
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "name": "カードライノ"
+              }
+            },
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "name": "カードサーペント"
+              }
+            }
+          ],
           "cost": [
             {
               "op": "payGauge",
@@ -2296,7 +2298,7 @@
                 "name": "カードライノ"
               },
               "amount": 1,
-              "require": false,
+              "require": true,
               "title": "カードバーン",
               "lead": "ドロップに置く「カードライノ」を選択"
             },
@@ -2314,7 +2316,7 @@
                 "name": "カードサーペント"
               },
               "amount": 1,
-              "require": false,
+              "require": true,
               "title": "カードバーン",
               "lead": "ドロップに置く「カードサーペント」を選択"
             },
@@ -3594,7 +3596,49 @@
           "id": "bf-h-bt01-0061-henshin-attack",
           "kind": "triggered",
           "event": "attack",
-          "optional": true,
+          "effects": [
+            {
+              "op": "moveGaugeToDrop",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-h-bt01-0061-henshin-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-bt01-0061-henshin-field",
+          "label": "『変身』で装備する",
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
           "cost": [
             {
               "op": "payGauge",
@@ -3950,7 +3994,8 @@
             {
               "op": "grantKeyword",
               "target": "$target",
-              "keyword": "counterattack"
+              "keyword": "counterattack",
+              "duration": "turn"
             },
             {
               "op": "modifyStats",
@@ -5091,6 +5136,8 @@
       "callCost": {
         "gauge": 3
       },
+      "attackAllMonstersOnMonsterAttack": true,
+      "attackAllIncludesFighter": true,
       "abilities": [
         {
           "id": "bf-h-bt01-0101-damage-destroy-item",

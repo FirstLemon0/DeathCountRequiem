@@ -64,7 +64,8 @@ async function resolveMultiMonsterAttack(pending, attackers, attackerNames) {
       .map((zone) => getFieldTarget(pending.targetOwner, zone))
       .filter((target) => target?.card && effectiveCardType(target.card) === "monster"),
   );
-  if (targets.length === 0) {
+  if (targets.length === 0 && !pending.attackAllIncludesFighter) {
+    // 全体攻撃(相手に攻撃を含む)は、対象モンスターが全て居なくなっても本体への攻撃は続行する。
     addLog("攻撃対象が場を離れたため、攻撃は終了しました。");
     clearPendingAttack();
     render();
@@ -103,11 +104,33 @@ async function resolveMultiMonsterAttack(pending, attackers, attackerNames) {
   for (const target of targets) {
     await resolveCounterattack({ owner: target.owner, zone: target.zone }, attackers);
   }
+  let fighterDamageDealt = 0;
+  if (pending.attackAllIncludesFighter) {
+    // 「相手のモンスター全てと相手に攻撃する」の本体打撃（アジ・ダハーカ）。本体へ合計クリティカルぶんのダメージ。
+    // 単体ファイター攻撃(resolveFighterAttack)と同じ算出（連携キャップ/攻撃キャップ/軽減耐性/減らないダメージ）。
+    let damage = attackers.reduce((total, attacker) => total + visibleCritical(attacker.card), 0);
+    if (attackers.length > 1) {
+      const cap = linkAttackDamageCapFor(pending.defender);
+      if (cap !== null && damage > cap) damage = cap;
+    }
+    const attackCap = attackDamageCapFor(pending.defender);
+    if (attackCap !== null && damage > attackCap) damage = attackCap;
+    const damageOptions = { log: false, byAttack: true };
+    if (pending.damageCannotBeReduced) damageOptions.ignorePrevention = true;
+    const reduceResist = applicableAttackResistances(attackers).filter((e) => (e.effects || []).includes("reduce"));
+    if (reduceResist.length > 0) damageOptions.resistEntries = reduceResist;
+    const fighterDefender = state.players[pending.defender];
+    fighterDamageDealt = applyDamageToPlayer(pending.defender, damage, damageOptions);
+    addLog(`${fighterDefender.name}は${attackerNames}の攻撃で${fighterDamageDealt}ダメージを受けました。`);
+    await runDamageDealtTriggers(attackers, pending, fighterDamageDealt);
+  }
   finishPendingAttack({
     destroyedTarget: destroyedCount > 0,
     destroyedCount,
+    dealtDamage: fighterDamageDealt,
     attackAllTargetZones: [...(pending.attackAllTargetZones || [])],
   });
+  if (fighterDamageDealt > 0) checkWinner();
   render();
 }
 

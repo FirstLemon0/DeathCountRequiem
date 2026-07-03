@@ -398,7 +398,6 @@
               "from": "hand",
               "controller": "self",
               "filter": {
-                "cardType": "monster",
                 "attribute": "竜騎士"
               },
               "amount": 1,
@@ -1879,7 +1878,11 @@
               "op": "pendingAttackDefenderIsSelf"
             },
             {
-              "op": "pendingAttackByOpponentItem"
+              "op": "pendingAttackByOpponentCardMatches",
+              "filter": {
+                "cardType": "item",
+                "attribute": "武器"
+              }
             }
           ],
           "kind": "spell",
@@ -2665,6 +2668,7 @@
           "target": {
             "type": "fieldCard",
             "controller": "self",
+            "allowMissingTarget": true,
             "filter": {
               "cardType": "monster"
             }
@@ -3102,19 +3106,22 @@
               "op": "modifyStats",
               "target": "$target",
               "power": 1000,
-              "defense": 1000
+              "defense": 1000,
+              "duration": "turn"
             },
             {
               "op": "grantKeyword",
               "target": "$target",
-              "keyword": "counterattack"
+              "keyword": "counterattack",
+              "duration": "turn"
             },
             {
               "op": "modifyStatsIfTargetAttribute",
               "target": "$target",
               "attribute": "チェス",
               "power": 3000,
-              "defense": 3000
+              "defense": 3000,
+              "duration": "turn"
             }
           ]
         }

@@ -2295,8 +2295,16 @@
                   "key": "damage",
                   "label": "相手にダメージ２",
                   "condition": {
-                    "op": "phaseIs",
-                    "phase": "final"
+                    "op": "all",
+                    "conditions": [
+                      {
+                        "op": "phaseIs",
+                        "phase": "final"
+                      },
+                      {
+                        "op": "turnOwnerIsSelf"
+                      }
+                    ]
                   },
                   "script": [
                     {
@@ -2933,7 +2941,8 @@
             {
               "op": "grantKeyword",
               "target": "$self",
-              "keyword": "counterattack"
+              "keyword": "counterattack",
+              "duration": "turn"
             }
           ],
           "optional": true
@@ -3541,8 +3550,7 @@
               "cardVar": "call",
               "zones": [
                 "center"
-              ],
-              "emptyOnly": true
+              ]
             },
             {
               "op": "payCardCostForSelection",
@@ -6031,8 +6039,7 @@
               "cardVar": "call",
               "zones": [
                 "center"
-              ],
-              "emptyOnly": true
+              ]
             },
             {
               "op": "payCardCostForSelection",

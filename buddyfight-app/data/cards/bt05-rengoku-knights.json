@@ -588,7 +588,7 @@
           ],
           "cost": [
             {
-              "op": "dropOwnMonster",
+              "op": "destroyOwnMonster",
               "amount": 1,
               "excludeSource": true,
               "filter": {
@@ -920,24 +920,11 @@
           ],
           "script": [
             {
-              "op": "selectCards",
-              "var": "bounce",
-              "from": "field",
-              "controller": "both",
+              "op": "returnAllToHand",
               "filter": {
                 "cardType": "monster",
                 "sizeLte": 2
-              },
-              "min": 0,
-              "max": 99,
-              "require": false,
-              "title": "デビルズロッケンロール",
-              "lead": "手札に戻すサイズ2以下のモンスターを選んでください。"
-            },
-            {
-              "op": "moveSelected",
-              "var": "bounce",
-              "to": "hand"
+              }
             },
             {
               "op": "moveTopDeckToDrop",
@@ -1224,7 +1211,7 @@
           ],
           "cost": [
             {
-              "op": "dropSource"
+              "op": "destroySource"
             }
           ],
           "target": {
@@ -1540,7 +1527,8 @@
             {
               "op": "pendingAttackTargetMatches",
               "filter": {
-                "cardType": "monster"
+                "cardType": "monster",
+                "criticalGte": 3
               }
             }
           ],
@@ -1902,6 +1890,9 @@
               "op": "callSelectedToEmptyZones",
               "var": "m",
               "payCost": "call",
+              "zones": [
+                "center"
+              ],
               "resolveOnEnter": true
             }
           ]
@@ -2254,6 +2245,12 @@
               "op": "pendingAttackByOpponentMonster"
             },
             {
+              "op": "pendingAttackByOpponentCardMatches",
+              "filter": {
+                "powerGte": 5000
+              }
+            },
+            {
               "op": "attackingAlone"
             }
           ],
@@ -2270,7 +2267,8 @@
               "from": "pendingAttackers",
               "controller": "opponent",
               "filter": {
-                "cardType": "monster"
+                "cardType": "monster",
+                "powerGte": 5000
               },
               "amount": 1,
               "require": true,
@@ -2622,6 +2620,12 @@
           "id": "bt05-0048-deathdive",
           "kind": "triggered",
           "event": "destroyed",
+          "conditions": [
+            {
+              "op": "eventDestroyCauseMatches",
+              "byOpponent": true
+            }
+          ],
           "effects": [
             {
               "op": "dealDamage",
@@ -2696,8 +2700,8 @@
           ],
           "cost": [
             {
-              "op": "payLife",
-              "amount": 1
+              "op": "setLife",
+              "amount": 3
             }
           ],
           "effects": [
@@ -2814,6 +2818,10 @@
                 "nameIncludes": "煉獄騎士団",
                 "cardType": "monster"
               }
+            },
+            {
+              "op": "eventDestroyCauseMatches",
+              "byEffect": true
             }
           ],
           "effects": [
@@ -4096,9 +4104,9 @@
               "controller": "self",
               "filter": {
                 "cardType": "monster",
-                "nameIncludes": "煉獄騎士団",
-                "excludeSource": true
+                "nameIncludes": "煉獄騎士団"
               },
+              "excludeSource": true,
               "amount": 1,
               "require": true,
               "title": "煉獄騎士団 クルーエル・コマンド",
@@ -4186,6 +4194,9 @@
           "conditions": [
             {
               "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
             }
           ],
           "cost": [
@@ -4467,6 +4478,7 @@
           "conditions": [
             {
               "op": "lastDestroyedCardMatches",
+              "controller": "self",
               "filter": {
                 "nameIncludes": "デスルーラー",
                 "cardType": "monster"
@@ -4612,15 +4624,17 @@
         {
           "id": "bt05-0084-revive",
           "kind": "triggered",
-          "event": "destroyed",
+          "event": "allyDestroyed",
           "optional": true,
           "conditions": [
             {
-              "op": "lastDestroyedCardMatches",
+              "op": "eventCardMatches",
               "filter": {
                 "cardType": "monster",
                 "attribute": "死",
-                "size": 1
+                "sizeIn": [
+                  1
+                ]
               }
             }
           ],
@@ -4642,7 +4656,9 @@
               "filter": {
                 "cardType": "monster",
                 "attribute": "死",
-                "size": 1
+                "sizeIn": [
+                  1
+                ]
               },
               "amount": 1,
               "require": true,
@@ -4709,7 +4725,15 @@
         {
           "id": "bt05-0085-fatal-buff",
           "kind": "triggered",
-          "event": "allyDestroyedByAttack",
+          "event": "allyDestroyed",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
           "effects": [
             {
               "op": "modifyStats",
@@ -7031,6 +7055,9 @@
             {
               "op": "sourceSoulCountGte",
               "amount": 3
+            },
+            {
+              "op": "pendingAttackTargetIsSource"
             }
           ],
           "cost": [
@@ -7130,7 +7157,7 @@
           ],
           "cost": [
             {
-              "op": "dropOwnMonster",
+              "op": "destroyOwnMonster",
               "amount": 1,
               "excludeSource": true,
               "filter": {
