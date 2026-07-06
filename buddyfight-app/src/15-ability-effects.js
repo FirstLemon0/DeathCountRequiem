@@ -418,7 +418,7 @@ async function executeAbilityEffect(effect, context) {
       receiver.drop.push(movedCard);
       if (effectiveCardType(movedCard) === "monster") {
         applyDamageToPlayer(owner, effect.damage || 1, { sourceName: context.card?.name });
-      } else {
+      } else if (!isLifeGainByEffectPrevented(state.players.indexOf(receiver))) {
         receiver.life += effect.life || 1;
         addLog(`${context.card.name}の効果で${receiver.name}のライフを${effect.life || 1}回復しました。`);
       }
@@ -1382,21 +1382,28 @@ async function executeAbilityEffect(effect, context) {
   // when:"ownTurnEnd"=自分のターン終了時 / "opponentTurnEnd"=相手のターン終了時 /
   // 省略時=対象カードの所有者のターン終了時（旧 AtTurnEnd(target有) 互換）。
   if (effect.op === "setDelayedDestroy") {
-    const victim = effect.target
-      ? resolveEffectReference(effect.target, context)
-      : context.card
-        ? { card: context.card, owner: context.owner }
-        : null;
-    if (victim?.card) {
-      let turnEndOwner;
-      if (effect.when === "ownTurnEnd") {
-        turnEndOwner = context.owner;
-      } else if (effect.when === "opponentTurnEnd") {
-        turnEndOwner = 1 - context.owner;
-      } else {
-        turnEndOwner = victim.owner;
+    const turnEndOwnerFor = (victimOwner) => {
+      if (effect.when === "ownTurnEnd") return context.owner;
+      if (effect.when === "opponentTurnEnd") return 1 - context.owner;
+      return victimOwner;
+    };
+    if (effect.target === "$attackers") {
+      // 連携攻撃で攻撃してきた全モンスターを対象にする（デスカース 0026: 「攻撃したモンスター」複数対応）。
+      const attackers = context.attackers?.length ? context.attackers : getPendingAttackers();
+      (attackers || []).forEach((entry) => {
+        if (entry?.card) {
+          entry.card.destroyAtEndOfTurnOwner = turnEndOwnerFor(entry.owner);
+        }
+      });
+    } else {
+      const victim = effect.target
+        ? resolveEffectReference(effect.target, context)
+        : context.card
+          ? { card: context.card, owner: context.owner }
+          : null;
+      if (victim?.card) {
+        victim.card.destroyAtEndOfTurnOwner = turnEndOwnerFor(victim.owner);
       }
-      victim.card.destroyAtEndOfTurnOwner = turnEndOwner;
     }
   }
   if (effect.op === "shuffleDropIntoDeck") {

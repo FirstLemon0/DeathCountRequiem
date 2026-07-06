@@ -249,7 +249,7 @@ async function destroyFieldCard(owner, zone, options = {}) {
     card.preventNextDestroyCount -= 1;
     const replacement = card.preventNextDestroyEffects?.shift();
     const countsAsDestroyed = Boolean(replacement?.countsAsDestroyed);
-    if (replacement?.gainLife) {
+    if (replacement?.gainLife && !isLifeGainByEffectPrevented(replacement.owner ?? owner)) {
       state.players[replacement.owner ?? owner].life += replacement.gainLife;
       addLog(`${replacement.source || card.name}の効果で${state.players[replacement.owner ?? owner].name}のライフを${replacement.gainLife}回復しました。`);
     }
@@ -451,7 +451,7 @@ async function applyDestroyReplacement(card, owner, options = {}) {
   if (!payment.ok) {
     return false;
   }
-  if (replacement.gainLife) {
+  if (replacement.gainLife && !isLifeGainByEffectPrevented(owner)) {
     player.life += replacement.gainLife;
   }
   if (replacement.to === "gauge") {

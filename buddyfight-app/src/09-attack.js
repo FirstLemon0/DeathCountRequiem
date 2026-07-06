@@ -65,7 +65,7 @@ async function attackAction() {
   await performAttackDeclaration(attackers, targetValue);
 }
 
-async function performAttackDeclaration(attackers, targetValue) {
+async function performAttackDeclaration(attackers, targetValue, options = {}) {
   const opponent = opponentPlayer();
   // setAttackRedirectThisTurn: このターン、この席の攻撃対象を指定モンスターへ強制変更（0061）。
   const attackerSeat = attackers[0]?.owner;
@@ -128,6 +128,8 @@ async function performAttackDeclaration(attackers, targetValue) {
     // 「相手のモンスター全てと相手（ファイター）に攻撃する」フラグ（アジ・ダハーカ）。
     attackAllIncludesFighter:
       attackAllTargetZones.length > 0 && Boolean(firstAttacker.card.attackAllIncludesFighter),
+    // 「その攻撃で相手にダメージを与えたなら勝利」(チェック・メイト 0074)。
+    winOnFighterDamage: Boolean(options.winOnFighterDamage),
     counterUsed: {
       [state.active]: null,
       [targetOwner]: null,
@@ -200,7 +202,10 @@ async function declareAttackWithFieldCard(owner, zone, options = {}) {
     return false;
   }
   let targetValue = candidates[0].value;
-  if (candidates.length > 1) {
+  if (options.forceTargetValue && candidates.some((c) => c.value === options.forceTargetValue)) {
+    // 対象を強制指定（チェック・メイト 0074 は必ずファイターへ攻撃）。可能な時のみ適用。
+    targetValue = options.forceTargetValue;
+  } else if (candidates.length > 1) {
     const selected = await chooseCardEntries(
       candidates.map((candidate) => ({ value: candidate.value, card: candidate.card })),
       {
@@ -215,7 +220,7 @@ async function declareAttackWithFieldCard(owner, zone, options = {}) {
       targetValue = selected[0].value;
     }
   }
-  return performAttackDeclaration([attacker], targetValue);
+  return performAttackDeclaration([attacker], targetValue, options);
 }
 
 // 「攻撃の対象をこのモンスターに変更する」継続効果（闘神竜 デモンゴドル・アーク）。

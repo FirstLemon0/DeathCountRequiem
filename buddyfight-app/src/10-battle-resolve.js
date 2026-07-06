@@ -358,6 +358,7 @@ async function resolveFighterAttack(pending, attackers, attackerNames) {
       `${attackerNames}の攻撃力${attackPower}が${defenseItemInfo.card.name}の防御力${itemDefense}以上のため、${defender.name}は${dealtDamage}ダメージを受けました。`,
     );
     await runDamageDealtTriggers(attackers, pending, dealtDamage);
+    applyWinOnFighterDamage(pending, dealtDamage);
     finishPendingAttack({ dealtDamage, battledDefenseItem: true });
     checkWinner();
     render();
@@ -367,9 +368,21 @@ async function resolveFighterAttack(pending, attackers, attackerNames) {
   const dealtDamage = applyDamageToPlayer(pending.defender, damage, damageOptions);
   addLog(`${defender.name}は${attackerNames}の攻撃で${dealtDamage}ダメージを受けました。`);
   await runDamageDealtTriggers(attackers, pending, dealtDamage);
+  applyWinOnFighterDamage(pending, dealtDamage);
   finishPendingAttack({ dealtDamage });
   checkWinner();
   render();
+}
+
+// 「その攻撃で相手にダメージを与えたなら勝利する」(チェック・メイト 0074)。
+// pending.winOnFighterDamage が立った攻撃がファイターへダメージを与えたら攻撃側の勝利。
+function applyWinOnFighterDamage(pending, dealtDamage) {
+  if (!pending?.winOnFighterDamage || dealtDamage <= 0 || state.winner) {
+    return;
+  }
+  const winnerSeat = pending.attackerOwner;
+  state.winner = state.players[winnerSeat].name;
+  addLog(`${state.winner}はチェック・メイトの条件を満たしゲームに勝利しました。`);
 }
 
 async function resolveCounterattack(targetSlot, attackers) {
