@@ -9,6 +9,13 @@ async function executeAbilityEffects(effects, context) {
   }
 }
 
+// 汎用 effect.conditions ゲート（executeAbilityEffect内）を素通りさせる op の集合。
+// これらの op は effect.conditions を「発動時に一括評価される前提条件」としてではなく、
+// 「消費側(対抗ウィンドウ等)で対象イベントごとに後評価するwhile条件」として自前で保持・消費する。
+// 発動時点(メインフェイズ解決など)ではその条件の前提(例: state.pendingAttack)がまだ存在しないため、
+// 汎用ゲートで先評価すると常にfalseとなり op 自体が不発になってしまう（0057 アブソリュート・アタック等）。
+const CONDITIONS_DEFERRED_TO_CONSUMER_OPS = new Set(["preventOpponentCounterThisTurn"]);
+
 async function resolveRockPaperScissors(context) {
   const choices = [
     { key: "rock", card: { name: "グー", type: "choice" } },
@@ -102,8 +109,10 @@ async function executeAbilityEffect(effect, context) {
     }
   }
   // 汎用 effect conditions ゲート: 各effectに conditions を付けると満たした時だけ解決（targetMatches等と合成可）
+  // ただし CONDITIONS_DEFERRED_TO_CONSUMER_OPS に属する op は、conditions を消費側で後評価するためここでは評価しない。
   if (
     Array.isArray(effect.conditions) && effect.conditions.length > 0 &&
+    !CONDITIONS_DEFERRED_TO_CONSUMER_OPS.has(effect.op) &&
     !checkCardConditions(effect.conditions, context.owner, { ...context, target })
   ) {
     return;
@@ -259,15 +268,20 @@ async function executeAbilityEffect(effect, context) {
     if (player.deck.length === 0) {
       addLog(`${context.card?.name || "効果"}で見るカードがありません。`);
     } else {
+      // altTo:"drop" 指定時は「下に置く」選択がデッキ下ではなくドロップ行きになる（H-EB04/0060）。
+      const toDrop = effect.altTo === "drop";
       const top = player.deck.pop();
       const keepOnTop = await confirmChoiceAsync(
         context.owner,
-        `${context.card?.name || "効果"}: デッキの1番上の${top.name}を1番上か1番下のどちらに置きますか？`,
-        { yesLabel: "1番上に置く", noLabel: "1番下に置く" },
+        `${context.card?.name || "効果"}: デッキの1番上の${top.name}を1番上か${toDrop ? "ドロップ" : "1番下"}のどちらに置きますか？`,
+        { yesLabel: "1番上に置く", noLabel: toDrop ? "ドロップに置く" : "1番下に置く" },
       );
       if (keepOnTop) {
         player.deck.push(top);
         addLog(`${context.card?.name || "効果"}でデッキの1番上を見て、1番上に置きました。`);
+      } else if (toDrop) {
+        player.drop.push(top);
+        addLog(`${context.card?.name || "効果"}でデッキの1番上を見て、ドロップに置きました。`);
       } else {
         player.deck.unshift(top);
         addLog(`${context.card?.name || "効果"}でデッキの1番上を見て、1番下に置きました。`);
@@ -1271,7 +1285,14 @@ async function executeAbilityEffect(effect, context) {
       // 手札からの起動（「手札のこのカードを…ソウルに入れる」）に対応: 手札から取り除いてから移す。
       const handCards = state.players[context.owner]?.hand;
       const handIndex = handCards?.findIndex((c) => c.instanceId === context.card.instanceId);
-      movedCard = handIndex !== undefined && handIndex >= 0 ? handCards.splice(handIndex, 1)[0] : context.card;
+      if (handIndex !== undefined && handIndex >= 0) {
+        movedCard = handCards.splice(handIndex, 1)[0];
+      } else {
+        // ドロップからの起動（「ドロップのこのカードを…ソウルに入れる」H-EB04/0005）にも対応。
+        const dropCards = state.players[context.owner]?.drop;
+        const dropIndex = dropCards?.findIndex((c) => c.instanceId === context.card.instanceId);
+        movedCard = dropIndex !== undefined && dropIndex >= 0 ? dropCards.splice(dropIndex, 1)[0] : context.card;
+      }
     }
     if (!movedCard) {
       return;
@@ -1350,7 +1371,7 @@ async function executeAbilityEffect(effect, context) {
   }
   if (effect.op === "setPreventNextDestroy" && target?.card) {
     target.card.preventNextDestroyCount = (target.card.preventNextDestroyCount || 0) + (effect.amount || 1);
-    if (effect.gainLife || effect.log || effect.countsAsDestroyed || effect.grantKeyword) {
+    if (effect.gainLife || effect.log || effect.countsAsDestroyed || effect.grantKeyword || effect.effects) {
       target.card.preventNextDestroyEffects ||= [];
       target.card.preventNextDestroyEffects.push({
         owner: context.owner,
@@ -1359,6 +1380,9 @@ async function executeAbilityEffect(effect, context) {
         log: effect.log || "",
         countsAsDestroyed: Boolean(effect.countsAsDestroyed),
         grantKeyword: effect.grantKeyword || null,
+        // effects: 場に残った時に追加で解決する効果群（H-EB04/0052 等）。破壊解決の消費側(src/11)で
+        // destroyReactionと同形のmicrotaskで実行する（破壊解決中の再入を避けるため）。
+        effects: Array.isArray(effect.effects) ? effect.effects : null,
       });
     }
     addLog(`${context.card.name}の効果で、次に${target.card.name}が破壊される場合、場に残せるようにしました。`);
@@ -1588,6 +1612,12 @@ function resolveAmountFrom(spec, context) {
     const tcard = context.target?.card;
     if (!tcard) return 0;
     return spec.stat === "size" ? tcard.size || 0 : visibleFieldStat(tcard, spec.stat || "critical");
+  }
+  if (spec.source === "damageSourceStat") {
+    // ダメージ源(context.damageSource.card)の visible stat（自分がダメージを受けた時、与えてきたカードのサイズ分ダメージ等 0020）。
+    // size は印字サイズ（ドロップ後も参照できるよう effectiveSize ではなく card.size を見る）。
+    const c = context.damageSource?.card;
+    return c ? (spec.stat === "size" ? c.size || 0 : visibleFieldStat(c, spec.stat || "critical")) : 0;
   }
   if (spec.source === "fieldCardStat") {
     const owner = ownerOf(spec.controller);

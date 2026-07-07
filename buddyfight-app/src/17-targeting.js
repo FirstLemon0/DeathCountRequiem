@@ -61,6 +61,9 @@ function effectTargetCandidates(selectedCard) {
     const nameIncludes = selectedCard.callStack.nameIncludes;
     const stackAttribute = selectedCard.callStack.attribute;
     const stackAttributeIn = selectedCard.callStack.attributeIn;
+    // filter: 汎用フィルタ(matchesCardFilter)で重ね先候補を絞る（baseSizeGte 等。H-EB04/0010 等）。
+    // 既存の nameIncludes/attribute/attributeIn とは併用可（両方指定時はAND）。
+    const stackFilter = selectedCard.callStack.filter;
     return allFieldTargets(
       (card, owner) =>
         owner === state.active &&
@@ -68,7 +71,8 @@ function effectTargetCandidates(selectedCard) {
         (!nameIncludes || card.name.includes(nameIncludes)) &&
         (!stackAttribute || (card.attributes || []).includes(stackAttribute)) &&
         (!Array.isArray(stackAttributeIn) ||
-          stackAttributeIn.some((a) => (card.attributes || []).includes(a))),
+          stackAttributeIn.some((a) => (card.attributes || []).includes(a))) &&
+        (!stackFilter || matchesCardFilter(card, stackFilter)),
     );
   }
   const genericAbility = firstTargetedAbilityForCurrentTiming(selectedCard);
@@ -350,7 +354,13 @@ function matchesCardFilter(card, filter = {}, options = {}) {
   if (filter.baseSize !== undefined && (card.size || 0) !== filter.baseSize) {
     return false;
   }
-  if (filter.hasAbilityLabel !== undefined && !(card.abilities || []).some((ability) => ability.label === filter.hasAbilityLabel)) {
+  if (filter.baseSizeGte !== undefined && (card.size || 0) < filter.baseSizeGte) {
+    return false;
+  }
+  if (
+    filter.hasAbilityLabel !== undefined &&
+    !(card.abilities || []).concat(card.soulAbilities || []).some((ability) => ability.label === filter.hasAbilityLabel)
+  ) {
     return false;
   }
   if (filter.mounted !== undefined) {

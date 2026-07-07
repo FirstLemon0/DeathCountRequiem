@@ -257,6 +257,7 @@ async function destroyFieldCard(owner, zone, options = {}) {
       card.turnKeywords ||= [];
       card.turnKeywords.push(replacement.grantKeyword);
     }
+    queuePreventNextDestroyReplacementEffects(card, owner, replacement);
     addLog(`${card.name}は効果により場に残りました。`);
     if (countsAsDestroyed) {
       recordSpecialCallOpportunity(card, owner, zone, options);
@@ -291,6 +292,10 @@ async function destroyFieldCard(owner, zone, options = {}) {
     state.monstersDestroyedThisTurn ||= [0, 0];
     state.monstersDestroyedThisTurn[owner] = (state.monstersDestroyedThisTurn[owner] || 0) + 1;
   }
+  // このターン中に破壊されたカードの記録（destroyedThisTurnMatchingCountGte 用）。モンスター以外も記録する。
+  // sizeAtDestroy は recordDestroyedEventWindow と同じ frozenSizeAtDestroy で算出（conditionalSize未クリアのこの時点）。
+  state.destroyedCardsThisTurn = state.destroyedCardsThisTurn || [[], []];
+  state.destroyedCardsThisTurn[owner].push({ card, sizeAtDestroy: frozenSizeAtDestroy(card) });
   if (zone === "item" && player.arrivalCardId === card.instanceId) {
     player.arrivalCardId = null;
   }
@@ -318,6 +323,30 @@ async function destroyFieldCard(owner, zone, options = {}) {
   queueAllyDestroyedTriggers(card, owner, zone, options.cause);
   queueDestroyReactionTriggers(card);
   return card;
+}
+
+// setPreventNextDestroy の replacement.effects を、破壊が場残留に置換された直後に解決する
+// （H-EB04/0052 等: 破壊されても場に残す＋追加効果）。attachDestroyReaction/queueDestroyReactionTriggers と
+// 同形の microtask パターンを踏襲し、destroyFieldCard の同期経路中に effect 実行で再入しないようにする。
+function queuePreventNextDestroyReplacementEffects(card, owner, replacement) {
+  const effects = replacement?.effects;
+  if (!Array.isArray(effects) || effects.length === 0) {
+    return;
+  }
+  const effectOwner = replacement.owner ?? owner;
+  Promise.resolve()
+    .then(async () => {
+      const player = state.players[effectOwner];
+      const context = { card, player, owner: effectOwner };
+      for (const effect of effects) {
+        await executeAbilityEffect(effect, context);
+      }
+      render();
+    })
+    .catch((error) => {
+      console.error(error);
+      render();
+    });
 }
 
 // attachDestroyReaction で付与された遅延リアクション（このカードが破壊された時、付与者が effects を解決）を発火。
@@ -530,13 +559,17 @@ function specialCallOpportunityMatches(event, owner, spec = {}) {
   return matchesCardFilter(event.destroyedCard, spec.filter || {});
 }
 
-function recordDestroyedEventWindow(card, owner) {
-  // 破壊された瞬間の実効サイズを凍結（この後カードがドロップへ行っても lastDestroyedCardMatches は
-  // 破壊時のサイズで判定できる）。この時点で card は既に場から外れており effectiveSize は場外扱いで
-  // 印字サイズを返すため、conditionalSize の上書き(granter在場)は直接適用して破壊時サイズを求める。
+// 破壊された瞬間の実効サイズを凍結する共通算出（この後カードがドロップへ行っても、破壊時サイズを
+// 参照する判定 (lastDestroyedCardMatches / destroyedThisTurnMatchingCountGte) が破壊時のサイズで判定できる）。
+// 呼び出し時点で card は既に場から外れており effectiveSize は場外扱いで印字サイズを返すため、
+// conditionalSize の上書き(granter在場)は直接適用して破壊時サイズを求める。
+function frozenSizeAtDestroy(card) {
   const override = card.conditionalSize;
-  const sizeAtDestroy =
-    override && granterOnField(override.granterInstanceId) ? Math.max(0, override.size || 0) : effectiveSize(card);
+  return override && granterOnField(override.granterInstanceId) ? Math.max(0, override.size || 0) : effectiveSize(card);
+}
+
+function recordDestroyedEventWindow(card, owner) {
+  const sizeAtDestroy = frozenSizeAtDestroy(card);
   const entry = { card, owner, sizeAtDestroy };
   if (state.destroyedEventWindow && state.destroyedEventWindow.turnCount === state.turnCount) {
     state.destroyedEventWindow.entries.push(entry);
@@ -1020,6 +1053,7 @@ async function endTurn() {
   state.attacksThisTurn = 0;
   state.attackDestroyedByAttribute = [{}, {}]; // 属性別の攻撃撃破数(このターン)をリセット
   state.monstersDestroyedThisTurn = [0, 0]; // このターン破壊されたモンスター数(所有者別)をリセット
+  state.destroyedCardsThisTurn = [[], []]; // このターン破壊されたカード記録(destroyedThisTurnMatchingCountGte用)をリセット
   state.calledCardNamesThisTurn = [{}, {}]; // 「1ターンにN枚だけコール」(竜騎士 トモエ 0012 等)のカウンタをリセット
   state.suppressLifeLinkThisTurn = [false, false]; // ライフリンク無効化(ターンスコープ)をリセット
   state.attackRedirectThisTurn = [null, null]; // 攻撃再誘導(ターンスコープ)をリセット
@@ -1086,7 +1120,9 @@ function clearTurnModifiers() {
         card.preventNextDestroyCount = 0;
         card.preventNextDestroyEffects = []; // 未発火の破壊置換effect(反撃付与等)が翌ターンへ残留しないようクリア
         card.cannotAttackThisTurn = false; // 「そのターン中攻撃できない」(グレイプニル等)をターン終了で解除
-        card.additionalNames = []; // gainNameAsSelected（追加のカード名・ターンスコープ）をリセット
+        // gainNameAsSelected（追加のカード名・ターンスコープ）をリセット。ただし印字の恒久additionalNames
+        // (0022の「武神竜王 デュエルズィーガー」等)はベースライン(printedAdditionalNames)へ復元し消さない。
+        card.additionalNames = [...(card.printedAdditionalNames || [])];
         if (card.destroyReaction?.duration === "turn") {
           card.destroyReaction = null; // attachDestroyReaction（そのターン中のみ）を解除
         }

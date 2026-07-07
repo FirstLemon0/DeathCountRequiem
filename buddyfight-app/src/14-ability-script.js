@@ -1886,13 +1886,24 @@ async function stackCallSelectedForScript(step, context) {
     addLog(`${context.card.name}で重ねてコールするカードを選んでください。`);
     return { ok: false, reason: "missing_stack_call_card" };
   }
+  const player = context.player;
+  if (step.payCost) {
+    // 選んだカードのコール等コストを支払ってから重ねる（H-EB04/0004: ドロップから重ねコール時のコスト）。
+    // 支払い失敗時は選択したカードを動かさず、重ねコール自体を中止する。
+    const payment = await payCardCostWithSelection(player, entry.card, step.payCost, entry.card, {
+      sourceCard: entry.card,
+    });
+    if (!payment.ok) {
+      addLog(payment.reason);
+      return { ok: false, reason: "stack_call_cost_unpaid" };
+    }
+  }
   const moved = takeScriptSelectionCards([entry]);
   const calledCard = moved[0]?.card;
   if (!calledCard) {
     addLog(`${context.card.name}で選んだカードが移動できません。`);
     return { ok: false, reason: "stack_call_card_missing" };
   }
-  const player = context.player;
   stackFieldCardAsSoul(player, zone, calledCard);
   enforceSizeLimit(player, zone);
   addLog(`${context.card.name}の効果で${calledCard.name}を${zoneLabel(zone)}に重ねてコールしました。`);

@@ -175,6 +175,14 @@ async function useHandAbilityAction(card, ability, options = {}) {
     }
   }
   markAbilityLimit(owner, usedCard, ability);
+  // 「君が魔法を使った時」の場全体誘発（allySpellCast/opponentSpellCast）。
+  // 通常のメインフェイズ魔法解決(resolvePendingSpell)では発火済みだが、このブロック（対抗タイミングでの
+  // 手札魔法の即時解決等）ではこれまで未発火だった（決戦の地 ヴィーグリーズ 0053 等が取りこぼす）。
+  // usedCard は直前で player.drop に積んでおり、場のカードとして自分自身を拾うことはないため
+  // 自己反応の心配はない（既存の resolvePendingSpell と同じ安全性）。
+  if (effectiveCardType(usedCard) === "spell") {
+    await runFieldEventTriggers("spellCast", owner, usedCard, null, { spellCard: usedCard });
+  }
   state.selected = null;
   state.linkAttackers = [];
   render();
@@ -803,6 +811,16 @@ function checkCondition(condition, owner, context = {}) {
     const counts = state.monstersDestroyedThisTurn || [0, 0];
     const idx = condition.controller === "opponent" ? 1 - owner : owner;
     return (counts[idx] || 0) >= condition.amount;
+  }
+  if (condition.op === "destroyedThisTurnMatchingCountGte") {
+    // このターン中に controller 側で破壊されたカードのうち filter に一致する枚数が amount 以上か
+    // （H-EB04/0021「このターン2体以上どくろ武者破壊」等）。破壊時に凍結したサイズ(sizeAtDestroy)で判定する。
+    const idx = condition.controller === "opponent" ? 1 - owner : owner;
+    const entries = state.destroyedCardsThisTurn?.[idx] || [];
+    const matched = entries.filter((entry) =>
+      matchesCardFilter(entry.card, condition.filter || {}, { effectiveSizeOverride: entry.sizeAtDestroy }),
+    ).length;
+    return matched >= condition.amount;
   }
   if (condition.op === "isFirstBattleEndWindow") {
     // 「(相手のターン中、)1回目のバトル終了時に使える」(ヴァイシュタッツ 0095) の近似。

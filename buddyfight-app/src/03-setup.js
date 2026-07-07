@@ -262,6 +262,7 @@ function newGame() {
     counterEventWindow: null,
     turnDamageEvents: [],
     destroyedEventWindow: null,
+    destroyedCardsThisTurn: [[], []],
     enteredEventWindow: null,
     extraTurnOwner: null,
     winner: null,

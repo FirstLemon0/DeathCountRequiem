@@ -308,6 +308,10 @@ function normalizeCardDefinition(card, set = {}) {
     attributes: [...(card.attributes || [])],
     keywords,
     rules: [...(card.rules || [])],
+    // 印字の恒久additionalNames（例: 0022の「武神竜王 デュエルズィーガー」）をベースラインとして保持する。
+    // gainNameAsSelected等のターンスコープ付与名はclearTurnModifiers/resetLeftFieldCardStateで
+    // additionalNamesごと[]にリセットされるため、印字名を消さず復元できるよう別枠に控えておく。
+    printedAdditionalNames: [...(card.additionalNames || [])],
     allowedWorlds: [...(card.allowedWorlds || [])],
     allowedAttributes: [...(card.allowedAttributes || [])],
     allowedAttributeIncludes: [...(card.allowedAttributeIncludes || [])],

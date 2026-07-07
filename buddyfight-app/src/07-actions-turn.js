@@ -320,6 +320,11 @@ function getStackCallTarget(player, card) {
   if (Array.isArray(stackAttributeIn) && !stackAttributeIn.some((a) => (target.card.attributes || []).includes(a))) {
     return null;
   }
+  // filter: 汎用フィルタ(matchesCardFilter)で重ね先を絞る（baseSizeGte 等。H-EB04/0010 等）。既存キーと併用可。
+  const stackFilter = card.callStack?.filter;
+  if (stackFilter && !matchesCardFilter(target.card, stackFilter)) {
+    return null;
+  }
   return target;
 }
 

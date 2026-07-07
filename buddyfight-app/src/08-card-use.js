@@ -591,7 +591,9 @@ function resetLeftFieldCardState(card) {
   card.doubleAttackUsed = false;
   card.preventNextDestroyCount = 0;
   card.preventNextDestroyEffects = [];
-  card.additionalNames = [];
+  // gainNameAsSelected（ターンスコープの追加カード名）は場を離れたら失うが、印字の恒久additionalNames
+  // (0022の「武神竜王 デュエルズィーガー」等)はベースライン(printedAdditionalNames)へ復元し消さない。
+  card.additionalNames = [...(card.printedAdditionalNames || [])];
   card.destroyReaction = null;
   card.scheduledStatBonus = [];
   card.conditionalSize = null;
