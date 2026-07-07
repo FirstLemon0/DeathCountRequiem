@@ -66,10 +66,13 @@ async function attackAction() {
 }
 
 async function performAttackDeclaration(attackers, targetValue, options = {}) {
-  const opponent = opponentPlayer();
-  // setAttackRedirectThisTurn: このターン、この席の攻撃対象を指定モンスターへ強制変更（0061）。
   const attackerSeat = attackers[0]?.owner;
-  const redirect = state.attackRedirectThisTurn?.[attackerSeat];
+  // forceSelfAttack: そのモンスターが自分の持ち主（＝使用者の相手）を攻撃する（ナイトメア・ディスペアー 0020）。
+  // 防御側＝そのモンスターの持ち主自身。通常攻撃は opponentIndex()（手番側の相手）。
+  const targetOwner = options.forceSelfAttack ? (attackerSeat ?? opponentIndex()) : opponentIndex();
+  const opponent = state.players[targetOwner];
+  // setAttackRedirectThisTurn: このターン、この席の攻撃対象を指定モンスターへ強制変更（0061）。強制自攻撃には適用しない。
+  const redirect = options.forceSelfAttack ? null : state.attackRedirectThisTurn?.[attackerSeat];
   if (redirect && targetValue !== redirect.instanceId) {
     const redirectZone = zones.find(
       (zone) => state.players[redirect.owner]?.field?.[zone]?.instanceId === redirect.instanceId,
@@ -82,13 +85,12 @@ async function performAttackDeclaration(attackers, targetValue, options = {}) {
     addLog("この攻撃対象には攻撃できません。");
     return false;
   }
-  if (targetValue === "fighter" && opponent.field.center) {
+  if (targetValue === "fighter" && !options.forceSelfAttack && opponent.field.center) {
     if (!canAttackFighterThroughCenter(attackers)) {
       addLog(`${opponent.name}のセンターにモンスターがいるため、ファイターを攻撃できません。`);
       return false;
     }
   }
-  const targetOwner = opponentIndex();
   const targetZone = targetValue === "fighter" ? null : targetValue;
   const attackAllTargetZones = attackAllMonsterTargetZones(attackers, targetOwner, targetValue);
   if (
@@ -178,6 +180,11 @@ async function declareAttackWithFieldCard(owner, zone, options = {}) {
   if (!canDeclareAttack(attacker)) {
     addLog(`${card.name}は攻撃できません。`);
     return false;
+  }
+  if (options.forceSelfAttack) {
+    // 「そのモンスターで相手（＝そのモンスターの持ち主）を攻撃する」(ナイトメア・ディスペアー 0020)。
+    // そのモンスターの持ち主(owner)のファイターへ強制攻撃する（対象選択・センターブロック判定なし）。
+    return performAttackDeclaration([attacker], "fighter", options);
   }
   const opponentOwner = 1 - owner;
   const opponentFighter = state.players[opponentOwner];

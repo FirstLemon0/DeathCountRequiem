@@ -947,6 +947,13 @@ function checkCondition(condition, owner, context = {}) {
   if (condition.op === "pendingAttackDefenderIsSelf") {
     return state.pendingAttack?.defender === owner;
   }
+  if (condition.op === "pendingActionResponderIsSelf") {
+    // 相手が宣言したカード/効果(呪文・必殺技・起動能力等)の解決前の対抗窓で、自分が応答側(responder)か。
+    // 黒竜の盾0101 のように「戦闘だけでなく相手の効果/必殺技のダメージにも対抗する」札を、
+    // pendingAction 窓で使えるようにするための判定（preventNextDamage は解決前にセットされ、
+    // 直後の効果解決の applyDamageToPlayer で消費される）。
+    return state.pendingAction?.responder === owner;
+  }
   if (condition.op === "lastDamageSourceMatches") {
     const event = state.counterEventWindow;
     if (!event || event.turnCount !== state.turnCount) {
@@ -1044,7 +1051,11 @@ function checkCondition(condition, owner, context = {}) {
       if (condition.controller === "opponent" && entry.owner === owner) {
         return false;
       }
-      return Boolean(entry.card && matchesCardFilter(entry.card, condition.filter || {}));
+      // サイズは破壊された瞬間の値(sizeAtDestroy)で判定（破壊後に conditionalSize をクリアしても不変）。
+      return Boolean(
+        entry.card &&
+          matchesCardFilter(entry.card, condition.filter || {}, { effectiveSizeOverride: entry.sizeAtDestroy }),
+      );
     });
   }
   if (condition.op === "hasArrival") {

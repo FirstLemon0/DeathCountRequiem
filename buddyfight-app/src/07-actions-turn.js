@@ -280,6 +280,7 @@ async function resolvePendingCall(action) {
   } else {
     player.field[actualZone] = card;
   }
+  card.conditionalSize = null; // 再コール時は前回のサイズ上書き(アンノウン0029等)をリセット
   enforceSizeLimit(player, actualZone);
   state.phase = action.phase || "main";
   state.selected = null;

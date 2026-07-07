@@ -1105,7 +1105,8 @@
             },
             {
               "op": "declareAttackWithTarget",
-              "target": "$target"
+              "target": "$target",
+              "forceSelfAttack": true
             }
           ]
         }
@@ -4910,7 +4911,15 @@
               "op": "ownCenterEmpty"
             },
             {
-              "op": "pendingAttackDefenderIsSelf"
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "pendingAttackDefenderIsSelf"
+                },
+                {
+                  "op": "pendingActionResponderIsSelf"
+                }
+              ]
             }
           ],
           "effects": [

@@ -250,7 +250,7 @@ async function executeAbilityEffect(effect, context) {
     const matched = revealed.filter((c) => matchesCardFilter(c, effect.filter || {})).length;
     const dmg = matched * (effect.perDamage || 1);
     addLog(`${context.card.name}の効果で${revealed.length}枚を公開し、${matched}枚一致。`);
-    if (dmg > 0) applyDamageToPlayer(1 - context.owner, dmg, { sourceName: context.card?.name });
+    if (dmg > 0) applyDamageToPlayer(1 - context.owner, dmg, { sourceName: context.card?.name, sourceCard: context.card, sourceOwner: context.owner });
     revealed.forEach((c) => player.deck.unshift(c));
   }
   if (effect.op === "lookTopCardPlaceTopOrBottom") {
@@ -302,6 +302,8 @@ async function executeAbilityEffect(effect, context) {
     }
     const dealt = applyDamageToPlayer(state.players.indexOf(receiver), amount, {
       sourceName: context.card?.name,
+      sourceCard: context.card,
+      sourceOwner: context.owner,
       ignorePrevention: Boolean(effect.ignorePrevention),
       sourceAbilityLabel: context.ability?.label || null, // damageReceived 側で参照（爆雷等）
       floorLife: effect.floorLife, // 非致死: このダメージで受け手を floorLife 未満にしない（ミネウチでござる 0109）
@@ -332,7 +334,11 @@ async function executeAbilityEffect(effect, context) {
     }
     const amount = visibleFieldStat(source.card, effect.stat || "critical");
     const receiver = effect.player === "self" ? player : opponent;
-    const dealtDamage = applyDamageToPlayer(state.players.indexOf(receiver), amount, { log: false });
+    const dealtDamage = applyDamageToPlayer(state.players.indexOf(receiver), amount, {
+      log: false,
+      sourceCard: context.card,
+      sourceOwner: context.owner,
+    });
     addLog(`${context.card.name}の効果で${receiver.name}に${dealtDamage}ダメージを与えました。`);
     checkWinner();
   }
@@ -417,7 +423,7 @@ async function executeAbilityEffect(effect, context) {
       }
       receiver.drop.push(movedCard);
       if (effectiveCardType(movedCard) === "monster") {
-        applyDamageToPlayer(owner, effect.damage || 1, { sourceName: context.card?.name });
+        applyDamageToPlayer(owner, effect.damage || 1, { sourceName: context.card?.name, sourceCard: context.card, sourceOwner: context.owner });
       } else if (!isLifeGainByEffectPrevented(state.players.indexOf(receiver))) {
         receiver.life += effect.life || 1;
         addLog(`${context.card.name}の効果で${receiver.name}のライフを${effect.life || 1}回復しました。`);
@@ -464,10 +470,10 @@ async function executeAbilityEffect(effect, context) {
     // noDrawDamage:true のカード(EB02/0063「負けたファイター」)ではアイコで誰も被弾しない。
     const drawHitsBoth = result === "draw" && !effect.noDrawDamage;
     if (result === "win" || drawHitsBoth) {
-      applyDamageToPlayer(1 - context.owner, amount, { sourceName: context.card?.name });
+      applyDamageToPlayer(1 - context.owner, amount, { sourceName: context.card?.name, sourceCard: context.card, sourceOwner: context.owner });
     }
     if (result === "lose" || drawHitsBoth) {
-      applyDamageToPlayer(context.owner, amount, { sourceName: context.card?.name });
+      applyDamageToPlayer(context.owner, amount, { sourceName: context.card?.name, sourceCard: context.card, sourceOwner: context.owner });
     }
   }
   if (effect.op === "topTwoRevealOneOpponentRandomToHandOrGauge") {
@@ -583,6 +589,8 @@ async function executeAbilityEffect(effect, context) {
         ignoreDestroyImmunity: Boolean(effect.ignoreDestroyImmunity || effect.nullifyAbilities),
         ignoreDestroyReplacement: Boolean(effect.nullifyAbilities),
         suppressDestroyedTriggers: Boolean(effect.nullifyAbilities),
+        // ライフリンクもキーワード能力なので「能力全て無効化してから破壊」では発動しない（ラグナロク）。
+        suppressLifeLink: Boolean(effect.nullifyAbilities),
       });
     }
   }
@@ -1080,7 +1088,7 @@ async function executeAbilityEffect(effect, context) {
         discarded = true;
       }
       if (!discarded) {
-        applyDamageToPlayer(seat, dmg, { sourceName: context.card?.name, byEffect: true });
+        applyDamageToPlayer(seat, dmg, { sourceName: context.card?.name, byEffect: true, sourceCard: context.card, sourceOwner: context.owner });
         addLog(`${p.name}は捨てなかったため${dmg}ダメージ。`);
       }
     }
@@ -1389,9 +1397,10 @@ async function executeAbilityEffect(effect, context) {
     };
     if (effect.target === "$attackers") {
       // 連携攻撃で攻撃してきた全モンスターを対象にする（デスカース 0026: 「攻撃したモンスター」複数対応）。
+      // rules は「攻撃したモンスター」なので、武器(アイテム)等の非モンスター攻撃者は除外する。
       const attackers = context.attackers?.length ? context.attackers : getPendingAttackers();
       (attackers || []).forEach((entry) => {
-        if (entry?.card) {
+        if (entry?.card && effectiveCardType(entry.card) === "monster") {
           entry.card.destroyAtEndOfTurnOwner = turnEndOwnerFor(entry.owner);
         }
       });
@@ -1417,7 +1426,8 @@ async function executeAbilityEffect(effect, context) {
     addLog(`${player.name}はこのターンの後に追加ターンを得ます。`);
   }
   if (effect.op === "winGame") {
-    state.winner = context.owner;
+    // state.winner はプレイヤー名文字列（checkWinner 等と統一）。席index を入れると席0で falsy になり終局しない。
+    state.winner = state.players[context.owner]?.name || null;
     addLog(`${player.name}は${context.card.name}の効果で勝利しました。`);
   }
 }

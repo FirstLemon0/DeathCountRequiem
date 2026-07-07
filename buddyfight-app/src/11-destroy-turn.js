@@ -294,8 +294,14 @@ async function destroyFieldCard(owner, zone, options = {}) {
   if (zone === "item" && player.arrivalCardId === card.instanceId) {
     player.arrivalCardId = null;
   }
-  applyLifeLink(card, owner);
+  if (!options.suppressLifeLink) {
+    applyLifeLink(card, owner);
+  }
   recordDestroyedEventWindow(card, owner);
+  // 破壊されてドロップへ行ったカードは、場限定のサイズ上書き(conditionalSize=大首領アンノウン0029等)を解除する。
+  // 破壊された瞬間のサイズは destroyedEventWindow に凍結済みなので対抗札(lastDestroyedCardMatches)は不変。
+  // ドロップ滞在中のサイズ参照(ドロップからのサイズ指定コール等)が印字サイズで正しく判定される。
+  card.conditionalSize = null;
   recordSpecialCallOpportunity(card, owner, zone, options);
   // suppressDestroyedTriggers: 「(場のモンスターの)能力全てを無効化してから破壊」(大魔法 ラグナロク 0030)では、
   // 破壊されたモンスター“自身”の破壊時/場離れ誘発は能力ごと無効化されているため発火させない。
@@ -525,13 +531,20 @@ function specialCallOpportunityMatches(event, owner, spec = {}) {
 }
 
 function recordDestroyedEventWindow(card, owner) {
+  // 破壊された瞬間の実効サイズを凍結（この後カードがドロップへ行っても lastDestroyedCardMatches は
+  // 破壊時のサイズで判定できる）。この時点で card は既に場から外れており effectiveSize は場外扱いで
+  // 印字サイズを返すため、conditionalSize の上書き(granter在場)は直接適用して破壊時サイズを求める。
+  const override = card.conditionalSize;
+  const sizeAtDestroy =
+    override && granterOnField(override.granterInstanceId) ? Math.max(0, override.size || 0) : effectiveSize(card);
+  const entry = { card, owner, sizeAtDestroy };
   if (state.destroyedEventWindow && state.destroyedEventWindow.turnCount === state.turnCount) {
-    state.destroyedEventWindow.entries.push({ card, owner });
+    state.destroyedEventWindow.entries.push(entry);
     return;
   }
   state.destroyedEventWindow = {
     kind: "destroyed",
-    entries: [{ card, owner }],
+    entries: [entry],
     turnCount: state.turnCount,
   };
 }

@@ -1715,11 +1715,13 @@ async function callSelectedForScript(step, context) {
   }
   player.field[zone] = calledCard;
   applyScriptGrantedKeywords(calledCard, step.grantKeywords || []);
-  if (step.grantConditionalSize) {
-    // コールしたカードに「発生源(このカード)が場にある間サイズ<size>」の上書きを付与（大首領アンノウン 0029）。
-    // enforceSizeLimit より前に付与しないと、サイズ0化前の実サイズでサイズ超過と誤判定され発生源が落ちる。
-    calledCard.conditionalSize = { size: step.grantConditionalSize.size ?? 0, granterInstanceId: context.card?.instanceId };
-  }
+  // 再コール時は前回付与のサイズ上書き(conditionalSize)を必ずリセットしてから、必要な時だけ新たに付与する。
+  // （大首領アンノウン0029でコール→破壊→ドロップから別効果で再コールした際に、古いサイズ0を引きずらないため。
+  //  破壊時にはクリアしない＝破壊された瞬間のサイズを対抗札等が正しく参照でき、Q827/Q824 も不変。）
+  // enforceSizeLimit より前に付与しないと、サイズ0化前の実サイズでサイズ超過と誤判定され発生源が落ちる。
+  calledCard.conditionalSize = step.grantConditionalSize
+    ? { size: step.grantConditionalSize.size ?? 0, granterInstanceId: context.card?.instanceId }
+    : null;
   enforceSizeLimit(player, zone);
   if (step.redirectPendingAttack && state.pendingAttack) {
     state.pendingAttack.targetOwner = entry.owner ?? context.owner;
@@ -1776,6 +1778,7 @@ async function callSelfFromHandForScript(step, context) {
     dropFieldCardByRule(player, zone);
   }
   player.field[zone] = card;
+  card.conditionalSize = null; // 再コール時は前回のサイズ上書き(アンノウン0029等)をリセット
   applyScriptGrantedKeywords(card, step.grantKeywords || []);
   enforceSizeLimit(player, zone);
   addLog(`${card.name}を${zoneLabel(zone)}にコールしました。`);
@@ -1809,6 +1812,7 @@ async function callSelectedAsMonsterForScript(step, context) {
   calledCard.defense = step.defense ?? calledCard.defense ?? 0;
   calledCard.attributes = step.attributes || calledCard.attributes || [];
   player.field[zone] = calledCard;
+  calledCard.conditionalSize = null; // 再コール時は前回のサイズ上書き(アンノウン0029等)をリセット
   enforceSizeLimit(player, zone);
   addLog(`${context.card.name}の効果で手札のカードを${zoneLabel(zone)}にモンスターとして置きました。`);
   return true;
@@ -1864,6 +1868,7 @@ async function callSelectedToEmptyZonesForScript(step, context) {
       continue;
     }
     player.field[zone] = calledCard;
+    calledCard.conditionalSize = null; // 再コール時は前回のサイズ上書き(アンノウン0029等)をリセット
     applyScriptGrantedKeywords(calledCard, step.grantKeywords || []);
     enforceSizeLimit(player, zone);
     addLog(`${context.card.name}の効果で${calledCard.name}を${zoneLabel(zone)}にコールしました。`);

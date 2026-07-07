@@ -17,8 +17,12 @@ function effectiveSize(card) {
   }
   // conditionalSize: 付与元カード(granterInstanceId)が場にある間、サイズを固定値に上書きする
   // （大首領アンノウン 0029「そのカードはアンノウンが場にいるならサイズ0」）。
+  // 上書きは「そのカード自身が場にいる」時だけ有効。ドロップ/ソウル等の場外では印字サイズを見る
+  // （非破壊でドロップへ行った札が古いサイズ0を引きずらない。破壊時サイズは destroyedEventWindow の
+  //  sizeAtDestroy で別途凍結済み。findFieldCardSlot は override がある時のみ呼ぶので負荷は無い）。
   const override = card.conditionalSize;
-  const baseSize = override && granterOnField(override.granterInstanceId) ? override.size || 0 : card.size || 0;
+  const overrideActive = Boolean(override) && granterOnField(override.granterInstanceId) && Boolean(findFieldCardSlot(card));
+  const baseSize = overrideActive ? override.size || 0 : card.size || 0;
   if (card.instanceId && sizeEvaluationStack.has(card.instanceId)) {
     return Math.max(0, baseSize);
   }

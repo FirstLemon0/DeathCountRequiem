@@ -107,11 +107,42 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
     if (options.log !== false && options.sourceName) {
       addLog(`${options.sourceName}により${player.name}に${remaining}ダメージを与えました。`);
     }
+    // 効果/必殺技ダメージの後にも「ダメージを受けた時」対抗窓(counterEventWindow)を開く。
+    // 戦闘ダメージは runDamageDealtTriggers 側でより詳細に設定するためここでは開かない(byAttack)。
+    // 発生源 owner が判っている効果ダメージのみ対象（コスト/ライフリンク等の発生源不明ダメージでは開かない＝安全）。
+    // これにより黒竜の盾(解決前予防)や五角竜王ドラム等の被弾時対抗が、戦闘に限らず正しいタイミングで機能する。
+    if (!options.byAttack && options.sourceOwner !== undefined) {
+      openDamageReceivedCounterWindow(owner, remaining, options);
+    }
     checkWinner();
     // 「君がダメージを受けた時」誘発（五角竜王ドラム等）。同期経路のため microtask で遅延発火。
     queueDamageReceivedTriggers(owner, remaining, options);
   }
   return remaining;
+}
+
+// 効果/必殺技ダメージ後の「ダメージを受けた時」対抗窓。発生源(カード/owner)を凍結して counterEventWindow へ。
+// lastDamageSourceMatches(相手カード由来判定) / selfReceivedDamage(被弾者判定) がこの窓で真になる。
+function openDamageReceivedCounterWindow(defender, damage, options = {}) {
+  if (damage <= 0) {
+    return;
+  }
+  const src = { card: options.sourceCard || null, owner: options.sourceOwner, zone: null, source: "field" };
+  const event = {
+    kind: "damageDealt",
+    source: src,
+    sources: [src],
+    sourceCard: options.sourceCard ? compactCardForLog(options.sourceCard) : null,
+    sourceOwner: options.sourceOwner,
+    defender,
+    damage,
+    turnCount: state.turnCount,
+    phase: state.phase,
+  };
+  // 被弾側の対抗窓(lastDamageSourceMatches/selfReceivedDamage)だけを開く。
+  // 攻撃側視点の単発参照 state.lastDamageEvent や turnDamageEvents は戦闘専用のまま触らない
+  // （戦闘ダメージ→効果ダメージが連続した時に、直前戦闘の「与ダメージ」参照カードを潰さないため）。
+  state.counterEventWindow = event;
 }
 
 // 継続 damageReceivedReduction を持つ場札から、owner が受けるダメージの軽減設定（最も減らせる1件）を返す。

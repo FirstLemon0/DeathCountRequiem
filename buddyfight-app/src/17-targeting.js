@@ -287,14 +287,18 @@ function matchesTargetFilter(card, owner, zone, filter = {}) {
   return true;
 }
 
-function matchesCardFilter(card, filter = {}) {
+function matchesCardFilter(card, filter = {}, options = {}) {
   if (!card) {
     return false;
   }
+  // options.effectiveSizeOverride: 「その瞬間の実効サイズ」を凍結して判定するための上書き。
+  // 破壊時イベント窓(lastDestroyedCardMatches)が、破壊後に conditionalSize をクリアしても
+  // 破壊された瞬間のサイズで判定できるようにするために使う。
+  const sizeOf = options.effectiveSizeOverride !== undefined ? options.effectiveSizeOverride : effectiveSize(card);
   if (Array.isArray(filter.anyOf) && filter.anyOf.length > 0) {
     const rest = { ...filter };
     delete rest.anyOf;
-    return filter.anyOf.some((candidate) => matchesCardFilter(card, { ...rest, ...candidate }));
+    return filter.anyOf.some((candidate) => matchesCardFilter(card, { ...rest, ...candidate }, options));
   }
   if (filter.cardType && effectiveCardType(card) !== filter.cardType) {
     return false;
@@ -323,13 +327,13 @@ function matchesCardFilter(card, filter = {}) {
   if (filter.criticalLte !== undefined && visibleCritical(card) > filter.criticalLte) {
     return false;
   }
-  if (filter.sizeLte !== undefined && effectiveSize(card) > filter.sizeLte) {
+  if (filter.sizeLte !== undefined && sizeOf > filter.sizeLte) {
     return false;
   }
-  if (filter.sizeGte !== undefined && effectiveSize(card) < filter.sizeGte) {
+  if (filter.sizeGte !== undefined && sizeOf < filter.sizeGte) {
     return false;
   }
-  if (filter.sizeIn && !filter.sizeIn.includes(effectiveSize(card))) {
+  if (filter.sizeIn && !filter.sizeIn.includes(sizeOf)) {
     return false;
   }
   // basePower*: 印字（元々の）攻撃力を見る。powerLte/Gte は visiblePower(バフ込み)なので別途。
