@@ -551,7 +551,7 @@ async function executeAbilityEffect(effect, context) {
           }
         }
       }
-      await equipCardDirect(player, source);
+      await equipCardDirect(player, source, { byEffect: true });
       context.cardMoved = true;
     }
   }
@@ -1265,6 +1265,17 @@ async function executeAbilityEffect(effect, context) {
       state.pendingAttack.targetType = effectiveCardType(target.card) === "monster" ? "monster" : "fieldCard";
       addLog(`${context.card.name}の効果で攻撃対象を${target.card.name}に変更しました。`);
     }
+  }
+  if (effect.op === "scheduleZoneMoveAtTurnEnd") {
+    // 「ターン終了時、君のゲージ全てをドロップゾーンに置く」等のプレイヤー単位ゾーン一括移動の予約
+    // （H-PP01/0060 デッドリー・ブースト）。消費は clearTurnModifiers。
+    state.turnEndZoneMoves ||= [];
+    state.turnEndZoneMoves.push({
+      owner: effect.player === "opponent" ? 1 - context.owner : context.owner,
+      from: effect.from || "gauge",
+      to: effect.to || "drop",
+      sourceName: context.card?.name || "効果",
+    });
   }
   if (effect.op === "relocateFieldMonstersToDistinctZones") {
     // 「相手の場のモンスター全てを、別々の空いたエリアに動かす」（H-BT04/0038 DEATH死揮棒）。

@@ -431,7 +431,7 @@ async function applyAllyDestroyReplacement(card, owner, options = {}) {
       if (rule.from.byEffect && !options.cause?.byEffect) continue;
       if (rule.from.byOpponent && !options.cause?.byOpponent) continue;
     }
-    const cost = rule.cost || [{ op: "dropSource" }];
+    const cost = adjustedCostSteps(player, replacer, "destroyReplacement", rule.cost || [{ op: "dropSource" }]);
     if (!canPayStructuredCost(player, cost, { sourceCard: replacer, selectedCard: replacer }).ok) {
       continue;
     }
@@ -474,7 +474,8 @@ async function applyDestroyReplacement(card, owner, options = {}) {
   })) {
     return false;
   }
-  if (!canPayStructuredCost(player, replacement.cost || [], {
+  const replacementCost = adjustedCostSteps(player, card, "destroyReplacement", replacement.cost || []);
+  if (!canPayStructuredCost(player, replacementCost, {
     sourceCard: card,
     selectedCard: card,
   }).ok) {
@@ -483,7 +484,7 @@ async function applyDestroyReplacement(card, owner, options = {}) {
   if (replacement.optional && !(await confirmChoiceAsync(owner, `${card.name}の破壊置換を使いますか？`, { purpose: "destroy-replacement" }))) {
     return false;
   }
-  const payment = payStructuredCost(player, replacement.cost || [], {
+  const payment = payStructuredCost(player, replacementCost, {
     sourceCard: card,
     selectedCard: card,
   });
@@ -1239,6 +1240,19 @@ async function runEndTurnEffects(endingOwner) {
 
 function clearTurnModifiers() {
   state.spiritStrikeDamageBonus = [0, 0]; // 霊撃ブースト（ターンスコープ）をリセット
+  // ターン終了時のプレイヤー単位ゾーン一括移動の予約を消費（scheduleZoneMoveAtTurnEnd。H-PP01/0060）。
+  (state.turnEndZoneMoves || []).forEach((move) => {
+    const movePlayer = state.players[move.owner];
+    if (!movePlayer || !Array.isArray(movePlayer[move.from]) || !Array.isArray(movePlayer[move.to])) {
+      return;
+    }
+    const movedCards = movePlayer[move.from].splice(0);
+    movePlayer[move.to].push(...movedCards);
+    if (movedCards.length > 0) {
+      addLog(`${move.sourceName}の効果で${movePlayer.name}の${move.from === "gauge" ? "ゲージ" : move.from}全て（${movedCards.length}枚）を${move.to === "drop" ? "ドロップゾーン" : move.to}に置きました。`);
+    }
+  });
+  state.turnEndZoneMoves = [];
   // 「捨てたカードの能力全てをターン中得る」(gainSelectedCardAbilitiesForTurn) のコピー(__turnCopy)を除去。
   // ホストが場を離れた場合や権威サーバのstate再構築で参照が切れた場合にも確実に剥がすため、
   // 参照リストではなく両者の全パイル（場＋ソウル・手札・ドロップ・デッキ・ゲージ）を走査する。

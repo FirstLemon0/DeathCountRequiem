@@ -54,7 +54,9 @@ async function runTriggeredAbilities(card, event, baseContext = {}) {
         selectedCard: card,
         allowInteractiveSelection: true,
       };
-      const canPay = canPayStructuredCost(player, ability.cost || [], costContext);
+      // 誘発能力コストも adjustedCostSteps を通す（costReduction/reduceByFieldCount の適用を統一）。
+      const triggeredCostSteps = adjustedCostSteps(player, card, abilityCostPurpose(ability), ability.cost || []);
+      const canPay = canPayStructuredCost(player, triggeredCostSteps, costContext);
       if (!canPay.ok) {
         if (!ability.optional) {
           addLog(canPay.reason);
@@ -72,7 +74,7 @@ async function runTriggeredAbilities(card, event, baseContext = {}) {
           continue;
         }
       }
-      const payment = await payStructuredCostWithSelection(player, ability.cost || [], costContext);
+      const payment = await payStructuredCostWithSelection(player, triggeredCostSteps, costContext);
       if (!payment.ok) {
         addLog(ability.optional ? `${card.name}の任意能力を使いませんでした。` : payment.reason);
         continue;
@@ -318,6 +320,9 @@ async function executeAbilityScriptStep(step, context) {
   }
   if (step.op === "gainSelectedCardAbilitiesForTurn") {
     return gainSelectedCardAbilitiesForTurnForScript(step, context);
+  }
+  if (step.op === "eachPlayerConfirmBranch") {
+    return eachPlayerConfirmBranchForScript(step, context);
   }
   if (step.op === "moveAllOwnFieldToDrop") {
     return moveAllOwnFieldToDropForScript(step, context);
@@ -752,6 +757,29 @@ function setAttackRedirectThisTurnForScript(step, context) {
   state.attackRedirectThisTurn ||= [null, null];
   state.attackRedirectThisTurn[seat] = { owner: target.owner, instanceId: target.card.instanceId };
   addLog(`${context.card?.name || "効果"}の効果で、このターン${state.players[seat].name}の攻撃は${target.card.name}へ向かいます。`);
+  return true;
+}
+
+// 「お互いは〜してよい。したファイターはA、しなかったファイターはB」（H-PP01/0030 ゴッド★フナヤマ等）。
+// 各プレイヤーに confirmChoiceAsync で個別に確認し（CPU対戦のseam・権威サーバの往復も通る）、
+// 選んだ側の branch をそのプレイヤーを owner とする context で実行する。
+async function eachPlayerConfirmBranchForScript(step, context) {
+  for (const seat of [context.owner, 1 - context.owner]) {
+    const accepted = await confirmChoiceAsync(seat, step.prompt || "使いますか？", {
+      yesLabel: step.yesLabel || "はい",
+      noLabel: step.noLabel || "いいえ",
+      purpose: "use-optional",
+    });
+    const branch = accepted ? step.then : step.else;
+    if (Array.isArray(branch) && branch.length > 0) {
+      // 片方の branch が失敗（選択キャンセル等）しても、もう片方のプレイヤーの確認・実行は必ず行う。
+      await executeAbilityScript(branch, {
+        ...context,
+        owner: seat,
+        player: state.players[seat],
+      });
+    }
+  }
   return true;
 }
 
@@ -1388,7 +1416,10 @@ async function ifSelectionMatchesForScript(step, context) {
 
 // 選択(var)したカード群を、別の選択(soulOfVar)した場のカードのソウルに入れる。
 function moveSelectedToSelectedSoulForScript(step, context) {
-  const host = scriptSelection({ var: step.soulOfVar }, context)[0]?.card;
+  // soulOfVar:"$self" は発生源カード自身のソウルへ（「デッキから選んでこのカードのソウルに入れる」H-PP01/0006 等）。
+  // $self は場にいる時のみ有効（コストで場を離れた後に見えないソウルへ吸い込む事故を防ぐ）。
+  const selfHost = step.soulOfVar === "$self" && findFieldCardSlot(context.card) ? context.card : null;
+  const host = step.soulOfVar === "$self" ? selfHost : scriptSelection({ var: step.soulOfVar }, context)[0]?.card;
   if (!host) {
     addLog(step.emptyMessage || `${context.card.name}でソウルの行き先がありません。`);
     return step.require === false ? true : { ok: false, reason: "no_soul_host" };
@@ -1533,7 +1564,7 @@ async function equipSelectedAsItemForScript(step, context) {
     }
   }
   takeScriptSelectionCards([entry]); // ソース(デッキ/手札/場)から取り除く
-  await equipCardDirect(player, card); // currentType="item" 化して装備（装備変更/装備時誘発も通る）
+  await equipCardDirect(player, card, { byEffect: true }); // currentType="item" 化して装備（装備変更/装備時誘発も通る）
   return true;
 }
 
@@ -1561,7 +1592,7 @@ async function useSelectedCardForScript(step, context) {
       }
     }
     takeScriptSelectionCards([entry]);
-    await equipCardDirect(player, card);
+    await equipCardDirect(player, card, { byEffect: true });
     return true;
   }
   if ((type === "spell" || type === "impact") && hasKeyword(card, "set")) {
@@ -1818,7 +1849,12 @@ async function callSelectedForScript(step, context) {
   //  破壊時にはクリアしない＝破壊された瞬間のサイズを対抗札等が正しく参照でき、Q827/Q824 も不変。）
   // enforceSizeLimit より前に付与しないと、サイズ0化前の実サイズでサイズ超過と誤判定され発生源が落ちる。
   calledCard.conditionalSize = step.grantConditionalSize
-    ? { size: step.grantConditionalSize.size ?? 0, granterInstanceId: context.card?.instanceId }
+    ? {
+        size: step.grantConditionalSize.size ?? 0,
+        granterInstanceId: context.card?.instanceId,
+        // unconditional: 「場から離れるまでサイズN」型（付与元の在場に依存しない。H-PP01/0013）
+        unconditional: Boolean(step.grantConditionalSize.unconditional),
+      }
     : null;
   enforceSizeLimit(player, zone);
   if (step.redirectPendingAttack && state.pendingAttack) {
@@ -1832,7 +1868,7 @@ async function callSelectedForScript(step, context) {
   }
   calledCard.enteredFromZone = entry.source || step.from || null; // 発生元ゾーン記録（enteredFromZoneIn 用。飛雲丸 0056）
   if (step.resolveOnEnter) {
-    await resolveOnEnter(calledCard, player);
+    await resolveOnEnter(calledCard, player, null, { byEffect: true });
   }
   return true;
 }
@@ -1851,7 +1887,8 @@ async function callSelfFromHandForScript(step, context) {
     return { ok: false, reason: "missing_call_zone" };
   }
   const cost = card.costs?.call || [];
-  if (cost.length && !canPayStructuredCost(player, cost, { sourceCard: card }).ok) {
+  const adjustedSelfCallCost = adjustedCostSteps(player, card, "call", cost);
+  if (adjustedSelfCallCost.length && !canPayStructuredCost(player, adjustedSelfCallCost, { sourceCard: card }).ok) {
     addLog(`${card.name}のコールコストを支払えません。`);
     return { ok: false, reason: "cannot_pay_call_cost" };
   }
@@ -1869,8 +1906,8 @@ async function callSelfFromHandForScript(step, context) {
     return { ok: false, reason: "self_not_found" };
   }
   card.enteredFromZone = fromDrop ? "drop" : "hand"; // 発生元ゾーン記録（enteredFromZoneIn 用）
-  if (cost.length) {
-    payStructuredCost(player, cost, { sourceCard: card });
+  if (adjustedSelfCallCost.length) {
+    payStructuredCost(player, adjustedSelfCallCost, { sourceCard: card });
   }
   if (player.field[zone]) {
     dropFieldCardByRule(player, zone);
@@ -1881,7 +1918,7 @@ async function callSelfFromHandForScript(step, context) {
   enforceSizeLimit(player, zone);
   addLog(`${card.name}を${zoneLabel(zone)}にコールしました。`);
   if (step.resolveOnEnter !== false) {
-    await resolveOnEnter(card, player);
+    await resolveOnEnter(card, player, null, { byEffect: true });
   }
   return true;
 }
@@ -1973,7 +2010,7 @@ async function callSelectedToEmptyZonesForScript(step, context) {
     enforceSizeLimit(player, zone);
     addLog(`${context.card.name}の効果で${calledCard.name}を${zoneLabel(zone)}にコールしました。`);
     if (step.resolveOnEnter) {
-      await resolveOnEnter(calledCard, player);
+      await resolveOnEnter(calledCard, player, null, { byEffect: true });
     }
   }
   return true;
@@ -2008,7 +2045,7 @@ async function stackCallSelectedForScript(step, context) {
   enforceSizeLimit(player, zone);
   addLog(`${context.card.name}の効果で${calledCard.name}を${zoneLabel(zone)}に重ねてコールしました。`);
   if (step.resolveOnEnter) {
-    await resolveOnEnter(calledCard, player);
+    await resolveOnEnter(calledCard, player, null, { byEffect: true });
   }
   return true;
 }
@@ -2091,6 +2128,7 @@ function isScriptEffectStep(step) {
   return [
     "relocateFieldMonstersToDistinctZones",
     "treatAsBuddyThisTurn",
+    "scheduleZoneMoveAtTurnEnd",
     "draw",
     "putTopDeckToGauge",
     "putTopDeckToGaugeIfBuddyOnField",

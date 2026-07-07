@@ -302,6 +302,9 @@ async function resolvePendingCall(action) {
   if (card.destroyAtEndOfTurn) {
     card.destroyAtEndOfTurnOwner = action.owner;
   }
+  // 通常コールは常に手札発（callMonster が source==="hand" をガード済み）。
+  // enteredFromZoneIn 条件（「手札から登場した時」H-PP01/0031 等）のためにスタンプする。
+  card.enteredFromZone = "hand";
   await resolveOnEnter(card, player, getTargetInfoFromValue(action.effectTargetValue));
 }
 
@@ -358,7 +361,7 @@ function enforceSizeLimit(player, latestZone) {
   }
 }
 
-async function resolveOnEnter(card, player, storedTarget = null) {
+async function resolveOnEnter(card, player, storedTarget = null, options = {}) {
   const owner = state.players.indexOf(player);
   const zone = findFieldCardSlot(card)?.zone;
   recordEnteredEventWindow(card, owner, zone);
@@ -370,6 +373,9 @@ async function resolveOnEnter(card, player, storedTarget = null) {
     owner,
     zone,
     target: storedTarget || null,
+    // 「カードの効果で登場した時」条件（enteredByEffect。H-PP01/0044）用。
+    // 通常コール経路（resolvePendingCall/arriveCard）は false、script のコール系は true を渡す。
+    enteredByEffect: Boolean(options.byEffect),
   });
   await runAllyEnterTriggers(card, owner, zone);
 }
@@ -725,6 +731,9 @@ async function resolvePendingSetSpell(action) {
     return;
   }
   await placeSetSpellDirect(player, action.card, action.zone);
+  // 設置魔法も「使う」に含まれる（“爆雷”等の spellCast 誘発。H-PP01/0021 レビュー指摘）。
+  // 無効化/置き場なしの早期 return では発火しない＝通常魔法と同じ対称性。
+  await runFieldEventTriggers("spellCast", action.owner, action.card, null, { spellCard: action.card });
 }
 
 function clearPendingAction(returnPhase = "main") {

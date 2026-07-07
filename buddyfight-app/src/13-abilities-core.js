@@ -607,6 +607,10 @@ function checkCondition(condition, owner, context = {}) {
   if (condition.op === "sourceIsBuddy") {
     return sourceIsBuddyCondition(owner, context);
   }
+  if (condition.op === "enteredByEffect") {
+    // 「このカードがカードの効果で登場した時」（enter誘発のconditionsで使う。H-PP01/0044）。
+    return Boolean(context.enteredByEffect);
+  }
   if (condition.op === "turnOwnerIsSelf") {
     return (context.turnOwner ?? state.active) === owner;
   }
@@ -774,7 +778,7 @@ function checkCondition(condition, owner, context = {}) {
     return total >= condition.amount;
   }
   if (condition.op === "enteredFromZoneIn") {
-    // コールされたカードの発生元ゾーン（callMonster が card.enteredFromZone に記録）を判定。
+    // コールされたカードの発生元ゾーンを判定（resolvePendingCall="hand"、scriptコール系=entry.source を記録）。
     const entered = context.enteredCard || context.card || getSelectedCard();
     return Boolean(entered && (condition.zones || []).includes(entered.enteredFromZone));
   }

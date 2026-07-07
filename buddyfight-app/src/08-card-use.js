@@ -117,7 +117,7 @@ function canEquipAsExtraItem(player, card) {
 
 // 共通: 既にソース(手札/ドロップ等)から取り出したカードをアイテムとして装備する。
 // equipItem(手札からの通常装備) と script op useSelectedCard(ドロップからの装備) で共有。
-async function equipCardDirect(player, card) {
+async function equipCardDirect(player, card, options = {}) {
   const owner = state.players.indexOf(player);
   let targetZone;
   if (canEquipAsExtraItem(player, card)) {
@@ -143,7 +143,7 @@ async function equipCardDirect(player, card) {
     card.destroyAtEndOfTurnOwner = owner;
   }
   player.arrivalCardId = null;
-  await resolveOnEnter(card, player);
+  await resolveOnEnter(card, player, null, { byEffect: Boolean(options.byEffect) });
   addLog(`${player.name}は${card.name}を装備しました。`);
   // バディギフト: バディにできるアイテム(canBeBuddy)を自分のバディとして初めて場に出したとき、ライフ+1。
   if (card.canBeBuddy && isBuddyCard(player, card) && !player.partnerCalled) {

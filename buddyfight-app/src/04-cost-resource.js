@@ -405,6 +405,23 @@ function adjustedCostSteps(player, card, purpose, costSteps = []) {
     const step = steps.find((st) => st.op === payOp && (st.amount || 0) > 0);
     if (step) step.amount = Math.max(0, step.amount - (r.amount || 1));
   });
+  // コストstepの動的自己軽減 reduceByFieldCount:{filter, per, controller}
+  // 「君の場の《72柱》1枚につき、払うゲージが1少なくなる」（H-PP01/0046）。カード級コスト
+  // （use/call/equip等）と能力コストの主経路はこの関数を通る（誘発コスト・破壊置換・callSelfFromHand も
+  // adjustedCostSteps 経由に統一済み）。
+  const ownerIndex = state.players.indexOf(player);
+  steps.forEach((step) => {
+    if (!step.reduceByFieldCount || (step.amount || 0) <= 0) return;
+    const spec = step.reduceByFieldCount;
+    const countOwner = spec.controller === "opponent" ? 1 - ownerIndex : ownerIndex;
+    const countPlayer = state.players[countOwner];
+    let count = 0;
+    zones.forEach((zone) => {
+      const fieldCard = countPlayer?.field?.[zone];
+      if (fieldCard && matchesCardFilter(fieldCard, spec.filter || {})) count += 1;
+    });
+    step.amount = Math.max(0, step.amount - count * (spec.per ?? 1));
+  });
   return steps.filter((step) => step.amount === undefined || step.amount > 0);
 }
 

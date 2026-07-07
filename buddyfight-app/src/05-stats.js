@@ -21,7 +21,10 @@ function effectiveSize(card) {
   // （非破壊でドロップへ行った札が古いサイズ0を引きずらない。破壊時サイズは destroyedEventWindow の
   //  sizeAtDestroy で別途凍結済み。findFieldCardSlot は override がある時のみ呼ぶので負荷は無い）。
   const override = card.conditionalSize;
-  const overrideActive = Boolean(override) && granterOnField(override.granterInstanceId) && Boolean(findFieldCardSlot(card));
+  const overrideActive =
+    Boolean(override) &&
+    (override.unconditional || granterOnField(override.granterInstanceId)) &&
+    Boolean(findFieldCardSlot(card));
   const baseSize = overrideActive ? override.size || 0 : card.size || 0;
   if (card.instanceId && sizeEvaluationStack.has(card.instanceId)) {
     return Math.max(0, baseSize);
