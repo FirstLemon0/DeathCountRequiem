@@ -490,6 +490,9 @@ async function runMoveKeywordsAtAttackPhaseStart() {
         min: 1,
         max: 1,
         forceDialog: true,
+        // 持ち主の席へ問う（CPU対戦でCPUの移動を人間に聞かない。権威サーバの誤配送防止も兼ねる）。
+        promptSeat: owner,
+        purpose: "move", // CPU対戦(src/22): センター空きなら center へ、それ以外は移動しない
       });
       const destination = selected?.[0]?.zone;
       if (!destination) {

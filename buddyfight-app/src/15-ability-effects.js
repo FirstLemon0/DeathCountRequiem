@@ -38,6 +38,7 @@ async function resolveRockPaperScissors(context) {
       // 権威サーバ: じゃんけんは各プレイヤー自身へ問う。promptSeat を明示しないと
       // 往復の宛先が能動側(state.active)に推定され、相手の選択が能動側へ誤配送される。
       promptSeat: owner,
+      purpose: "rps", // CPU対戦(src/22): ジャンケンの手選択
     });
     return selected?.[0]?.key || null;
   };
@@ -73,7 +74,7 @@ async function resolveRockPaperScissors(context) {
     if (!canPayStructuredCost(state.players[context.owner], redoCost, { sourceCard: redoCard }).ok) {
       break;
     }
-    if (!(await confirmChoiceAsync(context.owner, `${redoCard.name}でジャンケンをやり直しますか？（コストを支払う）`))) {
+    if (!(await confirmChoiceAsync(context.owner, `${redoCard.name}でジャンケンをやり直しますか？（コストを支払う）`, { purpose: "pay-optional" }))) {
       break;
     }
     payStructuredCost(state.players[context.owner], redoCost, { sourceCard: redoCard });
@@ -274,7 +275,7 @@ async function executeAbilityEffect(effect, context) {
       const keepOnTop = await confirmChoiceAsync(
         context.owner,
         `${context.card?.name || "効果"}: デッキの1番上の${top.name}を1番上か${toDrop ? "ドロップ" : "1番下"}のどちらに置きますか？`,
-        { yesLabel: "1番上に置く", noLabel: toDrop ? "ドロップに置く" : "1番下に置く" },
+        { yesLabel: "1番上に置く", noLabel: toDrop ? "ドロップに置く" : "1番下に置く", purpose: "scry" },
       );
       if (keepOnTop) {
         player.deck.push(top);
@@ -1083,7 +1084,7 @@ async function executeAbilityEffect(effect, context) {
       const p = state.players[seat];
       const canDiscard = p.hand.filter((c) => c.instanceId !== context.card?.instanceId).length >= n;
       let discarded = false;
-      if (canDiscard && (await confirmChoiceAsync(seat, `手札${n}枚を捨てますか？（捨てないと${dmg}ダメージ）`))) {
+      if (canDiscard && (await confirmChoiceAsync(seat, `手札${n}枚を捨てますか？（捨てないと${dmg}ダメージ）`, { purpose: "discard-or-damage" }))) {
         const handEntries = p.hand
           .map((card, index) => ({ card, index }))
           .filter((entry) => entry.card.instanceId !== context.card?.instanceId);

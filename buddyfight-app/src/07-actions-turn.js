@@ -4,6 +4,9 @@
 // HTML で番号順に <script> 読み込みする（連結すると旧 app.js とバイト等価）。
 // ==========================================================================
 function selectHandCard(instanceId) {
+  if (typeof aiShouldLockHumanControls === "function" && aiShouldLockHumanControls()) {
+    return; // CPU対戦: CPUの手番/思考中は人間のカード選択を受け付けない（state.selected 汚染防止）
+  }
   const owner = handOwnerIndex();
   const player = state.players[owner];
   const card = player.hand.find((candidate) => candidate.instanceId === instanceId);
@@ -18,6 +21,9 @@ function selectHandCard(instanceId) {
 }
 
 function selectFieldCard(owner, zone) {
+  if (typeof aiShouldLockHumanControls === "function" && aiShouldLockHumanControls()) {
+    return false; // CPU対戦: CPUの手番/思考中は人間のカード選択を受け付けない
+  }
   const player = state.players[owner];
   const card = player.field[zone];
   if (!card) {

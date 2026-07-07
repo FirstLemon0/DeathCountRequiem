@@ -76,6 +76,9 @@ async function chooseCardEntries(candidates, options = {}) {
       })),
     });
     selected = resolveServerSelection(response, normalized, min, max, options.allowCancel !== false);
+  } else if (typeof aiShouldAnswerPrompt === "function" && aiShouldAnswerPrompt(options.promptSeat)) {
+    // CPU対戦: promptSeat がCPU席の選択は src/22-ai.js が答える（ダイアログは出さない）。
+    selected = await aiAnswerSelection(normalized, { ...options, min, max });
   } else if (!canShowSelectionDialog()) {
     selected = fallbackCardEntrySelection(normalized, { ...options, min, max });
   } else {

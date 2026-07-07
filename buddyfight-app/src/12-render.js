@@ -15,6 +15,9 @@ function render() {
   if (elements.cardSheet?.open) {
     refreshCardSheet(); // B2: 開いているカードシートを最新状態へ
   }
+  if (typeof aiOnRender === "function") {
+    aiOnRender(); // CPU対戦(src/22): 状態変化のたびにCPUの手番/応答を駆動（OFF時は即return）
+  }
 }
 
 function renderNetworkChrome() {
@@ -616,7 +619,10 @@ function renderActions() {
   );
   elements.counterHandButton.textContent = state.pendingAttack ? "攻防手札切替" : "対抗手札切替";
   elements.counterHandButton.disabled = Boolean(
-    state.winner || isNetworkConnected() || (!hasPendingResolution() && !isCounterPlayTiming()),
+    state.winner ||
+      isNetworkConnected() ||
+      (typeof aiEnabled === "function" && aiEnabled()) || // CPU対戦: 手札は人間席固定のため切替不可
+      (!hasPendingResolution() && !isCounterPlayTiming()),
   );
   elements.attackPhaseButton.disabled = Boolean(state.winner || inBattle || state.phase !== "main");
   elements.finalPhaseButton.disabled = Boolean(
@@ -646,9 +652,32 @@ function renderActions() {
   );
   elements.endTurnButton.disabled = Boolean(state.winner || inBattle || state.phase !== "final");
 
+  // CPU対戦(src/22): CPUの手番/思考中は人間の操作ボタンを一括ロック（人間宛プロンプトと対抗応答は通す）。
+  if (typeof aiShouldLockHumanControls === "function" && aiShouldLockHumanControls()) {
+    [
+      elements.drawButton,
+      elements.chargeButton,
+      elements.mainPhaseButton,
+      elements.castButton,
+      elements.attackPhaseButton,
+      elements.finalPhaseButton,
+      elements.linkToggleButton,
+      elements.partnerCallButton,
+      elements.attackButton,
+      elements.endTurnButton,
+      elements.resolveAttackButton,
+      elements.counterHandButton,
+    ].forEach((button) => {
+      if (button) {
+        button.disabled = true;
+      }
+    });
+  }
+
   document.querySelectorAll("[data-call-zone]").forEach((button) => {
     const canSpecialCall = specialCallOpportunityForCard(state.selected?.owner, selectedCard);
     button.disabled = Boolean(
+        (typeof aiShouldLockHumanControls === "function" && aiShouldLockHumanControls()) ||
         (state.winner && !canSpecialCall) ||
         (inBattle && !canSpecialCall) ||
         (state.phase !== "main" && !canSpecialCall) ||

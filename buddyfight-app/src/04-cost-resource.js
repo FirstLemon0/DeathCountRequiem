@@ -265,6 +265,7 @@ async function payCostWithSelection(player, cost = {}, selectedCard) {
       forceDialog: true,
       // 権威サーバ: コスト選択は支払い本人の席へ往復（未指定だと能動側へ誤配送＝相手手札候補が漏れる）。
       promptSeat: state.players.indexOf(player),
+      purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
     });
     if (!selected || selected.length < discard) {
       return { ok: false, reason: "コストで捨てる手札を選んでください。" };
@@ -887,6 +888,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       forceDialog: true,
       // 権威サーバ: コスト選択は支払い本人の席へ往復（未指定だと能動側へ誤配送＝相手手札候補が漏れる）。
       promptSeat: state.players.indexOf(player),
+      purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
     });
     if (!selected || selected.length < amount) {
       return { ok: false, reason: "コストで捨てる手札を選んでください。" };
@@ -917,6 +919,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       forceDialog: true,
       // 権威サーバ: コスト選択は支払い本人の席へ往復（未指定だと能動側へ誤配送＝相手手札候補が漏れる）。
       promptSeat: state.players.indexOf(player),
+      purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
     });
     if (!selected || selected.length < minimum) {
       return { ok: false, reason: "コストでソウルに入れる手札を選んでください。" };
@@ -947,6 +950,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       forceDialog: true,
       // 権威サーバ: コスト選択は支払い本人の席へ往復（未指定だと能動側へ誤配送＝相手手札候補が漏れる）。
       promptSeat: state.players.indexOf(player),
+      purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
     });
     if (!selected || selected.length < amount) {
       return { ok: false, reason: "コストでドロップに置く自分のモンスターを選んでください。" };
@@ -970,6 +974,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       forceDialog: true,
       // 権威サーバ: コスト選択は支払い本人の席へ往復（未指定だと能動側へ誤配送＝相手手札候補が漏れる）。
       promptSeat: state.players.indexOf(player),
+      purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
     });
     if (!selected || selected.length < amount) {
       return { ok: false, reason: "コストでゲージに置く自分の場のカードを選んでください。" };
@@ -992,6 +997,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       max: amount,
       forceDialog: true,
       promptSeat: state.players.indexOf(player),
+      purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
     });
     if (!selected || selected.length < amount) {
       return { ok: false, reason: "コストでドロップに置く自分の場のカードを選んでください。" };
@@ -1017,6 +1023,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       max: maximum,
       forceDialog: true,
       promptSeat: state.players.indexOf(player),
+      purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
     });
     if (!selected || selected.length < minimum) {
       return { ok: false, reason: "コストでソウルに入れる自分の場のカードを選んでください。" };
@@ -1044,6 +1051,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
         max: pickCount,
         forceDialog: true,
         promptSeat: state.players.indexOf(player),
+        purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
       },
     );
     const soulSelected = selected && selected.length ? selected.map((entry) => entry.card) : revealed.slice(0, pickCount);
@@ -1067,6 +1075,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       max: amount,
       forceDialog: true,
       promptSeat: state.players.indexOf(player),
+      purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
     });
     if (!selected || selected.length < amount) {
       return { ok: false, reason: "コストで破壊する自分のモンスターを選んでください。" };
@@ -1092,6 +1101,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       forceDialog: true,
       allowCancel: minimum === 0,
       promptSeat: state.players.indexOf(player),
+      purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
     });
     if (!selected || selected.length < minimum) {
       if (minimum > 0) {
@@ -1117,6 +1127,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       forceDialog: true,
       // 権威サーバ: コスト選択は支払い本人の席へ往復（未指定だと能動側へ誤配送＝相手手札候補が漏れる）。
       promptSeat: state.players.indexOf(player),
+      purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
     });
     if (!selected || selected.length < minimum) {
       return { ok: false, reason: "コストでソウルに入れるカードを選んでください。" };

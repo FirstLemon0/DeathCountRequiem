@@ -235,6 +235,9 @@ function createPlayer(name, profile) {
 }
 
 function newGame() {
+  if (typeof aiBeforeNewGame === "function") {
+    aiBeforeNewGame(); // CPU対戦(src/22): CPU席の反映・CPUデッキのランダム選択（OFF時は素通り）
+  }
   state = {
     players: [
       createPlayer("プレイヤー1", selectedDeckProfile(0)),
@@ -273,6 +276,9 @@ function newGame() {
   };
   addLog(`ゲーム開始。${ruleEraLabel}で進行します。`);
   addLog("先攻1ターン目はスタートフェイズのドローを行いません。プレイヤー1のチャージから開始します。");
+  if (typeof aiAfterNewGame === "function") {
+    aiAfterNewGame(); // CPU対戦(src/22): 先攻の適用（ランダム/選択）・AIターンスコープのリセット
+  }
   render();
 }
 
@@ -294,6 +300,12 @@ function handOwnerIndex() {
   }
   if (isNetworkConnected() && Number.isInteger(networkSession.seat)) {
     return networkSession.seat;
+  }
+  if (typeof aiEnabled === "function" && aiEnabled()) {
+    const humanSeat = aiHumanSeat();
+    if (Number.isInteger(humanSeat)) {
+      return humanSeat; // CPU対戦: 手札表示は常に人間席（相互非公開=Q7。CPU手札は裏向きプレビュー）
+    }
   }
   return state.pendingAttack || state.pendingAction
     ? state.counterHandOwner ?? pendingResponderOwner()

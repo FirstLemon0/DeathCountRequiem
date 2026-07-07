@@ -438,6 +438,7 @@ async function chooseFieldAbility(card, abilities, owner) {
       max: 1,
       forceDialog: true,
       allowCancel: true,
+      purpose: "ability-pick", // CPU対戦(src/22): 複数の起動能力からの選択
       promptSeat: owner,
     },
   );

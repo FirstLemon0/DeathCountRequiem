@@ -431,7 +431,7 @@ async function applyAllyDestroyReplacement(card, owner, options = {}) {
     if (!canPayStructuredCost(player, cost, { sourceCard: replacer, selectedCard: replacer }).ok) {
       continue;
     }
-    if (rule.optional && !(await confirmChoiceAsync(owner, `${replacer.name}を置いて${card.name}を場に残しますか？`))) {
+    if (rule.optional && !(await confirmChoiceAsync(owner, `${replacer.name}を置いて${card.name}を場に残しますか？`, { purpose: "destroy-replacement" }))) {
       continue;
     }
     const payment = payStructuredCost(player, cost, { sourceCard: replacer, selectedCard: replacer });
@@ -476,7 +476,7 @@ async function applyDestroyReplacement(card, owner, options = {}) {
   }).ok) {
     return false;
   }
-  if (replacement.optional && !(await confirmChoiceAsync(owner, `${card.name}の破壊置換を使いますか？`))) {
+  if (replacement.optional && !(await confirmChoiceAsync(owner, `${card.name}の破壊置換を使いますか？`, { purpose: "destroy-replacement" }))) {
     return false;
   }
   const payment = payStructuredCost(player, replacement.cost || [], {
@@ -802,6 +802,10 @@ async function confirmChoiceAsync(owner, message, options = {}) {
     );
     return selected?.[0]?.key === "yes";
   }
+  if (typeof aiShouldAnswerPrompt === "function" && aiShouldAnswerPrompt(owner)) {
+    // CPU対戦: CPU席宛の確認は src/22-ai.js が答える（window.confirm を人間に出さない）。
+    return aiAnswerConfirm(owner, message, options);
+  }
   if (typeof window !== "undefined" && typeof window.confirm === "function") {
     return window.confirm(message);
   }
@@ -809,7 +813,7 @@ async function confirmChoiceAsync(owner, message, options = {}) {
 }
 
 async function shouldUseSoulguard(card, owner) {
-  const useSoulguard = await confirmChoiceAsync(owner, `${card.name}の『ソウルガード』を使いますか？`);
+  const useSoulguard = await confirmChoiceAsync(owner, `${card.name}の『ソウルガード』を使いますか？`, { purpose: "soulguard" });
   if (!useSoulguard) {
     addLog(`${card.name}の『ソウルガード』を使いませんでした。`);
   }

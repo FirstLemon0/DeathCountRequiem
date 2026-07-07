@@ -222,6 +222,9 @@ async function executeAbilityScript(script, context) {
       card: compactCardForLog(context.card),
       abilityId: context.ability?.id || "",
     });
+    // CPU対戦(src/22): selectCards の用途推論（消費opの参照）用に現在位置を渡す。エンジン挙動には影響しない。
+    scriptContext.__scriptSteps = script;
+    scriptContext.__scriptIndex = index;
     const result = await executeAbilityScriptStep(step, scriptContext);
     if (result === false || result?.ok === false) {
       recordDiagnosticEvent("effect_script", {
@@ -472,6 +475,11 @@ async function selectCardsForScript(step, context) {
     // 権威サーバ: スクリプト選択は能力主体（context.owner）の席へ往復させる。
     // 相手誘発(opponentEnter等)が能動側ターンに選ぶ場合、未指定だと能動側へ誤配送＝手札漏れ。
     promptSeat: context.owner,
+    // CPU対戦(src/22): 用途タグ。DSLの明示指定(purpose/role)が最優先、無ければ消費opから推論。
+    purpose:
+      step.purpose ||
+      step.role ||
+      (typeof aiInferScriptSelectPurpose === "function" ? aiInferScriptSelectPurpose(step, context) : undefined),
   });
   if (!selected || selected.length < min) {
     context.vars[step.var] = [];
@@ -913,6 +921,7 @@ async function declareCardNameForScript(step, context) {
       allowCancel: false,
       searchable: true,
       promptSeat: declarerSeat,
+      purpose: "declare", // CPU対戦(src/22): カード名宣言
     });
     chosenName = selected?.[0]?.card?.name ?? null;
   }
@@ -960,6 +969,7 @@ async function chooseBranchForScript(step, context) {
       forceDialog: true,
       // 権威サーバ: 分岐選択は能力の主体(context.owner)へ往復させる（未指定だと inferPromptSeat が state.active に誤配送）。
       promptSeat: context.owner,
+      purpose: "branch", // CPU対戦(src/22): 効果分岐の選択
     },
   );
   const branch = selected?.[0]?.option?.script;
@@ -1605,7 +1615,7 @@ async function useTopDeckCardIfMatchesElseBottomForScript(step, context) {
     return true;
   }
   if (step.optional) {
-    const useIt = await confirmChoiceAsync(owner, `${topCard.name}を使いますか？`, { yesLabel: "使う", noLabel: "使わない" });
+    const useIt = await confirmChoiceAsync(owner, `${topCard.name}を使いますか？`, { yesLabel: "使う", noLabel: "使わない", purpose: "use-optional" });
     if (!useIt) {
       player.deck.unshift(topCard);
       addLog(`${context.card.name}で公開した${topCard.name}を使わずデッキの下に置きました。`);
