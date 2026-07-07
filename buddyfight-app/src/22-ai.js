@@ -19,6 +19,9 @@ const aiSession = {
   failedActionKeys: new Set(), // 実行しても状態が変わらなかった行動（同一ターン内は再試行しない）
   usedOnceKeys: new Set(), // このターンに使った場/ドロップ起動能力（同一能力の連打防止）
   handledWindows: new WeakSet(), // 判断済みの応答窓イベント（同じ窓を再判断しない）
+  waitingPendings: new WeakSet(), // CPU応答側だが「宣言側(人間)の攻撃側対抗」を待っている pending
+  offeredCounterIds: new Set(), // このターンに人間へ提案済みの対抗カード instanceId（同じ提案の連発防止）
+  lastOfferWindow: null, // 最後に提案対象にした応答窓（新しい窓が開いたら再提案を許す）
   errorStreak: 0,
   errorCount: 0, // 累計のフォールバック発生数（スモークの「例外ゼロ」検証用）
 };
@@ -134,10 +137,15 @@ function aiHasWork() {
   }
   if (hasPendingResolution()) {
     const responder = networkResolutionSeat();
+    const declarer = state.pendingAction ? state.pendingAction.owner : state.pendingAttack.attackerOwner;
     if (isAiSeat(responder)) {
+      const pending = state.pendingAction || state.pendingAttack;
+      if (aiSession.waitingPendings.has(pending)) {
+        // 宣言側(人間)の攻撃側対抗を待っている。人間の対抗が尽きたらCPUが解決を引き取る
+        return aiEnumerateCounters(declarer).length === 0;
+      }
       return true; // CPUが応答側: 対抗するか解決する
     }
-    const declarer = state.pendingAction ? state.pendingAction.owner : state.pendingAttack.attackerOwner;
     if (isAiSeat(declarer) && !isAiSeat(responder)) {
       // CPU発の宣言で人間が応答側: 使える対抗が無ければ自動解決してテンポを保つ（Q11と同思想）
       return !aiHumanHasUsableCounter(responder);
@@ -149,12 +157,8 @@ function aiHasWork() {
     if ([0, 1].some((seat) => isAiSeat(seat) && aiEnumerateWindowCounters(seat).length > 0)) {
       return true;
     }
-    const humanSeat = aiHumanSeat();
-    if (humanSeat !== null && isAiSeat(state.active) && aiEnumerateWindowCounters(humanSeat).length > 0) {
-      return true; // Q11: CPUの行動で開いた窓を人間に確認する
-    }
   }
-  return isAiSeat(state.active); // 自ターンの駆動
+  return isAiSeat(state.active); // 自ターンの駆動（人間への対抗提案は aiTurnStep が行う）
 }
 
 async function aiPump() {
@@ -226,18 +230,39 @@ async function aiStep() {
 // 対抗ミニループ（pendingAction / pendingAttack）
 // --------------------------------------------------------------------------
 async function aiPendingStep() {
+  aiResetTurnScope();
   const responder = networkResolutionSeat();
+  const declarer = state.pendingAction ? state.pendingAction.owner : state.pendingAttack.attackerOwner;
   if (isAiSeat(responder)) {
-    const counters = aiEnumerateCounters(responder);
+    const counters = aiEnumerateCounters(responder).filter(
+      (counter) => !aiSession.failedActionKeys.has(aiCounterKey(counter)),
+    );
     const pick = aiChooseCounter(counters, responder);
     if (pick) {
+      const before = aiStateFingerprint();
       await aiExecuteCounter(pick);
+      if (aiStateFingerprint() === before) {
+        // 特殊コスト等で不発（状態不変）→ 同一ターン内は再選択しない（不発対抗の無限再選択＝凍結防止）
+        aiSession.failedActionKeys.add(aiCounterKey(pick));
+      }
       return true;
+    }
+    // 攻撃への【対抗】は宣言側(攻撃側)にも機会がある(ver2.05・エンジンも対応)。人間の攻撃側対抗が
+    // 残っているなら解決せず待つ（人間は対抗カードを使うか「解決」を押す）。
+    // pendingAction は宣言側が自分の行動に対抗できない（usePendingActionCounterCard が responder 限定）ため即解決してよい。
+    // CPU(応答側)が既に対抗を使った後は「対抗の対抗」は不可のため待たずに解決する。
+    if (
+      state.pendingAttack &&
+      !isAiSeat(declarer) &&
+      !state.pendingAttack.counterUsed?.[responder] &&
+      aiEnumerateCounters(declarer).length > 0
+    ) {
+      aiSession.waitingPendings.add(state.pendingAttack);
+      return false;
     }
     await resolvePendingResolution();
     return true;
   }
-  const declarer = state.pendingAction ? state.pendingAction.owner : state.pendingAttack.attackerOwner;
   if (isAiSeat(declarer) && !isAiSeat(responder)) {
     if (!aiHumanHasUsableCounter(responder)) {
       await resolvePendingResolution();
@@ -248,11 +273,17 @@ async function aiPendingStep() {
   return false;
 }
 
+function aiCounterKey(counter) {
+  return `counter:${counter.card.instanceId}`;
+}
+
 function aiHumanHasUsableCounter(seat) {
   return aiEnumerateCounters(seat).length > 0;
 }
 
 // pending 中に seat が使える【対抗】を列挙する（手札/場・ソウル/ドロップ。エンジン自身の可否関数のみ使用）。
+// 手札対抗はコスト支払可否も確認する（支払えない対抗を選んで不発→無限再選択、の凍結防止）。
+// 可否関数は state.selected の zone/owner 文脈に依存するため、必ず aiWithSelected で包んで評価する。
 function aiEnumerateCounters(seat) {
   const player = state.players[seat];
   if (!player) {
@@ -260,28 +291,56 @@ function aiEnumerateCounters(seat) {
   }
   const counters = [];
   for (const card of player.hand) {
-    const usable = aiWithSelected({ source: "hand", owner: seat, instanceId: card.instanceId }, () =>
-      Boolean(
-        findUsableHandAbility(card, { counterOnly: true }) &&
-          canUseCounterEffect(seat, selectedCounterKind(card)),
-      ),
-    );
+    const usable = aiWithSelected({ source: "hand", owner: seat, instanceId: card.instanceId }, () => {
+      const ability = findUsableHandAbility(card, { counterOnly: true });
+      if (!ability || !canUseCounterEffect(seat, selectedCounterKind(card))) {
+        return false;
+      }
+      return aiCanPayAbilityCost(player, card, ability);
+    });
     if (usable) {
       counters.push({ type: "hand", seat, card });
     }
   }
   for (const zone of Object.keys(player.field)) {
     const card = player.field[zone];
-    if (card && findUsableFieldAbilities(card, seat).length > 0) {
+    if (!card) continue;
+    const usable = aiWithSelected({ source: "field", owner: seat, zone, instanceId: card.instanceId }, () =>
+      findUsableFieldAbilities(card, seat).length > 0,
+    );
+    if (usable) {
       counters.push({ type: "field", seat, zone, card });
     }
   }
   for (const card of player.drop) {
-    if (findUsableDropAbilities(card, seat).length > 0) {
+    const usable = aiWithSelected({ source: "drop", owner: seat, instanceId: card.instanceId }, () =>
+      findUsableDropAbilities(card, seat).length > 0,
+    );
+    if (usable) {
       counters.push({ type: "drop", seat, card });
     }
   }
   return counters;
+}
+
+// 能力コストの支払可否（判定不能な特殊コストは「支払える」に倒し、実行失敗はブラックリストで吸収）。
+function aiCanPayAbilityCost(player, card, ability) {
+  try {
+    const costSteps = adjustedCostSteps(player, card, abilityCostPurpose(ability), abilityCostSteps(card, ability));
+    return canPayStructuredCost(player, costSteps, { sourceCard: card, selectedCard: card });
+  } catch (error) {
+    return true;
+  }
+}
+
+// カード級コスト（コール等）の支払可否。
+function aiCanPayCardCost(player, card, purpose) {
+  try {
+    const steps = adjustedCostSteps(player, card, purpose, cardCostSteps(player, card, purpose));
+    return canPayStructuredCost(player, steps, { sourceCard: card, selectedCard: card });
+  } catch (error) {
+    return true;
+  }
 }
 
 async function aiExecuteCounter(pick) {
@@ -302,7 +361,8 @@ function aiOpenResponseWindow() {
   return state.counterEventWindow || state.destroyedEventWindow || state.enteredEventWindow || null;
 }
 
-// 窓中に seat が使える手札対抗（エンジンの窓ゲート canUseCounterPlayCard と同一判定）。
+// pending が無いタイミングで seat が使える手札対抗を列挙（エンジンの canUseCounterPlayCard と同一判定）。
+// 応答窓（被ダメ時等）専用ではなく、フリータイミング対抗も条件を満たせばここに載る。コスト支払可否も確認。
 function aiEnumerateWindowCounters(seat) {
   const player = state.players[seat];
   if (!player || hasPendingResolution()) {
@@ -310,9 +370,13 @@ function aiEnumerateWindowCounters(seat) {
   }
   const counters = [];
   for (const card of player.hand) {
-    const usable = aiWithSelected({ source: "hand", owner: seat, instanceId: card.instanceId }, () =>
-      canUseCounterPlayCard(card),
-    );
+    const usable = aiWithSelected({ source: "hand", owner: seat, instanceId: card.instanceId }, () => {
+      if (!canUseCounterPlayCard(card)) {
+        return false;
+      }
+      const ability = findUsableHandAbility(card, { counterOnly: true });
+      return ability ? aiCanPayAbilityCost(player, card, ability) : false;
+    });
     if (usable) {
       counters.push({ type: "hand", seat, card });
     }
@@ -321,7 +385,8 @@ function aiEnumerateWindowCounters(seat) {
 }
 
 async function aiWindowStep(windowEvent) {
-  // CPU応答側: 窓対抗を自動判断（人間→CPU方向、CPU vs CPU も含む）
+  // CPU応答側: 窓対抗を自動判断（人間→CPU方向、CPU vs CPU も含む）。
+  // 人間応答側への提案はターン駆動側（aiTurnStep）が担う。
   for (const seat of [0, 1]) {
     if (!isAiSeat(seat)) continue;
     const counters = aiEnumerateWindowCounters(seat);
@@ -333,29 +398,20 @@ async function aiWindowStep(windowEvent) {
       return true;
     }
   }
-  // 人間応答側: CPUの手番中に開いた窓で、人間に使える対抗がある時だけブロッキング確認（Q11）
-  const humanSeat = aiHumanSeat();
-  if (humanSeat !== null && isAiSeat(state.active)) {
-    const counters = aiEnumerateWindowCounters(humanSeat);
-    if (counters.length) {
-      aiSession.handledWindows.add(windowEvent);
-      await aiOfferWindowCounters(humanSeat, counters);
-      return true;
-    }
-  }
   aiSession.handledWindows.add(windowEvent);
   return false; // 誰も使わない → そのままターン駆動へ（窓は次の行動で自然失効）
 }
 
-async function aiOfferWindowCounters(humanSeat, counters) {
+// 人間へ【対抗】の使用機会をブロッキング確認で提案する（応答窓＋フリータイミング共通。F4/Q11）。
+async function aiOfferHumanCounters(humanSeat, counters) {
   const passEntry = {
     pass: true,
     card: { name: "対抗しない", rules: [], attributes: [], keywords: [], costs: {} },
   };
   const entries = [...counters.map((counter) => ({ card: counter.card, counter })), passEntry];
   const selected = await chooseCardEntries(entries, {
-    title: "対抗ウィンドウ",
-    lead: "CPUの行動により「〜した時」の対抗タイミングです。使うカードを選ぶか、「対抗しない」を選んでください。",
+    title: "対抗タイミング",
+    lead: "CPUの手番中ですが、今あなたが使える【対抗】カードがあります。使うカードを選ぶか、「対抗しない」を選んでください。",
     min: 1,
     max: 1,
     forceDialog: true,
@@ -378,6 +434,8 @@ function aiResetTurnScope() {
     aiSession.actionCount = 0;
     aiSession.failedActionKeys = new Set();
     aiSession.usedOnceKeys = new Set();
+    aiSession.offeredCounterIds = new Set();
+    aiSession.lastOfferWindow = null;
   }
 }
 
@@ -388,6 +446,23 @@ async function aiTurnStep() {
   if (aiSession.actionCount > aiSession.actionCap) {
     await aiForceAdvance();
     return true;
+  }
+  // 人間の【対抗】機会（F4/Q11統合）: 応答窓 or フリータイミングで人間が使える手札対抗が
+  // 新しく現れたら、次の行動（=窓の失効）より前にブロッキング確認を一度だけ出す。
+  const humanSeat = aiHumanSeat();
+  if (humanSeat !== null) {
+    const windowEvent = aiOpenResponseWindow();
+    if (windowEvent && windowEvent !== aiSession.lastOfferWindow) {
+      aiSession.lastOfferWindow = windowEvent;
+      aiSession.offeredCounterIds = new Set(); // 新しい窓が開いたら同じカードでも再提案を許す
+    }
+    const counters = aiEnumerateWindowCounters(humanSeat);
+    const fresh = counters.filter((counter) => !aiSession.offeredCounterIds.has(counter.card.instanceId));
+    if (fresh.length) {
+      counters.forEach((counter) => aiSession.offeredCounterIds.add(counter.card.instanceId));
+      await aiOfferHumanCounters(humanSeat, counters);
+      return true;
+    }
   }
   switch (state.phase) {
     case "draw":
@@ -526,12 +601,25 @@ function aiEnumerateMainActions(seat) {
       },
     });
   }
-  // コール（重ねコール含む）＋バディコール
+  // コール（重ねコール含む）＋バディコール。支払えないコールは列挙しない
+  // （F2: 支払い不能バディコールの宣言⇄解除ループ防止。特殊コストの判定不能は列挙に倒す）。
   for (const card of player.hand) {
     if (!isCallableMonster(card) || card.cannotCallNormally) continue;
+    if (!aiCanPayCardCost(player, card, "call")) continue;
     const buddyable = !player.partnerCalled && isBuddyCard(player, card);
     if (card.callStack) {
-      actions.push(aiCallAction(seat, card, "center", { stack: true }));
+      // 重ねコール: 有効な重ね先（効果対象候補）ごとに列挙し、exec で effectTarget に重ね先を指定する（F7）。
+      const bases = aiWithSelected({ source: "hand", owner: seat, instanceId: card.instanceId }, () => {
+        try {
+          return effectTargetCandidates(card) || [];
+        } catch (error) {
+          return [];
+        }
+      });
+      for (const base of bases) {
+        if (base.owner !== seat || !base.zone) continue;
+        actions.push(aiCallAction(seat, card, base.zone, { stack: true, base }));
+      }
       continue;
     }
     for (const zone of fieldZones) {
@@ -595,16 +683,19 @@ function aiCallAction(seat, card, zone, options) {
   const key = options.buddy
     ? `buddycall:${card.instanceId}:${zone}`
     : options.stack
-      ? `call-stack:${card.instanceId}`
+      ? `call-stack:${card.instanceId}:${zone}`
       : `call:${card.instanceId}:${zone}`;
   return {
     key,
     score: aiScoreCall(seat, card, zone, options),
     exec: async () => {
       state.selected = { source: "hand", owner: seat, instanceId: card.instanceId };
-      elements.effectTarget.value = "";
+      // 重ねコールは getStackCallTarget が効果対象を参照するため、重ね先を明示指定する（F7）。
+      elements.effectTarget.value = options.base ? encodeTarget(options.base.owner, options.base.zone) : "";
       if (options.buddy) {
-        partnerCall(); // 宣言（selectHandCard 相当の選択は済み。宣言後そのままコールで成立）
+        // 宣言は明示代入（partnerCall のトグルだと、コール失敗→再試行で宣言が解除され
+        // フィンガープリントが毎回変わりブラックリストが効かない=F2のループ）。
+        state.buddyCallDeclared = card.instanceId;
       }
       await callMonster(zone);
     },
@@ -928,10 +1019,12 @@ const aiUi = {
   modeSelect: null,
   firstSelect: null,
   restoreRandomDeck: false,
+  prevP2Deck: null, // CPUモード有効化前にユーザーが選んでいたP2デッキ（オフ時に復元する）
 };
 
 // CPUの手番/思考中は人間の操作（ボタン・盤面タップ）をロックする。
-// 例外: pending の応答側が人間の時（対抗カード使用・解決ボタン）は解放する。
+// 例外: pending（対抗確認）中は常に解放する — 応答側の人間は対抗/解決、宣言側の人間も
+// 自分の攻撃への攻撃側【対抗】が使えるため（F3）。CPUの判断は pump が担い、実行中は running で守る。
 function aiShouldLockHumanControls() {
   if (!aiEnabled() || state?.winner || !Array.isArray(state?.players)) {
     return false;
@@ -940,7 +1033,7 @@ function aiShouldLockHumanControls() {
     return true;
   }
   if (hasPendingResolution()) {
-    return isAiSeat(networkResolutionSeat());
+    return false;
   }
   return isAiSeat(state.active);
 }
@@ -953,8 +1046,12 @@ function aiRefreshSeatsFromUi() {
 }
 
 function aiApplyUiMode() {
-  aiRefreshSeatsFromUi();
   const on = aiUi.modeSelect?.value === "on";
+  if (!on) {
+    // オフは即時反映（暴走時に止められるように）。オンは「次の新規から」= aiBeforeNewGame で反映
+    // （進行中のホットシート対戦をCPUが乗っ取らないように。F8）。
+    aiSession.seats = [false, false];
+  }
   aiEnsureRandomDeckOption(on);
   if (Array.isArray(state?.players)) {
     // トグルが効いていることを即座にログで可視化（キャッシュ等で src が古い場合はこのログ自体が出ない）。
@@ -974,6 +1071,7 @@ function aiEnsureRandomDeckOption(on) {
   }
   const existing = select.querySelector('option[value="__cpu_random__"]');
   if (on && !existing) {
+    aiUi.prevP2Deck = select.value; // オフに戻した時に復元する（F10）
     const option = document.createElement("option");
     option.value = "__cpu_random__";
     option.textContent = "（ランダム）";
@@ -982,9 +1080,15 @@ function aiEnsureRandomDeckOption(on) {
   } else if (!on && existing) {
     const wasRandom = select.value === "__cpu_random__";
     existing.remove();
-    if (wasRandom && select.options?.length) {
-      select.selectedIndex = 0;
+    if (wasRandom) {
+      const previous = aiUi.prevP2Deck;
+      if (previous && Array.from(select.options || []).some((option) => option.value === previous)) {
+        select.value = previous; // 有効化前のユーザー選択デッキへ復元
+      } else if (select.options?.length) {
+        select.selectedIndex = 0;
+      }
     }
+    aiUi.prevP2Deck = null;
   }
 }
 
@@ -1059,4 +1163,6 @@ globalThis.__buddyfightAiApi = {
   getState: () => state,
   getElements: () => elements,
   getDeckProfiles: () => deckProfiles,
+  ui: aiUi,
+  applyUiMode: () => aiApplyUiMode(),
 };

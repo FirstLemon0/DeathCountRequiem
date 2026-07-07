@@ -539,6 +539,7 @@ async function useMagicalGoodbyeCounterCard(selectedCard, caster) {
     min: 1,
     max: 1,
     forceDialog: true,
+    promptSeat: owner, // 使用者の席へ（CPU対戦/権威サーバの誤配送防止）
   });
   const target = selected?.[0];
   if (!target) {

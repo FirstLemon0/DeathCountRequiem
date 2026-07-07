@@ -275,10 +275,11 @@ function newGame() {
     fightId: createFightId(),
   };
   addLog(`ゲーム開始。${ruleEraLabel}で進行します。`);
-  addLog("先攻1ターン目はスタートフェイズのドローを行いません。プレイヤー1のチャージから開始します。");
   if (typeof aiAfterNewGame === "function") {
     aiAfterNewGame(); // CPU対戦(src/22): 先攻の適用（ランダム/選択）・AIターンスコープのリセット
   }
+  // 先攻はCPU対戦フックが変更しうるため、確定後の activePlayer 名でログする（OFF時は従来どおりプレイヤー1）。
+  addLog(`先攻1ターン目はスタートフェイズのドローを行いません。${activePlayer().name}のチャージから開始します。`);
   render();
 }
 

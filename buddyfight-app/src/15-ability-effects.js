@@ -246,6 +246,8 @@ async function executeAbilityEffect(effect, context) {
         title: effect.title || context.card.name,
         lead: effect.lead || "手札に加えるカードを選んでください。",
         min: 0, max: effect.max || 1, forceDialog: true,
+        promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
+        purpose: "search",
       });
       picked = (sel || []).map((e) => e.card);
     }
@@ -826,6 +828,8 @@ async function executeAbilityEffect(effect, context) {
             min: amount,
             max: amount,
             forceDialog: true,
+            promptSeat: context.owner, // 効果の使用者が選ぶ（CPU対戦/権威サーバの誤配送防止）
+            purpose: "hostile",
           })
         : soulEntries.slice(0, amount);
     const movedCards = removePileEntries(target.card.soul || [], selected || []);
@@ -1218,6 +1222,8 @@ async function executeAbilityEffect(effect, context) {
         min: 1,
         max: 1,
         forceDialog: true,
+        promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
+        purpose: "hostile",
       },
     );
     if (selected?.[0]) {
@@ -1266,6 +1272,8 @@ async function executeAbilityEffect(effect, context) {
           min: 1,
           max: 1,
           forceDialog: true,
+          promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
+          purpose: "move",
         },
       );
       destination = selected?.[0]?.zone;
@@ -1531,6 +1539,7 @@ async function resolveTopTwoRevealOneOpponentRandomToHandOrGauge(effect, context
       min: 1,
       max: 1,
       forceDialog: true,
+      promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
     },
   );
   const revealed = selected?.[0]?.card || cards[0];
@@ -1565,6 +1574,7 @@ async function statsToModifyForEffect(effect, context, amount) {
       min: 1,
       max: 1,
       forceDialog: true,
+      promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
     });
     return selected?.[0]?.stat ? [selected[0].stat] : [];
   }

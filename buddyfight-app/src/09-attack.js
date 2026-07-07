@@ -221,6 +221,7 @@ async function declareAttackWithFieldCard(owner, zone, options = {}) {
         min: 1,
         max: 1,
         forceDialog: true,
+        promptSeat: owner, // 攻撃者の持ち主の席へ（CPU対戦/権威サーバの誤配送防止）
       },
     );
     if (selected?.length) {
@@ -318,6 +319,8 @@ async function runAttackDeclarationTriggers(attackers) {
       min: 1,
       max: 1,
       forceDialog: true,
+      promptSeat: attacker.owner, // 効果の持ち主の席へ（CPU対戦/権威サーバの誤配送防止）
+      purpose: "hostile",
     });
     const target = selected?.[0];
     if (!target) {

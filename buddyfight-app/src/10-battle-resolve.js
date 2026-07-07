@@ -406,6 +406,8 @@ async function resolveCounterattack(targetSlot, attackers) {
       min: 1,
       max: 1,
       forceDialog: true,
+      promptSeat: targetSlot.owner, // 反撃するモンスターの持ち主の席へ（CPU対戦/権威サーバの誤配送防止）
+      purpose: "hostile",
     });
     counterTarget = selected?.[0];
   }

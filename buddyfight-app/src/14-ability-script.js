@@ -1045,6 +1045,7 @@ async function moveSelectedToDeckBottomOrderedForScript(step, context) {
       min: 1,
       max: 1,
       forceDialog: true,
+      promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
     });
     const entry = picked?.[0];
     if (!entry) {
@@ -1240,6 +1241,8 @@ async function discardSelfSoulForScript(step, context) {
           min: amount,
           max: amount,
           forceDialog: true,
+          promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
+          purpose: "cost",
         })
       : soulEntries.slice(0, amount);
   const movedCards = removePileEntries(context.card.soul || [], selected || []);
@@ -1856,6 +1859,8 @@ async function callSelectedToEmptyZonesForScript(step, context) {
           min: 1,
           max: 1,
           forceDialog: true,
+          promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
+          purpose: "move",
         },
       );
       zone = selectedZone?.[0]?.zone;
