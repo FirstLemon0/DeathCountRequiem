@@ -249,6 +249,30 @@ function continuousSoulStatAmount(effect, statKey, sourceCard) {
   return 0;
 }
 
+// 継続 modifyStats の amountFrom:{source:"fieldSoulCount"} 分（自分の場の全カードのソウル枚数×per。H-BT04/0020）。
+function continuousFieldSoulStatAmount(effect, statKey, player) {
+  if (effect.op !== "modifyStats" || effect.amountFrom?.source !== "fieldSoulCount") {
+    return 0;
+  }
+  const af = effect.amountFrom;
+  const per = af.per?.[statKey] ?? 0;
+  if (!per) {
+    return 0;
+  }
+  let count = 0;
+  zones.forEach((zone) => {
+    (player.field[zone]?.soul || []).forEach((soulCard) => {
+      if (!af.filter || matchesCardFilter(soulCard, af.filter)) {
+        count += 1;
+      }
+    });
+  });
+  if (af.max !== undefined) {
+    count = Math.min(count, af.max);
+  }
+  return count * per;
+}
+
 // 場・ソウルの継続 modifyStats（定数 by と amountFrom:dropAttributeCount/soulCount/soulStatSum）から statKey の合計補正値を算出。
 function continuousStatBonus(card, statKey) {
   const slot = findFieldCardSlot(card);
@@ -268,6 +292,7 @@ function continuousStatBonus(card, statKey) {
       }
       bonus += continuousDropStatAmount(effect, statKey, player);
       bonus += continuousSoulStatAmount(effect, statKey, sourceCard);
+      bonus += continuousFieldSoulStatAmount(effect, statKey, player);
     });
   });
   // 相手側からの越境継続（opposingFront / controller:"opponent" の明示デバフ）も評価する。
@@ -329,7 +354,11 @@ function continuousEffectAppliesFromSoul(effect, targetCard, sourceCard, owner) 
   if (!matchesCardFilter(targetCard, effect.filter || {})) {
     return false;
   }
-  if (effect.requireBuddy && targetCard.name !== state.players[owner]?.buddy?.name) {
+  if (
+    effect.requireBuddy &&
+    !targetCard.turnTreatAsBuddy && // treatAsBuddyThisTurn（バディ扱い）も許容（H-BT04/0016×0065）
+    targetCard.name !== state.players[owner]?.buddy?.name
+  ) {
     return false;
   }
   if (effect.sourceName && sourceCard?.name !== effect.sourceName) {
@@ -422,7 +451,10 @@ function continuousEffectApplies(effect, targetCard, sourceCard) {
   // requireBuddy: 対象が、その対象の所有者が登録したバディ(同名)である場合のみ適用。
   // 「君の場のバディモンスターは〜を得る」等の継続付与で使う（soulContinuous 側と同仕様）。
   if (effect.requireBuddy) {
-    if (!targetSlot || targetCard?.name !== state.players[targetSlot.owner]?.buddy?.name) {
+    if (
+      !targetSlot ||
+      (!targetCard?.turnTreatAsBuddy && targetCard?.name !== state.players[targetSlot.owner]?.buddy?.name)
+    ) {
       return false;
     }
   }

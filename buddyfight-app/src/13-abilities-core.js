@@ -57,6 +57,19 @@ function isCounterAbility(ability) {
   return abilityTimingIncludes(ability, "counter");
 }
 
+// 条件 op "sourceIsBuddy": このカード（条件評価の主体）がバディモンスターか。
+// 登録バディとの同名判定（isBuddyCard）に加え、treatAsBuddyThisTurn の一時付与（turnTreatAsBuddy）も真とする。
+function sourceIsBuddyCondition(owner, context) {
+  const card = context?.card;
+  if (!card) {
+    return false;
+  }
+  if (card.turnTreatAsBuddy) {
+    return true;
+  }
+  return isBuddyCard(state.players[owner], card);
+}
+
 function isCounterOnlyHandCard(card) {
   const handAbilities = (card?.abilities || []).filter((ability) => canUseAbilityFromHand(ability));
   return handAbilities.length > 0 && handAbilities.every((ability) => isCounterAbility(ability));
@@ -590,6 +603,9 @@ function checkCondition(condition, owner, context = {}) {
   if (condition.op === "targetMatches") {
     const ref = condition.ref ? resolveEffectReference(condition.ref, context) : context.target;
     return Boolean(ref?.card && matchesCardFilter(ref.card, condition.filter || {}));
+  }
+  if (condition.op === "sourceIsBuddy") {
+    return sourceIsBuddyCondition(owner, context);
   }
   if (condition.op === "turnOwnerIsSelf") {
     return (context.turnOwner ?? state.active) === owner;

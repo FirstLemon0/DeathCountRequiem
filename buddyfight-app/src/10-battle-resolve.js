@@ -227,7 +227,11 @@ function resolveLinkDestroyedMonsterTriggers(pending, attackers) {
       }
       const receiver = state.players[pending.targetOwner];
       const damage = trigger.damage || 1;
-      const appliedDamage = applyDamageToPlayer(pending.targetOwner, damage, { log: false });
+      const appliedDamage = applyDamageToPlayer(pending.targetOwner, damage, {
+        log: false,
+        sourceCard: setCard,
+        sourceOwner: owner, // preventOpponentEffectDamage（相手効果ダメ無効）の判定に必要
+      });
       dealtDamage = appliedDamage;
       addLog(`${setCard.name}の効果で${receiver.name}に${dealtDamage}ダメージを与えました。`);
     });

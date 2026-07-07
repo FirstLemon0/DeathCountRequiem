@@ -223,7 +223,8 @@ async function executeAbilityEffect(effect, context) {
     if (isLifeGainByEffectPrevented(state.players.indexOf(player))) {
       addLog(`${player.name}は効果でライフを回復できません。`);
     } else {
-      const gained = effect.amount || 1;
+      // amountFrom 対応（「破壊したモンスターのサイズ分回復」H-BT04/0015 等。dealDamage と同形）。
+      const gained = effect.amountFrom ? resolveAmountFrom(effect.amountFrom, context) : effect.amount || 1;
       player.life += gained;
       if (gained > 0) {
         await runFieldEventTriggers("lifeGained", state.players.indexOf(player));
@@ -253,7 +254,13 @@ async function executeAbilityEffect(effect, context) {
       picked = (sel || []).map((e) => e.card);
     }
     picked.forEach((c) => player.hand.push(c));
-    revealed.filter((c) => !picked.includes(c)).forEach((c) => player.deck.unshift(c));
+    // altTo:"drop" 指定時は残りをデッキ下でなくドロップへ（H-BT04/0013/0043。lookTopCardPlaceTopOrBottom の altTo と同形）。
+    const rest = revealed.filter((c) => !picked.includes(c));
+    if (effect.altTo === "drop") {
+      rest.forEach((c) => player.drop.push(c));
+    } else {
+      rest.forEach((c) => player.deck.unshift(c));
+    }
     addLog(`${context.card.name}の効果でデッキの上${revealed.length}枚を見て${picked.length}枚を手札に加えました。`);
   }
   if (effect.op === "revealTopDamagePerMatchRestToBottom") {
@@ -361,7 +368,10 @@ async function executeAbilityEffect(effect, context) {
     checkWinner();
   }
   if (effect.op === "discardAllHand") {
-    discardHandCardsToDrop(player, player.hand.splice(0));
+    // player:"opponent" 対応（従来は指定を無視して常に自分の手札を捨てていた潜在バグ。
+    // ss01-0030/bt04/bt05 の該当カードもこれで公式テキスト通りになる）。
+    const discardTarget = effect.player === "opponent" ? opponent : player;
+    discardHandCardsToDrop(discardTarget, discardTarget.hand.splice(0));
   }
   if (effect.op === "discardHand") {
     const receiver = effect.player === "opponent" ? opponent : player;
@@ -562,9 +572,13 @@ async function executeAbilityEffect(effect, context) {
       ).map((entry) => ({ owner: entry.owner, zone: entry.zone }));
       // 逐次破壊（順序・破壊時誘発キューの保持。並列化禁止）。
       let anyDestroyed = false;
+      context.lastDestroyedCards = []; // 破壊できた実カード（amountFrom lastDestroyedStatSum 用。H-BT04/0068）
       for (const entry of scopeTargets) {
         const d = await destroyFieldCard(entry.owner, entry.zone, { cause: makeEffectCause(context, entry.owner), ...(effect.options || {}) });
-        if (d) anyDestroyed = true;
+        if (d) {
+          anyDestroyed = true;
+          context.lastDestroyedCards.push(d);
+        }
       }
       // 後続effectの lastDestroySucceeded 条件用（破壊が1枚でも成立したか）。
       context.lastDestroyed = anyDestroyed;
@@ -835,6 +849,7 @@ async function executeAbilityEffect(effect, context) {
         : soulEntries.slice(0, amount);
     const movedCards = removePileEntries(target.card.soul || [], selected || []);
     state.players[target.owner].drop.push(...movedCards);
+    maybeDropSetWhenSoulEmpty(target.card, target.owner); // 設置のソウル切れ自壊（相手発の dropTargetSoul でも）
     if (movedCards.length > 0) {
       addLog(
         `${context.card.name}の効果で${target.card.name}のソウルから${movedCards
@@ -1251,6 +1266,58 @@ async function executeAbilityEffect(effect, context) {
       addLog(`${context.card.name}の効果で攻撃対象を${target.card.name}に変更しました。`);
     }
   }
+  if (effect.op === "relocateFieldMonstersToDistinctZones") {
+    // 「相手の場のモンスター全てを、別々の空いたエリアに動かす」（H-BT04/0038 DEATH死揮棒）。
+    // 全員を一旦退避してから、効果の使用者が1体ずつ再配置先を選ぶ（重複なし。元のゾーンにも置ける）。
+    const relocOwner = effect.controller === "self" ? context.owner : 1 - context.owner;
+    const relocPlayer = state.players[relocOwner];
+    const detached = [];
+    fieldZones.forEach((zone) => {
+      const fieldCard = relocPlayer.field[zone];
+      if (fieldCard && effectiveCardType(fieldCard) === "monster" && matchesCardFilter(fieldCard, effect.filter || {})) {
+        relocPlayer.field[zone] = null;
+        detached.push(fieldCard);
+      }
+    });
+    const usedZones = new Set();
+    for (const movedCard of detached) {
+      const choices = fieldZones
+        .filter((zone) => !usedZones.has(zone) && !relocPlayer.field[zone])
+        .map((zone) => ({ zone, card: movedCard, note: zoneLabel(zone) }));
+      let zone = choices[0]?.zone;
+      if (choices.length > 1) {
+        const selected = await chooseCardEntries(choices, {
+          title: `${context.card?.name || "効果"}の再配置`,
+          lead: `${movedCard.name}を動かすエリアを選んでください。`,
+          min: 1,
+          max: 1,
+          forceDialog: true,
+          promptSeat: context.owner,
+          purpose: "move",
+        });
+        zone = selected?.[0]?.zone ?? zone;
+      }
+      if (zone) {
+        relocPlayer.field[zone] = movedCard;
+        usedZones.add(zone);
+        addLog(`${movedCard.name}を${zoneLabel(zone)}に動かしました。`);
+      } else {
+        relocPlayer.drop.push(movedCard); // 置き場が無い異常系（通常発生しない）
+      }
+    }
+  }
+  if (effect.op === "treatAsBuddyThisTurn") {
+    // 「そのターン中、（filterの）モンスター全てはバディモンスターとして扱う」（H-BT04/0016）。
+    // sourceIsBuddy 条件（src/13）が turnTreatAsBuddy を参照する。クリアは clearTurnModifiers。
+    const buddyOwner = effect.controller === "opponent" ? 1 - context.owner : context.owner;
+    const buddyPlayer = state.players[buddyOwner];
+    zones.forEach((zone) => {
+      const fieldCard = buddyPlayer.field[zone];
+      if (fieldCard && matchesCardFilter(fieldCard, effect.filter || {})) {
+        fieldCard.turnTreatAsBuddy = true;
+      }
+    });
+  }
   if (effect.op === "moveTargetToEmptyZone" && target?.card) {
     const ownerPlayer = state.players[target.owner];
     const destinations = (effect.zones || fieldZones).filter((zone) => zones.includes(zone) && !ownerPlayer.field[zone]);
@@ -1619,6 +1686,24 @@ function resolveAmountFrom(spec, context) {
     // script で選択した var のカードの visible stat（破壊直後のカードの打撃力参照などに使う）。
     const selected = scriptSelection({ var: spec.var }, context)[0]?.card;
     return selected ? visibleFieldStat(selected, spec.stat || "critical") : 0;
+  }
+  if (spec.source === "lastDestroyedStatSum") {
+    // 直前の destroy(scope) で破壊できたカード群の印字 stat 合計（「破壊した打撃力合計分ダメージ」H-BT04/0068）。
+    // 破壊済み＝場を離れているため visible ではなく印字値を使う。
+    return (context.lastDestroyedCards || []).reduce((sum, card) => sum + (card?.[spec.stat || "critical"] || 0), 0);
+  }
+  if (spec.source === "fieldSoulCountSum") {
+    // 自分（controller指定可）の場の全カードのソウル枚数合計（filter でソウル側を絞れる）。
+    const soulOwner = ownerOf(spec.controller || "self");
+    const soulPlayer = state.players[soulOwner];
+    let total = 0;
+    zones.forEach((zone) => {
+      const fieldCard = soulPlayer?.field?.[zone];
+      (fieldCard?.soul || []).forEach((soulCard) => {
+        if (matchesCardFilter(soulCard, spec.filter || {})) total += 1;
+      });
+    });
+    return Math.min(total, spec.max ?? total) * (spec.per ?? 1);
   }
   if (spec.source === "targetStat") {
     // 効果の対象($target)のカードの visible stat（破壊する対象のサイズ分ダメージ等）。size も読める。

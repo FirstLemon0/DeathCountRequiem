@@ -706,6 +706,58 @@ function queueEnteredSoulTriggers(card, owner, fromZone, hostCard) {
     });
 }
 
+// 「（相手が）カードを引いた時」の誘発。drawCards（通常ドロー含む全経路）から1枚ごとに呼ばれ、
+// runFieldEventTriggers("drew") が allyDrew / opponentDrew を両者の場札へ動的配送する（H-BT04/0008 爆雷等）。
+// listener が無ければ何もしない（既存挙動への影響ゼロ）。
+function queueDrewTriggers(drawerOwner) {
+  if (!Array.isArray(state?.players)) {
+    return;
+  }
+  // listener 検出は card.abilities に加えソウル札の soulAbilities も見る
+  // （inheritSoulAbilities 経由の継承爆雷=EB03ヤミゲドウ×H-BT04/0008 等を取りこぼさない）。
+  const listens = (abilities) =>
+    (abilities || []).some(
+      (ability) => ability.kind === "triggered" && ["allyDrew", "opponentDrew"].includes(ability.event),
+    );
+  const hasListener = state.players.some((player) =>
+    zones.some((zone) => {
+      const card = player?.field?.[zone];
+      return card && (listens(card.abilities) || (card.soul || []).some((soulCard) => listens(soulCard.soulAbilities)));
+    }),
+  );
+  if (!hasListener) {
+    return;
+  }
+  Promise.resolve()
+    .then(async () => {
+      if (state.winner) {
+        return;
+      }
+      await runFieldEventTriggers("drew", drawerOwner);
+      render();
+    })
+    .catch((error) => {
+      console.error(error);
+      render();
+    });
+}
+
+// 設置カードの「このカードのソウルがなくなった時、このカードをドロップゾーンに置く」
+// （card.dropWhenSoulEmpty:true。H-BT04/0025 雷破の構え等）。ソウル消費コストの支払い後に呼ぶ。
+function maybeDropSetWhenSoulEmpty(card, owner) {
+  if (!card?.dropWhenSoulEmpty || (card.soul || []).length > 0) {
+    return;
+  }
+  const slot = findFieldCardSlot(card);
+  if (!slot) {
+    return;
+  }
+  const dropped = dropFieldCardByRule(state.players[slot.owner], slot.zone);
+  if (dropped) {
+    addLog(`${dropped.name}はソウルがなくなったためドロップゾーンに置かれました。`);
+  }
+}
+
 // 「君がダメージを受けた時」の誘発。ダメージを受けたプレイヤー自身の場札の
 // kind:"triggered" event:"damageReceived" を発火する（BT03の五角/角王ダメージ受け系の中核）。
 // applyDamageToPlayer(同期)から呼ぶため microtask で遅延実行。listener が無ければ何もしない。
@@ -741,6 +793,9 @@ function queueDamageReceivedTriggers(owner, amount, options = {}) {
           damageAmount: amount,
           byAttack,
           damageSourceLabel,
+          // ability.nonAttackOnly / byAttackOnly でダメージ種別を絞れる（H-BT04/0053「攻撃以外のダメージ」等）。
+          __abilityFilter: (ability) =>
+            (!ability.nonAttackOnly || !byAttack) && (!ability.byAttackOnly || byAttack),
         });
       }
       render();
@@ -1222,6 +1277,7 @@ function clearTurnModifiers() {
         card.preventNextDestroyCount = 0;
         card.preventNextDestroyEffects = []; // 未発火の破壊置換effect(反撃付与等)が翌ターンへ残留しないようクリア
         card.cannotAttackThisTurn = false; // 「そのターン中攻撃できない」(グレイプニル等)をターン終了で解除
+        card.turnTreatAsBuddy = false; // 「バディモンスターとして扱う」(treatAsBuddyThisTurn)をターン終了で解除
         // gainNameAsSelected（追加のカード名・ターンスコープ）をリセット。ただし印字の恒久additionalNames
         // (0022の「武神竜王 デュエルズィーガー」等)はベースライン(printedAdditionalNames)へ復元し消さない。
         card.additionalNames = [...(card.printedAdditionalNames || [])];
@@ -1274,9 +1330,15 @@ function resolveLifeZeroReplacements() {
     if (player.life > 0) {
       return;
     }
-    const replacementSlot = [...setZones, "item"]
+    const replacementSlot = [...setZones, "item", ...fieldZones]
       .map((zone) => ({ zone, card: player.field[zone] }))
-      .find(({ card }) => card?.lifeZeroReplacement);
+      .find(
+        ({ card }) =>
+          card?.lifeZeroReplacement &&
+          // soulCost 型はソウルが足りる時だけ置換候補になる（不足時は次の敗北処理へ）
+          (!card.lifeZeroReplacement.soulCost ||
+            (card.soul || []).length >= (card.lifeZeroReplacement.soulCost.amount || 1)),
+      );
     if (!replacementSlot) {
       // プレイヤー単位の一回限りセーフガード（実は生きていた！）。場札の置換が無い場合に消費する。
       if (player.lifeZeroSafeguard) {
@@ -1321,6 +1383,20 @@ function resolveLifeZeroReplacements() {
         drawCards(player, replacement.draw || 0);
       }
       addLog(`${card.name}の効果で${sac.c.name}を破壊し、${player.name}のライフは${player.life}になりました。`);
+      return;
+    }
+    if (replacement.soulCost) {
+      // 「このカードのソウルN枚を捨ててよい。捨てたら、君のライフはlifeになる」型
+      // （カード自身は場に残る。H-BT04/0001 カイザー・ドラム“固い絆”）。任意だが有利な置換のため自動使用（既存置換と同仕様）。
+      const soulAmount = replacement.soulCost.amount || 1;
+      for (let index = 0; index < soulAmount; index += 1) {
+        const soulCard = card.soul.pop();
+        if (soulCard) {
+          player.drop.push(soulCard);
+        }
+      }
+      player.life = replacement.life || 1;
+      addLog(`${card.name}の効果でソウル${soulAmount}枚を捨て、${player.name}のライフは${player.life}になりました。`);
       return;
     }
     let hasRequiredSoul = true;

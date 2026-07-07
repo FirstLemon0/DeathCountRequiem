@@ -439,7 +439,7 @@ async function selectCardsForScript(step, context) {
   const candidates = groupScriptCandidates(rawCandidates, step);
   const amount = step.amount ?? 1;
   const allowEmpty = Boolean(step.allowEmpty && candidates.length === 0);
-  const min = allowEmpty ? 0 : step.min ?? (step.require === false ? 0 : amount);
+  let min = allowEmpty ? 0 : step.min ?? (step.require === false ? 0 : amount);
   let max = step.max ?? amount;
   if (step.maxByEmptyFieldZones) {
     max = Math.min(max, fieldZones.filter((zone) => !context.player.field[zone]).length);
@@ -447,6 +447,11 @@ async function selectCardsForScript(step, context) {
   if (step.maxFrom) {
     // 選択上限を amountFrom スペックで動的決定（0020: ドロップの“爆雷”数まで選ぶ）。
     max = resolveAmountFrom(step.maxFrom, context);
+  }
+  if (step.minFrom && !allowEmpty) {
+    // 選択下限も amountFrom で動的決定（「対象のサイズの数値以上」払う等。H-BT04/0006）。
+    min = resolveAmountFrom(step.minFrom, context);
+    max = Math.max(max, min);
   }
   recordDiagnosticEvent("effect_script", {
     stage: "select_candidates",
@@ -608,6 +613,13 @@ function scriptCardMatches(card, owner, zone, step, context) {
       return false;
     }
   }
+  // filter.sizeNotEqualVar: 先に選んだ別の選択(var)のカードとサイズが異なるもののみ（H-BT04/0039）。
+  if (step.filter?.sizeNotEqualVar) {
+    const refCard = scriptSelection({ var: step.filter.sizeNotEqualVar }, context)[0]?.card;
+    if (!refCard || effectiveSize(card) === effectiveSize(refCard)) {
+      return false;
+    }
+  }
   if (step.callable && !isCallableMonster(card)) {
     return false;
   }
@@ -719,6 +731,8 @@ function dealDamageBySelectedStatSumForScript(step, context) {
   if (sum > 0) {
     const dealt = applyDamageToPlayer(seat, sum, {
       sourceName: context.card?.name,
+      sourceCard: context.card,
+      sourceOwner: context.owner, // preventOpponentEffectDamage（相手効果ダメ無効）の判定に必要
       ignorePrevention: Boolean(step.ignorePrevention),
       byEffect: true,
     });
@@ -1326,6 +1340,7 @@ function moveSoulToDropForScript(step, context) {
   if (movedCards.length > 0 && step.log !== false) {
     addLog(`${context.card.name}のソウルを全てドロップゾーンに置きました。`);
   }
+  maybeDropSetWhenSoulEmpty(context.card, context.owner); // 設置のソウル切れ自壊（H-BT04/0025）
   return true;
 }
 
@@ -2074,6 +2089,8 @@ function interpolateScriptMessage(message, context) {
 
 function isScriptEffectStep(step) {
   return [
+    "relocateFieldMonstersToDistinctZones",
+    "treatAsBuddyThisTurn",
     "draw",
     "putTopDeckToGauge",
     "putTopDeckToGaugeIfBuddyOnField",

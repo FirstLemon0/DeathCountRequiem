@@ -15,6 +15,12 @@ function drawCards(player, count = 1, shouldLog = true) {
     const card = player.deck.pop();
     if (card) {
       player.hand.push(card);
+      // 「（相手が）カードを引いた時」誘発（1枚ごと。H-BT04/0008）。
+      // createPlayer の初期手札ドロー時は state.players 未構築のため発火しない（indexOf が -1）。
+      const drawerIndex = Array.isArray(state?.players) ? state.players.indexOf(player) : -1;
+      if (drawerIndex >= 0) {
+        queueDrewTriggers(drawerIndex);
+      }
       if (player.deck.length === 0) {
         if (shouldLog) {
           addLog(`${player.name}のデッキが0枚になりました。`);
@@ -44,6 +50,22 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
         addLog(`${cap.source || "効果"}により${player.name}が受けるダメージを${remaining - reduced}減らしました。`);
       }
       remaining = reduced;
+    }
+  }
+  // 継続 preventOpponentEffectDamage: 「君は相手のカードの効果でダメージを受けない」恒常（H-BT04/0109）。
+  // 攻撃ダメージ(byAttack)と自分発のダメージ（コストの damageSelf 等 sourceOwner===owner）には効かない。
+  if (
+    !options.ignorePrevention &&
+    !options.byAttack &&
+    Number.isInteger(options.sourceOwner) &&
+    options.sourceOwner !== owner
+  ) {
+    const guardCard = zones
+      .map((zone) => player.field[zone])
+      .find((fieldCard) => fieldCard && activeContinuousEffects(fieldCard).some((e) => e.op === "preventOpponentEffectDamage"));
+    if (guardCard) {
+      addLog(`${guardCard.name}の効果で${player.name}は相手の効果によるダメージを受けません。`);
+      return 0;
     }
   }
   if (remaining <= 0) {
@@ -810,6 +832,7 @@ function payStructuredCost(player, costSteps = [], context = {}) {
           player.drop.push(soulCard);
         }
       }
+      maybeDropSetWhenSoulEmpty(sourceCard, state.players.indexOf(player)); // 設置のソウル切れ自壊（H-BT04/0025）
     }
     if (step.op === "discardSoulToDeckBottom") {
       for (let index = 0; index < amount; index += 1) {
@@ -1301,6 +1324,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
           player.drop.push(soulCard);
         }
       }
+      maybeDropSetWhenSoulEmpty(sourceCard, state.players.indexOf(player)); // 設置のソウル切れ自壊（H-BT04/0025）
     }
     if (step.op === "discardSoulToDeckBottom") {
       for (let index = 0; index < amount; index += 1) {
