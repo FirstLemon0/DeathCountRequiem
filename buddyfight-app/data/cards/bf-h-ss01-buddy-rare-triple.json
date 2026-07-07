@@ -1,0 +1,3634 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-h-ss01-buddy-rare-triple",
+    "name": "ハンドレッド スペシャルシリーズ第１弾「ゲキ強!! バディレアトリプルデッキ」",
+    "kind": "スペシャルシリーズ",
+    "generation": "100",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=34"
+  },
+  "cards": [
+    {
+      "id": "bf-h-ss01-0001",
+      "no": "H-SS01/0001",
+      "name": "五角装竜 猛き鋼のコンゴウ",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 3,
+      "power": 9000,
+      "critical": 2,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■君のドロップゾーンにカード名に「五角」を含むカード３種類以上があるなら、このカードは『２回攻撃』を得て、さらに、４種類以上があるなら、このカードの打撃力を＋１し、さらに、５種類以上があるなら、このカードは『貫通』を得る！！"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "doubleAttack",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "nameIncludes": "五角"
+              },
+              "distinct": "distinctByName",
+              "cmp": "gte",
+              "amount": 3
+            }
+          ]
+        },
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "nameIncludes": "五角"
+              },
+              "distinct": "distinctByName",
+              "cmp": "gte",
+              "amount": 4
+            }
+          ]
+        },
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "nameIncludes": "五角"
+              },
+              "distinct": "distinctByName",
+              "cmp": "gte",
+              "amount": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0002",
+      "no": "H-SS01/0002",
+      "name": "インフェルノアーマー・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、君のデッキの上から２枚をこのカードのソウルに入れる。",
+        "■“アンガーインフェルノ”このカードが登場した時、このカードのソウルに《武装騎竜》があるなら、相手の場のモンスター１枚を破壊する！",
+        "■【起動】“インフェルノシュート”このカードのソウル２枚をドロップゾーンに置いてよい。置いたら、相手の場のモンスター１枚を破壊する。"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 3,
+      "defense": 7000,
+      "callCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0002-cp01-inferno-armor-anger-inferno",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "sourceSoulHasAttribute",
+              "attribute": "武装騎竜"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-ss01-0002-cp01-inferno-armor-inferno-shoot",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "discardSoul",
+              "amount": 2
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0003",
+      "no": "H-SS01/0003",
+      "name": "五角装竜 千本太刀のヨウコウ",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■このカードはセンターにコールできない。",
+        "■【コールコスト】ゲージ３を払い、君のドロップゾーンのカード名に「五角」を含むモンスター２枚をこのカードのソウルに入れる。",
+        "■【起動】このカードのソウル１枚をドロップゾーンに置く。置いたら、相手の場のサイズ２以下のモンスター１枚を破壊する！",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "cannotCallZones": [
+        "center"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          },
+          {
+            "op": "putDropToSoul",
+            "amount": 2,
+            "filter": {
+              "nameIncludes": "五角",
+              "cardType": "monster"
+            }
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0003-senbonzashi-soul-destroy",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "discardSoul",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster",
+              "sizeLte": 2
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0004",
+      "no": "H-SS01/0004",
+      "name": "五角竜王 紅蓮のドラム",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "『角王』（このカードは全てのフラッグで使える。君のフラッグが以外なら、「五角竜王 紅蓮のドラム」はデッキに１枚しか入れることができない）",
+        "■【コールコスト】ゲージ２を払い、君のデッキの上から１枚をこのカードのソウルに入れる。",
+        "■君が攻撃された時、ライフ１を払ってよい。払ったら、その攻撃の対象をこのカードに変更する。",
+        "『ソウルガード』"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "ドラゴンW",
+        "awayMaxCopies": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0004-guren-redirect",
+          "kind": "triggered",
+          "event": "fighterAttacked",
+          "optional": true,
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "redirectPendingAttackToSelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0005",
+      "no": "H-SS01/0005",
+      "name": "五角装竜 雷刃のコクヨウ",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "黒竜"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 2,
+      "power": 3000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■【起動】“黒雷光”君のデッキの上から２枚をゲージに置き、君にダメージ２！「黒雷光」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0005-kokuraikou",
+          "label": "黒雷光",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            },
+            {
+              "op": "dealDamage",
+              "player": "self",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0006",
+      "no": "H-SS01/0006",
+      "name": "五角装竜 破山のゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【対抗】【起動】君のターン中、君にダメージ１を与え、次の２つから１つを選んで使う。この能力は１ターンに１回だけ使える。",
+        "・そのターン中、このカードの打撃力を＋１！",
+        "・そのターン中、このカードの攻撃力を＋3000！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0006-hazan-branch",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "cost": [
+            {
+              "op": "damageSelf",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          },
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "五角装竜 破山のゴン",
+              "lead": "そのターン中に得る強化を選んでください。",
+              "options": [
+                {
+                  "key": "critical",
+                  "label": "そのターン中、打撃力＋１",
+                  "script": [
+                    {
+                      "op": "modifyStats",
+                      "target": "$self",
+                      "critical": 1,
+                      "duration": "turn"
+                    }
+                  ]
+                },
+                {
+                  "key": "power",
+                  "label": "そのターン中、攻撃力＋3000",
+                  "script": [
+                    {
+                      "op": "modifyStats",
+                      "target": "$self",
+                      "power": 3000,
+                      "duration": "turn"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0007",
+      "no": "H-SS01/0007",
+      "name": "五角騎竜 光旋のアリオット",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 1,
+      "power": 4000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■このカードはセンターにコールできない。",
+        "■君の場のカード名に「五角」を含むカードが攻撃した時、君のライフを＋１！この能力は１ターンに1回だけ発動する。",
+        "■君の場に「五角騎竜 光旋のアリオット」以外のカード名に「五角」を含むモンスターがいるなら、このカードの打撃力を＋１！"
+      ],
+      "cannotCallZones": [
+        "center"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0007-koasen-ariotto-lifegain",
+          "kind": "triggered",
+          "event": "allyAttack",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "nameIncludes": "五角"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "ownOtherFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "五角"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0008",
+      "no": "H-SS01/0008",
+      "name": "五角装竜 聖典のヒスイ",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 1,
+      "power": 0,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【対抗】【起動】君がダメージを受けた時、ゲージ１を払ってよい。払ったら、手札のこのカードを君のセンターにコールし、君のライフを＋１！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0008-seiten-hisui-counter-call",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "selfReceivedDamage"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "callSelfFromHand",
+              "zone": "center"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0009",
+      "no": "H-SS01/0009",
+      "name": "ドラゴデスパレート",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■【使用コスト】ゲージ１を払い、君にダメージ１。",
+        "■【対抗】相手の場のサイズ２以下のモンスター１枚か、相手の場のアイテム１枚をレストにする。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "damageSelf",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0009-doragodesuparēto-rest",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "anyOf": [
+                {
+                  "cardType": "monster",
+                  "sizeLte": 2
+                },
+                {
+                  "cardType": "item"
+                }
+              ]
+            }
+          },
+          "effects": [
+            {
+              "op": "restTarget",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0010",
+      "no": "H-SS01/0010",
+      "name": "大空を手に入れて",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】君の場のモンスター全てを手札に戻す。「大空を手に入れて」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0010-oozora-return-all",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "effects": [
+            {
+              "op": "returnAllToHand",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0011",
+      "no": "H-SS01/0011",
+      "name": "ドラゴンシールド 青竜の盾",
+      "type": "spell",
+      "rarity": "スペシャルシリーズ",
+      "world": "ドラゴンW",
+      "attributes": [
+        "青竜",
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】その攻撃を無効化し、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0011-blue-dragon-shield-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0012",
+      "no": "H-SS01/0012",
+      "name": "ドラゴン・バリアー",
+      "ruby": "",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "防御"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■【対抗】そのターン中、次に君の場のサイズ２以上のモンスターが破壊される場合、そのモンスターを場に残せる。",
+        "（アドバイス！“次に”と書いてあるけど、ようは破壊されそうになった時に、後から対抗で使えばいいんだ。あせらなくてもいいぞ！）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0012-protect",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "sizeGte": 2
+            }
+          },
+          "effects": [
+            {
+              "op": "setPreventNextDestroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0013",
+      "no": "H-SS01/0013",
+      "name": "ドラゴ・ボンド",
+      "ruby": "ドラゴ・ボンド",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "金竜"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■君のセンターにモンスターがいないなら使える。",
+        "■【対抗】君の場のモンスター１枚を選ぶ。そのターン中、次にそのモンスターが破壊される場合、君のライフを＋２し、そのモンスターを場に残せる。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0013-bond",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "setPreventNextDestroy",
+              "target": "$target",
+              "amount": 1,
+              "gainLife": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0014",
+      "no": "H-SS01/0014",
+      "name": "ドラゴリヴァイバー",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "回復"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■君のドロップゾーンに《武装騎竜》５種類以上があるなら使える。",
+        "■君のライフを＋４する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0014-dragoreviver-life",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "attribute": "武装騎竜"
+              },
+              "distinct": "distinctByName",
+              "cmp": "gte",
+              "amount": 5
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0015",
+      "no": "H-SS01/0015",
+      "name": "太陽拳 サンシャイン・インパクト",
+      "ruby": "たいようけん サンシャイン・インパクト",
+      "type": "item",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武器"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■このカードがバディモンスターと連携攻撃した時、そのターン中、このカードの攻撃力は∞になる。（∞は足しても減らしてもどの数値より大きい数値として扱う）"
+      ],
+      "power": 6000,
+      "critical": 2,
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "equipCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0015-buddy-link-power",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "linkAttackWithBuddy"
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "power": 999999,
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0016",
+      "no": "H-SS01/0016",
+      "name": "竜装 ドラゴキーパー",
+      "type": "item",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "武器"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■攻撃以外の君が受けるダメージを１減らす。（『貫通』のダメージも減るぞ！）"
+      ],
+      "power": 6000,
+      "critical": 1,
+      "equipCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "damageReceivedReduction",
+          "amount": 1,
+          "nonAttackOnly": true
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0017",
+      "no": "H-SS01/0017",
+      "name": "五角竜拳 轟炎",
+      "type": "item",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "武器"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "power": 4000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■君の場の《武装騎竜》全ての攻撃力＋1000、防御力＋1000！"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "modifyStatsAll",
+          "controller": "self",
+          "filter": {
+            "attribute": "武装騎竜"
+          },
+          "power": 1000,
+          "defense": 1000
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0018",
+      "no": "H-SS01/0018",
+      "name": "鉄拳 ドラゴナックル",
+      "type": "item",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "武器"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "power": 2000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ライフ１を払う。",
+        "■“ヴォルカニックチャージ”このカードが相手にダメージを与えた時、君のデッキの上から１枚をゲージに置く。",
+        "■【対抗】【起動】“ヴォルカニックバースト”ゲージ１を払ってよい。払ったら、そのターン中、このカードの攻撃力を＋2000する！"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0018-volcanic-charge",
+          "label": "ヴォルカニックチャージ",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-h-ss01-0018-volcanic-burst",
+          "label": "ヴォルカニックバースト",
+          "kind": "activated",
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "optional": true,
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "power": 2000,
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0019",
+      "no": "H-SS01/0019",
+      "name": "轟斬!! ガルガンチュア・パニッシャー!!",
+      "type": "impact",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■相手のライフが５以下で、君のセンターと相手のセンターにモンスターがいないなら使える。",
+        "■【使用コスト】ゲージ５を払う。",
+        "■相手にダメージ５！！このカードは無効化されず、このカードのダメージは減らない。"
+      ],
+      "castCost": {
+        "gauge": 5
+      },
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 5
+          }
+        ]
+      },
+      "effect": "gargantua",
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0019-cast",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 5
+            }
+          ],
+          "conditions": [
+            {
+              "op": "opponentLifeLte",
+              "amount": 5
+            },
+            {
+              "op": "bothCentersEmpty"
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 5,
+              "ignorePrevention": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0020",
+      "no": "H-SS01/0020",
+      "name": "五角天技 ギガハウリング・ファントム！！",
+      "type": "impact",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■君が攻撃されている攻撃中、君がアイテムを装備しているなら使える。",
+        "■【使用コスト】ゲージ３を払う。",
+        "■【対抗】その攻撃を無効化し、相手にダメージ２！！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0020-giga-howling-phantom-counter",
+          "kind": "impact",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0021",
+      "no": "H-SS01/0021",
+      "name": "ドラゴンワールド",
+      "type": "flag",
+      "rarity": "スペシャルシリーズ",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "このファイターはドラゴンWのカードを使う。"
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0022",
+      "no": "H-SS01/0022",
+      "name": "炎魔連合総長 バーンノヴァ",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 3,
+      "power": 9000,
+      "critical": 3,
+      "defense": 7000,
+      "rules": [
+        "『角王』",
+        "■【コールコスト】ゲージ２を払う。",
+        "■【対抗】【起動】君の手札の《怒羅魂頭》のモンスター１枚を捨ててよい。捨てたら、そのターン中、このカードは捨てたカードに書かれている能力全てを得る。この能力は１ターンに１回だけ使える。",
+        "『貫通』『ライフリンク５』"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "エンシェントW",
+        "awayMaxCopies": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate",
+        "lifeLink5"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0022-gain-discarded-abilities",
+          "kind": "activated",
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "optional": true,
+          "limit": {
+            "scope": "turn"
+          },
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "x",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "attribute": "怒羅魂頭",
+                "cardType": "monster"
+              },
+              "amount": 1,
+              "title": "炎魔連合総長 バーンノヴァ",
+              "lead": "捨てる、手札の《怒羅魂頭》のモンスターを選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "x",
+              "to": "drop",
+              "log": "discard"
+            },
+            {
+              "op": "gainSelectedCardAbilitiesForTurn",
+              "var": "x"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0023",
+      "no": "H-SS01/0023",
+      "name": "罵詈罵詈竜王 チャンピオンロード",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■相手のカードが攻撃した時、その対象をこのモンスターに変更する。",
+        "『２回攻撃』『ライフリンク２』（このカードが場から離れた時、君はライフリンクの数値分のダメージを受ける）"
+      ],
+      "size": 3,
+      "power": 9000,
+      "critical": 2,
+      "defense": 6000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "doubleAttack",
+        "lifeLink2"
+      ],
+      "continuous": [
+        {
+          "op": "redirectAttackToSelf"
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0024",
+      "no": "H-SS01/0024",
+      "name": "我道竜王 オニストリート",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 3,
+      "power": 7000,
+      "critical": 3,
+      "defense": 7000,
+      "rules": [
+        "■相手のカードが攻撃した時、その対象をこのモンスターに変更する。",
+        "『ライフリンク２』（このカードが場から離れた時、君はライフリンクの数値分のダメージを受ける）"
+      ],
+      "continuous": [
+        {
+          "op": "redirectAttackToSelf"
+        }
+      ],
+      "keywords": [
+        "lifeLink2"
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0025",
+      "no": "H-SS01/0025",
+      "name": "堕威万竜王 エバーロック",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 3,
+      "power": 6000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■相手のカードが攻撃した時、その対象をこのモンスターに変更する。",
+        "■君と相手の場にモンスター１枚ずつがいるなら、このカードの攻撃力＋2000、防御力＋2000し、このカードは効果で破壊されない。",
+        "『ライフリンク２』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "redirectAttackToSelf"
+        },
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "power": 2000,
+          "defense": 2000,
+          "conditions": [
+            {
+              "op": "cardCountGte",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "cardType": "monster"
+              },
+              "amount": 1
+            },
+            {
+              "op": "cardCountGte",
+              "controller": "opponent",
+              "pile": "field",
+              "filter": {
+                "cardType": "monster"
+              },
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "destroyImmunity": [
+        {
+          "from": {
+            "byEffect": true
+          },
+          "conditions": [
+            {
+              "op": "cardCountGte",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "cardType": "monster"
+              },
+              "amount": 1
+            },
+            {
+              "op": "cardCountGte",
+              "controller": "opponent",
+              "pile": "field",
+              "filter": {
+                "cardType": "monster"
+              },
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "lifeLink2"
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0026",
+      "no": "H-SS01/0026",
+      "name": "餓狼竜王 キワミナックル",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 3,
+      "power": 5000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■相手のカードが攻撃した時、その対象をこのモンスターに変更する。",
+        "■このカードが１枚で攻撃しているなら、このカードの攻撃は無効化されない。",
+        "『ライフリンク２』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "redirectAttackToSelf"
+        }
+      ],
+      "keywords": [
+        "singleAttackCannotBeNullified",
+        "lifeLink2"
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0027",
+      "no": "H-SS01/0027",
+      "name": "炎魔連合 ジェットカウル",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 2,
+      "power": 7000,
+      "critical": 1,
+      "defense": 4000,
+      "rules": [
+        "■【起動】君の場にサイズ３の《怒羅魂頭》がいるなら、ゲージ１を払ってよい。払ったら、手札のこのカードを君の場のサイズ３のモンスターのソウルに入れる。",
+        "■このカードがソウルにある《怒羅魂頭》が攻撃した時、そのターン中、その《怒羅魂頭》の攻撃力を＋3000し、相手の場のカード１枚のソウル１枚をドロップゾーンに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0027-tosoul-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "cardCountGte",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "attribute": "怒羅魂頭",
+                "sizeIn": [
+                  3
+                ]
+              },
+              "amount": 1
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "sizeIn": [
+                3
+              ]
+            }
+          },
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "bf-h-ss01-0027-soul-boost",
+          "kind": "triggered",
+          "event": "attack",
+          "allowMissingTarget": true,
+          "conditions": [
+            {
+              "op": "targetMatches",
+              "ref": "$self",
+              "filter": {
+                "attribute": "怒羅魂頭"
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster",
+              "soulCountGte": 1
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "power": 3000,
+              "duration": "turn"
+            },
+            {
+              "op": "dropTargetSoul",
+              "target": "$target",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0028",
+      "no": "H-SS01/0028",
+      "name": "嵐竜王 サンダートルネード",
+      "ruby": "らんりゅうおう サンダートルネード",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード",
+        "風"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■【起動】“魔風撃” 君の場にサイズ３のモンスターがいるなら、手札のこのカードを捨て、ゲージ１を払ってよい。そうしたら、場のアイテムか魔法１枚を破壊する。",
+        "『ライフリンク１』"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "keywords": [
+        "lifeLink1"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0028-hand-destroy-item-spell",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "fromHandOnly": true,
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ],
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "any",
+            "filter": {
+              "cardTypeIn": [
+                "item",
+                "spell"
+              ]
+            }
+          },
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0029",
+      "no": "H-SS01/0029",
+      "name": "炎魔連合 リーゼントホーン",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■君のバディモンスターが《怒羅魂頭》ならコールできる。",
+        "■このカードが登場した時、君のデッキから《怒羅魂頭》のモンスター１枚までをドロップゾーンに置き、デッキをシャッフルする。",
+        "■このカードが、場かデッキから君のドロップゾーンに置かれた時、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "callConditions": [
+        {
+          "op": "buddyMatches",
+          "filter": {
+            "attribute": "怒羅魂頭"
+          }
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0029-enter-mill-search",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "x",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "attribute": "怒羅魂頭",
+                "cardType": "monster"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "炎魔連合 リーゼントホーン",
+              "lead": "デッキからドロップゾーンに置く《怒羅魂頭》のモンスターを選んでください（1枚まで）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "x",
+              "to": "drop"
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-ss01-0029-moved-to-drop-gauge",
+          "kind": "triggered",
+          "event": "movedToDrop",
+          "fromZones": [
+            "field",
+            "deck"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0030",
+      "no": "H-SS01/0030",
+      "name": "炎魔連合 オニゾリヘッド",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【対抗】【起動】君の場にサイズ３のモンスターがいるなら、手札のこのカードを捨て、ライフ１を払ってよい。そうしたら、バトルしている君の場のモンスター１枚を選び、このバトル中、防御力＋5000！",
+        "『ライフリンク１』"
+      ],
+      "keywords": [
+        "lifeLink1"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0030-counter-defense-boost",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "fromHandOnly": true,
+          "conditions": [
+            {
+              "op": "cardCountGte",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              },
+              "amount": 1
+            }
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "battleCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster"
+            },
+            "amount": 1
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "defense": 5000,
+              "duration": "battle"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0031",
+      "no": "H-SS01/0031",
+      "name": "氷竜王 グラキエス",
+      "ruby": "ひょうりゅうおう グラキエス",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード",
+        "水"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■【対抗】【起動】“氷結弾”相手のターンの攻撃中、君の場にサイズ３のモンスターがいるなら、手札のこのカードを捨て、ライフ１を払ってよい。そうしたら、その攻撃を無効化する。",
+        "『ライフリンク１』"
+      ],
+      "size": 2,
+      "power": 3000,
+      "critical": 3,
+      "defense": 4000,
+      "keywords": [
+        "lifeLink1"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0031-hand-nullify",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "fromHandOnly": true,
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ],
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0032",
+      "no": "H-SS01/0032",
+      "name": "炎魔連合 キルメンチ",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■【起動】場のこのカードをドロップゾーンに置き、君の手札１枚を捨てる。そうしたら、君のドロップゾーンの《怒羅魂頭》のモンスター１枚を【コールコスト】を払って、コールする。",
+        "『ライフリンク１』"
+      ],
+      "keywords": [
+        "lifeLink1"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0032-drop-self-call-from-drop",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "dropSource"
+            },
+            {
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "x",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "attribute": "怒羅魂頭",
+                "cardType": "monster"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "炎魔連合 キルメンチ",
+              "lead": "コールする、ドロップゾーンの《怒羅魂頭》のモンスターを選んでください。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "x",
+              "payCost": "call",
+              "resolveOnEnter": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0033",
+      "no": "H-SS01/0033",
+      "name": "炎魔連合 カットビリー",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 1,
+      "power": 2000,
+      "critical": 3,
+      "defense": 1000,
+      "rules": [
+        "■君の場に元々のサイズが３の《怒羅魂頭》がいるなら、このカードのサイズを１減らす。",
+        "『ライフリンク１』（このカードが場から離れた時、君はライフリンクの数値分のダメージを受ける）"
+      ],
+      "keywords": [
+        "lifeLink1"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "size": -1,
+          "conditions": [
+            {
+              "op": "cardCountGte",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "怒羅魂頭",
+                "baseSizeGte": 3
+              },
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0034",
+      "no": "H-SS01/0034",
+      "name": "バリバリぶっちぎリッキー",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■君の場のサイズ３の《怒羅魂頭》の打撃力を＋１！",
+        "『ライフリンク１』（このカードが場から離れた時、君はライフリンクの数値分のダメージを受ける）"
+      ],
+      "keywords": [
+        "lifeLink1"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "怒羅魂頭",
+            "sizeIn": [
+              3
+            ]
+          },
+          "critical": 1
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0035",
+      "no": "H-SS01/0035",
+      "name": "ドラゴンキッド ギリー",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 0,
+      "power": 1000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": []
+    },
+    {
+      "id": "bf-h-ss01-0036",
+      "no": "H-SS01/0036",
+      "name": "一竜一会",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■【使用コスト】ゲージ１を払い、手札１枚を捨てる。",
+        "■君のデッキからサイズ３の《怒羅魂頭》１枚までを手札に加え、デッキをシャッフルする。「一竜一会」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "discardHand",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0036-search",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "x",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "怒羅魂頭",
+                "sizeIn": [
+                  3
+                ]
+              },
+              "amount": 1,
+              "min": 0,
+              "max": 1,
+              "require": false,
+              "allowEmpty": true,
+              "title": "一竜一会",
+              "lead": "手札に加える、サイズ３の《怒羅魂頭》を選んでください（加えなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "x",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を手札に加えました。"
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-ss01-0036-search"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0037",
+      "no": "H-SS01/0037",
+      "name": "天竜開闢",
+      "ruby": "てんりゅうかいびゃく",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■【使用コスト】ライフ２を払う。",
+        "■カード２枚を引く。「天竜開闢」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payLife",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0037-draw2",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "tenryu-kaibyaku"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0038",
+      "no": "H-SS01/0038",
+      "name": "竜王伝",
+      "ruby": "りゅうおうでん",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■君のデッキの上から１枚をゲージに置き、君のライフを＋１し、カード１枚を引く。「竜王伝」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0038-gauge-life-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "ryuoden"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0039",
+      "no": "H-SS01/0039",
+      "name": "竜枯盛衰",
+      "ruby": "りゅうこせいすい",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■【使用コスト】ライフ２を払う。",
+        "■【対抗】君のデッキの上から４枚をゲージに置く。「竜枯盛衰」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payLife",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0039-gauge4",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 4
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "ryuko-seisui"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0040",
+      "no": "H-SS01/0040",
+      "name": "七転竜起",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】君の場の《怒羅魂頭》１枚を選ぶ。そのターン中、次にそのカードが破壊される場合、そのカードを場に残せる。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0040-preserve",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "attribute": "怒羅魂頭"
+            }
+          },
+          "effects": [
+            {
+              "op": "setPreventNextDestroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0041",
+      "no": "H-SS01/0041",
+      "name": "アニキの心意気",
+      "type": "item",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭",
+        "武器"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "power": 5000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■このカードが攻撃した時、君の場にサイズ３の《怒羅魂頭》がいるなら、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0041-attack-gauge",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "cardCountGte",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "怒羅魂頭",
+                "sizeIn": [
+                  3
+                ]
+              },
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0042",
+      "no": "H-SS01/0042",
+      "name": "俺等友情絶対不滅！",
+      "type": "impact",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■君のライフが６以下で、君の場にサイズ０とサイズ３の《怒羅魂頭》がいるなら使える。",
+        "■【使用コスト】ゲージ２を払う。",
+        "■相手の場のカード１枚を破壊し、相手にダメージ２！！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0042-impact",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 6
+            },
+            {
+              "op": "cardCountGte",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "怒羅魂頭",
+                "sizeIn": [
+                  0
+                ]
+              },
+              "amount": 1
+            },
+            {
+              "op": "cardCountGte",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "怒羅魂頭",
+                "sizeIn": [
+                  3
+                ]
+              },
+              "amount": 1
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {}
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0043",
+      "no": "H-SS01/0043",
+      "name": "エンシェントワールド",
+      "type": "flag",
+      "rarity": "スペシャルシリーズ",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "このファイターはエンシェントWのカードを使う。"
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0044",
+      "no": "H-SS01/0044",
+      "name": "超源射線 ガンマレディアス",
+      "type": "monster",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 3,
+      "power": 8000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ３を払い、君の場の《竜装機》３枚までをこのカードのソウルに入れる。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          },
+          {
+            "op": "putSelectedOwnFieldCardsToSoul",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "竜装機"
+            },
+            "min": 0,
+            "max": 3
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0045",
+      "no": "H-SS01/0045",
+      "name": "超星護 ジャックナイフ “フルバースト”",
+      "type": "monster",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、君のドロップゾーンのカード１枚をこのカードのソウルに入れる。",
+        "■【対抗】【起動】ライフ１を払う。払ったら、相手の場の攻撃力4000以下のモンスター１枚を破壊する。この能力は１ターンに１回だけ使える。",
+        "『貫通』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putDropToSoul",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0045-full-burst-destroy",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster",
+              "powerLte": 4000
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0046",
+      "no": "H-SS01/0046",
+      "name": "超恒星 アストレス",
+      "type": "monster",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "『ソウルガード』（このカードが場から離れる場合、ソウル１枚を捨てて場に残せる）"
+      ],
+      "keywords": [
+        "soulguard"
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0047",
+      "no": "H-SS01/0047",
+      "name": "ジャックナイフ “スペリオルプラズマ”",
+      "type": "monster",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 2,
+      "power": 5000,
+      "critical": 3,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが登場した時、君のドロップゾーンからサイズ１とサイズ０の《竜装機》１枚ずつまでを【コールコスト】を払って、空いている別々のエリアにコールしてよい。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0047-enter-call-dragon-armament",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "a",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "竜装機",
+                "sizeIn": [
+                  1
+                ]
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "ジャックナイフ “スペリオルプラズマ”",
+              "lead": "空いているエリアに【コールコスト】を払ってコールする、ドロップゾーンのサイズ１の《竜装機》を選んでください（コールしなくてもよい）。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "a",
+              "payCost": "call",
+              "chooseZones": true,
+              "resolveOnEnter": true,
+              "require": false
+            },
+            {
+              "op": "selectCards",
+              "var": "b",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "竜装機",
+                "sizeIn": [
+                  0
+                ]
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "ジャックナイフ “スペリオルプラズマ”",
+              "lead": "空いているエリアに【コールコスト】を払ってコールする、ドロップゾーンのサイズ０の《竜装機》を選んでください（コールしなくてもよい）。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "b",
+              "payCost": "call",
+              "chooseZones": true,
+              "resolveOnEnter": true,
+              "require": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0048",
+      "no": "H-SS01/0048",
+      "name": "超熱誕 マグマオーシャン",
+      "type": "monster",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 2,
+      "power": 4000,
+      "critical": 3,
+      "defense": 4000,
+      "rules": [
+        "■このカードが登場した時か破壊された時、君のデッキの上から２枚をドロップゾーンに置き、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0048-enter-mill-life",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "moveTopDeckToDrop",
+              "amount": 2
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-h-ss01-0048-destroyed-mill-life",
+          "kind": "triggered",
+          "event": "destroyed",
+          "effects": [
+            {
+              "op": "moveTopDeckToDrop",
+              "amount": 2
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0049",
+      "no": "H-SS01/0049",
+      "name": "竜装機 レディアント・アルマ",
+      "type": "monster",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "竜装機"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【起動】君のライフが６以下で、このカードが《ネオドラゴン》のソウルにあるなら、ゲージ１を払ってよい。払ったら、そのターン中、その《ネオドラゴン》は『２回攻撃』を得る。",
+        "『星合体』（場のこのカードを、君の場の《ネオドラゴン》のソウルに入れる）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0049-star-merge",
+          "label": "星合体",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "星合体する《ネオドラゴン》",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "bf-h-ss01-0049-soul-double-attack",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 6
+            },
+            {
+              "op": "hostMatches",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$host",
+              "keyword": "doubleAttack",
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0050",
+      "no": "H-SS01/0050",
+      "name": "竜装機 チャージャー",
+      "type": "monster",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "竜装機"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 1,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■“バリバリチャージ！”このカードが場かドロップゾーンから《ネオドラゴン》のソウルに入った時、ゲージ１を払ってよい。払ったら、カード１枚を引く。「バリバリチャージ！」は１ターンに１回だけ発動する。",
+        "『星合体』（場のこのカードを、君の場の《ネオドラゴン》のソウルに入れる）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0050-star-merge",
+          "label": "星合体",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "星合体する《ネオドラゴン》",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-ss01-0050-bari-bari-charge",
+          "label": "バリバリチャージ！",
+          "kind": "triggered",
+          "event": "enteredSoul",
+          "fromZones": [
+            "field",
+            "drop"
+          ],
+          "optional": true,
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          },
+          "conditions": [
+            {
+              "op": "hostMatches",
+              "filter": {
+                "attribute": "ネオドラゴン"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0051",
+      "no": "H-SS01/0051",
+      "name": "超塵輪 ミニスパイラル",
+      "type": "monster",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 1,
+      "power": 1000,
+      "critical": 3,
+      "defense": 1000,
+      "rules": [
+        "『ソウルガード』（このカードが場から離れる場合、ソウル１枚を捨てて場に残せる）"
+      ],
+      "keywords": [
+        "soulguard"
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0052",
+      "no": "H-SS01/0052",
+      "name": "超褐星 クリューガー",
+      "type": "monster",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 0,
+      "power": 4000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": []
+    },
+    {
+      "id": "bf-h-ss01-0053",
+      "no": "H-SS01/0053",
+      "name": "竜装機 エッジシューター",
+      "type": "monster",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "竜装機"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■“エッジシュート”このカードがソウルにある《ネオドラゴン》が攻撃した時、相手にダメージ１！「エッジシュート」は１ターンに１回だけ発動する。",
+        "『星合体』（場のこのカードを、君の場の《ネオドラゴン》のソウルに入れる）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0053-star-merge",
+          "label": "星合体",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "星合体する《ネオドラゴン》",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "bf-h-ss01-0053-edge-shoot",
+          "label": "エッジシュート",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-ss01-0053-edge-shoot"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0054",
+      "no": "H-SS01/0054",
+      "name": "竜装機 ガーベルアンカー",
+      "type": "monster",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "竜装機"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■【対抗】【起動】相手が魔法を使った時、《ネオドラゴン》のソウルにあるこのカードをドロップゾーンに置き、ゲージ１とライフ１を払ってよい。そうしたら、相手が使ったその魔法を無効化する。",
+        "『星合体』（場のこのカードを、君の場の《ネオドラゴン》のソウルに入れる）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0054-star-merge",
+          "label": "星合体",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "星合体する《ネオドラゴン》",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "bf-h-ss01-0054-nullify-spell",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "hostMatches",
+              "filter": {
+                "attribute": "ネオドラゴン"
+              }
+            },
+            {
+              "op": "pendingActionIsOpponent"
+            },
+            {
+              "op": "pendingActionCardType",
+              "cardType": "spell"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "dischargeSelfFromHostSoul"
+            },
+            {
+              "op": "nullifyPendingAction"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0055",
+      "no": "H-SS01/0055",
+      "name": "超居住施設 バルジ",
+      "type": "spell",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "チャージ"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■君の場に《竜装機》が登場した時、君のデッキの上から１枚をゲージに置く。この能力は１ターンに１回だけ発動する。",
+        "■君のライフが０になるなら、このカードをドロップゾーンに置き、君のデッキの上から１枚をドロップゾーンに置く。そのカードが魔法なら、君のライフは２になる！",
+        "■「超居住施設 バルジ」は君の場に１枚だけ『設置』できる。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "uniqueSet": true,
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0055-charge",
+          "kind": "triggered",
+          "event": "allyEnter",
+          "conditions": [
+            {
+              "op": "enteredCardMatches",
+              "filter": {
+                "attribute": "竜装機"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-ss01-0055-charge"
+          }
+        }
+      ],
+      "lifeZeroReplacement": {
+        "topDeckFilter": {
+          "cardType": "spell"
+        },
+        "life": 2
+      }
+    },
+    {
+      "id": "bf-h-ss01-0056",
+      "no": "H-SS01/0056",
+      "name": "スペース・エレベーター",
+      "type": "spell",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "星"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■君のデッキからモンスター１枚までを選び、ドロップゾーンに置き、君のデッキをシャッフルする。その後、そのカードを君のデッキの１番上に置いてよい。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0056-search",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "x",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster"
+              },
+              "amount": 1,
+              "min": 0,
+              "require": false,
+              "allowEmpty": true,
+              "title": "スペース・エレベーター",
+              "lead": "ドロップゾーンに置くモンスターをデッキから選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "x",
+              "to": "drop",
+              "require": false,
+              "log": "{cards}をドロップゾーンに置きました。"
+            },
+            {
+              "op": "shuffleDeck"
+            },
+            {
+              "op": "ifSelection",
+              "var": "x",
+              "then": [
+                {
+                  "op": "ifCondition",
+                  "condition": {
+                    "op": "confirmPrompt",
+                    "prompt": "そのカードをデッキの１番上に置きますか？"
+                  },
+                  "then": [
+                    {
+                      "op": "selectCards",
+                      "var": "back",
+                      "from": "drop",
+                      "controller": "self",
+                      "filter": {
+                        "cardType": "monster",
+                        "sameNameAsVar": "x"
+                      },
+                      "amount": 1,
+                      "min": 0,
+                      "require": false,
+                      "title": "スペース・エレベーター",
+                      "lead": "デッキの１番上に置くカードを選んでください。"
+                    },
+                    {
+                      "op": "moveSelected",
+                      "var": "back",
+                      "to": "deck",
+                      "require": false,
+                      "log": "{cards}をデッキの１番上に置きました。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0057",
+      "no": "H-SS01/0057",
+      "name": "アースバリア",
+      "type": "spell",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "防御",
+        "回復"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■君が攻撃されている攻撃中に使える。",
+        "■【対抗】その攻撃を無効化し、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0057-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0058",
+      "no": "H-SS01/0058",
+      "name": "テラフォーミング",
+      "type": "spell",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "回復"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■【使用コスト】君の場の《竜装機》１枚か、君の場のカードのソウルにある《竜装機》１枚をドロップゾーンに置く。",
+        "■君のライフを＋４する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "dropOwnFieldOrSoulCard",
+            "filter": {
+              "attribute": "竜装機"
+            },
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0058-heal",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "dropOwnFieldOrSoulCard",
+              "filter": {
+                "attribute": "竜装機"
+              },
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0059",
+      "no": "H-SS01/0059",
+      "name": "コスモセイバー ゴルドリッター",
+      "type": "item",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "武器"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "power": 5000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■君の場のカードのソウルが３枚以上あるなら、このカードの打撃力を＋２！",
+        "■【起動】手札のこのカードを捨て、ゲージ２を払う。そうしたら、君のデッキから、カード名に「ジャックナイフ」を含むモンスター１枚までを手札に加え、デッキをシャッフルする。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 2,
+          "conditions": [
+            {
+              "op": "cardCountGte",
+              "controller": "self",
+              "pile": "soul",
+              "amount": 3
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0059-search-jackknife",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "s",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "nameIncludes": "ジャックナイフ",
+                "cardType": "monster"
+              },
+              "amount": 1,
+              "min": 0,
+              "require": false,
+              "allowEmpty": true,
+              "title": "コスモセイバー ゴルドリッター",
+              "lead": "手札に加える、カード名に「ジャックナイフ」を含むモンスターを選んでください（加えなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "s",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を手札に加えました。"
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0060",
+      "no": "H-SS01/0060",
+      "name": "スターハンド アームズコントローラー",
+      "type": "item",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "星",
+        "武器"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "power": 3000,
+      "critical": 1,
+      "rules": [
+        "■【起動】ゲージ１を払い、手札１枚を捨てる。そうしたら、君のドロップゾーンの《竜装機》１枚を君の場の《ネオドラゴン》１枚のソウルに入れる。この能力は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0060-soul-in",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "s",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "attribute": "竜装機"
+              },
+              "amount": 1,
+              "title": "スターハンド アームズコントローラー",
+              "lead": "ソウルに入れる、ドロップゾーンの《竜装機》を選んでください。"
+            },
+            {
+              "op": "selectCards",
+              "var": "h",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "title": "スターハンド アームズコントローラー",
+              "lead": "ソウルに入れる先の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelectedToSelectedSoul",
+              "var": "s",
+              "soulOfVar": "h"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-ss01-0060-soul-in"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0061",
+      "no": "H-SS01/0061",
+      "name": "ザ・レディアント・ガーディアンズ！",
+      "type": "impact",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "星"
+      ],
+      "rarity": "スペシャルシリーズ",
+      "rules": [
+        "■君のライフが５以下で、君のセンターにサイズ２以上の《ネオドラゴン》がいて、相手のセンターにモンスターがいないなら使える。",
+        "■【使用コスト】ゲージ３を払う。",
+        "■相手にダメージ２！その後、君の場のカード１枚のソウル３枚までをドロップゾーンに置く。置いたら、置いた枚数分相手にダメージ！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-ss01-0061-impact",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 5
+            },
+            {
+              "op": "cardCountGte",
+              "controller": "self",
+              "pile": "center",
+              "filter": {
+                "attribute": "ネオドラゴン",
+                "sizeGte": 2
+              },
+              "amount": 1
+            },
+            {
+              "op": "opponentCenterEmpty"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 3
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "soulCountGte": 1
+            },
+            "allowMissingTarget": true
+          },
+          "script": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 2
+            },
+            {
+              "op": "chooseBranch",
+              "title": "ザ・レディアント・ガーディアンズ！",
+              "lead": "ソウルをドロップゾーンに置く枚数を選んでください。",
+              "options": [
+                {
+                  "key": "3",
+                  "label": "ソウル３枚を置き、相手にダメージ３",
+                  "condition": {
+                    "op": "targetMatches",
+                    "ref": "$target",
+                    "filter": {
+                      "soulCountGte": 3
+                    }
+                  },
+                  "script": [
+                    {
+                      "op": "dropTargetSoul",
+                      "target": "$target",
+                      "amount": 3
+                    },
+                    {
+                      "op": "dealDamage",
+                      "player": "opponent",
+                      "amount": 3
+                    }
+                  ]
+                },
+                {
+                  "key": "2",
+                  "label": "ソウル２枚を置き、相手にダメージ２",
+                  "condition": {
+                    "op": "targetMatches",
+                    "ref": "$target",
+                    "filter": {
+                      "soulCountGte": 2
+                    }
+                  },
+                  "script": [
+                    {
+                      "op": "dropTargetSoul",
+                      "target": "$target",
+                      "amount": 2
+                    },
+                    {
+                      "op": "dealDamage",
+                      "player": "opponent",
+                      "amount": 2
+                    }
+                  ]
+                },
+                {
+                  "key": "1",
+                  "label": "ソウル１枚を置き、相手にダメージ１",
+                  "condition": {
+                    "op": "targetMatches",
+                    "ref": "$target",
+                    "filter": {
+                      "soulCountGte": 1
+                    }
+                  },
+                  "script": [
+                    {
+                      "op": "dropTargetSoul",
+                      "target": "$target",
+                      "amount": 1
+                    },
+                    {
+                      "op": "dealDamage",
+                      "player": "opponent",
+                      "amount": 1
+                    }
+                  ]
+                },
+                {
+                  "key": "0",
+                  "label": "置かない",
+                  "script": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-ss01-0062",
+      "no": "H-SS01/0062",
+      "name": "スタードラゴンワールド",
+      "type": "flag",
+      "rarity": "スペシャルシリーズ",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "このファイターはスタードラゴンWのカードを使う。"
+      ]
+    }
+  ]
+}

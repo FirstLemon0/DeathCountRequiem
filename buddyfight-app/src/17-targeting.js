@@ -199,6 +199,8 @@ function targetCandidatesFromSpecForOwner(targetSpec, specOwner, context = {}) {
     }
     return targets.filter(
       (target) =>
+        (!targetSpec.controller ||
+          (targetSpec.controller === "self" ? target.owner === specOwner : target.owner !== specOwner)) &&
         targetAllowedByAbility(target.card, context) &&
         matchesTargetFilter(target.card, target.owner, target.zone, targetSpec.filter),
     );

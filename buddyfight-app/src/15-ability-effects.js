@@ -181,6 +181,7 @@ async function executeAbilityEffect(effect, context) {
       if (movedCard) {
         receiver.drop.push(movedCard);
         movedCards.push(movedCard);
+        queueMovedToDropTriggers(movedCard, state.players.indexOf(receiver), "deck"); // mill でデッキからドロップへ
       }
     }
     if (receiver.deck.length === 0) {
@@ -1308,6 +1309,7 @@ async function executeAbilityEffect(effect, context) {
     }
     target.card.soul ||= [];
     target.card.soul.push(movedCard);
+    queueEnteredSoulTriggers(movedCard, context.owner, sourceSlot ? "field" : "hand", target.card);
     context.cardMoved = true;
     addLog(`${context.card.name}を${target.card.name}のソウルに入れました。`);
   }

@@ -316,6 +316,9 @@ async function executeAbilityScriptStep(step, context) {
   if (step.op === "gainNameAsSelected") {
     return gainNameAsSelectedForScript(step, context);
   }
+  if (step.op === "gainSelectedCardAbilitiesForTurn") {
+    return gainSelectedCardAbilitiesForTurnForScript(step, context);
+  }
   if (step.op === "moveAllOwnFieldToDrop") {
     return moveAllOwnFieldToDropForScript(step, context);
   }
@@ -738,6 +741,42 @@ function setAttackRedirectThisTurnForScript(step, context) {
   return true;
 }
 
+// 「選んだカードに書かれている能力全てを、そのターン中得る」（H-SS01 バーンノヴァ等）。
+// abilities/continuous はクローンして発生源カードに追加（__turnCopy 印）、keywords は turnKeywords へ。
+// 除去は clearTurnModifiers（state.turnAbilityCopyHosts 経由。ホストが場を離れても剥がれる）。
+function gainSelectedCardAbilitiesForTurnForScript(step, context) {
+  const entries = scriptSelection(step, context);
+  const host = context.card;
+  if (!host || entries.length === 0) {
+    return step.require === false ? true : { ok: false, reason: "no_selected_cards" };
+  }
+  for (const entry of entries) {
+    const source = entry.card;
+    if (!source) {
+      continue;
+    }
+    (source.abilities || []).forEach((ability, index) => {
+      const cloned = deepClone(ability);
+      cloned.id = `${host.instanceId}-turncopy-${source.id}-${index}`;
+      cloned.__turnCopy = true;
+      host.abilities ||= [];
+      host.abilities.push(cloned);
+    });
+    (source.continuous || []).forEach((effect) => {
+      const cloned = deepClone(effect);
+      cloned.__turnCopy = true;
+      host.continuous ||= [];
+      host.continuous.push(cloned);
+    });
+    (source.keywords || []).forEach((keyword) => {
+      host.turnKeywords ||= [];
+      host.turnKeywords.push(keyword);
+    });
+    addLog(`${host.name}はそのターン中、${source.name}に書かれている能力全てを得ました。`);
+  }
+  return true;
+}
+
 function gainNameAsSelectedForScript(step, context) {
   const entry = scriptSelection(step, context)[0];
   const name = entry?.card?.name;
@@ -814,6 +853,19 @@ function moveSelectedForScript(step, context) {
   for (const entry of movedEntries) {
     const destinationOwner = scriptMoveDestinationOwner(step, entry, context);
     moveScriptCardToDestination(entry.card, step.to, destinationOwner, context);
+    // 「場かデッキからドロップに置かれた時」誘発（movedToDrop）。宛先がドロップ（未指定既定含む）の時のみ。
+    const destKind = step.to || "drop";
+    if (destKind === "drop" && ["deck", "field"].includes(entry.source)) {
+      queueMovedToDropTriggers(entry.card, destinationOwner, entry.source);
+    } else if (destKind === "soul" && context.card) {
+      // 「ソウルに入った時」誘発（enteredSoul）。soul 宛先は発生源カード(context.card)のソウルへ入る。
+      queueEnteredSoulTriggers(entry.card, destinationOwner, entry.source, context.card);
+    } else if (destKind === "itemSoul") {
+      const itemHost = state.players[destinationOwner]?.field?.item;
+      if (itemHost) {
+        queueEnteredSoulTriggers(entry.card, destinationOwner, entry.source, itemHost);
+      }
+    }
   }
   if (step.log === "discard") {
     addLog(`${context.player.name}は${context.card.name}の効果で${movedEntries.map((entry) => entry.card.name).join("、")}を捨てました。`);
@@ -851,6 +903,19 @@ async function moveSelectedGroupForScript(step, context) {
   for (const entry of movedEntries) {
     const destinationOwner = scriptMoveDestinationOwner(step, entry, context);
     moveScriptCardToDestination(entry.card, step.to, destinationOwner, context);
+    // 「場かデッキからドロップに置かれた時」誘発（movedToDrop）。宛先がドロップ（未指定既定含む）の時のみ。
+    const destKind = step.to || "drop";
+    if (destKind === "drop" && ["deck", "field"].includes(entry.source)) {
+      queueMovedToDropTriggers(entry.card, destinationOwner, entry.source);
+    } else if (destKind === "soul" && context.card) {
+      // 「ソウルに入った時」誘発（enteredSoul）。soul 宛先は発生源カード(context.card)のソウルへ入る。
+      queueEnteredSoulTriggers(entry.card, destinationOwner, entry.source, context.card);
+    } else if (destKind === "itemSoul") {
+      const itemHost = state.players[destinationOwner]?.field?.item;
+      if (itemHost) {
+        queueEnteredSoulTriggers(entry.card, destinationOwner, entry.source, itemHost);
+      }
+    }
   }
   if (step.log) {
     addLog(step.log.replace("{cards}", movedEntries.map((entry) => entry.card.name).join("、")));
@@ -1315,7 +1380,10 @@ function moveSelectedToSelectedSoulForScript(step, context) {
   }
   const movedEntries = takeScriptSelectionCards(scriptSelection(step, context));
   host.soul ||= [];
-  movedEntries.forEach((entry) => host.soul.push(entry.card));
+  movedEntries.forEach((entry) => {
+    host.soul.push(entry.card);
+    queueEnteredSoulTriggers(entry.card, entry.owner ?? context.owner, entry.source || "field", host);
+  });
   if (movedEntries.length > 0 && step.log !== false) {
     addLog(`${movedEntries.map((entry) => entry.card.name).join("、")}を${host.name}のソウルに入れました。`);
   }
@@ -1382,12 +1450,14 @@ function moveSelfToSelectedSoulForScript(step, context) {
   if (!host) {
     return step.require === false ? true : { ok: false, reason: "no_soul_host" };
   }
+  const fromZone = findFieldCardSlot(context.card) ? "field" : "drop";
   const card = takeSelfFromDropOrField(context);
   if (!card) {
     return true;
   }
   host.soul ||= [];
   host.soul.push(card);
+  queueEnteredSoulTriggers(card, context.owner, fromZone, host);
   if (step.log !== false) {
     addLog(`${card.name}を${host.name}のソウルに入れました。`);
   }

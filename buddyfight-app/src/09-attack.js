@@ -153,6 +153,7 @@ async function performAttackDeclaration(attackers, targetValue, options = {}) {
   applyAttackRedirectContinuous();
   await runAttackDeclarationTriggers(attackers);
   await runAttackedTriggers(attackers);
+  await runFighterAttackedTriggers(attackers);
   if (applyAttackTaxes()) {
     render();
     return true;
@@ -282,6 +283,38 @@ async function runAttackedTriggers(attackers) {
       attackers,
       attack: pending,
     });
+  }
+}
+
+// 「君（ファイター）が攻撃された時」の誘発（H-SS01 五角竜王 紅蓮のドラム等）。
+// 本体攻撃（targetType:"fighter"）の宣言時に、防御側プレイヤーの場札の
+// kind:"triggered" event:"fighterAttacked" を発火する。redirect 系 effect による対象変更が起きたら
+// もうファイター攻撃ではないため、以降の場札への発火は打ち切る。
+async function runFighterAttackedTriggers(attackers) {
+  const pending = state.pendingAttack;
+  if (!pending || pending.targetType !== "fighter") {
+    return;
+  }
+  const defender = pending.defender;
+  for (const zone of zones) {
+    const card = state.players[defender]?.field?.[zone];
+    if (!card) {
+      continue;
+    }
+    if (!(card.abilities || []).some((ability) => ability.kind === "triggered" && ability.event === "fighterAttacked")) {
+      continue;
+    }
+    await runTriggeredAbilities(card, "fighterAttacked", {
+      card,
+      player: state.players[defender],
+      owner: defender,
+      zone,
+      attackers,
+      attack: pending,
+    });
+    if (state.pendingAttack?.targetType !== "fighter") {
+      break;
+    }
   }
 }
 

@@ -287,6 +287,10 @@ async function destroyFieldCard(owner, zone, options = {}) {
   }
   player.drop.push(card);
   player.field[zone] = null;
+  if (!options.suppressDestroyedTriggers) {
+    // 破壊で場からドロップへ（movedToDrop 誘発）。「能力全てを無効化してから破壊」(ラグナロク型)では発火しない。
+    queueMovedToDropTriggers(card, owner, "field");
+  }
   if (effectiveCardType(card) === "monster") {
     // このターンに破壊されたモンスター数（所有者別）を集計（monstersDestroyedThisTurnGte 用）。
     state.monstersDestroyedThisTurn ||= [0, 0];
@@ -633,6 +637,75 @@ function queueDestroyedTriggers(card, owner, zone, cause = null) {
     });
 }
 
+// 「このカードが場かデッキからドロップゾーンに置かれた時」の誘発（H-SS01 リーゼントホーン等）。
+// fromZone: "field" | "deck"。ability.fromZones（省略時は両方）で絞る。
+// 対応経路: 破壊(destroyFieldCard)・ルール/効果ドロップ(dropFieldCardByRule)・mill(moveTopDeckToDrop)・
+// script の moveSelected(to:"drop")。コストstep由来のドロップ等は対象外（意図的近似）。
+function queueMovedToDropTriggers(card, owner, fromZone) {
+  const matches = (ability) =>
+    ability.kind === "triggered" &&
+    ability.event === "movedToDrop" &&
+    (!ability.fromZones || ability.fromZones.includes(fromZone));
+  if (!(card.abilities || []).some(matches)) {
+    return;
+  }
+  Promise.resolve()
+    .then(async () => {
+      if (state.winner) {
+        return;
+      }
+      await runTriggeredAbilities(card, "movedToDrop", {
+        card,
+        player: state.players[owner],
+        owner,
+        zone: "drop",
+        fromZone,
+        __abilityFilter: matches,
+      });
+      render();
+    })
+    .catch((error) => {
+      console.error(error);
+      addLog(`${card.name}のドロップ時能力の処理中にエラーが発生しました。`);
+      render();
+    });
+}
+
+// 「このカードが（場かドロップから）ソウルに入った時」の誘発（H-SS01 竜装機 チャージャー等）。
+// fromZone: "field" | "drop" | "hand"。ability.fromZones（省略時は全部）で絞る。
+// 対応経路: 星合体/ソウル投入 script（moveSelfToSelectedSoul/moveSelectedToSelectedSoul）・
+// moveSelfToTargetSoul・コストの putDropToSoul/putOwnFieldCardsToSoul。
+function queueEnteredSoulTriggers(card, owner, fromZone, hostCard) {
+  const matches = (ability) =>
+    ability.kind === "triggered" &&
+    ability.event === "enteredSoul" &&
+    (!ability.fromZones || ability.fromZones.includes(fromZone));
+  if (!(card.abilities || []).some(matches)) {
+    return;
+  }
+  Promise.resolve()
+    .then(async () => {
+      if (state.winner) {
+        return;
+      }
+      await runTriggeredAbilities(card, "enteredSoul", {
+        card,
+        player: state.players[owner],
+        owner,
+        zone: "soul",
+        fromZone,
+        hostCard,
+        __abilityFilter: matches,
+      });
+      render();
+    })
+    .catch((error) => {
+      console.error(error);
+      addLog(`${card.name}のソウル投入時能力の処理中にエラーが発生しました。`);
+      render();
+    });
+}
+
 // 「君がダメージを受けた時」の誘発。ダメージを受けたプレイヤー自身の場札の
 // kind:"triggered" event:"damageReceived" を発火する（BT03の五角/角王ダメージ受け系の中核）。
 // applyDamageToPlayer(同期)から呼ぶため microtask で遅延実行。listener が無ければ何もしない。
@@ -776,6 +849,7 @@ function dropFieldCardByRule(player, zone) {
   card.soul = [];
   player.drop.push(card);
   player.field[zone] = null;
+  queueMovedToDropTriggers(card, state.players.indexOf(player), "field"); // 効果/ルールで場からドロップへ
   if (zone === "item" && player.arrivalCardId === card.instanceId) {
     player.arrivalCardId = null;
   }
@@ -1110,6 +1184,30 @@ async function runEndTurnEffects(endingOwner) {
 
 function clearTurnModifiers() {
   state.spiritStrikeDamageBonus = [0, 0]; // 霊撃ブースト（ターンスコープ）をリセット
+  // 「捨てたカードの能力全てをターン中得る」(gainSelectedCardAbilitiesForTurn) のコピー(__turnCopy)を除去。
+  // ホストが場を離れた場合や権威サーバのstate再構築で参照が切れた場合にも確実に剥がすため、
+  // 参照リストではなく両者の全パイル（場＋ソウル・手札・ドロップ・デッキ・ゲージ）を走査する。
+  // 場以外のカードに残った turnKeywords 等のターンスコープ付与もここで掃除する（場は下の既存クリアが担う）。
+  state.players.forEach((player) => {
+    const piles = [player.hand || [], player.drop || [], player.deck || [], player.gauge || []];
+    zones.forEach((zone) => {
+      const fieldCard = player.field[zone];
+      if (fieldCard) {
+        piles.push([fieldCard], fieldCard.soul || []);
+      }
+    });
+    piles.flat().forEach((card) => {
+      if (card?.abilities?.some((ability) => ability.__turnCopy)) {
+        card.abilities = card.abilities.filter((ability) => !ability.__turnCopy);
+      }
+      if (card?.continuous?.some((effect) => effect.__turnCopy)) {
+        card.continuous = card.continuous.filter((effect) => !effect.__turnCopy);
+      }
+      if (card?.turnKeywords?.length && !zones.some((zone) => player.field[zone] === card)) {
+        card.turnKeywords = []; // 場を離れたカードに残ったターンスコープキーワードの残留防止
+      }
+    });
+  });
   state.players.forEach((player) => {
     player.nextActivatedCostMayUseOpponentGauge = false;
     player.setLockedIdsThisTurn = []; // 「そのターン中は『設置』できない」ロック(発進準備OK！等)をターン終了で解除

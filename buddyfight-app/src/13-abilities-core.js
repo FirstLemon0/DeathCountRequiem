@@ -82,7 +82,9 @@ async function useHandAbilityAction(card, ability, options = {}) {
   const owner = state.selected.owner;
   const player = state.players[owner];
   const target = await targetForAbilityUse(card, ability, owner);
-  if (ability.target && !target) {
+  if (ability.target && !target && !ability.target.allowMissingTarget && !ability.allowMissingTarget) {
+    // allowMissingTarget（対象0でも使用可・後段効果だけ解決する宣言的フラグ。finder側 src/13:23 と対）
+    // が無い場合のみ、対象未選択で中断する。
     addLog(`${card.name}の対象を選んでください。`);
     return;
   }

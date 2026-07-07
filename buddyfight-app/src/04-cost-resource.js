@@ -504,6 +504,13 @@ function canPayStructuredCost(player, costSteps = [], context = {}) {
         return { ok: false, reason: "コストでドロップに置く自分の場のカードが足りません。" };
       }
     }
+    if (step.op === "dropOwnFieldOrSoulCard") {
+      // 「君の場の◯◯1枚か、君の場のカードのソウルにある◯◯1枚をドロップに置く」（H-SS01 テラフォーミング等）。
+      const candidates = ownFieldOrSoulCostCandidates(player, step.filter);
+      if (candidates.length < amount) {
+        return { ok: false, reason: "コストでドロップに置くカード（場かソウル）が足りません。" };
+      }
+    }
     if (step.op === "putSelectedOwnFieldCardsToSoul") {
       const candidates = ownFieldCostCandidates(player, step.filter).filter(
         (candidate) => candidate.card.instanceId !== context.sourceCard?.instanceId,
@@ -593,6 +600,43 @@ function ownFieldCostCandidates(player, filter = {}) {
   return zones
     .map((zone) => ({ owner, zone, card: player.field[zone], source: "field" }))
     .filter(({ card, zone }) => card && matchesTargetFilter(card, owner, zone, filter));
+}
+
+// 「場の filter 一致カード」＋「場のカードのソウルにある filter 一致カード」を横断したコスト候補
+// （dropOwnFieldOrSoulCard 用。H-SS01 テラフォーミング等）。
+function ownFieldOrSoulCostCandidates(player, filter = {}) {
+  const owner = state.players.indexOf(player);
+  const candidates = [];
+  zones.forEach((zone) => {
+    const fieldCard = player.field[zone];
+    if (!fieldCard) {
+      return;
+    }
+    if (matchesCardFilter(fieldCard, filter)) {
+      candidates.push({ owner, zone, card: fieldCard, source: "field" });
+    }
+    (fieldCard.soul || []).forEach((soulCard) => {
+      if (matchesCardFilter(soulCard, filter)) {
+        candidates.push({ owner, zone, card: soulCard, source: "soul", hostCard: fieldCard, note: `${fieldCard.name}のソウル` });
+      }
+    });
+  });
+  return candidates;
+}
+
+function payDropOwnFieldOrSoulTarget(player, target) {
+  if (target.source === "soul" && target.hostCard) {
+    const index = (target.hostCard.soul || []).findIndex((card) => card.instanceId === target.card.instanceId);
+    if (index >= 0) {
+      player.drop.push(target.hostCard.soul.splice(index, 1)[0]);
+      addLog(`${target.card.name}をコストでドロップゾーンに置きました。`);
+    }
+    return;
+  }
+  const dropped = dropFieldCardByRule(player, target.zone);
+  if (dropped) {
+    addLog(`${dropped.name}をコストでドロップゾーンに置きました。`);
+  }
 }
 
 function cardToSoulCostCandidates(player, step = {}, selectedCard = null, reservedHandIds = new Set()) {
@@ -813,6 +857,12 @@ function payStructuredCost(player, costSteps = [], context = {}) {
           }
         });
     }
+    if (step.op === "dropOwnFieldOrSoulCard") {
+      // 非対話経路では先頭 amount 枚を自動選択（場札→ルールドロップ／ソウル札→ホストのソウルから除去）。
+      ownFieldOrSoulCostCandidates(player, step.filter)
+        .slice(0, amount)
+        .forEach((target) => payDropOwnFieldOrSoulTarget(player, target));
+    }
     if (step.op === "putSelectedOwnFieldCardsToSoul") {
       // 非対話経路では最小枚数だけ自動選択してソウルへ。
       const selected = ownFieldCostCandidates(player, step.filter)
@@ -862,6 +912,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
   const dropOwnMonsterSelections = [];
   const fieldToGaugeSelections = [];
   const dropOwnFieldSelections = [];
+  const dropOwnFieldOrSoulSelections = [];
   const putSelectedFieldSoulSelections = [];
   const lookTopSoulSelections = [];
   const destroyOwnMonsterSelections = [];
@@ -1006,6 +1057,33 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     dropOwnFieldSelections.push(selected);
   }
   for (const step of applicableCostSteps) {
+    if (step.op !== "dropOwnFieldOrSoulCard") {
+      continue;
+    }
+    const amount = step.amount || 1;
+    const candidates = ownFieldOrSoulCostCandidates(player, step.filter).filter(
+      (candidate) => candidate.source !== "field" || !reservedCostZones.has(`${candidate.owner}:${candidate.zone}`),
+    );
+    const selected = await chooseCardEntries(candidates, {
+      title: `${context.sourceCard?.name || "コスト"}でドロップに置くカード`,
+      lead: `自分の場か、場のカードのソウルからドロップゾーンに置くカードを${amount}枚選んでください。`,
+      min: amount,
+      max: amount,
+      forceDialog: true,
+      promptSeat: state.players.indexOf(player),
+      purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
+    });
+    if (!selected || selected.length < amount) {
+      return { ok: false, reason: "コストでドロップに置くカードを選んでください。" };
+    }
+    selected.forEach((candidate) => {
+      if (candidate.source === "field") {
+        reservedCostZones.add(`${candidate.owner}:${candidate.zone}`);
+      }
+    });
+    dropOwnFieldOrSoulSelections.push(selected);
+  }
+  for (const step of applicableCostSteps) {
     if (step.op !== "putSelectedOwnFieldCardsToSoul") {
       continue;
     }
@@ -1146,6 +1224,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
   let dropOwnMonsterStepIndex = 0;
   let fieldToGaugeStepIndex = 0;
   let dropOwnFieldStepIndex = 0;
+  let dropOwnFieldOrSoulStepIndex = 0;
   let putSelectedFieldSoulStepIndex = 0;
   let lookTopSoulStepIndex = 0;
   let destroyOwnMonsterStepIndex = 0;
@@ -1292,6 +1371,11 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
         }
       });
     }
+    if (step.op === "dropOwnFieldOrSoulCard") {
+      const selectedTargets = dropOwnFieldOrSoulSelections[dropOwnFieldOrSoulStepIndex] || [];
+      dropOwnFieldOrSoulStepIndex += 1;
+      selectedTargets.forEach((target) => payDropOwnFieldOrSoulTarget(player, target));
+    }
   }
   checkWinner();
   return { ok: true, discarded };
@@ -1330,6 +1414,7 @@ function moveDropToSoul(player, card, amount = 1, filter = {}) {
   const movedCards = takeMatchingCards(player.drop, filter, amount);
   if (movedCards.length > 0) {
     card.soul.push(...movedCards);
+    movedCards.forEach((soulCard) => queueEnteredSoulTriggers(soulCard, state.players.indexOf(player), "drop", card));
     addLog(`${movedCards.map((soulCard) => soulCard.name).join("、")}を${card.name}のソウルに入れました。`);
   }
 }
@@ -1348,6 +1433,7 @@ function moveFieldCardsToSoul(player, card, filter = {}) {
   });
   if (moved.length > 0) {
     card.soul.push(...moved);
+    moved.forEach((soulCard) => queueEnteredSoulTriggers(soulCard, state.players.indexOf(player), "field", card));
     addLog(`${moved.map((c) => c.name).join("、")}を${card.name}のソウルに入れました。`);
   }
 }
