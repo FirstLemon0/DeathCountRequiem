@@ -29,7 +29,7 @@
     "特殊",
   ];
   const SPECIAL_GROUP = "その他";
-  const uiState = { search: "", series: "", category: "", world: "", sort: "release" };
+  const uiState = { search: "", series: "", category: "", world: "", product: "", sort: "release" };
   const collapsedGroups = new Set(); // productName 単位の折りたたみ状態（ページ内で保持）
   let modalRoot = null;
   let activeAttach = null;
@@ -164,6 +164,7 @@
     if (uiState.series && entry.series !== uiState.series) return false;
     if (uiState.category && entry.category !== uiState.category) return false;
     if (uiState.world && entry.world !== uiState.world) return false;
+    if (uiState.product && entry.productName !== uiState.product) return false;
     if (uiState.search && !entry.searchText.includes(uiState.search.toLowerCase())) return false;
     return true;
   }
@@ -238,9 +239,13 @@
           <div class="dp-chip-row" data-filter="category">
             <button type="button" class="dp-chip" data-value="">全区分</button>
             <button type="button" class="dp-chip" data-value="official">公式</button>
+            <button type="button" class="dp-chip" data-value="developer">開発者</button>
             <button type="button" class="dp-chip" data-value="custom">自作</button>
           </div>
           <div class="dp-select-row">
+            <label>製品
+              <select class="dp-product"><option value="">すべて</option></select>
+            </label>
             <label>ワールド
               <select class="dp-world"><option value="">すべて</option></select>
             </label>
@@ -278,6 +283,10 @@
         renderList();
       });
     });
+    modalRoot.querySelector(".dp-product").addEventListener("change", (event) => {
+      uiState.product = event.target.value;
+      renderList();
+    });
     modalRoot.querySelector(".dp-world").addEventListener("change", (event) => {
       uiState.world = event.target.value;
       renderList();
@@ -302,6 +311,26 @@
     if (!activeAttach || !modalRoot) return;
     const { select, adapter } = activeAttach;
     const entries = buildEntries(select, adapter);
+
+    // 製品セレクトの選択肢を現在のデッキ群から再構築（発売順・重複排除・選択は保持）
+    const productSelect = modalRoot.querySelector(".dp-product");
+    const productOrder = new Map();
+    entries
+      .filter((entry) => entry.profile)
+      .forEach((entry) => {
+        const prev = productOrder.get(entry.productName);
+        if (prev === undefined || entry.releaseOrder < prev) {
+          productOrder.set(entry.productName, entry.releaseOrder);
+        }
+      });
+    const products = [...productOrder.entries()].sort((a, b) => a[1] - b[1]).map(([name]) => name);
+    productSelect.innerHTML = `<option value="">すべて</option>${products
+      .map((name) => `<option value="${name}"${name === uiState.product ? " selected" : ""}>${name}</option>`)
+      .join("")}`;
+    if (uiState.product && !products.includes(uiState.product)) {
+      uiState.product = "";
+      productSelect.value = "";
+    }
 
     // ワールドセレクトの選択肢を現在のデッキ群から再構築（選択は保持）
     const worldSelect = modalRoot.querySelector(".dp-world");
