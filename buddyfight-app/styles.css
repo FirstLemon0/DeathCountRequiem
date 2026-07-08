@@ -663,6 +663,22 @@ body.seat-flip .player-zone.opponent {
   overflow: hidden;
 }
 
+/* スマホの長押しでOSのコンテキストメニュー（テキスト選択・画像の詳細/コピー窓）が
+   カード上で開かないようにする。長押しは本アプリのカード確認（プレビュー/閲覧シート）に
+   割り当て済みのため。ログ等のテキスト選択は殺さないよう .card 配下に限定する。 */
+.card,
+.card *,
+.hand-card,
+.hand-card * {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.card-img,
+.card img {
+  -webkit-user-drag: none;
+}
+
 /* カード画像（盤面・手札共通）。カード枠内に収まるよう contain。読み込み中/失敗は下の no-image で処理。 */
 .card-img {
   width: 100%;

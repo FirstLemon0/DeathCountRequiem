@@ -188,6 +188,17 @@ elements.closeDeckInfoButton?.addEventListener("click", () => elements.deckInfoD
     if (event.target === dlg) dlg.close();
   });
 });
+// カード・盤面ゾーン上ではOSのコンテキストメニューを抑止（スマホ長押し＝カード確認に割り当て済み。
+// Android はCSSの touch-callout/user-select だけでは画像長押しメニューが開くため JS でも止める）。
+// ログ等のテキストは対象外（closest で .card / ゾーンボタンに限定）。
+if (typeof document.addEventListener === "function") {
+  document.addEventListener("contextmenu", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (target && (target.closest(".card") || target.closest("[data-zone]"))) {
+      event.preventDefault();
+    }
+  });
+}
 // ☰メニュー: 外側タップ、またはメニュー項目クリックで閉じる＋aria-expanded同期（トグル自体はHTMLのonclickに任せる）。
 // document.addEventListener はブラウザのみ（テスト/エンジンのDOMスタブには無いので存在チェック）。
 if (typeof document.addEventListener === "function") {
