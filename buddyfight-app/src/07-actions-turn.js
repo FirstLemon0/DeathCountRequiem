@@ -424,11 +424,17 @@ async function runAllyEnterTriggers(enteredCard, owner, enteredZone) {
 }
 
 async function runFieldEventTriggers(eventBase, eventOwner, eventCard, eventZone, details = {}) {
+  // __excludeSourceInstanceId: イベントの発生源カード自身をリスナーから除外する
+  // （設置魔法が自分の設置=「使った時」に自己反応しないように。連鎖を狙え！等）。
+  const { __excludeSourceInstanceId, ...detailRest } = details;
   for (const triggerOwner of [eventOwner, 1 - eventOwner]) {
     const event = triggerOwner === eventOwner ? `ally${capitalizeAscii(eventBase)}` : `opponent${capitalizeAscii(eventBase)}`;
     for (const zone of zones) {
       const sourceCard = state.players[triggerOwner]?.field?.[zone];
       if (!sourceCard) {
+        continue;
+      }
+      if (__excludeSourceInstanceId && sourceCard.instanceId === __excludeSourceInstanceId) {
         continue;
       }
       await runTriggeredAbilities(sourceCard, event, {
@@ -446,7 +452,7 @@ async function runFieldEventTriggers(eventBase, eventOwner, eventCard, eventZone
         eventOwner,
         eventZone,
         target: { owner: eventOwner, zone: eventZone, card: eventCard },
-        ...details,
+        ...detailRest,
       });
     }
   }
@@ -733,7 +739,14 @@ async function resolvePendingSetSpell(action) {
   await placeSetSpellDirect(player, action.card, action.zone);
   // 設置魔法も「使う」に含まれる（“爆雷”等の spellCast 誘発。H-PP01/0021 レビュー指摘）。
   // 無効化/置き場なしの早期 return では発火しない＝通常魔法と同じ対称性。
-  await runFieldEventTriggers("spellCast", action.owner, action.card, null, { spellCard: action.card });
+  // 魔法のみ（『設置』持ち必殺技では発火しない=resolvePendingSpellと同じガード）。
+  // 置いた設置カード自身は自己反応しない（連鎖を狙え！が自分で1ソウル貯めない）。
+  if (effectiveCardType(action.card) === "spell") {
+    await runFieldEventTriggers("spellCast", action.owner, action.card, null, {
+      spellCard: action.card,
+      __excludeSourceInstanceId: action.card.instanceId,
+    });
+  }
 }
 
 function clearPendingAction(returnPhase = "main") {

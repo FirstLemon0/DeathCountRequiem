@@ -1454,8 +1454,7 @@ function moveDropToSoul(player, card, amount = 1, filter = {}) {
   card.soul ||= [];
   const movedCards = takeMatchingCards(player.drop, filter, amount);
   if (movedCards.length > 0) {
-    card.soul.push(...movedCards);
-    movedCards.forEach((soulCard) => queueEnteredSoulTriggers(soulCard, state.players.indexOf(player), "drop", card));
+    putCardsToSoulWithTrigger(card, state.players.indexOf(player), movedCards, "drop");
     addLog(`${movedCards.map((soulCard) => soulCard.name).join("、")}を${card.name}のソウルに入れました。`);
   }
 }
@@ -1473,8 +1472,7 @@ function moveFieldCardsToSoul(player, card, filter = {}) {
     }
   });
   if (moved.length > 0) {
-    card.soul.push(...moved);
-    moved.forEach((soulCard) => queueEnteredSoulTriggers(soulCard, state.players.indexOf(player), "field", card));
+    putCardsToSoulWithTrigger(card, state.players.indexOf(player), moved, "field");
     addLog(`${moved.map((c) => c.name).join("、")}を${card.name}のソウルに入れました。`);
   }
 }

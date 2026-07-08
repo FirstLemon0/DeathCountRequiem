@@ -896,16 +896,17 @@ function moveSelectedForScript(step, context) {
     const destinationOwner = scriptMoveDestinationOwner(step, entry, context);
     moveScriptCardToDestination(entry.card, step.to, destinationOwner, context);
     // 「場かデッキからドロップに置かれた時」誘発（movedToDrop）。宛先がドロップ（未指定既定含む）の時のみ。
+    // 移動自体は moveScriptCardToDestination 済みのため alreadyPlaced で誘発の queue のみ行う。
     const destKind = step.to || "drop";
-    if (destKind === "drop" && ["deck", "field"].includes(entry.source)) {
-      queueMovedToDropTriggers(entry.card, destinationOwner, entry.source);
+    if (destKind === "drop") {
+      putCardsToDropWithTrigger(state.players[destinationOwner], destinationOwner, [entry.card], entry.source, { alreadyPlaced: true });
     } else if (destKind === "soul" && context.card) {
       // 「ソウルに入った時」誘発（enteredSoul）。soul 宛先は発生源カード(context.card)のソウルへ入る。
-      queueEnteredSoulTriggers(entry.card, destinationOwner, entry.source, context.card);
+      putCardsToSoulWithTrigger(context.card, destinationOwner, [entry.card], entry.source, { alreadyPlaced: true });
     } else if (destKind === "itemSoul") {
       const itemHost = state.players[destinationOwner]?.field?.item;
       if (itemHost) {
-        queueEnteredSoulTriggers(entry.card, destinationOwner, entry.source, itemHost);
+        putCardsToSoulWithTrigger(itemHost, destinationOwner, [entry.card], entry.source, { alreadyPlaced: true });
       }
     }
   }
@@ -946,16 +947,17 @@ async function moveSelectedGroupForScript(step, context) {
     const destinationOwner = scriptMoveDestinationOwner(step, entry, context);
     moveScriptCardToDestination(entry.card, step.to, destinationOwner, context);
     // 「場かデッキからドロップに置かれた時」誘発（movedToDrop）。宛先がドロップ（未指定既定含む）の時のみ。
+    // 移動自体は moveScriptCardToDestination 済みのため alreadyPlaced で誘発の queue のみ行う。
     const destKind = step.to || "drop";
-    if (destKind === "drop" && ["deck", "field"].includes(entry.source)) {
-      queueMovedToDropTriggers(entry.card, destinationOwner, entry.source);
+    if (destKind === "drop") {
+      putCardsToDropWithTrigger(state.players[destinationOwner], destinationOwner, [entry.card], entry.source, { alreadyPlaced: true });
     } else if (destKind === "soul" && context.card) {
       // 「ソウルに入った時」誘発（enteredSoul）。soul 宛先は発生源カード(context.card)のソウルへ入る。
-      queueEnteredSoulTriggers(entry.card, destinationOwner, entry.source, context.card);
+      putCardsToSoulWithTrigger(context.card, destinationOwner, [entry.card], entry.source, { alreadyPlaced: true });
     } else if (destKind === "itemSoul") {
       const itemHost = state.players[destinationOwner]?.field?.item;
       if (itemHost) {
-        queueEnteredSoulTriggers(entry.card, destinationOwner, entry.source, itemHost);
+        putCardsToSoulWithTrigger(itemHost, destinationOwner, [entry.card], entry.source, { alreadyPlaced: true });
       }
     }
   }
@@ -1425,10 +1427,9 @@ function moveSelectedToSelectedSoulForScript(step, context) {
     return step.require === false ? true : { ok: false, reason: "no_soul_host" };
   }
   const movedEntries = takeScriptSelectionCards(scriptSelection(step, context));
-  host.soul ||= [];
+  host.soul ||= []; // 0枚選択時も従来通りソウル配列を初期化しておく（挙動不変）。
   movedEntries.forEach((entry) => {
-    host.soul.push(entry.card);
-    queueEnteredSoulTriggers(entry.card, entry.owner ?? context.owner, entry.source || "field", host);
+    putCardsToSoulWithTrigger(host, entry.owner ?? context.owner, [entry.card], entry.source || "field");
   });
   if (movedEntries.length > 0 && step.log !== false) {
     addLog(`${movedEntries.map((entry) => entry.card.name).join("、")}を${host.name}のソウルに入れました。`);
@@ -1501,9 +1502,7 @@ function moveSelfToSelectedSoulForScript(step, context) {
   if (!card) {
     return true;
   }
-  host.soul ||= [];
-  host.soul.push(card);
-  queueEnteredSoulTriggers(card, context.owner, fromZone, host);
+  putCardsToSoulWithTrigger(host, context.owner, [card], fromZone);
   if (step.log !== false) {
     addLog(`${card.name}を${host.name}のソウルに入れました。`);
   }

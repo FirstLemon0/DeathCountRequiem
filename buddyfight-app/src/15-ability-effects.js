@@ -16,6 +16,41 @@ async function executeAbilityEffects(effects, context) {
 // 汎用ゲートで先評価すると常にfalseとなり op 自体が不発になってしまう（0057 アブソリュート・アタック等）。
 const CONDITIONS_DEFERRED_TO_CONSUMER_OPS = new Set(["preventOpponentCounterThisTurn"]);
 
+// ==========================================================================
+// ソウルイン/ドロップ移動の共有プリミティブ（誘発つき移動）
+// 新しい「ソウルに入れる」「ドロップに置く」系の op/コスト実装は必ずこの2関数を使うこと。
+// queueEnteredSoulTriggers / queueMovedToDropTriggers を各所で手撒きすると発火漏れの温床になる。
+// ==========================================================================
+
+// cards を hostCard のソウル末尾に積み、「ソウルに入った時」（enteredSoul）誘発を queue する。
+// owner: ソウルに入るカードの持ち主（seat index）。fromZone: "field" | "drop" | "hand" | "deck" 等の出所。
+// options.alreadyPlaced: true なら移動（push）は呼び出し元で完了済みで、誘発の queue のみ行う。
+function putCardsToSoulWithTrigger(hostCard, owner, cards, fromZone, options = {}) {
+  if (!hostCard || !cards || cards.length === 0) {
+    return;
+  }
+  if (!options.alreadyPlaced) {
+    hostCard.soul ||= [];
+    hostCard.soul.push(...cards);
+  }
+  cards.forEach((soulCard) => queueEnteredSoulTriggers(soulCard, owner, fromZone, hostCard));
+}
+
+// cards を player のドロップ末尾に積み、「場かデッキからドロップに置かれた時」（movedToDrop）誘発を queue する。
+// 誘発は fromZone が "field" | "deck" の時のみ（queueMovedToDropTriggers の対応範囲。手札/ソウル由来は発火しない）。
+// owner: カードの持ち主（seat index）。options.alreadyPlaced: true なら push 済みで誘発の queue のみ行う。
+function putCardsToDropWithTrigger(player, owner, cards, fromZone, options = {}) {
+  if (!player || !cards || cards.length === 0) {
+    return;
+  }
+  if (!options.alreadyPlaced) {
+    player.drop.push(...cards);
+  }
+  if (["field", "deck"].includes(fromZone)) {
+    cards.forEach((dropCard) => queueMovedToDropTriggers(dropCard, owner, fromZone));
+  }
+}
+
 async function resolveRockPaperScissors(context) {
   const choices = [
     { key: "rock", card: { name: "グー", type: "choice" } },
@@ -179,9 +214,8 @@ async function executeAbilityEffect(effect, context) {
     for (let index = 0; index < (effect.amount || 1); index += 1) {
       const movedCard = receiver.deck.pop();
       if (movedCard) {
-        receiver.drop.push(movedCard);
+        putCardsToDropWithTrigger(receiver, state.players.indexOf(receiver), [movedCard], "deck"); // mill でデッキからドロップへ
         movedCards.push(movedCard);
-        queueMovedToDropTriggers(movedCard, state.players.indexOf(receiver), "deck"); // mill でデッキからドロップへ
       }
     }
     if (receiver.deck.length === 0) {
@@ -1367,27 +1401,34 @@ async function executeAbilityEffect(effect, context) {
   if (effect.op === "moveSelfToTargetSoul" && target?.card && context.card) {
     const sourceSlot = findFieldCardSlot(context.card);
     let movedCard;
+    let fromZone; // enteredSoul 誘発の fromZones 判定用に、実際の取り出し元を記録する。
     if (sourceSlot) {
       movedCard = detachFieldCardForMove(sourceSlot.owner, sourceSlot.zone, context.card);
+      fromZone = "field";
     } else {
       // 手札からの起動（「手札のこのカードを…ソウルに入れる」）に対応: 手札から取り除いてから移す。
       const handCards = state.players[context.owner]?.hand;
       const handIndex = handCards?.findIndex((c) => c.instanceId === context.card.instanceId);
       if (handIndex !== undefined && handIndex >= 0) {
         movedCard = handCards.splice(handIndex, 1)[0];
+        fromZone = "hand";
       } else {
         // ドロップからの起動（「ドロップのこのカードを…ソウルに入れる」H-EB04/0005）にも対応。
         const dropCards = state.players[context.owner]?.drop;
         const dropIndex = dropCards?.findIndex((c) => c.instanceId === context.card.instanceId);
-        movedCard = dropIndex !== undefined && dropIndex >= 0 ? dropCards.splice(dropIndex, 1)[0] : context.card;
+        if (dropIndex !== undefined && dropIndex >= 0) {
+          movedCard = dropCards.splice(dropIndex, 1)[0];
+          fromZone = "drop";
+        } else {
+          movedCard = context.card;
+          fromZone = "hand"; // どこにも見つからない時の従来既定（手札起動扱い）
+        }
       }
     }
     if (!movedCard) {
       return;
     }
-    target.card.soul ||= [];
-    target.card.soul.push(movedCard);
-    queueEnteredSoulTriggers(movedCard, context.owner, sourceSlot ? "field" : "hand", target.card);
+    putCardsToSoulWithTrigger(target.card, context.owner, [movedCard], fromZone);
     context.cardMoved = true;
     addLog(`${context.card.name}を${target.card.name}のソウルに入れました。`);
   }

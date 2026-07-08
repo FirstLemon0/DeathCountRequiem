@@ -291,15 +291,16 @@ async function destroyFieldCard(owner, zone, options = {}) {
     // 破壊で場からドロップへ（movedToDrop 誘発）。「能力全てを無効化してから破壊」(ラグナロク型)では発火しない。
     queueMovedToDropTriggers(card, owner, "field");
   }
-  if (effectiveCardType(card) === "monster") {
-    // このターンに破壊されたモンスター数（所有者別）を集計（monstersDestroyedThisTurnGte 用）。
-    state.monstersDestroyedThisTurn ||= [0, 0];
-    state.monstersDestroyedThisTurn[owner] = (state.monstersDestroyedThisTurn[owner] || 0) + 1;
-  }
   // このターン中に破壊されたカードの記録（destroyedThisTurnMatchingCountGte 用）。モンスター以外も記録する。
   // sizeAtDestroy は recordDestroyedEventWindow と同じ frozenSizeAtDestroy で算出（conditionalSize未クリアのこの時点）。
+  // wasMonster は破壊時点の実効カード種を凍結（monstersDestroyedThisTurn の導出元）。
   state.destroyedCardsThisTurn = state.destroyedCardsThisTurn || [[], []];
-  state.destroyedCardsThisTurn[owner].push({ card, sizeAtDestroy: frozenSizeAtDestroy(card) });
+  state.destroyedCardsThisTurn[owner].push({
+    card,
+    sizeAtDestroy: frozenSizeAtDestroy(card),
+    wasMonster: effectiveCardType(card) === "monster",
+  });
+  syncMonstersDestroyedThisTurn();
   if (zone === "item" && player.arrivalCardId === card.instanceId) {
     player.arrivalCardId = null;
   }
@@ -570,7 +571,21 @@ function specialCallOpportunityMatches(event, owner, spec = {}) {
 // conditionalSize の上書き(granter在場)は直接適用して破壊時サイズを求める。
 function frozenSizeAtDestroy(card) {
   const override = card.conditionalSize;
-  return override && granterOnField(override.granterInstanceId) ? Math.max(0, override.size || 0) : effectiveSize(card);
+  // unconditional（「場から離れるまでサイズ0」H-PP01/0013 等）は granter 不在でも有効。
+  // src/05 effectiveSize の判定 (override.unconditional || granterOnField(...)) と同形に揃える。
+  return override && (override.unconditional || granterOnField(override.granterInstanceId))
+    ? Math.max(0, override.size || 0)
+    : effectiveSize(card);
+}
+
+// monstersDestroyedThisTurn（このターン破壊されたモンスター数・所有者別）を destroyedCardsThisTurn から導出し、
+// state.monstersDestroyedThisTurn へ書き戻す（並走していた2トラッカーの一本化）。
+// 読み出し側 src/13 の monstersDestroyedThisTurnGte は state プロパティを直接参照するため（src/13 は編集対象外）、
+// 導出結果を同プロパティに反映して互換を保つ。破壊記録の push 直後とターン境界リセット直後に呼ぶ。
+function syncMonstersDestroyedThisTurn() {
+  state.monstersDestroyedThisTurn = (state.destroyedCardsThisTurn || [[], []]).map(
+    (entries) => (entries || []).filter((entry) => entry.wasMonster).length,
+  );
 }
 
 function recordDestroyedEventWindow(card, owner) {
@@ -638,6 +653,26 @@ function queueDestroyedTriggers(card, owner, zone, cause = null) {
     });
 }
 
+// queue*Triggers 系 microtask の共通定型: winner決着済みならスキップ→runner実行→render。
+// エラー時は console.error＋（errorLabel があれば）ログ表示＋render（3関数に散っていた定型の集約。挙動不変）。
+function queueTriggerMicrotask(runner, { errorLabel } = {}) {
+  Promise.resolve()
+    .then(async () => {
+      if (state.winner) {
+        return;
+      }
+      await runner();
+      render();
+    })
+    .catch((error) => {
+      console.error(error);
+      if (errorLabel) {
+        addLog(errorLabel);
+      }
+      render();
+    });
+}
+
 // 「このカードが場かデッキからドロップゾーンに置かれた時」の誘発（H-SS01 リーゼントホーン等）。
 // fromZone: "field" | "deck"。ability.fromZones（省略時は両方）で絞る。
 // 対応経路: 破壊(destroyFieldCard)・ルール/効果ドロップ(dropFieldCardByRule)・mill(moveTopDeckToDrop)・
@@ -650,26 +685,18 @@ function queueMovedToDropTriggers(card, owner, fromZone) {
   if (!(card.abilities || []).some(matches)) {
     return;
   }
-  Promise.resolve()
-    .then(async () => {
-      if (state.winner) {
-        return;
-      }
-      await runTriggeredAbilities(card, "movedToDrop", {
+  queueTriggerMicrotask(
+    () =>
+      runTriggeredAbilities(card, "movedToDrop", {
         card,
         player: state.players[owner],
         owner,
         zone: "drop",
         fromZone,
         __abilityFilter: matches,
-      });
-      render();
-    })
-    .catch((error) => {
-      console.error(error);
-      addLog(`${card.name}のドロップ時能力の処理中にエラーが発生しました。`);
-      render();
-    });
+      }),
+    { errorLabel: `${card.name}のドロップ時能力の処理中にエラーが発生しました。` },
+  );
 }
 
 // 「このカードが（場かドロップから）ソウルに入った時」の誘発（H-SS01 竜装機 チャージャー等）。
@@ -684,12 +711,9 @@ function queueEnteredSoulTriggers(card, owner, fromZone, hostCard) {
   if (!(card.abilities || []).some(matches)) {
     return;
   }
-  Promise.resolve()
-    .then(async () => {
-      if (state.winner) {
-        return;
-      }
-      await runTriggeredAbilities(card, "enteredSoul", {
+  queueTriggerMicrotask(
+    () =>
+      runTriggeredAbilities(card, "enteredSoul", {
         card,
         player: state.players[owner],
         owner,
@@ -697,14 +721,9 @@ function queueEnteredSoulTriggers(card, owner, fromZone, hostCard) {
         fromZone,
         hostCard,
         __abilityFilter: matches,
-      });
-      render();
-    })
-    .catch((error) => {
-      console.error(error);
-      addLog(`${card.name}のソウル投入時能力の処理中にエラーが発生しました。`);
-      render();
-    });
+      }),
+    { errorLabel: `${card.name}のソウル投入時能力の処理中にエラーが発生しました。` },
+  );
 }
 
 // 「（相手が）カードを引いた時」の誘発。drawCards（通常ドロー含む全経路）から1枚ごとに呼ばれ、
@@ -714,33 +733,22 @@ function queueDrewTriggers(drawerOwner) {
   if (!Array.isArray(state?.players)) {
     return;
   }
-  // listener 検出は card.abilities に加えソウル札の soulAbilities も見る
-  // （inheritSoulAbilities 経由の継承爆雷=EB03ヤミゲドウ×H-BT04/0008 等を取りこぼさない）。
-  const listens = (abilities) =>
-    (abilities || []).some(
-      (ability) => ability.kind === "triggered" && ["allyDrew", "opponentDrew"].includes(ability.event),
-    );
+  // listener 検出は cardHasTriggeredListener に統一（自身の abilities／ソウル札の soulAbilities／
+  // inheritSoulAbilities 経由の継承爆雷=EB03ヤミゲドウ×H-BT04/0008 まで見る。queueGaugePlacedTriggers と同じ検出）。
   const hasListener = state.players.some((player) =>
     zones.some((zone) => {
       const card = player?.field?.[zone];
-      return card && (listens(card.abilities) || (card.soul || []).some((soulCard) => listens(soulCard.soulAbilities)));
+      return (
+        cardHasTriggeredListener(card, "allyDrew") || cardHasTriggeredListener(card, "opponentDrew")
+      );
     }),
   );
   if (!hasListener) {
     return;
   }
-  Promise.resolve()
-    .then(async () => {
-      if (state.winner) {
-        return;
-      }
-      await runFieldEventTriggers("drew", drawerOwner);
-      render();
-    })
-    .catch((error) => {
-      console.error(error);
-      render();
-    });
+  queueTriggerMicrotask(() => runFieldEventTriggers("drew", drawerOwner), {
+    errorLabel: "ドロー時能力の処理中にエラーが発生しました。",
+  });
 }
 
 // 設置カードの「このカードのソウルがなくなった時、このカードをドロップゾーンに置く」
@@ -1186,8 +1194,8 @@ async function endTurn() {
   state.drewThisTurn = false;
   state.attacksThisTurn = 0;
   state.attackDestroyedByAttribute = [{}, {}]; // 属性別の攻撃撃破数(このターン)をリセット
-  state.monstersDestroyedThisTurn = [0, 0]; // このターン破壊されたモンスター数(所有者別)をリセット
   state.destroyedCardsThisTurn = [[], []]; // このターン破壊されたカード記録(destroyedThisTurnMatchingCountGte用)をリセット
+  syncMonstersDestroyedThisTurn(); // monstersDestroyedThisTurn は destroyedCardsThisTurn からの導出（リセットで[0,0]になる）
   state.calledCardNamesThisTurn = [{}, {}]; // 「1ターンにN枚だけコール」(竜騎士 トモエ 0012 等)のカウンタをリセット
   state.suppressLifeLinkThisTurn = [false, false]; // ライフリンク無効化(ターンスコープ)をリセット
   state.attackRedirectThisTurn = [null, null]; // 攻撃再誘導(ターンスコープ)をリセット
@@ -1274,6 +1282,11 @@ function clearTurnModifiers() {
       }
       if (card?.turnKeywords?.length && !zones.some((zone) => player.field[zone] === card)) {
         card.turnKeywords = []; // 場を離れたカードに残ったターンスコープキーワードの残留防止
+      }
+      if (card?.turnTreatAsBuddy) {
+        // ターン中に場を離れた（ドロップ/手札/ソウル等の）カードに treatAsBuddyThisTurn が
+        // 永続化しないよう全パイルで解除（場のカードは下の既存クリアと重複するが無害）。
+        card.turnTreatAsBuddy = false;
       }
     });
   });

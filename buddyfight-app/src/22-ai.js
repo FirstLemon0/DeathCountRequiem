@@ -327,7 +327,14 @@ function aiEnumerateCounters(seat) {
 function aiCanPayAbilityCost(player, card, ability) {
   try {
     const costSteps = adjustedCostSteps(player, card, abilityCostPurpose(ability), abilityCostSteps(card, ability));
-    return canPayStructuredCost(player, costSteps, { sourceCard: card, selectedCard: card });
+    // canPayStructuredCost は {ok, reason} を返す（オブジェクトのまま返すと常に真になる）。
+    // allowInteractiveSelection: 実支払い(payStructuredCostWithSelection)と同条件で判定する
+    // （dropOwnMonster 等の選択型コストは候補があれば支払えるとみなす。選択自体は seam でAIが答える）。
+    return canPayStructuredCost(player, costSteps, {
+      sourceCard: card,
+      selectedCard: card,
+      allowInteractiveSelection: true,
+    }).ok;
   } catch (error) {
     return true;
   }
@@ -336,8 +343,9 @@ function aiCanPayAbilityCost(player, card, ability) {
 // カード級コスト（コール等）の支払可否。
 function aiCanPayCardCost(player, card, purpose) {
   try {
-    const steps = adjustedCostSteps(player, card, purpose, cardCostSteps(player, card, purpose));
-    return canPayStructuredCost(player, steps, { sourceCard: card, selectedCard: card });
+    // cardCostSteps は {exists, steps} ラッパー（steps は adjustedCostSteps 適用済み）を返すため、
+    // エンジン本体と同じ canPayCardCost（構造化＋legacyコスト両対応）で判定して .ok を返す。
+    return canPayCardCost(player, card, purpose, card, { allowInteractiveSelection: true }).ok;
   } catch (error) {
     return true;
   }
@@ -919,7 +927,10 @@ function aiInferScriptSelectPurpose(step, context) {
     switch (next.op) {
       case "destroySelected":
       case "restSelected":
-        return "hostile";
+        // controller 省略時のエンジン既定は self（scriptControllerMatches / scriptOwnersForController）＝
+        // 候補は自軍のみ。自軍から選んで破壊/レストは自己犠牲コスト（最低価値を差し出す）。
+        // "opponent"・"any"（両陣営）の時のみ敵対消費（aiChooseSelection の hostile 分岐が相手側を優先）。
+        return (step.controller || "self") === "self" ? "cost" : "hostile";
       case "callSelected":
       case "callSelectedAsMonster":
       case "callSelectedToEmptyZones":
@@ -964,8 +975,18 @@ function aiChooseSelection(normalized, options) {
         return options.allowCancel ? null : [];
       }
       return byValueAsc().slice(0, options.min);
-    case "hostile":
-      return byValueDesc().slice(0, Math.max(options.max, Math.max(options.min, 1)));
+    case "hostile": {
+      // 敵対消費（破壊・レスト等）は相手のカードを優先。controller:"any" 等で自軍カードも候補に
+      // 並ぶ時は、相手側を価値降順で採り、必須枚数(min)の不足分だけ自軍の最低価値で埋める。
+      const own = (entry) => options.promptSeat != null && entry.owner === options.promptSeat;
+      const picked = byValueDesc()
+        .filter((entry) => !own(entry))
+        .slice(0, Math.max(options.max, Math.max(options.min, 1)));
+      if (picked.length < options.min) {
+        picked.push(...byValueAsc().filter(own).slice(0, options.min - picked.length));
+      }
+      return picked;
+    }
     case "friendly":
     case "search":
       return byValueDesc().slice(0, Math.max(options.min, 1));

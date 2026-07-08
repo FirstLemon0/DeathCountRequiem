@@ -232,8 +232,11 @@ function resolveLinkDestroyedMonsterTriggers(pending, attackers) {
         sourceCard: setCard,
         sourceOwner: owner, // preventOpponentEffectDamage（相手効果ダメ無効）の判定に必要
       });
-      dealtDamage = appliedDamage;
-      addLog(`${setCard.name}の効果で${receiver.name}に${dealtDamage}ダメージを与えました。`);
+      // 累積（上書きだと2枚目の設置が0ダメージ=効果ダメ無効等の時、1枚目の致死ダメージ後の checkWinner が飛ぶ）。
+      dealtDamage = dealtDamage || appliedDamage > 0;
+      if (appliedDamage > 0) {
+        addLog(`${setCard.name}の効果で${receiver.name}に${appliedDamage}ダメージを与えました。`);
+      }
     });
   });
   if (dealtDamage) {
