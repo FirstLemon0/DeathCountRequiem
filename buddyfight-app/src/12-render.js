@@ -453,6 +453,7 @@ function cardHasDisplayStats(card) {
 // カード番号から公式カード画像URLを導出（ローカルWebPが無い場合のフォールバック）。
 // 例: H-EB01/0002 -> .../images/card/heb_01_0002.png
 function officialCardImageUrl(card) {
+  if (card?.imageUrl) return card.imageUrl;
   const no = card?.no;
   if (!no || no.indexOf("/") < 0) {
     return null;

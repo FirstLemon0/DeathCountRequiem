@@ -346,7 +346,7 @@ function renderGenerationTabs() {
 function populateDeckOptions() {
   setOptions(
     elements.flagSelect,
-    flagCards().map((card) => [card.id, `${card.name} / ${card.productName}`]),
+    flagCards().map((card) => [card.id, `${card.name}${card.no ? "（" + card.no + "）" : ""} / ${card.productName}`]),
   );
   setOptions(
     elements.buddySelect,
