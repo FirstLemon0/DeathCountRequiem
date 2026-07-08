@@ -129,6 +129,33 @@ function isUserApiPath(pathname) {
   );
 }
 
+// ユーザーストアの遅延初期化（memoize）。直接起動時は main ブロックが先に呼ぶが、
+// モジュール require 経路（スモーク・e2e が server を import して listen する使い方）でも
+// ユーザールートが最初に踏まれた時に必ず初期化されるようにする。
+let userStoreInitPromise = null;
+function ensureUserStoreInitialized() {
+  if (!userStoreInitPromise && typeof userStore.isInitialized === "function" && userStore.isInitialized()) {
+    // スモーク/e2e が独自の dataDir で手動 init 済みの場合は尊重（上書き再初期化しない）
+    userStoreInitPromise = Promise.resolve();
+  }
+  if (!userStoreInitPromise) {
+    userStoreInitPromise = (async () => {
+      await userStore.init({
+        backend: process.env.USER_STORE_BACKEND || "file",
+        dataDir: path.join(dataDir, "user"),
+        tursoUrl: process.env.TURSO_DATABASE_URL,
+        tursoToken: process.env.TURSO_AUTH_TOKEN,
+      });
+      await ensureAdminUser();
+      await userStore.gcSessions(Date.now());
+    })().catch((error) => {
+      userStoreInitPromise = null; // 失敗時は次のリクエストで再試行できるように
+      throw error;
+    });
+  }
+  return userStoreInitPromise;
+}
+
 // scrypt(N=16384,r=8,p=1) パスワードハッシュ。形式 "s1$<saltB64>$<hashB64>"。
 function hashPassword(password) {
   const salt = crypto.randomBytes(16);
@@ -549,6 +576,10 @@ async function handleApi(req, res, url) {
   if (req.method === "OPTIONS" && isUserApiPath(url.pathname)) {
     sendNoContentCors(res, 204);
     return true;
+  }
+  if (isUserApiPath(url.pathname)) {
+    // require 経路（スモーク/e2e）でも初期化漏れにならないよう、ユーザールートは必ず初期化を待つ。
+    await ensureUserStoreInitialized();
   }
 
   if (req.method === "POST" && url.pathname === "/auth/register") {
@@ -1191,14 +1222,7 @@ if (require.main === module) {
       console.warn(`[restore] 永続層の初期化/復元に失敗（新規起動として続行）: ${error.message}`);
     }
     try {
-      await userStore.init({
-        backend: process.env.USER_STORE_BACKEND || "file",
-        dataDir: path.join(dataDir, "user"),
-        tursoUrl: process.env.TURSO_DATABASE_URL,
-        tursoToken: process.env.TURSO_AUTH_TOKEN,
-      });
-      await ensureAdminUser();
-      await userStore.gcSessions(Date.now());
+      await ensureUserStoreInitialized();
       setInterval(() => {
         userStore.gcSessions(Date.now()).catch((error) => console.warn(`[user-store] gcSessions失敗: ${error.message}`));
       }, 24 * 60 * 60 * 1000).unref();

@@ -22,9 +22,36 @@
   // play.html（__BUDDYFIGHT_THIN__=true。権威サーバ配信前提）は常に相対("")。
   // それ以外（index.html/builder.html＝静的配信想定）は localStorage の apiBase 設定有無のみで判定
   // （fetchで疎通確認はしない＝起動を遅くしない）。
+  // 同一オリジン判定: thin(play)は確定。builder/index も「権威サーバから配信」されていれば
+  // 同一オリジンの /auth が使える（推奨起動=権威起動.bat は全ページ:4174配信）。それは
+  // /healthz プローブ（userProbeSameOrigin）で判定し、結果をここに覚える。null=未判定。
+  var sameOriginProbe = null;
+  var sameOriginProbePromise = null;
+
+  function userProbeSameOrigin() {
+    if (typeof window !== "undefined" && window.__BUDDYFIGHT_THIN__) {
+      sameOriginProbe = true;
+    }
+    if (sameOriginProbe !== null) return Promise.resolve(sameOriginProbe);
+    if (typeof location === "undefined" || !/^https?:$/.test(location.protocol)) {
+      sameOriginProbe = false;
+      return Promise.resolve(false);
+    }
+    if (sameOriginProbePromise) return sameOriginProbePromise;
+    var controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    if (controller) setTimeout(function () { controller.abort(); }, 1500);
+    sameOriginProbePromise = fetch("healthz", { signal: controller ? controller.signal : undefined })
+      .then(function (res) { sameOriginProbe = Boolean(res && res.ok); return sameOriginProbe; })
+      .catch(function () { sameOriginProbe = false; return false; });
+    return sameOriginProbePromise;
+  }
+
   function userApiBase() {
     if (typeof window !== "undefined" && window.__BUDDYFIGHT_THIN__) {
       return "";
+    }
+    if (sameOriginProbe === true) {
+      return ""; // 権威サーバ配信ページ＝同一オリジンの /auth を使う
     }
     try {
       var stored = localStorage.getItem(API_BASE_KEY);
@@ -339,272 +366,556 @@
       .replace(/'/g, "&#039;");
   }
 
-  function userMountAccountBar(container) {
-    if (!container) return;
-    var barState = { error: "", busy: false, adminOpen: false, adminUsers: null, adminError: "" };
+  // ==== 共通アカウントコンポーネント（設計 §2） ====
+  // 単一のアカウントモーダル（deck-picker と同じ backdrop 流儀・[hidden]{display:none} 併記）を土台に、
+  // 各画面へ compact（👤ボタン）/ inline（ロビーのバー）でマウントする。
 
-    function isBuilderPage() {
-      return typeof exportableDeck === "function" && typeof encodeDeckShareCode === "function";
+  var accModalRoot = null;
+  var activeControlOpts = {}; // モーダルを開いたコントロールの {variant, deckActions, extraActions}
+  var modalState = {
+    error: "",
+    busy: false,
+    adminOpen: false,
+    adminUsers: null,
+    adminError: "",
+    apiTest: "",
+    deleteConfirmId: null, // 削除2段階確認中の serverId（文字列）
+    myDecks: null, // 直近のマイデッキ一覧（null=未取得）
+  };
+
+  function isBuilderPage() {
+    return typeof exportableDeck === "function" && typeof encodeDeckShareCode === "function";
+  }
+
+  function lookupCardById(id) {
+    if (!id) return null;
+    if (typeof cardLibrary !== "undefined" && Array.isArray(cardLibrary)) {
+      var a = cardLibrary.find(function (c) { return c.id === id; });
+      if (a) return a;
+    }
+    if (typeof cards !== "undefined" && Array.isArray(cards)) {
+      var b = cards.find(function (c) { return c.id === id; });
+      if (b) return b;
+    }
+    return null;
+  }
+
+  function formatDeckSub(profile) {
+    var flagCard = lookupCardById(profile.flag);
+    var world = flagCard && flagCard.allowedWorlds && flagCard.allowedWorlds[0];
+    var flagName = flagCard ? flagCard.name : profile.flag || "";
+    return [world, flagName].filter(Boolean).join("・");
+  }
+
+  function formatUpdatedAt(value) {
+    if (!value) return "";
+    try {
+      var d = new Date(value);
+      if (isNaN(d.getTime())) return "";
+      var m = ("0" + (d.getMonth() + 1)).slice(-2);
+      var day = ("0" + d.getDate()).slice(-2);
+      return d.getFullYear() + "/" + m + "/" + day;
+    } catch (e) {
+      return "";
+    }
+  }
+
+  // 対象 select にデッキをセット（mydeck option 未注入なら先に注入してから value 設定＋change）
+  async function setDeckToSelect(selectId, profile) {
+    var select = document.getElementById(selectId);
+    if (!select || !profile) return;
+    var exists = [...select.options].some(function (o) { return o.value === profile.id; });
+    if (!exists) {
+      await userRefreshMyDeckOptions();
+    }
+    select.value = profile.id;
+    if (select.value !== profile.id) return; // 注入に失敗したら何もしない（保険）
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  // ---- アカウントモーダル（単一インスタンス） ----
+  function ensureAccountModal() {
+    if (accModalRoot) return accModalRoot;
+    accModalRoot = document.createElement("div");
+    accModalRoot.className = "acc-backdrop";
+    accModalRoot.hidden = true;
+    accModalRoot.innerHTML =
+      '<div class="acc-modal" role="dialog" aria-modal="true" aria-label="アカウント">' +
+      '<div class="acc-head"><strong class="acc-title">アカウント</strong>' +
+      '<button type="button" class="acc-close" aria-label="閉じる">×</button></div>' +
+      '<div class="acc-body"></div>' +
+      "</div>";
+    document.body.appendChild(accModalRoot);
+    accModalRoot.addEventListener("click", function (event) {
+      if (event.target === accModalRoot) closeAccountModal();
+    });
+    accModalRoot.querySelector(".acc-close").addEventListener("click", closeAccountModal);
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && accModalRoot && !accModalRoot.hidden) closeAccountModal();
+    });
+    // deck-picker を開いたらアカウントモーダルを閉じる（相互排他・§5。capture で dp が開く前に閉じる）
+    document.addEventListener(
+      "click",
+      function (event) {
+        if (
+          accModalRoot &&
+          !accModalRoot.hidden &&
+          event.target &&
+          event.target.closest &&
+          event.target.closest(".dp-open-button")
+        ) {
+          closeAccountModal();
+        }
+      },
+      true
+    );
+    return accModalRoot;
+  }
+
+  function closeAccountModal() {
+    if (accModalRoot) accModalRoot.hidden = true;
+    modalState.adminOpen = false;
+    modalState.deleteConfirmId = null;
+  }
+
+  function openAccountModal(opts) {
+    activeControlOpts = opts || {};
+    ensureAccountModal();
+    // deck-picker のモーダルが開いていたら閉じる（hidden を立てるだけ）
+    var dp = document.querySelector(".dp-backdrop");
+    if (dp && !dp.hidden) dp.hidden = true;
+    modalState.error = "";
+    modalState.apiTest = "";
+    modalState.deleteConfirmId = null;
+    accModalRoot.hidden = false;
+    renderModal();
+    // 権威サーバ配信かどうか未判定なら、モーダルを開いたタイミングで一度だけ /healthz を叩いて確定
+    // →同一オリジンなら「保存先: このサーバー」に描き直す（設計§2.2・§5）。
+    if (sameOriginProbe === null) {
+      userProbeSameOrigin().then(function () {
+        if (!accModalRoot.hidden) {
+          renderModal();
+          if (userSession() && userApiAvailable()) refreshModalDecks();
+        }
+      });
+    }
+    if (userSession() && userApiAvailable()) {
+      refreshModalDecks();
+    }
+  }
+
+  async function refreshModalDecks() {
+    try {
+      modalState.myDecks = await userListMyDecks();
+    } catch (e) {
+      modalState.myDecks = [];
+    }
+    if (accModalRoot && !accModalRoot.hidden) renderModal();
+  }
+
+  function setModalError(message) {
+    modalState.error = message || "";
+    if (!accModalRoot) return;
+    var el = accModalRoot.querySelector(".acc-error");
+    if (el) el.textContent = modalState.error;
+  }
+
+  async function withBusy(fn) {
+    if (modalState.busy) return;
+    modalState.busy = true;
+    setModalError("");
+    try {
+      await fn();
+    } catch (error) {
+      setModalError(error && error.message ? error.message : "エラーが発生しました");
+    } finally {
+      modalState.busy = false;
+    }
+  }
+
+  async function loadAdminUsers() {
+    try {
+      modalState.adminUsers = await userAdminListUsers();
+      modalState.adminError = "";
+    } catch (error) {
+      modalState.adminUsers = [];
+      modalState.adminError = error && error.message ? error.message : "取得に失敗しました";
+    }
+    renderModal();
+  }
+
+  // 接続テスト: GET {url}/healthz を AbortController 2秒タイムアウトで
+  async function testApiBase(url) {
+    var base = String(url || "").trim().replace(/\/+$/, "");
+    if (!base) {
+      modalState.apiTest = "URLを入力してください";
+      renderModal();
+      return;
+    }
+    modalState.apiTest = "接続中…";
+    renderModal();
+    var controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var timer = controller ? setTimeout(function () { controller.abort(); }, 2000) : null;
+    try {
+      var res = await fetch(base + "/healthz", { signal: controller ? controller.signal : undefined });
+      if (timer) clearTimeout(timer);
+      modalState.apiTest = res && res.ok ? "接続OK ✓" : "応答エラー (HTTP " + (res ? res.status : "?") + ")";
+    } catch (e) {
+      if (timer) clearTimeout(timer);
+      modalState.apiTest = "接続できません";
+    }
+    renderModal();
+  }
+
+  function renderAdminPanel() {
+    var rowsHtml = "";
+    if (modalState.adminUsers) {
+      rowsHtml = modalState.adminUsers
+        .map(function (u) {
+          return (
+            '<option value="' + escapeHtml(u.name) + '">' + escapeHtml(u.name) +
+            (u.isAdmin ? "（管理者）" : "") + " / デッキ" + (u.deckCount != null ? u.deckCount : "-") + "件</option>"
+          );
+        })
+        .join("");
+    }
+    return (
+      '<div class="acc-section acc-admin-panel">' +
+      '<select id="accAdminUserSelect" class="account-input">' +
+      (rowsHtml || '<option value="">（読込中）</option>') + "</select>" +
+      '<input type="password" id="accAdminPassInput" class="account-input" placeholder="新パスワード" />' +
+      '<button type="button" data-act="admin-reset">リセット</button>' +
+      '<span class="account-error">' + escapeHtml(modalState.adminError) + "</span>" +
+      "</div>"
+    );
+  }
+
+  function renderDeckRow(profile) {
+    var actions = activeControlOpts.deckActions || [];
+    var sid = escapeHtml(String(profile.serverId));
+    var buttons;
+    if (String(modalState.deleteConfirmId) === String(profile.serverId)) {
+      buttons =
+        '<span class="acc-confirm">本当に削除?</span>' +
+        '<button type="button" class="acc-danger" data-act="deck-delete-yes" data-server-id="' + sid + '">はい</button>' +
+        '<button type="button" data-act="deck-delete-no">いいえ</button>';
+    } else {
+      buttons = actions
+        .map(function (a, i) {
+          return '<button type="button" data-act="deck-action" data-action-idx="' + i + '" data-server-id="' + sid + '">' + escapeHtml(a.label) + "</button>";
+        })
+        .join("");
+      buttons += '<button type="button" class="acc-danger" data-act="deck-delete" data-server-id="' + sid + '">削除</button>';
+    }
+    var meta = [formatDeckSub(profile), formatUpdatedAt(profile.updatedAt)].filter(Boolean).join(" / ");
+    return (
+      '<li class="acc-deck-row">' +
+      '<div class="acc-deck-meta"><span class="acc-deck-name">' + escapeHtml(profile.name) + "</span>" +
+      '<span class="acc-deck-sub">' + escapeHtml(meta) + "</span></div>" +
+      '<div class="acc-deck-actions">' + buttons + "</div>" +
+      "</li>"
+    );
+  }
+
+  function renderModal() {
+    if (!accModalRoot) return;
+    var body = accModalRoot.querySelector(".acc-body");
+    var session = userSession();
+    var html = "";
+
+    // (1) 接続状態
+    if ((typeof window !== "undefined" && window.__BUDDYFIGHT_THIN__) || sameOriginProbe === true) {
+      html += '<div class="acc-section acc-conn"><span class="account-label">保存先: このサーバー</span></div>';
+    } else {
+      var cur = userApiBase() || "";
+      var host = (typeof location !== "undefined" && location.hostname) || "127.0.0.1";
+      html +=
+        '<div class="acc-section acc-conn">' +
+        '<label class="account-label" for="accApiBaseInput">サーバーURL</label>' +
+        '<input type="text" id="accApiBaseInput" class="account-input" placeholder="http://' + escapeHtml(host) + ':4174" value="' + escapeHtml(cur) + '" />' +
+        '<button type="button" data-act="test-apibase">接続テスト</button>' +
+        '<button type="button" data-act="save-apibase">保存</button>' +
+        '<span class="acc-conn-result">' + escapeHtml(modalState.apiTest) + "</span>" +
+        "</div>";
     }
 
-    function render() {
-      var session = userSession();
-      var apiAvailable = userApiAvailable();
-      var html = "";
+    if (!session) {
+      // (2) 未ログイン
+      html +=
+        '<form class="acc-section acc-login" id="accLoginForm">' +
+        '<input type="text" id="accNameInput" class="account-input" placeholder="名前" autocomplete="username" required />' +
+        '<input type="password" id="accPassInput" class="account-input" placeholder="パスワード" autocomplete="current-password" required />' +
+        '<div class="acc-login-buttons">' +
+        '<button type="submit" data-act="login">ログイン</button>' +
+        '<button type="button" data-act="register">登録</button>' +
+        "</div></form>";
+    } else {
+      // (3) ログイン中
+      var count = modalState.myDecks ? modalState.myDecks.length : (session.deckCount || 0);
+      html +=
+        '<div class="acc-section acc-me">' +
+        '<span class="account-name">' + escapeHtml(session.name) + " さん（デッキ " + count + "件）</span>" +
+        '<button type="button" data-act="logout">ログアウト</button>';
+      if (session.isAdmin) {
+        html += '<button type="button" data-act="toggle-admin">管理</button>';
+      }
+      html += "</div>";
 
-      if (!apiAvailable) {
-        html +=
-          '<div class="account-row account-apibase-row">' +
-          '<span class="account-label">サーバーURL未設定</span>' +
-          '<input type="text" id="accApiBaseInput" class="account-input" placeholder="例: http://127.0.0.1:4174" />' +
-          '<button type="button" data-act="save-apibase">設定</button>' +
-          "</div>";
-      } else if (!session) {
-        html +=
-          '<form class="account-row account-login-row" id="accLoginForm">' +
-          '<input type="text" id="accNameInput" class="account-input" placeholder="名前" autocomplete="username" required />' +
-          '<input type="password" id="accPassInput" class="account-input" placeholder="パスワード" autocomplete="current-password" required />' +
-          '<button type="submit" data-act="login">ログイン</button>' +
-          '<button type="button" data-act="register">登録</button>' +
-          "</form>";
-        if (typeof window !== "undefined" && !window.__BUDDYFIGHT_THIN__) {
-          html +=
-            '<div class="account-row account-apibase-row account-apibase-row-compact">' +
-            '<button type="button" class="account-link-button" data-act="edit-apibase">サーバーURL変更</button>' +
-            "</div>";
-        }
+      // マイデッキ一覧
+      html += '<div class="acc-section acc-decks"><h3 class="acc-subhead">マイデッキ</h3>';
+      if (!userApiAvailable()) {
+        html += '<p class="acc-empty">サーバーURLを設定してください。</p>';
+      } else if (modalState.myDecks === null) {
+        html += '<p class="acc-empty">読込中…</p>';
+      } else if (modalState.myDecks.length === 0) {
+        html += '<p class="acc-empty">保存されたデッキはありません。デッキ構築で「サーバーに保存」すると、ここに表示されます。</p>';
       } else {
-        html +=
-          '<div class="account-row account-logged-row">' +
-          '<span class="account-name">' +
-          escapeHtml(session.name) +
-          " さん</span>" +
-          '<button type="button" data-act="logout">ログアウト</button>';
-        if (isBuilderPage()) {
-          html +=
-            '<button type="button" data-act="save-server">サーバーに保存</button>' +
-            '<button type="button" data-act="migrate">端末→サーバーへ一括移行</button>';
-        }
-        if (session.isAdmin) {
-          html += '<button type="button" data-act="toggle-admin">管理</button>';
-        }
+        html += '<ul class="acc-deck-list">' + modalState.myDecks.map(renderDeckRow).join("") + "</ul>";
+      }
+      html += "</div>";
+
+      // extraActions（builder 追加ボタン等）
+      var extra = activeControlOpts.extraActions || [];
+      if (extra.length) {
+        html += '<div class="acc-section acc-extra">';
+        extra.forEach(function (a, i) {
+          html += '<button type="button" data-act="extra" data-extra-idx="' + i + '">' + escapeHtml(a.label) + "</button>";
+        });
         html += "</div>";
-        if (session.isAdmin && barState.adminOpen) {
-          html += renderAdminPanel();
-        }
       }
 
-      html += '<span class="account-error" id="accError">' + escapeHtml(barState.error) + "</span>";
-      container.innerHTML = '<div class="account-bar">' + html + "</div>";
-      wireEvents();
-    }
-
-    function renderAdminPanel() {
-      var rowsHtml = "";
-      if (barState.adminUsers) {
-        rowsHtml = barState.adminUsers
-          .map(function (u) {
-            return (
-              '<option value="' +
-              escapeHtml(u.name) +
-              '">' +
-              escapeHtml(u.name) +
-              (u.isAdmin ? "（管理者）" : "") +
-              " / デッキ" +
-              (u.deckCount != null ? u.deckCount : "-") +
-              "件</option>"
-            );
-          })
-          .join("");
-      }
-      return (
-        '<div class="account-row account-admin-panel">' +
-        '<select id="accAdminUserSelect" class="account-input">' +
-        (rowsHtml || '<option value="">（読込中）</option>') +
-        "</select>" +
-        '<input type="password" id="accAdminPassInput" class="account-input" placeholder="新パスワード" />' +
-        '<button type="button" data-act="admin-reset">リセット</button>' +
-        '<span class="account-error">' +
-        escapeHtml(barState.adminError) +
-        "</span>" +
-        "</div>"
-      );
-    }
-
-    function setError(message) {
-      barState.error = message || "";
-      var el = container.querySelector("#accError");
-      if (el) el.textContent = barState.error;
-    }
-
-    async function withBusy(fn) {
-      if (barState.busy) return;
-      barState.busy = true;
-      setError("");
-      try {
-        await fn();
-      } catch (error) {
-        setError(error && error.message ? error.message : "エラーが発生しました");
-      } finally {
-        barState.busy = false;
+      if (session.isAdmin && modalState.adminOpen) {
+        html += renderAdminPanel();
       }
     }
 
-    async function loadAdminUsers() {
-      try {
-        barState.adminUsers = await userAdminListUsers();
-        barState.adminError = "";
-      } catch (error) {
-        barState.adminUsers = [];
-        barState.adminError = error && error.message ? error.message : "取得に失敗しました";
-      }
-      render();
+    html += '<div class="account-error acc-error">' + escapeHtml(modalState.error) + "</div>";
+    body.innerHTML = html;
+    wireModalEvents();
+  }
+
+  function wireModalEvents() {
+    if (!accModalRoot) return;
+    var root = accModalRoot;
+
+    var loginForm = root.querySelector("#accLoginForm");
+    if (loginForm) {
+      loginForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+        var name = root.querySelector("#accNameInput").value.trim();
+        var pass = root.querySelector("#accPassInput").value;
+        if (!name || !pass) { setModalError("名前とパスワードを入力してください"); return; }
+        withBusy(async function () { await userLogin(name, pass); modalState.myDecks = null; renderModal(); refreshModalDecks(); });
+      });
     }
+    var registerButton = root.querySelector('[data-act="register"]');
+    if (registerButton) {
+      registerButton.addEventListener("click", function () {
+        var name = root.querySelector("#accNameInput").value.trim();
+        var pass = root.querySelector("#accPassInput").value;
+        if (!name || !pass) { setModalError("名前とパスワードを入力してください"); return; }
+        withBusy(async function () { await userRegister(name, pass); modalState.myDecks = null; renderModal(); refreshModalDecks(); });
+      });
+    }
+    var logoutButton = root.querySelector('[data-act="logout"]');
+    if (logoutButton) {
+      logoutButton.addEventListener("click", function () {
+        withBusy(async function () { await userLogout(); modalState.myDecks = null; modalState.adminOpen = false; renderModal(); });
+      });
+    }
+    var saveApi = root.querySelector('[data-act="save-apibase"]');
+    if (saveApi) {
+      saveApi.addEventListener("click", function () {
+        var input = root.querySelector("#accApiBaseInput");
+        var val = input ? input.value.trim() : "";
+        setUserApiBase(val);
+        modalState.apiTest = val ? "保存しました" : "URLを消去しました";
+        renderModal();
+        userRefreshMyDeckOptions();
+        if (userSession()) { modalState.myDecks = null; refreshModalDecks(); }
+      });
+    }
+    var testApi = root.querySelector('[data-act="test-apibase"]');
+    if (testApi) {
+      testApi.addEventListener("click", function () {
+        var input = root.querySelector("#accApiBaseInput");
+        testApiBase(input ? input.value : "");
+      });
+    }
+    var toggleAdmin = root.querySelector('[data-act="toggle-admin"]');
+    if (toggleAdmin) {
+      toggleAdmin.addEventListener("click", function () {
+        modalState.adminOpen = !modalState.adminOpen;
+        renderModal();
+        if (modalState.adminOpen) loadAdminUsers();
+      });
+    }
+    var adminReset = root.querySelector('[data-act="admin-reset"]');
+    if (adminReset) {
+      adminReset.addEventListener("click", function () {
+        var sel = root.querySelector("#accAdminUserSelect");
+        var pin = root.querySelector("#accAdminPassInput");
+        var name = sel ? sel.value : "";
+        var np = pin ? pin.value : "";
+        if (!name || !np) { modalState.adminError = "対象ユーザーと新パスワードを入力してください"; renderModal(); return; }
+        withBusy(async function () { await userAdminResetPassword(name, np); modalState.adminError = name + " のパスワードをリセットしました。"; renderModal(); });
+      });
+    }
+    root.querySelectorAll('[data-act="extra"]').forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var idx = Number(btn.getAttribute("data-extra-idx"));
+        var action = (activeControlOpts.extraActions || [])[idx];
+        if (!action || typeof action.onClick !== "function") return;
+        withBusy(async function () { await action.onClick(); if (userSession()) { modalState.myDecks = null; refreshModalDecks(); } });
+      });
+    });
+    root.querySelectorAll('[data-act="deck-action"]').forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var idx = Number(btn.getAttribute("data-action-idx"));
+        var sid = btn.getAttribute("data-server-id");
+        var profile = (modalState.myDecks || []).find(function (p) { return String(p.serverId) === String(sid); });
+        var action = (activeControlOpts.deckActions || [])[idx];
+        if (!profile || !action || typeof action.onPick !== "function") return;
+        withBusy(async function () { await action.onPick(profile); closeAccountModal(); });
+      });
+    });
+    root.querySelectorAll('[data-act="deck-delete"]').forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        modalState.deleteConfirmId = btn.getAttribute("data-server-id");
+        renderModal();
+      });
+    });
+    root.querySelectorAll('[data-act="deck-delete-no"]').forEach(function (btn) {
+      btn.addEventListener("click", function () { modalState.deleteConfirmId = null; renderModal(); });
+    });
+    root.querySelectorAll('[data-act="deck-delete-yes"]').forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var sid = btn.getAttribute("data-server-id");
+        withBusy(async function () { await userDeleteMyDeck(sid); modalState.deleteConfirmId = null; modalState.myDecks = null; renderModal(); refreshModalDecks(); });
+      });
+    });
+  }
 
-    function wireEvents() {
-      var loginForm = container.querySelector("#accLoginForm");
-      if (loginForm) {
-        loginForm.addEventListener("submit", function (event) {
-          event.preventDefault();
-          var name = container.querySelector("#accNameInput").value.trim();
-          var pass = container.querySelector("#accPassInput").value;
-          if (!name || !pass) return;
-          withBusy(async function () {
-            await userLogin(name, pass);
-            render();
-          });
-        });
+  // ---- 画面マウント ----
+  function renderCompactButton(container, controlOpts) {
+    var session = userSession();
+    var label = session ? "👤 " + session.name : "👤 ログイン";
+    container.innerHTML = '<button type="button" class="account-compact-button" aria-haspopup="dialog">' + escapeHtml(label) + "</button>";
+    container.querySelector("button").addEventListener("click", function () {
+      openAccountModal(controlOpts);
+    });
+  }
+
+  function renderInlineBar(container, controlOpts) {
+    var session = userSession();
+    var html = '<div class="account-bar account-inline">';
+    if (!session) {
+      html +=
+        '<form class="account-row account-login-row" id="accInlineLoginForm">' +
+        '<input type="text" class="account-input acc-inline-name" placeholder="名前" autocomplete="username" required />' +
+        '<input type="password" class="account-input acc-inline-pass" placeholder="パスワード" autocomplete="current-password" required />' +
+        '<button type="submit">ログイン</button>' +
+        '<button type="button" data-act="inline-detail">詳細…</button>' +
+        "</form>";
+    } else {
+      html +=
+        '<div class="account-row account-logged-row">' +
+        '<span class="account-name">' + escapeHtml(session.name) + " さん</span>" +
+        '<button type="button" data-act="inline-logout">ログアウト</button>' +
+        '<button type="button" data-act="inline-detail">詳細…</button>' +
+        "</div>";
+    }
+    html += "</div>";
+    container.innerHTML = html;
+
+    var form = container.querySelector("#accInlineLoginForm");
+    if (form) {
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        var name = container.querySelector(".acc-inline-name").value.trim();
+        var pass = container.querySelector(".acc-inline-pass").value;
+        if (!name || !pass) { openAccountModal(controlOpts); return; }
+        userLogin(name, pass).catch(function () { openAccountModal(controlOpts); });
+      });
+    }
+    var logout = container.querySelector('[data-act="inline-logout"]');
+    if (logout) logout.addEventListener("click", function () { userLogout(); });
+    var detail = container.querySelector('[data-act="inline-detail"]');
+    if (detail) detail.addEventListener("click", function () { openAccountModal(controlOpts); });
+  }
+
+  // 公開契約（B班はこれを呼ぶだけ）: userMountAccountControl(container, {variant, deckActions, extraActions})
+  function userMountAccountControl(container, opts) {
+    if (!container) return;
+    opts = opts || {};
+    var variant = opts.variant === "inline" ? "inline" : "compact";
+    var controlOpts = {
+      variant: variant,
+      deckActions: opts.deckActions || [],
+      extraActions: opts.extraActions || [],
+    };
+    container.dataset.accountMounted = "1";
+
+    function renderControl() {
+      if (variant === "inline") {
+        renderInlineBar(container, controlOpts);
+      } else {
+        renderCompactButton(container, controlOpts);
       }
-
-      var registerButton = container.querySelector('[data-act="register"]');
-      if (registerButton) {
-        registerButton.addEventListener("click", function () {
-          var name = container.querySelector("#accNameInput").value.trim();
-          var pass = container.querySelector("#accPassInput").value;
-          if (!name || !pass) {
-            setError("名前とパスワードを入力してください");
-            return;
-          }
-          withBusy(async function () {
-            await userRegister(name, pass);
-            render();
-          });
-        });
+    }
+    renderControl();
+    document.addEventListener("user-session-changed", function () {
+      renderControl();
+      // このコントロール文脈でモーダルが開いていれば追随
+      if (accModalRoot && !accModalRoot.hidden && activeControlOpts === controlOpts) {
+        renderModal();
       }
+    });
+  }
 
-      var logoutButton = container.querySelector('[data-act="logout"]');
-      if (logoutButton) {
-        logoutButton.addEventListener("click", function () {
-          withBusy(async function () {
-            await userLogout();
-            barState.adminOpen = false;
-            render();
-          });
-        });
-      }
-
-      var saveServerButton = container.querySelector('[data-act="save-server"]');
-      if (saveServerButton) {
-        saveServerButton.addEventListener("click", function () {
-          withBusy(async function () {
-            var deck = exportableDeck();
-            var code = encodeDeckShareCode();
-            await userSaveMyDeck(deck.name, code);
-            if (typeof showBuilderToast === "function") {
-              showBuilderToast(deck.name + " をサーバーに保存しました。");
-            } else {
-              setError("");
+  // builder 用の既定 extraActions（互換ラッパで使用。B班は独自に渡してもよい）
+  function builderExtraActions() {
+    return [
+      {
+        label: "今のデッキをサーバーに保存",
+        when: "loggedIn",
+        onClick: async function () {
+          var deck = exportableDeck();
+          var code = encodeDeckShareCode();
+          await userSaveMyDeck(deck.name, code);
+          if (typeof showBuilderToast === "function") showBuilderToast(deck.name + " をサーバーに保存しました。");
+        },
+      },
+      {
+        label: "端末→サーバーへ一括移行",
+        when: "loggedIn",
+        onClick: async function () {
+          var localDecks = typeof loadSavedDecks === "function" ? loadSavedDecks() : [];
+          var ok = 0;
+          var fail = 0;
+          for (var i = 0; i < localDecks.length; i += 1) {
+            var deck = localDecks[i];
+            try {
+              var code =
+                typeof encodeDeckObjectShareCode === "function"
+                  ? encodeDeckObjectShareCode(deck)
+                  : userEncodeDeckObjectShareCode(deck);
+              await userSaveMyDeck(deck.name, code);
+              ok += 1;
+            } catch (e) {
+              fail += 1;
             }
-          });
-        });
-      }
-
-      var migrateButton = container.querySelector('[data-act="migrate"]');
-      if (migrateButton) {
-        migrateButton.addEventListener("click", function () {
-          withBusy(async function () {
-            var localDecks = typeof loadSavedDecks === "function" ? loadSavedDecks() : [];
-            var ok = 0;
-            var fail = 0;
-            for (var i = 0; i < localDecks.length; i += 1) {
-              var deck = localDecks[i];
-              try {
-                var code =
-                  typeof encodeDeckObjectShareCode === "function"
-                    ? encodeDeckObjectShareCode(deck)
-                    : userEncodeDeckObjectShareCode(deck);
-                await userSaveMyDeck(deck.name, code);
-                ok += 1;
-              } catch (e) {
-                fail += 1;
-              }
-            }
-            var message = "一括移行: 成功" + ok + "件 / 失敗" + fail + "件";
-            if (typeof showBuilderToast === "function") {
-              showBuilderToast(message);
-            } else {
-              setError(message);
-            }
-          });
-        });
-      }
-
-      var toggleAdminButton = container.querySelector('[data-act="toggle-admin"]');
-      if (toggleAdminButton) {
-        toggleAdminButton.addEventListener("click", function () {
-          barState.adminOpen = !barState.adminOpen;
-          if (barState.adminOpen) {
-            render();
-            loadAdminUsers();
-          } else {
-            render();
           }
-        });
-      }
+          if (typeof showBuilderToast === "function") showBuilderToast("一括移行: 成功" + ok + "件 / 失敗" + fail + "件");
+        },
+      },
+    ];
+  }
 
-      var adminResetButton = container.querySelector('[data-act="admin-reset"]');
-      if (adminResetButton) {
-        adminResetButton.addEventListener("click", function () {
-          var select = container.querySelector("#accAdminUserSelect");
-          var passInput = container.querySelector("#accAdminPassInput");
-          var name = select ? select.value : "";
-          var newPass = passInput ? passInput.value : "";
-          if (!name || !newPass) {
-            barState.adminError = "対象ユーザーと新パスワードを入力してください";
-            render();
-            return;
-          }
-          withBusy(async function () {
-            await userAdminResetPassword(name, newPass);
-            barState.adminError = name + " のパスワードをリセットしました。";
-            render();
-          });
-        });
-      }
-
-      var saveApiBaseButton = container.querySelector('[data-act="save-apibase"]');
-      if (saveApiBaseButton) {
-        saveApiBaseButton.addEventListener("click", function () {
-          var input = container.querySelector("#accApiBaseInput");
-          if (!input || !input.value.trim()) return;
-          setUserApiBase(input.value);
-          barState.error = "";
-          render();
-          userRefreshMyDeckOptions();
-        });
-      }
-
-      var editApiBaseButton = container.querySelector('[data-act="edit-apibase"]');
-      if (editApiBaseButton) {
-        editApiBaseButton.addEventListener("click", function () {
-          setUserApiBase("");
-          render();
-        });
-      }
-    }
-
-    render();
-    document.addEventListener("user-session-changed", render);
+  // 互換ラッパ: 旧 #accountBar を inline variant として差し替え。builder では既定 extraActions を注入。
+  function userMountAccountBar(container) {
+    var extraActions = isBuilderPage() ? builderExtraActions() : [];
+    return userMountAccountControl(container, { variant: "inline", deckActions: [], extraActions: extraActions });
   }
 
   // ---- 「デッキオブジェクト→BFD1コード」のフォールバック実装。
@@ -640,6 +951,7 @@
   window.userAdminResetPassword = userAdminResetPassword;
   window.userRefreshMyDeckOptions = userRefreshMyDeckOptions;
   window.userMountAccountBar = userMountAccountBar;
+  window.userMountAccountControl = userMountAccountControl;
 
   // ---- 初期化: DOM準備後に #accountBar があればマウント、無くても mydeck 注入は試みる ----
   // 対戦エンジン(deckProfiles)/builder(officialDecks)のデータ読込は非同期で、完了後に各ページが
@@ -671,13 +983,54 @@
   }
 
   function init() {
-    var container = document.getElementById("accountBar");
-    if (container) {
-      userMountAccountBar(container);
+    // 画面判定でアカウントコントロールをマウント（DOM要素の有無で判定＝スクリプト読込順に非依存）。
+    // builder は B班が userMountAccountControl を明示的に呼ぶため、ここでは触らない
+    // （旧 #accountBar が残っている場合のみ互換マウント）。
+    if (document.getElementById("lobbyDeckSelect")) {
+      // play.html（ネット対戦ロビー）: inline バー ＋ [使用デッキにセット]
+      var bar = document.getElementById("accountBar");
+      if (bar && bar.dataset.accountMounted !== "1") {
+        userMountAccountControl(bar, {
+          variant: "inline",
+          deckActions: [
+            { label: "使用デッキにセット", onPick: function (p) { return setDeckToSelect("lobbyDeckSelect", p); } },
+          ],
+        });
+      }
+    } else if (document.getElementById("p1DeckSelect")) {
+      // index.html（ローカル対戦）: compact ボタン ＋ [1Pにセット][2Pにセット]
+      var control = document.getElementById("accountControl");
+      if (control && control.dataset.accountMounted !== "1") {
+        userMountAccountControl(control, {
+          variant: "compact",
+          deckActions: [
+            { label: "1Pにセット", onPick: function (p) { return setDeckToSelect("p1DeckSelect", p); } },
+            { label: "2Pにセット", onPick: function (p) { return setDeckToSelect("p2DeckSelect", p); } },
+          ],
+        });
+      }
+    } else {
+      // builder 等: B班が未マウントのまま旧 #accountBar が残っていれば互換マウント
+      var legacy = document.getElementById("accountBar");
+      if (legacy && legacy.dataset.accountMounted !== "1") {
+        userMountAccountBar(legacy);
+      }
     }
     whenEngineDataReady(function () {
       userRefreshMyDeckOptions();
     });
+    // ログイン済みで apiBase 未設定（＝権威サーバ配信の builder/index の可能性）なら、
+    // 一度だけ /healthz プローブして同一オリジンを確定→マイデッキ注入をやり直す。
+    // 未ログインならページロード時にはプローブしない（モーダルを開いた時に判定。設計§5）。
+    if (userSession() && userApiBase() === null) {
+      userProbeSameOrigin().then(function (ok) {
+        if (ok) {
+          whenEngineDataReady(function () {
+            userRefreshMyDeckOptions();
+          });
+        }
+      });
+    }
     document.addEventListener("user-session-changed", userRefreshMyDeckOptions);
   }
 

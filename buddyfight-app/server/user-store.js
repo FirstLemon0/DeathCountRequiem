@@ -482,9 +482,12 @@ function impl() {
   return backend === "turso" ? tursoImpl : fileImpl;
 }
 
+let initialized = false;
+
 module.exports = {
   async init({ backend: b = "file", dataDir, tursoUrl: url, tursoToken: token } = {}) {
     backend = b === "turso" ? "turso" : "file";
+    initialized = false;
     if (backend === "file") {
       fileDir = dataDir;
       fs.mkdirSync(fileDir, { recursive: true });
@@ -498,6 +501,11 @@ module.exports = {
       }
       await initTursoSchema();
     }
+    initialized = true;
+  },
+  // init 済みか（authoritative-server の遅延初期化が、スモーク等の手動 init を上書きしないための照会用）
+  isInitialized() {
+    return initialized;
   },
   backend() {
     return backend;

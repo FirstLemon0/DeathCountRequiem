@@ -38,13 +38,23 @@ const elements = {
   exportDeckButton: document.querySelector("#exportDeckButton"),
   importDeckButton: document.querySelector("#importDeckButton"),
   downloadDeckButton: document.querySelector("#downloadDeckButton"),
-  loadSavedDeckButton: document.querySelector("#loadSavedDeckButton"),
+  loadSavedDeckButton: document.querySelector("#loadSavedDeckButton"), // 旧・読込ボタン（DOMから撤去済。参照は null ガード）
   deleteSavedDeckButton: document.querySelector("#deleteSavedDeckButton"),
   sortDeckButton: document.querySelector("#sortDeckButton"),
   shareCodeInput: document.querySelector("#shareCodeInput"),
   issueShareCodeButton: document.querySelector("#issueShareCodeButton"),
   importShareCodeButton: document.querySelector("#importShareCodeButton"),
+  saveMenuButton: document.querySelector("#saveMenuButton"),
+  saveMenu: document.querySelector("#saveMenu"),
+  saveLocalMenuItem: document.querySelector("#saveLocalMenuItem"),
+  saveServerMenuItem: document.querySelector("#saveServerMenuItem"),
+  accountControl: document.querySelector("#accountControl"),
 };
+
+// 共通アカウントコンポーネント(user-api.js §2.1)の返り値。未ログイン時にモーダルを開くのに使う。
+let builderAccountControl = null;
+// [開く…] select の「確定済み」値。picker 選択(change)で即読込し、dirty 破棄キャンセル時はこの値へ戻す。
+let lastLoadedSavedValue = "";
 
 let cards = [];
 let officialDecks = [];
@@ -65,6 +75,7 @@ async function initializeBuilder() {
     bindEvents();
     render();
     updateDeckSnapshot();
+    mountBuilderAccount();
     setStatus("準備完了");
   } catch (error) {
     setStatus(`読込失敗: ${error.message}`);
@@ -210,8 +221,56 @@ function bindEvents() {
   elements.exportDeckButton.addEventListener("click", exportDeckToText);
   elements.downloadDeckButton.addEventListener("click", downloadCurrentDeck);
   elements.importDeckButton.addEventListener("click", importDeckFromText);
-  elements.loadSavedDeckButton.addEventListener("click", loadSelectedSavedDeck);
+  // 旧・読込ボタンは topbar 再編で撤去（picker 選択＝change で即読込）。残置参照は null ガード。
+  elements.loadSavedDeckButton?.addEventListener("click", () => loadSelectedSavedDeck());
   elements.deleteSavedDeckButton.addEventListener("click", deleteSelectedSavedDeck);
+  // [開く…]: deck-picker で選ぶと savedDeckSelect に change が飛ぶ→即読込。
+  // dirty なら confirmDiscardIfDirty で1回だけ確認し、キャンセル時は選択を元へ戻す。
+  elements.savedDeckSelect.addEventListener("change", () => {
+    const id = elements.savedDeckSelect.value;
+    if (id === lastLoadedSavedValue) {
+      return;
+    }
+    if (!id) {
+      lastLoadedSavedValue = id;
+      return;
+    }
+    if (!confirmDiscardIfDirty()) {
+      elements.savedDeckSelect.value = lastLoadedSavedValue;
+      syncSavedDeckPickerLabel();
+      return;
+    }
+    if (loadSelectedSavedDeck({ skipConfirm: true })) {
+      lastLoadedSavedValue = elements.savedDeckSelect.value;
+    } else {
+      elements.savedDeckSelect.value = lastLoadedSavedValue;
+      syncSavedDeckPickerLabel();
+    }
+  });
+  // 保存▾ スプリットメニュー: 開閉＋各項目。
+  elements.saveMenuButton?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleSaveMenu();
+  });
+  elements.saveLocalMenuItem?.addEventListener("click", () => {
+    closeSaveMenu();
+    saveCurrentDeck();
+  });
+  elements.saveServerMenuItem?.addEventListener("click", () => {
+    closeSaveMenu();
+    saveCurrentDeckToServer();
+  });
+  // メニュー外クリック / Esc で閉じる。
+  document.addEventListener("click", (event) => {
+    if (elements.saveMenu && !elements.saveMenu.hidden && !event.target.closest(".save-split")) {
+      closeSaveMenu();
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeSaveMenu();
+    }
+  });
   elements.sortDeckButton.addEventListener("click", () => {
     sortRecipe();
     render();
@@ -298,7 +357,7 @@ function populateDeckOptions() {
 function populateSavedDecks() {
   const savedDecks = loadSavedDecks();
   setOptions(elements.savedDeckSelect, [
-    ["", "保存済みデッキ"],
+    ["", "デッキを選ぶ…"],
     ...officialDecks.map((deck) => [deck.id, `公式: ${deck.name}`]),
     ...savedDecks.map((deck) => [deck.id, `保存: ${deck.name}`]),
   ]);
@@ -1011,6 +1070,155 @@ function importDeckShareCode() {
   }
 }
 
+// ---- 保存▾ スプリットメニュー ----
+function toggleSaveMenu() {
+  if (!elements.saveMenu) {
+    return;
+  }
+  if (elements.saveMenu.hidden) {
+    openSaveMenu();
+  } else {
+    closeSaveMenu();
+  }
+}
+function openSaveMenu() {
+  if (!elements.saveMenu) {
+    return;
+  }
+  elements.saveMenu.hidden = false;
+  elements.saveMenuButton?.setAttribute("aria-expanded", "true");
+}
+function closeSaveMenu() {
+  if (!elements.saveMenu || elements.saveMenu.hidden) {
+    return;
+  }
+  elements.saveMenu.hidden = true;
+  elements.saveMenuButton?.setAttribute("aria-expanded", "false");
+}
+
+// deck-picker が savedDeckSelect の後ろに付けた選択ボタン(.dp-open-button)のラベルを、
+// 現在の選択オプションに合わせて更新する（プログラム的な value 変更は picker の change を発火しないため補完）。
+function syncSavedDeckPickerLabel() {
+  const sel = elements.savedDeckSelect;
+  if (!sel) {
+    return;
+  }
+  const btn =
+    sel.parentElement?.querySelector(".dp-open-button") ||
+    (sel.nextElementSibling?.classList?.contains?.("dp-open-button") ? sel.nextElementSibling : null);
+  if (!btn) {
+    return;
+  }
+  const opt = sel.selectedOptions && sel.selectedOptions[0];
+  btn.textContent = opt && opt.textContent.trim() ? opt.textContent.trim() : "デッキを選ぶ…";
+}
+
+// [保存▾ → サーバーに保存]。未ログインならアカウントモーダルを開く（無ければトースト案内）。
+async function saveCurrentDeckToServer() {
+  const loggedIn = typeof userSession === "function" && userSession();
+  if (!loggedIn) {
+    openAccountModalForLogin();
+    return;
+  }
+  if (typeof userSaveMyDeck !== "function" || typeof encodeDeckShareCode !== "function") {
+    setStatus("サーバー保存機能が利用できません。");
+    return;
+  }
+  try {
+    const deck = exportableDeck();
+    const code = encodeDeckShareCode();
+    await userSaveMyDeck(deck.name, code);
+    if (typeof userRefreshMyDeckOptions === "function") {
+      await userRefreshMyDeckOptions();
+    }
+    setStatus(`${deck.name}をサーバーに保存しました。`);
+  } catch (error) {
+    setStatus(`サーバー保存に失敗しました: ${error.message}`);
+  }
+}
+
+// localStorage の各保存済みデッキをサーバーへ一括アップロード（アカウントモーダルの extraAction 用）。
+async function migrateLocalDecksToServer() {
+  if (typeof userSaveMyDeck !== "function") {
+    setStatus("サーバー機能が利用できません。");
+    return;
+  }
+  const localDecks = loadSavedDecks();
+  let ok = 0;
+  let fail = 0;
+  for (const deck of localDecks) {
+    try {
+      await userSaveMyDeck(deck.name, encodeDeckObjectShareCode(deck));
+      ok += 1;
+    } catch {
+      fail += 1;
+    }
+  }
+  if (typeof userRefreshMyDeckOptions === "function") {
+    await userRefreshMyDeckOptions();
+  }
+  setStatus(`一括移行: 成功${ok}件 / 失敗${fail}件`);
+}
+
+// アカウントモーダルを開く（compact コントロールの返り値 or グローバル関数を優先。無ければトースト案内）。
+function openAccountModalForLogin() {
+  // 1) コントロールが open() を返すならそれ、2) グローバル関数、
+  // 3) compact の 👤 ボタンをプログラム的に押してモーダルを開く、いずれも無ければ 4) トースト案内。
+  const opener =
+    (builderAccountControl && (builderAccountControl.open || builderAccountControl.openModal)) ||
+    (typeof userOpenAccountModal === "function" ? userOpenAccountModal : null);
+  if (opener) {
+    try {
+      opener.call(builderAccountControl || null);
+      return;
+    } catch {
+      /* フォールバックへ */
+    }
+  }
+  const accButton = elements.accountControl?.querySelector(".account-compact-button, button");
+  if (accButton) {
+    accButton.click();
+    return;
+  }
+  setStatus("サーバーに保存するにはログインしてください（👤 からログイン）。");
+}
+
+// マイデッキ行アクション「開く」= プロフィールをエディタへ読込（dirty なら破棄確認）。
+function loadProfileIntoEditor(profile) {
+  if (!profile) {
+    return;
+  }
+  if (!confirmDiscardIfDirty()) {
+    return;
+  }
+  currentDeck = cloneDeck({ flag: profile.flag, buddy: profile.buddy, name: profile.name, recipe: profile.recipe });
+  updateDeckSnapshot();
+  render();
+  setStatus(`${profile.name}を読み込みました。`);
+}
+
+// topbar 右の #accountControl に共通アカウントコンポーネント(compact)をマウント。
+// A班未マージ時は既存 userMountAccountBar にフォールバック（builder が壊れないこと）。
+function mountBuilderAccount() {
+  const container = elements.accountControl;
+  if (!container) {
+    return;
+  }
+  const opts = {
+    variant: "compact",
+    deckActions: [{ label: "開く", onPick: loadProfileIntoEditor }],
+    extraActions: [
+      { label: "今のデッキをサーバーに保存", when: "loggedIn", onClick: saveCurrentDeckToServer },
+      { label: "端末→サーバーへ一括移行", when: "loggedIn", onClick: migrateLocalDecksToServer },
+    ],
+  };
+  if (typeof userMountAccountControl === "function") {
+    builderAccountControl = userMountAccountControl(container, opts);
+  } else if (typeof userMountAccountBar === "function") {
+    userMountAccountBar(container); // フォールバック（従来のバー）
+  }
+}
+
 function saveCurrentDeck() {
   const deck = exportableDeck();
   currentDeck.id = deck.id;
@@ -1024,6 +1232,8 @@ function saveCurrentDeck() {
   }
   populateSavedDecks();
   elements.savedDeckSelect.value = deck.id;
+  lastLoadedSavedValue = deck.id; // 保存で select 値を確定（この後 picker change の即読込対象にしない）
+  syncSavedDeckPickerLabel();
   updateDeckSnapshot();
   setStatus(`${deck.name}を保存しました。`);
 }
@@ -1037,35 +1247,40 @@ function loadSavedDecks() {
   }
 }
 
-function loadSelectedSavedDeck() {
+// 選択中の保存/公式/マイデッキをエディタへ読み込む。
+// options.skipConfirm=true は呼び出し側で既に破棄確認済みの場合（picker change 経路）に二重確認を避ける。
+// 戻り値: 読み込んだら true、未選択/取得失敗/破棄キャンセルなら false。
+function loadSelectedSavedDeck(options = {}) {
+  const skipConfirm = options.skipConfirm === true;
   const id = elements.savedDeckSelect.value;
   if (id.startsWith("mydeck-")) {
     const profile = typeof userCachedMyDeckProfile === "function" ? userCachedMyDeckProfile(id) : null;
     if (!profile) {
       setStatus("マイデッキを読み込めませんでした。もう一度「マイデッキ」を選び直してください。");
-      return;
+      return false;
     }
-    if (!confirmDiscardIfDirty()) {
-      return;
+    if (!skipConfirm && !confirmDiscardIfDirty()) {
+      return false;
     }
     currentDeck = cloneDeck({ flag: profile.flag, buddy: profile.buddy, name: profile.name, recipe: profile.recipe });
     updateDeckSnapshot();
     render();
     setStatus(`${profile.name}を読み込みました。`);
-    return;
+    return true;
   }
   const deck = [...officialDecks, ...loadSavedDecks()].find((candidate) => candidate.id === id);
   if (!deck) {
     setStatus("読み込むデッキを選んでください。");
-    return;
+    return false;
   }
-  if (!confirmDiscardIfDirty()) {
-    return;
+  if (!skipConfirm && !confirmDiscardIfDirty()) {
+    return false;
   }
   currentDeck = cloneDeck(deck);
   updateDeckSnapshot();
   render();
   setStatus(`${deck.name}を読み込みました。`);
+  return true;
 }
 
 function deleteSelectedSavedDeck() {
@@ -1104,6 +1319,8 @@ function deleteSelectedSavedDeck() {
   const decks = loadSavedDecks().filter((deck) => deck.id !== id);
   localStorage.setItem(customDeckStorageKey, JSON.stringify(decks));
   populateSavedDecks();
+  lastLoadedSavedValue = elements.savedDeckSelect.value; // 一覧再構築でプレースホルダへ戻る
+  syncSavedDeckPickerLabel();
   setStatus("保存済みデッキを削除しました。");
 }
 

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>デッキ構築 - バディファイト試作アプリ</title>
-    <link rel="stylesheet" href="styles.css?v=20260708e" />
+    <link rel="stylesheet" href="styles.css?v=20260708f" />
     <script>
       // テーマbootstrap(描画前にdata-themeを確定しFOUC回避)。3画面共通。
       (function () {
@@ -37,7 +37,7 @@
         document.addEventListener("DOMContentLoaded", window.updateThemeToggleIcon);
       })();
     </script>
-    <link rel="stylesheet" href="builder.css" />
+    <link rel="stylesheet" href="builder.css?v=20260708f" />
   </head>
   <body>
     <main class="app-shell builder-shell">
@@ -47,17 +47,28 @@
           <h1>デッキ構築</h1>
         </div>
         <div class="toolbar" aria-label="画面操作">
-          <button type="button" id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="テーマ切替">☀️</button>
-          <button type="button" class="mobile-only nav-toggle" aria-expanded="false" onclick="document.body.classList.toggle('nav-open'); this.setAttribute('aria-expanded', document.body.classList.contains('nav-open'))" aria-label="メニュー">☰</button>
           <a class="toolbar-link" href="index.html">ローカル対戦</a>
           <a class="toolbar-link" href="play.html">ネット対戦</a>
           <button id="newDeckButton" type="button">新規</button>
-          <button id="saveDeckButton" type="button">保存</button>
-          <button id="exportDeckButton" type="button">エクスポート</button>
+          <!-- 開く…: #savedDeckSelect は隠し値置き場。deck-picker.js が同 id を見つけて選択ボタンを afterend に付ける（DOM移動でボタンも追随）。picker 選択(=change)で即読込。 -->
+          <span class="open-deck">
+            <select id="savedDeckSelect" aria-label="デッキ"></select>
+          </span>
+          <!-- 保存 スプリット: 既定=この端末に保存(#saveDeckButton)、▾で保存先メニュー -->
+          <span class="save-split">
+            <button id="saveDeckButton" type="button">保存</button>
+            <button id="saveMenuButton" type="button" class="save-menu-toggle" aria-haspopup="true" aria-expanded="false" aria-label="保存メニュー">▾</button>
+            <div id="saveMenu" class="save-menu" role="menu" hidden>
+              <button type="button" id="saveLocalMenuItem" role="menuitem">この端末に保存</button>
+              <button type="button" id="saveServerMenuItem" role="menuitem">サーバーに保存</button>
+            </div>
+          </span>
+          <span class="toolbar-spacer" aria-hidden="true"></span>
+          <div id="accountControl" class="account-control-slot"></div>
+          <button type="button" id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="テーマ切替">☀️</button>
+          <button type="button" class="mobile-only nav-toggle" aria-expanded="false" onclick="document.body.classList.toggle('nav-open'); this.setAttribute('aria-expanded', document.body.classList.contains('nav-open'))" aria-label="メニュー">☰</button>
         </div>
       </header>
-
-      <div id="accountBar" class="account-bar-slot"></div>
 
       <section class="builder-grid" aria-label="デッキ構築">
         <section class="builder-panel deck-settings" aria-label="デッキ設定">
@@ -105,30 +116,31 @@
           <div class="deck-list" id="deckList"></div>
         </section>
 
-        <section class="builder-panel import-panel" aria-label="入出力">
-          <div class="panel-head">
-            <h2>インポート / エクスポート</h2>
-            <select id="savedDeckSelect" aria-label="保存済みデッキ"></select>
+        <details class="builder-panel import-panel io-tools" aria-label="共有・バックアップ">
+          <summary class="io-tools-summary">共有・バックアップ</summary>
+          <div class="io-tools-body">
+            <div class="io-actions">
+              <button id="issueShareCodeButton" type="button">共有コード発行</button>
+              <button id="importShareCodeButton" type="button">共有コード取込</button>
+            </div>
+            <input id="shareCodeInput" type="text" spellcheck="false" placeholder="BFD1.… デッキ共有コード（持ち寄り用）" class="share-code-input" />
+            <div class="io-actions">
+              <button id="exportDeckButton" type="button">エクスポート</button>
+              <button id="importDeckButton" type="button">インポート</button>
+              <button id="downloadDeckButton" type="button">JSON保存</button>
+            </div>
+            <textarea id="deckJsonText" spellcheck="false"></textarea>
+            <div class="io-actions">
+              <button id="deleteSavedDeckButton" type="button">選択中の保存デッキを削除</button>
+            </div>
+            <p class="status-text" id="builderStatus">カードデータ読込中</p>
           </div>
-          <div class="io-actions">
-            <button id="loadSavedDeckButton" type="button">読込</button>
-            <button id="deleteSavedDeckButton" type="button">削除</button>
-            <button id="importDeckButton" type="button">インポート</button>
-            <button id="downloadDeckButton" type="button">JSON保存</button>
-          </div>
-          <div class="io-actions">
-            <button id="issueShareCodeButton" type="button">共有コード発行</button>
-            <button id="importShareCodeButton" type="button">共有コード取込</button>
-          </div>
-          <input id="shareCodeInput" type="text" spellcheck="false" placeholder="BFD1.… デッキ共有コード（持ち寄り用）" class="share-code-input" />
-          <textarea id="deckJsonText" spellcheck="false"></textarea>
-          <p class="status-text" id="builderStatus">カードデータ読込中</p>
-        </section>
+        </details>
       </section>
       <div id="toast" role="status" aria-live="polite" aria-hidden="true"></div>
     </main>
     <script src="builder.js"></script>
-    <script src="deck-picker.js?v=20260708e"></script>
-    <script src="user-api.js?v=20260708e"></script>
+    <script src="deck-picker.js?v=20260708f"></script>
+    <script src="user-api.js?v=20260708f"></script>
   </body>
 </html>

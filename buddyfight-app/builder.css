@@ -350,3 +350,130 @@
   background: rgb(var(--c-spell-rgb) / 0.18);
   color: var(--text);
 }
+
+/* ===== topbar 再編（B班）: [新規][開く…][保存▾] …(spacer)… #accountControl ☀️/☰ ===== */
+/* スペーサ: 主要操作(左)とアカウント/テーマ(右)を押し分ける。 */
+.toolbar-spacer {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* [開く…] = #savedDeckSelect(隠し値) + deck-picker が付ける .dp-open-button。 */
+.open-deck {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* [保存 ▾] スプリット: [保存] と ▾ を連結し、▾ 直下にメニュー。 */
+.save-split {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+}
+.save-split #saveDeckButton {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.save-menu-toggle {
+  min-width: 30px;
+  padding: 0 7px;
+  margin-left: -1px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+.save-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.save-menu[hidden] {
+  display: none;
+}
+.save-menu button {
+  justify-content: flex-start;
+  min-height: 38px;
+  padding: 0 10px;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--btn-bg);
+  color: var(--text);
+}
+.save-menu button:hover {
+  border-color: var(--primary);
+}
+
+/* 👤 コンパクトアカウント枠（A班: compact ボタン1個 / 未マージ時はフォールバックのバー）。 */
+.account-control-slot {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ===== 共有・バックアップ（低頻度機能の折りたたみ・既定閉） ===== */
+details.io-tools {
+  padding: 0;
+  overflow: hidden;
+}
+.io-tools-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--warn);
+}
+.io-tools-summary::-webkit-details-marker {
+  display: none;
+}
+.io-tools-summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 8px;
+  transition: transform 0.15s ease;
+}
+details.io-tools[open] .io-tools-summary::before {
+  transform: rotate(90deg);
+}
+.io-tools-body {
+  display: grid;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+.io-tools-body #deckJsonText {
+  margin-top: 0;
+}
+
+@media (max-width: 640px) {
+  /* §3.3: [開く…][保存▾] は常時表示、[新規]/ページリンクは ☰ 内（styles.css の既定を踏襲）。 */
+  #saveDeckButton {
+    display: inline-flex;
+  }
+  .open-deck,
+  .save-split,
+  .account-control-slot {
+    display: inline-flex;
+  }
+  .toolbar-spacer {
+    display: none;
+  }
+  .save-menu {
+    right: auto;
+    left: 0;
+  }
+  /* エクスポートは details 内へ移設済。styles.css の #exportDeckButton{display:none}(旧topbar用)を打ち消す。 */
+  #exportDeckButton {
+    display: inline-flex;
+  }
+}
