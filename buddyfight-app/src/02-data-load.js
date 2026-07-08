@@ -444,6 +444,10 @@ function normalizeDeckProfile(deck, set = {}) {
     flag: canonicalFlagId(deck.flag || ""),
     productId: deck.productId || set.id || "",
     productName: deck.productName || set.name || "",
+    // デッキ選択モーダル(deck-picker.js)用のメタ。decksets.json 由来（無ければ既定値で従来どおり）。
+    category: deck.category || set.category || (set.id === "custom" ? "custom" : "official"),
+    series: deck.series || set.series || "",
+    releaseOrder: deck.releaseOrder ?? set.releaseOrder ?? 9999,
     recipe: [...(deck.recipe || [])],
   };
 }
