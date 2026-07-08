@@ -52,8 +52,26 @@ function granterOnField(instanceId) {
 // このカードの能力(abilities/continuous/soulContinuous/keywords)が、場のいずれかの
 // nullifyAbilities 継続(凍てつく星辰)によって無効化されているか。nullifyImmune のカードは対象外。
 // card は場札 or ソウル内カード(ソウルの場合はホストの所有者・"soul"位置で判定)。
+// Z4(d)(S-UB-C03): grantNullifyImmunity 継続の保護判定中に isAbilitiesNullified が再入した時、
+// 「無効化されていない」扱いで打ち切るためのフラグ（保護元カード自身の継続走査が
+// activeContinuousEffects→isAbilitiesNullified を再帰的に辿るため、無限再帰を防ぐ）。
+// 0024(諸星きらり・全体無効化＋nullifyImmune) vs 0001(アイドル無効化耐性) の競合は
+// 「されない」側が勝つ（0001側のcardProtectedFrom判定が先に評価されfalseで確定するため）。
+let evaluatingNullifyProtection = false;
 function isAbilitiesNullified(card) {
   if (!card || card.nullifyImmune || !state?.players?.length) return false;
+  // フラッグは能力無効化を受けない（公式裁定Q2220: ∞ the Chaos ∞ 先例）。フラッグは場のzonesにも
+  // 誰のソウルにも存在しないため、下の探索は本来どのみち host が見つからず false になるが、
+  // 将来の実装変更（フラッグを走査対象に含める等）に備えて明示的に免除しておく。
+  if (card.type === "flag") return false;
+  if (!evaluatingNullifyProtection) {
+    evaluatingNullifyProtection = true;
+    try {
+      if (cardProtectedFrom(card, "nullify")) return false;
+    } finally {
+      evaluatingNullifyProtection = false;
+    }
+  }
   let cardOwner;
   let location = "field";
   const slot = findFieldCardSlot(card);
@@ -88,11 +106,39 @@ function isAbilitiesNullified(card) {
         if (e.zones && !e.zones.includes(location)) return false;
         if (e.filter && Object.keys(e.filter).length && !matchesCardFilter(card, e.filter)) return false;
         if (e.conditions && !checkCardConditions(e.conditions, nullifierOwner, { card: src, zone })) return false;
+        // Z10(S-UB-C03/0089): battleOpponentOnly は「このカードとバトルしている相手」限定の無効化。
+        // pendingAttack が無い、または card が付与元(nullifierOwner側)から見て対戦相手でなければ適用しない。
+        if (e.battleOpponentOnly && !isBattlingOpponentOf(card, cardOwner, nullifierOwner)) return false;
         return true;
       });
     }),
   );
   return fieldNullified || isNullifiedByBattlingHostSoul(card);
+}
+
+// Z10: card(cardOwner側) が、nullifierOwner側のカードとバトル中（pendingAttackの攻撃側/防御側の対応関係）にあるか。
+// 0089「このカードとバトルしている相手のキャラの能力全てを無効化する」の判定に使う。
+function isBattlingOpponentOf(card, cardOwner, nullifierOwner) {
+  const pending = state.pendingAttack;
+  if (!pending || cardOwner === nullifierOwner) {
+    return false;
+  }
+  const attackerSlots = getPendingAttackerSlots(pending);
+  const attackerCards = attackerSlots
+    .map((slot) => state.players[slot.owner]?.field?.[slot.zone])
+    .filter(Boolean);
+  const targetCard =
+    pending.targetType === "monster" ? state.players[pending.targetOwner]?.field?.[pending.targetZone] : null;
+  const isAttacker = attackerCards.some((c) => c.instanceId === card.instanceId);
+  const isTarget = Boolean(targetCard && targetCard.instanceId === card.instanceId);
+  if (!isAttacker && !isTarget) {
+    return false;
+  }
+  // card が攻撃側なら nullifierOwner側は防御対象(targetCard)、card が防御側なら nullifierOwner側は攻撃側のいずれか。
+  if (isAttacker) {
+    return Boolean(targetCard) && pending.targetOwner === nullifierOwner;
+  }
+  return attackerSlots.some((slot) => slot.owner === nullifierOwner);
 }
 
 // soulContinuous nullifyBattlingMonsterAbilities（星合体 竜装機アーティライガー 0072）:
@@ -135,7 +181,15 @@ function isNullifiedByBattlingHostSoul(card) {
 // 無効化されたカードの継続効果(grantKeyword/preventCenterCall/attackRedirect 等)が一律オフになる。
 // ※ isAbilitiesNullified 自身は nullifyAbilities 継続を生で走査するため、これを使ってはならない(無限再帰回避)。
 function activeContinuousEffects(sourceCard) {
-  if (!sourceCard || isAbilitiesNullified(sourceCard)) {
+  if (!sourceCard) {
+    return [];
+  }
+  // フラッグの継続は能力無効化を受けない（Q2220）。isAbilitiesNullified 自体も type:"flag" で
+  // 常に false を返すが、呼び出し順に依存しない明示ガードとしてここでも早期リターンする。
+  if (sourceCard.type === "flag") {
+    return sourceCard.continuous || [];
+  }
+  if (isAbilitiesNullified(sourceCard)) {
     return [];
   }
   return sourceCard.continuous || [];
@@ -276,6 +330,62 @@ function continuousFieldSoulStatAmount(effect, statKey, player) {
   return count * per;
 }
 
+// Z3(S-UB-C03/0028): 継続 modifyStats の amountFrom:{source:"fieldCardCount"} 分
+// （指定controllerの場の filter 一致カード枚数 × per[statKey]。max で上限）。効果op側(resolveAmountFrom)
+// には既に実在するが、継続側にはこのヘルパーで配線する。controller は「発生源カードの所有者(sourceOwner)」
+// を基準に self/opponent を解決する（0028「お互いの場の《眼鏡》枚数分、打撃力+1」＝self枠とopponent枠の
+// 2本の継続を並べて表現）。属性は grantAttribute 付与込みの effectiveAttributes を見る matchesCardFilter。
+function continuousFieldCardStatAmount(effect, statKey, sourceOwner) {
+  if (effect.op !== "modifyStats" || effect.amountFrom?.source !== "fieldCardCount") {
+    return 0;
+  }
+  const af = effect.amountFrom;
+  const per = af.per?.[statKey] ?? 0;
+  if (!per) {
+    return 0;
+  }
+  const countOwner = af.controller === "opponent" ? 1 - sourceOwner : sourceOwner;
+  let count = 0;
+  zones.forEach((zone) => {
+    const c = state.players[countOwner]?.field?.[zone];
+    if (c && matchesCardFilter(c, af.filter || {})) {
+      count += 1;
+    }
+  });
+  if (af.max !== undefined) {
+    count = Math.min(count, af.max);
+  }
+  return count * per;
+}
+
+// Z1(S-UB-C03/0095): 継続 modifyStats の amountFrom:{source:"buddyZoneCount"} 分
+// （自分のバディゾーン裏向き枚数 × per[statKey]。max で上限）。continuousFieldSoulStatAmount と同形。
+function continuousBuddyZoneStatAmount(effect, statKey, player) {
+  if (effect.op !== "modifyStats" || effect.amountFrom?.source !== "buddyZoneCount") {
+    return 0;
+  }
+  const af = effect.amountFrom;
+  const per = af.per?.[statKey] ?? 0;
+  if (!per) {
+    return 0;
+  }
+  let count = (player.buddyZoneFaceDown || []).length;
+  if (af.max !== undefined) {
+    count = Math.min(count, af.max);
+  }
+  return count * per;
+}
+
+// Z1: フラッグ継続の適用可否。フラッグは findFieldCardSlot を持たないため continuousEffectApplies
+// （sourceSlot/controller 判定が sourceSlot 前提）をそのまま流用できない。フラッグ継続は常に
+// 「自分の場」のみを対象とする（呼び出し元で既に owner=card所有者 に限定済みのため controller 判定は不要）。
+function continuousEffectAppliesForFlag(effect, targetCard, owner) {
+  if (effect.conditions?.length && !checkCardConditions(effect.conditions, owner, { card: targetCard })) {
+    return false;
+  }
+  return matchesCardFilter(targetCard, effect.filter || {});
+}
+
 // 場・ソウルの継続 modifyStats（定数 by と amountFrom:dropAttributeCount/soulCount/soulStatSum）から statKey の合計補正値を算出。
 function continuousStatBonus(card, statKey) {
   const slot = findFieldCardSlot(card);
@@ -296,8 +406,24 @@ function continuousStatBonus(card, statKey) {
       bonus += continuousDropStatAmount(effect, statKey, player);
       bonus += continuousSoulStatAmount(effect, statKey, sourceCard);
       bonus += continuousFieldSoulStatAmount(effect, statKey, player);
+      bonus += continuousFieldCardStatAmount(effect, statKey, slot.owner);
     });
   });
+  // Z1(S-UB-C03/0095): フラッグの継続効果。フラッグは zones 走査に乗らない（player.field ではなく
+  // player.flag に実体がある）ため専用ブロックで評価する。フラッグは能力無効化を受けない(Q2220)ため
+  // isAbilitiesNullified は経由しない（activeContinuousEffects と異なりフラッグ自体はここでは
+  // sourceCard として使わず、flag.continuous を直接読む）。
+  if (player.flag?.type === "flag" && player.flag.continuous?.length) {
+    player.flag.continuous.forEach((effect) => {
+      if (!continuousEffectAppliesForFlag(effect, card, slot.owner)) {
+        return;
+      }
+      if (effect.op === "modifyStats") {
+        bonus += effect[statKey] || 0;
+      }
+      bonus += continuousBuddyZoneStatAmount(effect, statKey, player);
+    });
+  }
   // 相手側からの越境継続（opposingFront / controller:"opponent" の明示デバフ）も評価する。
   // 自陣バフ（controller 無指定の通常継続）は越境適用しないようゲートする。
   const crossOwner = 1 - slot.owner;
@@ -312,7 +438,10 @@ function continuousStatBonus(card, statKey) {
         return;
       }
       if (effect.op === "modifyStats") {
-        bonus += effect[statKey] || 0;
+        const raw = effect[statKey] || 0;
+        // Z4(c)(S-UB-C03/0056): grantStatDecreaseImmunity は「相手のカードの効果で減らない」
+        // ＝越境デバフ(このループ)限定で保護する。自陣の負デルタ(上のown側ループ)は対象外。
+        bonus += raw < 0 && statDecreaseProtected(card, statKey) ? 0 : raw;
       }
       bonus += continuousDropStatAmount(effect, statKey, state.players[crossOwner]);
       bonus += continuousSoulStatAmount(effect, statKey, sourceCard);
@@ -468,5 +597,167 @@ function continuousEffectApplies(effect, targetCard, sourceCard) {
     }
   }
   return matchesCardFilter(targetCard, effect.filter || {});
+}
+
+// ==========================================================================
+// Z4(S-UB-C03): 第三者付与型の耐性ゲート拡張（レスト/ソウル破棄/能力無効化/ステータス減少/ターン限定）。
+// 既存の破壊(grantedDestroyImmunityBlocks)/手札戻し(preventReturnToHand)ゲートとは独立レイヤで、
+// 同型のパターン（場の継続 grant*Immunity を controller/zoneIn/filter/conditions/from で判定）を
+// 一般化している。既存カードはこれらの新op(grantRestImmunity等)を一切持たないため、
+// 場に該当継続が無ければ常に false を返し（高速パス）、既存1,917枚の挙動には影響しない。
+// ==========================================================================
+const PROTECTION_OP_BY_KIND = {
+  rest: "grantRestImmunity",
+  soulDiscard: "grantSoulDiscardImmunity",
+  nullify: "grantNullifyImmunity",
+};
+
+// Z4(a)(b)(d): 場の継続 grant*Immunity が対象カードに恒久的な耐性を与えているか。
+function grantedProtectionBlocks(card, kind, cause) {
+  const op = PROTECTION_OP_BY_KIND[kind];
+  if (!op) {
+    return false;
+  }
+  const targetSlot = findFieldCardSlot(card);
+  if (!targetSlot) {
+    return false;
+  }
+  return state.players.some((player, sourceOwner) =>
+    zones.some((zone) => {
+      const source = player.field[zone];
+      return activeContinuousEffects(source).some((e) => {
+        if (e.op !== op) return false;
+        if (e.controller === "self" && targetSlot.owner !== sourceOwner) return false;
+        if (e.controller === "opponent" && targetSlot.owner === sourceOwner) return false;
+        if (e.excludeSource && source?.instanceId === card.instanceId) return false;
+        if (e.zoneIn && !e.zoneIn.includes(targetSlot.zone)) return false;
+        if (e.filter && !matchesCardFilter(card, e.filter)) return false;
+        if (e.conditions && !checkCardConditions(e.conditions, sourceOwner, { card: source, zone })) return false;
+        if (e.from && cause) {
+          if (e.from.byEffect && !cause.byEffect) return false;
+          if (e.from.byOpponent && !cause.byOpponent) return false;
+        }
+        return true;
+      });
+    }),
+  );
+}
+
+// Z4(e): 【対抗】等でそのターン(または複数ターン)限定に付与される保護（state.turnProtections）。
+// エントリ形: {kinds:["rest"|"nullify"|"returnToHand"], owner, scope, filter, zoneIn, remainingTurnEnds}。
+// destroy専用の既存 state.turnDestroyImmunity/grantTurnDestroyImmunity は移行せずそのまま使う。
+function turnProtectionBlocks(card, kind) {
+  const list = state.turnProtections;
+  if (!list || !list.length) {
+    return false;
+  }
+  const targetSlot = findFieldCardSlot(card);
+  if (!targetSlot) {
+    return false;
+  }
+  return list.some((entry) => {
+    if (!entry.kinds?.includes(kind)) return false;
+    if (entry.scope === "self" && targetSlot.owner !== entry.owner) return false;
+    if (entry.scope === "opponent" && targetSlot.owner === entry.owner) return false;
+    if (entry.zoneIn && !entry.zoneIn.includes(targetSlot.zone)) return false;
+    if (entry.filter && !matchesCardFilter(card, entry.filter)) return false;
+    return true;
+  });
+}
+
+// Z4 共通ゲート: レスト/ソウル破棄/能力無効化の第三者付与型耐性（恒久＋ターン限定）を判定する。
+// kind: "rest" | "soulDiscard" | "nullify"。cause は makeEffectCause(context, victimOwner) 形（省略可）。
+function cardProtectedFrom(card, kind, cause = {}) {
+  if (grantedProtectionBlocks(card, kind, cause)) {
+    return true;
+  }
+  if (turnProtectionBlocks(card, kind)) {
+    return true;
+  }
+  return false;
+}
+
+// Z4(c)(S-UB-C03/0056): grantStatDecreaseImmunity{stats,scope,filter,conditions} が
+// statKey の（相手発の）デバフから card を保護しているか。呼び出し元(continuousStatBonusの
+// crossOwnerループ)が既に「相手ソースからの負デルタ」に限定して呼ぶため、from判定は不要。
+function statDecreaseProtected(card, statKey) {
+  const targetSlot = findFieldCardSlot(card);
+  if (!targetSlot) {
+    return false;
+  }
+  return state.players.some((player, sourceOwner) =>
+    zones.some((zone) => {
+      const source = player.field[zone];
+      return activeContinuousEffects(source).some((e) => {
+        if (e.op !== "grantStatDecreaseImmunity") return false;
+        if (!(e.stats || []).includes(statKey)) return false;
+        if (e.controller === "self" && targetSlot.owner !== sourceOwner) return false;
+        if (e.controller === "opponent" && targetSlot.owner === sourceOwner) return false;
+        if (e.filter && !matchesCardFilter(card, e.filter)) return false;
+        if (e.conditions && !checkCardConditions(e.conditions, sourceOwner, { card: source, zone })) return false;
+        return true;
+      });
+    }),
+  );
+}
+
+// Z3(S-UB-C03/0028): 場の継続 grantAttribute が card に印字属性以外の属性を付与しているか考慮した、
+// 実効属性配列を返す。grantAttribute 継続が場に1つも無ければ即 card.attributes を返す（高速パス。
+// 既存1,917枚のホットパスを汚さない）。再入ガード: grantAttribute 自身の filter/conditions 評価は
+// 印字属性のみで判定する（付与元カード自身が「対象は《眼鏡》」等を名乗る自己言及の無限再帰を回避）。
+const grantAttributeEvaluationStack = new Set();
+function effectiveAttributes(card) {
+  if (!card) {
+    return [];
+  }
+  const printed = card.attributes || [];
+  // 再入ガードは関数冒頭で確定させる（matchesCardFilterはこの関数を経由するため、
+  // 下の高速パス判定自体が isAbilitiesNullified 経由で matchesCardFilter→effectiveAttributes を
+  // 再帰し得る。ガードを後回しにすると同一カードの多重再入で無限再帰し得るため先に確保する）。
+  if (card.instanceId && grantAttributeEvaluationStack.has(card.instanceId)) {
+    return printed;
+  }
+  if (card.instanceId) {
+    grantAttributeEvaluationStack.add(card.instanceId);
+  }
+  try {
+    // 高速パス判定: 継続の生配列を直接見る（activeContinuousEffects経由だとisAbilitiesNullifiedが
+    // 他カードのnullifyAbilities filterを介してmatchesCardFilter→effectiveAttributesを誘発し得るため、
+    // ここでは意図的に無効化判定を経由しない生スキャンにする。既存1,917枚は誰も grantAttribute を
+    // 持たないため、この生スキャンは通常 false で即 return する＝ホットパスは実質無コスト）。
+    const hasAnyGrant = state?.players?.some((player) =>
+      zones.some((zone) => (player.field[zone]?.continuous || []).some((e) => e.op === "grantAttribute")),
+    );
+    if (!hasAnyGrant) {
+      return printed;
+    }
+    const granted = [];
+    const targetSlot = findFieldCardSlot(card);
+    state.players.forEach((player, sourceOwner) => {
+      zones.forEach((zone) => {
+        const source = player.field[zone];
+        activeContinuousEffects(source).forEach((e) => {
+          if (e.op !== "grantAttribute") return;
+          if (e.scope === "self" && (!targetSlot || targetSlot.owner !== sourceOwner)) return;
+          if (e.scope === "opponent" && (!targetSlot || targetSlot.owner === sourceOwner)) return;
+          if (e.zones && targetSlot && !e.zones.includes(targetSlot.zone)) return;
+          if (e.filter && Object.keys(e.filter).length && !matchesCardFilter(card, e.filter)) return;
+          if (e.conditions && !checkCardConditions(e.conditions, sourceOwner, { card: source, zone })) return;
+          const names = e.attributes || (e.attribute ? [e.attribute] : []);
+          names.forEach((name) => {
+            if (!granted.includes(name)) granted.push(name);
+          });
+        });
+      });
+    });
+    if (granted.length === 0) {
+      return printed;
+    }
+    return [...printed, ...granted.filter((name) => !printed.includes(name))];
+  } finally {
+    if (card.instanceId) {
+      grantAttributeEvaluationStack.delete(card.instanceId);
+    }
+  }
 }
 

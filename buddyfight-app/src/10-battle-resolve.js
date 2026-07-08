@@ -644,6 +644,17 @@ function runAfterAttackTriggers(outcome) {
     if (!card) {
       return;
     }
+    // Z14(c)(S-UB-C03/0021): quadrupleAttack（『４回攻撃』）。tripleAttackと同じ
+    // tripleAttackStandCountカウンタを流用（閾値のみ3に。standPlayerの既存ターン開始リセットに乗る）。
+    if (hasKeyword(card, "quadrupleAttack")) {
+      card.tripleAttackStandCount = card.tripleAttackStandCount || 0;
+      if (card.tripleAttackStandCount < 3) {
+        card.used = false;
+        card.tripleAttackStandCount += 1;
+        addLog(`${card.name}は４回攻撃でスタンドしました。`);
+      }
+      return;
+    }
     if (hasKeyword(card, "tripleAttack")) {
       card.tripleAttackStandCount = card.tripleAttackStandCount || 0;
       if (card.tripleAttackStandCount < 2) {
@@ -747,6 +758,31 @@ function getPendingAttackerSlots(pending) {
   return pending.attackers?.length
     ? pending.attackers
     : [{ owner: pending.attackerOwner, zone: pending.attackerZone }];
+}
+
+// S-UB-C03(0074/0083): 現在進行中のバトル(pendingAttack)に参加しているカードの instanceId 集合。
+// 攻撃側スロットのカード＋防御対象がモンスターならその1枚。pendingAttack が無ければ空集合。
+// selectCards{excludeBattling}（0074＝バトルしていない相手キャラへ攻撃対象を変更）と
+// 条件op pendingBattleInvolvesSelf（0083＝このカードのバトル中のみ起動可）が共有する。
+function pendingBattleCardIds() {
+  const pending = state.pendingAttack;
+  const ids = new Set();
+  if (!pending) {
+    return ids;
+  }
+  getPendingAttackerSlots(pending).forEach((slot) => {
+    const card = state.players[slot.owner]?.field?.[slot.zone];
+    if (card?.instanceId) {
+      ids.add(card.instanceId);
+    }
+  });
+  if (pending.targetType === "monster") {
+    const target = state.players[pending.targetOwner]?.field?.[pending.targetZone];
+    if (target?.instanceId) {
+      ids.add(target.instanceId);
+    }
+  }
+  return ids;
 }
 
 function getAttackDeclarationAttackers() {

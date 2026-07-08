@@ -371,6 +371,59 @@
       "startingHand": 7,
       "startingGauge": 1,
       "maxFieldSize": 3
+    },
+    {
+      "id": "cinderella-girls-theater",
+      "aliases": [
+        "bf-s-ub-c03-0095"
+      ],
+      "name": "アイドルマスター シンデレラガールズ劇場",
+      "type": "flag",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rarity": "共通",
+      "rules": [
+        "■君は＜アイドルマスター シンデレラガールズ劇場＞のカードを使える。",
+        "■君のターン終了時、君の場にバディがいるなら、君のライフを＋１し、カード１枚を引き、君のデッキの上から１枚を裏向きで君のバディゾーンに置く。",
+        "■君のバディゾーンの裏向きのカード１枚につき、君の場のバディの攻撃力＋2000、防御力＋2000！"
+      ],
+      "allowedWorlds": [
+        "アイドルマスター シンデレラガールズ劇場"
+      ],
+      "allowGeneric": false,
+      "closedPool": true,
+      "startingLife": 10,
+      "startingHand": 6,
+      "startingGauge": 2,
+      "maxFieldSize": 3,
+      "abilities": [
+        {
+          "id": "cinderella-flag-turn-end",
+          "kind": "triggered",
+          "event": "turnEnd",
+          "conditions": [
+            { "op": "turnOwnerIsSelf" },
+            { "op": "ownFieldHasBuddy" }
+          ],
+          "effects": [
+            { "op": "gainLife", "amount": 1 },
+            { "op": "draw", "amount": 1 },
+            { "op": "putTopDeckToBuddyZoneFaceDown", "amount": 1 }
+          ]
+        }
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": { "buddy": true },
+          "amountFrom": {
+            "source": "buddyZoneCount",
+            "per": { "power": 2000, "defense": 2000 }
+          }
+        }
+      ]
     }
   ]
 }

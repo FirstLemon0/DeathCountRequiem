@@ -332,6 +332,13 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     resolveRockPaperScissors,
     resolveOnEnter,
     resolvePendingResolution,
+    // S-UB-C03 Batch0（Z群回帰テスト用）: 実操作経路の一部として直接呼べるよう追加公開。
+    attackAction,
+    runAttackDeclarationTriggers,
+    cardProtectedFrom,
+    findFieldCardSlot,
+    checkCardConditions,
+    damageReceivedReductionFor,
     setState: (nextState) => {
       state = nextState;
     },

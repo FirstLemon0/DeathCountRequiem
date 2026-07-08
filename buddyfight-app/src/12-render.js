@@ -127,6 +127,10 @@ function renderZones() {
       renderFlagItemZone(zoneButton, player);
       return;
     }
+    if (zone === "buddyzone") {
+      renderBuddyZone(zoneButton, player);
+      return;
+    }
 
     const card = player.field[zone];
     if (zone === "center") {
@@ -145,6 +149,17 @@ function renderZones() {
 function renderDropZone(zoneButton, player) {
   zoneButton.textContent = `ドロップ ${player.drop.length}`;
   zoneButton.title = "クリックして中身を確認";
+}
+
+// Z2(S-UB-C03/0095他): バディゾーンの裏向きパイル表示。枚数は互いに常時公開（公式裁定Q2630）。
+// 中身の閲覧は所有者本人のみ許される（Q2629）が、ローカル対戦(index.html)は元々両者の情報が
+// 同一画面上で共有される非ネット対戦のため、Batch0では枚数バッジ表示のみとする
+// （ネット対戦側の秘匿はengine-host.js viewForで別途担保済み。閲覧UIはDSLバッチ以降の追補候補）。
+function renderBuddyZone(zoneButton, player) {
+  const count = (player.buddyZoneFaceDown || []).length;
+  zoneButton.textContent = count > 0 ? `バディゾーン ${count}` : "バディゾーン";
+  zoneButton.classList.toggle("has-cards", count > 0);
+  zoneButton.title = "裏向きカードの枚数（相手にも公開）";
 }
 
 // 配置魔法は2スロットを1パイルに集約表示（複数設置に対応）。中身はタップ一覧で確認。

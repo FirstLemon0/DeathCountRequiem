@@ -524,6 +524,27 @@ body.seat-flip .player-zone.opponent {
   grid-template-columns: 1fr;
 }
 
+/* Z2(S-UB-C03): バディゾーン裏向きパイル。board-gridの外側に置く単発の細い帯（board-gridの
+   3列グリッドを崩さないため独立した行として配置）。枚数バッジのみ・タップでの中身閲覧は無し
+   （ネット対戦の秘匿はengine-host.js viewForで別途担保、閲覧UIはBatch0後の追補候補）。 */
+.buddyzone-row {
+  margin-top: 6px;
+}
+.buddyzone-pile {
+  min-height: 36px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+  cursor: default;
+}
+.buddyzone-pile.has-cards {
+  color: var(--text);
+  font-weight: 700;
+  border-color: var(--player-accent);
+}
+
 /* 配置魔法は1パイルに集約（ドロップ等と同じ）。タップで一覧ダイアログ。複数設置に対応。 */
 .set-pile {
   min-height: 122px;

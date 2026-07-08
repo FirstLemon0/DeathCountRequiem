@@ -554,6 +554,23 @@ async function runPhaseStartTriggers(event, turnOwner = state.active) {
       });
     }
   }
+  // Z1(S-UB-C03/0095): フラッグの誘発能力。フラッグは場のカードではなく zones 走査(上)にも
+  // ドロップ走査にも乗らないため、両プレイヤーの player.flag を末尾で別途走査する。
+  // フラッグは能力無効化を受けない（公式裁定Q2220: ∞ the Chaos ∞ 先例）ため、runTriggeredAbilities
+  // 冒頭の isAbilitiesNullified(card) ガードは card.type==="flag" で常にスキップされる（05-stats.js）。
+  // turnEnd は両者に配送される（下のendTurn()参照）ため、フラッグ側DSLの
+  // conditions:[{op:"turnOwnerIsSelf"}] で自ターンのみ発火させる（エンジン特殊分岐を作らない）。
+  for (const owner of [turnOwner, 1 - turnOwner]) {
+    const flag = state.players[owner]?.flag;
+    if (flag?.abilities?.length) {
+      await runTriggeredAbilities(flag, event, {
+        card: flag,
+        player: state.players[owner],
+        owner,
+        turnOwner,
+      });
+    }
+  }
 }
 
 function beginPendingAction(action) {
@@ -591,6 +608,17 @@ async function resolvePendingResolution() {
     }
   } finally {
     state.resolvingPending = false;
+    // Z6(S-UB-C03/0054): endFinalPhase効果op(15-ability-effects.js)が立てたstate.pendingEndTurnを、
+    // 対抗確認(pendingAction)の解決が完全にアンワインドしたこの地点で消費してターンを終える。
+    // 必殺技はファイナルフェイズでのみ使用できる(08-card-use.js)ため、この時点でstate.phaseは
+    // 既に"final"のはず。useCardAction側の即時解決(counterTiming)経路にも同じ消費フックがあるが、
+    // 消費時にフラグをfalseへ戻すため二重発火はしない。
+    if (state.pendingEndTurn) {
+      state.pendingEndTurn = false;
+      if (!state.winner && !hasPendingResolution() && state.phase === "final") {
+        await endTurn();
+      }
+    }
     render();
   }
 }

@@ -795,7 +795,7 @@ function aiPickBestAction(actions) {
 function cardValue(card) {
   if (!card) return 0;
   let value = (card.power || 0) / 1000 + (card.defense || 0) / 1000 + (card.critical || 0) * 3;
-  for (const keyword of ["soulguard", "penetrate", "doubleAttack", "tripleAttack", "counterattack", "move"]) {
+  for (const keyword of ["soulguard", "penetrate", "doubleAttack", "tripleAttack", "quadrupleAttack", "counterattack", "move"]) {
     if (hasKeyword(card, keyword)) value += 2;
   }
   return value;

@@ -237,6 +237,13 @@ async function destroyFieldCard(owner, zone, options = {}) {
     addLog(`${card.name}は${options.cause.byBattle ? "攻撃" : "効果"}では破壊されません。`);
     return null;
   }
+  // Z9(S-UB-C03/0072): 「次に場から離れる場合、そのカードを場に残す」。preventNextDestroy等の
+  // 個別置換より先に消費する（destroy専用の各種置換より汎用度が高いため優先）。
+  if (!options.ignoreDestroyReplacement && card.preventNextLeaveFieldCount > 0) {
+    card.preventNextLeaveFieldCount -= 1;
+    addLog(`${card.name}は効果により場に残りました。`);
+    return null;
+  }
   if (!options.ignoreDestroyReplacement && (await applyDestroyReplacement(card, owner, options))) {
     // 置換が成立した場合、カードは破壊されていない（破壊数・破壊時誘発・貫通判定に数えない）
     return null;
@@ -287,6 +294,9 @@ async function destroyFieldCard(owner, zone, options = {}) {
   }
   player.drop.push(card);
   player.field[zone] = null;
+  // r3 L4(S-UB-C03/0066): 裏向きトークン化による印字値の恒久上書きを、ドロップへ移った時点で復元する
+  // （復元しないとドロップで「あの子」のまま名前/rulesが残ってしまう）。
+  restoreFaceDownMonsterPrint(card);
   if (!options.suppressDestroyedTriggers) {
     // 破壊で場からドロップへ（movedToDrop 誘発）。「能力全てを無効化してから破壊」(ラグナロク型)では発火しない。
     queueMovedToDropTriggers(card, owner, "field");
@@ -850,13 +860,14 @@ function queueAllyDestroyedTriggers(card, owner, zone, cause = null) {
 
 // 「場のモンスターが手札/デッキに戻った時」の誘発（D・R・システム / 竜剣 ドラムソード等、場の他カードが反応）。
 // 復帰処理は同期関数のため、破壊/手札破棄の誘発と同じくマイクロタスクで非同期発火する。
-function queueMonsterReturnedTriggers(card, owner, zone) {
+function queueMonsterReturnedTriggers(card, owner, zone, details = {}) {
   if (effectiveCardType(card) !== "monster") {
     return;
   }
   Promise.resolve()
     .then(async () => {
-      await runFieldEventTriggers("monsterReturned", owner, card, zone);
+      // Z14(b)(S-UB-C03/0017): details.returnCause を "monsterReturned" 誘発コンテキストへ伝播する。
+      await runFieldEventTriggers("monsterReturned", owner, card, zone, details);
       render();
     })
     .catch((error) => {
@@ -913,6 +924,8 @@ function dropFieldCardByRule(player, zone) {
   card.soul = [];
   player.drop.push(card);
   player.field[zone] = null;
+  // r3 L4(S-UB-C03/0066): destroyFieldCardと同様、裏向きトークンの印字値をドロップ到達時に復元する。
+  restoreFaceDownMonsterPrint(card);
   queueMovedToDropTriggers(card, state.players.indexOf(player), "field"); // 効果/ルールで場からドロップへ
   if (zone === "item" && player.arrivalCardId === card.instanceId) {
     player.arrivalCardId = null;
@@ -922,7 +935,30 @@ function dropFieldCardByRule(player, zone) {
 }
 
 function canUseSoulguard(card) {
-  return hasKeyword(card, "soulguard") && (card.soul?.length || 0) > 0;
+  return hasKeyword(card, "soulguard") && (card.soul?.length || 0) > 0 && !soulguardNullifiedFor(card);
+}
+
+// Z15(S-UB-C03/0011): 場の継続 nullifySoulguard が card のソウルガードを無効化しているか。
+// 既存の ignoreSoulguard（destroy オプション。特定破壊オプションでの一時無視）とは別レイヤで、
+// 常時「相手のカード全ての『ソウルガード』を無効化する」型の付与を扱う。
+function soulguardNullifiedFor(card) {
+  const targetSlot = findFieldCardSlot(card);
+  if (!targetSlot) {
+    return false;
+  }
+  return state.players.some((player, sourceOwner) =>
+    zones.some((zone) => {
+      const source = player.field[zone];
+      return activeContinuousEffects(source).some((e) => {
+        if (e.op !== "nullifySoulguard") return false;
+        if (e.controller === "self" && targetSlot.owner !== sourceOwner) return false;
+        if (e.controller === "opponent" && targetSlot.owner === sourceOwner) return false;
+        if (e.filter && !matchesCardFilter(card, e.filter)) return false;
+        if (e.conditions && !checkCardConditions(e.conditions, sourceOwner, { card: source, zone })) return false;
+        return true;
+      });
+    }),
+  );
 }
 
 // 「はい/いいえ」の確認を、権威サーバでは該当プレイヤー(owner)へ往復で問う。
@@ -1193,6 +1229,9 @@ async function endTurn() {
   state.chargedThisTurn = false;
   state.drewThisTurn = false;
   state.attacksThisTurn = 0;
+  // Z6(S-UB-C03/0054): endFinalPhase の保留フラグは通常はファイナルフェイズ解決で消費済みだが、
+  // 勝敗確定等で消費されず残った場合に次ターンへ持ち越さないよう、ターン境界で明示クリアする（防御的）。
+  state.pendingEndTurn = false;
   state.attackDestroyedByAttribute = [{}, {}]; // 属性別の攻撃撃破数(このターン)をリセット
   state.destroyedCardsThisTurn = [[], []]; // このターン破壊されたカード記録(destroyedThisTurnMatchingCountGte用)をリセット
   syncMonstersDestroyedThisTurn(); // monstersDestroyedThisTurn は destroyedCardsThisTurn からの導出（リセットで[0,0]になる）
@@ -1201,6 +1240,13 @@ async function endTurn() {
   state.attackRedirectThisTurn = [null, null]; // 攻撃再誘導(ターンスコープ)をリセット
   state.opponentCounterLockThisTurn = []; // 対抗ロック(ターンスコープ)をリセット
   state.turnDestroyImmunity = []; // ターン限定の破壊耐性(対抗フォースフィールド等)をリセット
+  // Z4(e)(S-UB-C03/0043): ターン限定保護(state.turnProtections)は remainingTurnEnds を1減算し、
+  // 0以下になったエントリのみ除去する（turns:2＝ターン終了2回分＝そのターン＋次のターン中、が保持される）。
+  state.turnProtections = (state.turnProtections || [])
+    .map((entry) => ({ ...entry, remainingTurnEnds: (entry.remainingTurnEnds ?? 1) - 1 }))
+    .filter((entry) => entry.remainingTurnEnds > 0);
+  // Z4(f)(S-UB-C03/0051): ターン限定ダメージ軽減は毎ターン全消去（turnDestroyImmunityと同様、多ターン持続なし）。
+  state.turnDamageReductions = [];
   state.lastDamageTaken = [0, 0];
   state.turnDamageEvents = []; // 「武器がダメージを与えたターン中」判定用の蓄積をターン境界でクリア
   state.linkAttackers = [];
@@ -1304,6 +1350,7 @@ function clearTurnModifiers() {
         card.preventNextDestroyCount = 0;
         card.preventNextDestroyEffects = []; // 未発火の破壊置換effect(反撃付与等)が翌ターンへ残留しないようクリア
         card.cannotAttackThisTurn = false; // 「そのターン中攻撃できない」(グレイプニル等)をターン終了で解除
+        card.cannotStandThisTurn = false; // Z14(g)(S-UB-C03/0038): 「そのターン中スタンドできない」をターン終了で解除
         card.turnTreatAsBuddy = false; // 「バディモンスターとして扱う」(treatAsBuddyThisTurn)をターン終了で解除
         // gainNameAsSelected（追加のカード名・ターンスコープ）をリセット。ただし印字の恒久additionalNames
         // (0022の「武神竜王 デュエルズィーガー」等)はベースライン(printedAdditionalNames)へ復元し消さない。

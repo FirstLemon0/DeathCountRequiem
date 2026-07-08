@@ -326,7 +326,9 @@ function fieldAbilityUsable(card, ability, owner, timing) {
     return false;
   }
   return (
-    checkAbilityConditions(ability, owner) &&
+    // context.card を渡す（対抗ウィンドウ中は state.selected が攻撃側等の別カードになり得るため、
+    // pendingBattleInvolvesSelf 等の「このカード」系条件が発生源カードを正しく参照できるように）。
+    checkAbilityConditions(ability, owner, { card }) &&
     canSatisfyAbilityScript(card, ability, owner, { zone: state.selected?.zone })
   );
 }
@@ -646,6 +648,12 @@ function checkCondition(condition, owner, context = {}) {
     const sourceOwner = context.owner ?? state.selected?.owner;
     return sourceOwner === owner && condition.zones?.includes(sourceZone);
   }
+  if (condition.op === "pendingBattleInvolvesSelf") {
+    // S-UB-C03/0083「このカードのバトル中」: 発生源カードが進行中のバトル(pendingAttack)の
+    // 攻撃側 or 防御対象に含まれているときのみ真。fieldAbilityUsable が context.card を渡す。
+    const source = context.card || getSelectedCard();
+    return Boolean(source?.instanceId && pendingBattleCardIds().has(source.instanceId));
+  }
   if (condition.op === "sourceStanding") {
     const source = context.card || getSelectedCard();
     return Boolean(source && !source.used);
@@ -811,6 +819,42 @@ function checkCondition(condition, owner, context = {}) {
     if (condition.byOpponent && !cause.byOpponent) return false;
     if (condition.sourceType && cause.sourceType !== condition.sourceType) return false;
     return true;
+  }
+  if (condition.op === "eventRestCauseMatches") {
+    // Z14(a)(S-UB-C03/0014): 相手のカードが「君のカードの効果で」レストした時、を判定する。
+    // context.restCause は restTarget(15)/restSelectedForScript(14) が makeEffectCause で伝播する。
+    // 攻撃レスト(reason:"attack")は restCause を伝播しないため自動的に不成立になる（対象外仕様）。
+    const cause = context.restCause;
+    if (!cause?.byEffect) return false;
+    if (condition.sourceController === "self" && cause.sourceOwner !== owner) return false;
+    if (condition.sourceController === "opponent" && cause.sourceOwner === owner) return false;
+    if (condition.filter && !matchesCardFilter(cause.sourceCard, condition.filter || {})) return false;
+    return true;
+  }
+  if (condition.op === "eventReturnCauseMatches") {
+    // Z14(b)(S-UB-C03/0017): 相手の場のカードが「君のカードの効果で」手札に戻った時、を判定する。
+    // context.returnCause は returnToHand/returnAllToHand(15)・returnFieldTargetToHand(08)が伝播する。
+    const cause = context.returnCause;
+    if (!cause?.byEffect) return false;
+    if (condition.sourceController === "self" && cause.sourceOwner !== owner) return false;
+    if (condition.sourceController === "opponent" && cause.sourceOwner === owner) return false;
+    if (condition.filter && !matchesCardFilter(cause.sourceCard, condition.filter || {})) return false;
+    return true;
+  }
+  if (condition.op === "eventAttackersInclude") {
+    // Z14(f)(S-UB-C03/0022,0029): この攻撃(連携含む)の攻撃者一覧に filter 一致のカードが含まれるか。
+    // context.attackers は runAttackDeclarationTriggers(09)の"attack"誘発コンテキストに乗る（本Batch0で追加）。
+    // 未指定時（"attack"イベント以外からの参照等）は state.pendingAttack から補完する。
+    const attackers = context.attackers || getPendingAttackers();
+    return attackers.some((a) => {
+      if (condition.excludeSelf && a.card?.instanceId === context.card?.instanceId) return false;
+      return matchesCardFilter(a.card, condition.filter || {});
+    });
+  }
+  if (condition.op === "attacksThisTurnGte") {
+    // Z7(S-UB-C03/0047,0052): このターン中に行われた攻撃回数(state.attacksThisTurn、グローバル・
+    // ターン切替でリセット)がamount以上か。連携攻撃は1回と数える（09-attack.js の加算箇所と同一カウンタ）。
+    return (state.attacksThisTurn || 0) >= (condition.amount ?? 1);
   }
   if (condition.op === "lastDestroySucceeded") {
     // 直前の destroy op が実際に破壊を成立させたか（ソウルガード/破壊耐性で生存した場合は false）。

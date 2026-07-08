@@ -145,6 +145,28 @@ function faceDownCard(card) {
   };
 }
 
+// Z13(S-UB-C03/0066他): 場の裏向きモンスター(faceDownMonster:true)の表示用プレースホルダ。
+// 上書き後のステータス(power/defense/critical/size)のみ見せ、名前/属性/ルール文は秘匿する。
+// 既存bt02-0035（電子式神）にも同型のリークがあり、この一般化で同時に直る（挙動追加のみ・後方互換）。
+// 自席も含め常にマスクする（公式上も裏向きトークンの表は出した本人も見ない読みのため統一する）。
+function faceDownMonsterCard(card) {
+  return {
+    name: "（裏向き）",
+    type: "monster",
+    currentType: "monster",
+    instanceId: card?.instanceId,
+    faceDownMonster: true,
+    size: card?.size,
+    power: card?.power,
+    defense: card?.defense,
+    critical: card?.critical,
+    attributes: [],
+    keywords: [],
+    used: card?.used,
+    soul: hiddenPile(card?.soul),
+  };
+}
+
 // 1ルームのゲームインスタンス。
 class GameRoom {
   constructor(options = {}) {
@@ -247,6 +269,20 @@ class GameRoom {
           if (card && Array.isArray(card.soul) && card.soul.length) {
             card.soul = hiddenPile(card.soul);
           }
+        }
+      }
+      // Z2(S-UB-C03/0095他・公式裁定Q2629/Q2630): バディゾーンの裏向きカードは所有者本人のみ表を見られる。
+      // 相手席からは常に伏せる。観戦系ロールは手札より厳格に扱い、両者とも常に伏せる
+      // （spectatorはown判定が常にfalseになる既存構造上の帰結として、!own を満たせば自動的に対象になる）。
+      if (spectator || !own) {
+        player.buddyZoneFaceDown = hiddenPile(player.buddyZoneFaceDown);
+      }
+      // Z13(S-UB-C03/0066他): 場の裏向きモンスター(faceDownMonster:true)は誰から見てもマスクする
+      // （自席も含む。既存bt02-0035の同型リークもこれで同時に直る）。
+      for (const zone of ["left", "center", "right"]) {
+        const card = player.field[zone];
+        if (card?.faceDownMonster) {
+          player.field[zone] = faceDownMonsterCard(card);
         }
       }
     });

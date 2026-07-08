@@ -133,6 +133,35 @@ function rockPaperScissorsLabel(choice) {
   }[choice] || "未選択";
 }
 
+// Z11(S-UB-C03/0050): 相手のカードの効果で手札が捨てられる場合、手札の handDiscardGuard を持つカードを
+// 公開しコストを払って捨て札を防げる（「その効果で君の手札は捨てられない」）。true を返した時、
+// 呼び出し元(discardHand/discardAllHand)は当該捨て札処理全体をスキップする。
+// カード側キー形: handDiscardGuard:{cost:[{op:"payLife",amount:1}], reveal:true}。
+async function maybeApplyHandDiscardGuard(receiver, context) {
+  const guardCard = (receiver.hand || []).find((card) => card.handDiscardGuard);
+  if (!guardCard) {
+    return false;
+  }
+  const guard = guardCard.handDiscardGuard || {};
+  const receiverOwner = state.players.indexOf(receiver);
+  if (guard.cost?.length && !canPayStructuredCost(receiver, guard.cost, { sourceCard: guardCard }).ok) {
+    return false;
+  }
+  const use = await confirmChoiceAsync(
+    receiverOwner,
+    `${guardCard.name}を公開してコストを払い、手札が捨てられるのを防ぎますか？`,
+    { purpose: "handDiscardGuard" },
+  );
+  if (!use) {
+    return false;
+  }
+  if (guard.cost?.length) {
+    await payStructuredCostWithSelection(receiver, guard.cost, { sourceCard: guardCard });
+  }
+  addLog(`${receiver.name}は${guardCard.name}を公開し、${context.card?.name || "効果"}で手札は捨てられませんでした。`);
+  return true;
+}
+
 async function executeAbilityEffect(effect, context) {
   const target = resolveEffectReference(effect.target, context);
   const player = context.player;
@@ -193,6 +222,28 @@ async function executeAbilityEffect(effect, context) {
     moveTopDeckToSoul(receiver, context.card, effect.amount || 1);
     const moved = (context.card.soul?.length || 0) - before;
     addLog(`${context.card.name}のソウルにデッキの上から${moved}枚を入れました。`);
+  }
+  if (effect.op === "putTopDeckToBuddyZoneFaceDown") {
+    // Z2(S-UB-C03/0095他): デッキ上からamount枚を裏向きで自分のバディゾーンパイルへ置く。
+    // ログにカード名を出さない（ネット対戦で相手にも見えるログからの秘匿カード名リーク防止。Z2秘匿方針）。
+    const receiver = effect.player === "opponent" ? opponent : player;
+    const amount = effect.amountFrom ? resolveAmountFrom(effect.amountFrom, context) : effect.amount || 1;
+    receiver.buddyZoneFaceDown ||= [];
+    let moved = 0;
+    for (let index = 0; index < amount; index += 1) {
+      const card = receiver.deck.pop();
+      if (!card) {
+        break;
+      }
+      receiver.buddyZoneFaceDown.push(card);
+      moved += 1;
+    }
+    if (moved > 0) {
+      addLog(`${receiver.name}はデッキの上から${moved}枚を裏向きでバディゾーンに置きました。`);
+    }
+    if (receiver.deck.length === 0) {
+      declareDeckLoss(receiver);
+    }
   }
   if (effect.op === "moveGaugeToDeckAndShuffle") {
     const receiver = effect.player === "opponent" ? opponent : player;
@@ -289,9 +340,12 @@ async function executeAbilityEffect(effect, context) {
     }
     picked.forEach((c) => player.hand.push(c));
     // altTo:"drop" 指定時は残りをデッキ下でなくドロップへ（H-BT04/0013/0043。lookTopCardPlaceTopOrBottom の altTo と同形）。
+    // altTo:"gauge"（S-UB-C03/0042）は残りをゲージへ。既定(else)はデッキ下(unshift)。
     const rest = revealed.filter((c) => !picked.includes(c));
     if (effect.altTo === "drop") {
       rest.forEach((c) => player.drop.push(c));
+    } else if (effect.altTo === "gauge") {
+      rest.forEach((c) => player.gauge.push(c));
     } else {
       rest.forEach((c) => player.deck.unshift(c));
     }
@@ -405,10 +459,21 @@ async function executeAbilityEffect(effect, context) {
     // player:"opponent" 対応（従来は指定を無視して常に自分の手札を捨てていた潜在バグ。
     // ss01-0030/bt04/bt05 の該当カードもこれで公式テキスト通りになる）。
     const discardTarget = effect.player === "opponent" ? opponent : player;
+    // Z11(S-UB-C03/0050): 相手のカードの効果による捨て札なら handDiscardGuard で置換できるか確認。
+    if (
+      discardTarget !== player &&
+      (await maybeApplyHandDiscardGuard(discardTarget, context))
+    ) {
+      return;
+    }
     discardHandCardsToDrop(discardTarget, discardTarget.hand.splice(0));
   }
   if (effect.op === "discardHand") {
     const receiver = effect.player === "opponent" ? opponent : player;
+    // Z11(S-UB-C03/0050): 「相手のカードの効果で君の手札が捨てられる場合」＝receiver!==playerの時のみ対象。
+    if (receiver !== player && (await maybeApplyHandDiscardGuard(receiver, context))) {
+      return;
+    }
     const amount = Math.min(effect.amount || 1, receiver.hand.length);
     const movedCards = await chooseAndTakeMatchingCards(receiver.hand, effect.filter, amount, context.card, {
       title: `${context.card.name}で捨てる手札`,
@@ -668,7 +733,8 @@ async function executeAbilityEffect(effect, context) {
     }
   }
   if (effect.op === "returnToHand" && target) {
-    returnFieldTargetToHand(target, context.card.name);
+    // Z14(b)(S-UB-C03/0017): 「君のカードの効果で」判定用の returnCause を伝播する。
+    returnFieldTargetToHand(target, context.card.name, { returnCause: makeEffectCause(context, target.owner) });
   }
   if (effect.op === "dischargeSelfFromHostSoul" && context.card && context.hostCard) {
     // ソウルに入っているこのカード自身を、ホスト（武器等）のソウルからドロップへ置く。
@@ -715,6 +781,28 @@ async function executeAbilityEffect(effect, context) {
       addLog(`${context.card.name}を手札に戻しました。`);
     }
   }
+  if (effect.op === "moveSelfToBuddyZoneFaceDown" && context.card) {
+    // Z2(S-UB-C03/0041,0042): 使用中のこのカード自身を、解決後に裏向きで自分のバディゾーンへ置く。
+    // 通常のメインフェイズ魔法解決(resolvePendingSpell 07-actions-turn.js)は executeAbilityBody の
+    // 後に「context.cardMovedが立っていなければ」自動でドロップへ積む設計のため、ここで
+    // cardMoved=true を立てて二重配置(バディゾーン+ドロップ)を防ぐ（moveSelfToTargetSoul等と同型）。
+    // 【対抗】即時解決タイミング(useHandAbilityAction 13-abilities-core.js)は逆に実行前に既にドロップへ
+    // 積まれているため、その場合はドロップから回収してから移す（returnSelfToHandと同型の後追い方式）。
+    const selfPlayer = context.player || state.players[context.owner];
+    if (selfPlayer) {
+      const dropIndex = selfPlayer.drop.findIndex((c) => c.instanceId === context.card.instanceId);
+      if (dropIndex >= 0) {
+        selfPlayer.drop.splice(dropIndex, 1);
+      }
+      selfPlayer.buddyZoneFaceDown ||= [];
+      if (!selfPlayer.buddyZoneFaceDown.some((c) => c.instanceId === context.card.instanceId)) {
+        selfPlayer.buddyZoneFaceDown.push(context.card);
+      }
+      context.cardMoved = true;
+      // ログにカード名を出さない（ネット対戦の相手にも見えるログからの秘匿カード名リーク防止。Z2秘匿方針）。
+      addLog(`${selfPlayer.name}はカードを裏向きでバディゾーンに置きました。`);
+    }
+  }
   if (effect.op === "returnAllToHand") {
     const returnAllTargets = allFieldTargets((card, owner, zone) => {
       if (effect.controller === "self" && owner !== context.owner) {
@@ -737,6 +825,12 @@ async function executeAbilityEffect(effect, context) {
         addLog(`${returned.name}は手札に戻せません。`);
         continue;
       }
+      // Z9(S-UB-C03/0072): 「次に場から離れる場合、そのカードを場に残す」。
+      if (returned.preventNextLeaveFieldCount > 0) {
+        returned.preventNextLeaveFieldCount -= 1;
+        addLog(`${returned.name}は効果により場に残りました。`);
+        continue;
+      }
       ownerPlayer.drop.push(...(returned.soul || []));
       returned.soul = [];
       ownerPlayer.field[candidate.zone] = null;
@@ -753,8 +847,11 @@ async function executeAbilityEffect(effect, context) {
     }
     // 「場のモンスターが手札に戻った時」誘発を逐次 await で発火する。
     // マイクロタスク並列だと消費側の「1ターン1回」が markAbilityLimit 前に複数回パスするため、直列化する。
+    // Z14(b)(S-UB-C03/0017): 「君のカードの効果で」判定用の returnCause を伝播する。
     for (const r of returnedForTriggers) {
-      await runFieldEventTriggers("monsterReturned", r.owner, r.card, r.zone);
+      await runFieldEventTriggers("monsterReturned", r.owner, r.card, r.zone, {
+        returnCause: makeEffectCause(context, r.owner),
+      });
     }
   }
   if (effect.op === "modifyStats") {
@@ -770,7 +867,9 @@ async function executeAbilityEffect(effect, context) {
     if (recipients.length > 0) {
       const duration = effect.duration || (effect.scope ? "turn" : "battle");
       const delta = modifyStatsDelta(effect, context);
-      recipients.forEach((entry) => applyModifyStatsDelta(entry.card, duration, delta));
+      recipients.forEach((entry) =>
+        applyModifyStatsDelta(entry.card, duration, delta, makeEffectCause(context, entry.owner)),
+      );
     }
   }
   if (effect.op === "modifyStatsAll") {
@@ -781,9 +880,11 @@ async function executeAbilityEffect(effect, context) {
       if (effect.controller === "opponent" && owner === context.owner) return false;
       return matchesTargetFilter(card, owner, zone, effect.filter || {});
     }).forEach((entry) => {
-      entry.card[`${prefix}PowerBonus`] += effect.power || 0;
-      entry.card[`${prefix}DefenseBonus`] += effect.defense || 0;
-      entry.card[`${prefix}CriticalBonus`] += effect.critical || 0;
+      // Z4(c)(S-UB-C03/0056): 相手発のAoEステ減少も grantStatDecreaseImmunity 保護を通す。
+      const cause = makeEffectCause(context, entry.owner);
+      entry.card[`${prefix}PowerBonus`] += guardStatDelta(entry.card, "power", effect.power || 0, cause);
+      entry.card[`${prefix}DefenseBonus`] += guardStatDelta(entry.card, "defense", effect.defense || 0, cause);
+      entry.card[`${prefix}CriticalBonus`] += guardStatDelta(entry.card, "critical", effect.critical || 0, cause);
     });
   }
   if (effect.op === "modifyStatsBySelectedCard" && target?.card) {
@@ -823,9 +924,11 @@ async function executeAbilityEffect(effect, context) {
   if (effect.op === "modifyStatsIfTargetAttribute" && target?.card?.attributes?.includes(effect.attribute)) {
     const duration = effect.duration || "battle";
     const prefix = duration === "turn" ? "turn" : "battle";
-    target.card[`${prefix}PowerBonus`] += effect.power || 0;
-    target.card[`${prefix}DefenseBonus`] += effect.defense || 0;
-    target.card[`${prefix}CriticalBonus`] += effect.critical || 0;
+    // Z4(c)(S-UB-C03/0056): 相手発の負デルタは grantStatDecreaseImmunity 保護を通す。
+    const cause = makeEffectCause(context, target.owner);
+    target.card[`${prefix}PowerBonus`] += guardStatDelta(target.card, "power", effect.power || 0, cause);
+    target.card[`${prefix}DefenseBonus`] += guardStatDelta(target.card, "defense", effect.defense || 0, cause);
+    target.card[`${prefix}CriticalBonus`] += guardStatDelta(target.card, "critical", effect.critical || 0, cause);
   }
   if (
     effect.op === "modifyStatsIfTargetName" &&
@@ -834,9 +937,10 @@ async function executeAbilityEffect(effect, context) {
   ) {
     const duration = effect.duration || "battle";
     const prefix = duration === "turn" ? "turn" : "battle";
-    target.card[`${prefix}PowerBonus`] += effect.power || 0;
-    target.card[`${prefix}DefenseBonus`] += effect.defense || 0;
-    target.card[`${prefix}CriticalBonus`] += effect.critical || 0;
+    const cause = makeEffectCause(context, target.owner);
+    target.card[`${prefix}PowerBonus`] += guardStatDelta(target.card, "power", effect.power || 0, cause);
+    target.card[`${prefix}DefenseBonus`] += guardStatDelta(target.card, "defense", effect.defense || 0, cause);
+    target.card[`${prefix}CriticalBonus`] += guardStatDelta(target.card, "critical", effect.critical || 0, cause);
   }
   if (effect.op === "grantKeyword" && target?.card) {
     // duration を counterattack 特別扱いより先に判定する。counterattack+duration:"turn" は
@@ -858,6 +962,13 @@ async function executeAbilityEffect(effect, context) {
     }
   }
   if (effect.op === "dropTargetSoul" && target?.card) {
+    // Z4(b)(S-UB-C03/0012): grantSoulDiscardImmunity で保護されたカードのソウルは相手の効果で捨てられない。
+    // 自発（自分のコスト/ソウルガード等）はcause.byOpponent=falseのためゲート対象外。
+    const soulDiscardCause = makeEffectCause(context, target.owner);
+    if (soulDiscardCause.byOpponent && cardProtectedFrom(target.card, "soulDiscard", soulDiscardCause)) {
+      addLog(`${target.card.name}のソウルは相手のカードの効果で捨てられません。`);
+      return;
+    }
     const amount = effect.amount ?? target.card.soul?.length ?? 0;
     if (amount <= 0) {
       return;
@@ -931,11 +1042,23 @@ async function executeAbilityEffect(effect, context) {
     }
   }
   if (effect.op === "restTarget" && target?.card) {
-    if (await restFieldCard(target.owner, target.zone, target.card, { source: context.card })) {
+    // Z4(a)(S-UB-C03/0021,0077): grantRestImmunity/ターン限定保護で保護されたカードは相手の効果でレストされない。
+    // 攻撃レスト(09:143 reason:"attack")は cause.byBattle 相当でありこの経路を通らないためゲート対象外。
+    const restCause = makeEffectCause(context, target.owner);
+    if (restCause.byOpponent && cardProtectedFrom(target.card, "rest", restCause)) {
+      addLog(`${target.card.name}は相手のカードの効果でレストされません。`);
+      return;
+    }
+    if (await restFieldCard(target.owner, target.zone, target.card, { source: context.card, restCause })) {
       addLog(`${context.card.name}の効果で${target.card.name}をレストしました。`);
     }
   }
   if (effect.op === "standTarget" && target?.card) {
+    // Z14(g)(S-UB-C03/0038): そのターン中スタンドできない場合はスキップ。
+    if (target.card.cannotStandThisTurn) {
+      addLog(`${target.card.name}はそのターン中スタンドできません。`);
+      return;
+    }
     target.card.used = false;
     addLog(`${context.card.name}の効果で${target.card.name}をスタンドしました。`);
   }
@@ -947,11 +1070,16 @@ async function executeAbilityEffect(effect, context) {
       if (effect.controller === "opponent" && owner === context.owner) return false;
       return matchesTargetFilter(card, owner, zone, effect.filter || {});
     });
+    let standCount = 0;
     targets.forEach((t) => {
-      if (t.card) t.card.used = false;
+      // Z14(g)(S-UB-C03/0038): そのターン中スタンドできないカードは対象から除外。
+      if (t.card && !t.card.cannotStandThisTurn) {
+        t.card.used = false;
+        standCount += 1;
+      }
     });
-    if (targets.length > 0) {
-      addLog(`${context.card?.name || "効果"}の効果で${targets.length}枚をスタンドしました。`);
+    if (standCount > 0) {
+      addLog(`${context.card?.name || "効果"}の効果で${standCount}枚をスタンドしました。`);
     }
   }
   if (effect.op === "attackWithAll") {
@@ -1217,6 +1345,18 @@ async function executeAbilityEffect(effect, context) {
       const card = targetCard || state.players[slot.owner]?.field?.[slot.zone];
       state.pendingAttack.targetType = card && effectiveCardType(card) === "monster" ? "monster" : "fieldCard";
       addLog(`${context.card?.name || "効果"}の効果で攻撃対象を${card?.name || "対象"}に変更しました。`);
+    }
+  }
+  if (effect.op === "redirectPendingAttackToSelected" && state.pendingAttack) {
+    // Z12(b)(S-UB-C03/0074): redirectPendingAttackToSelf(自分自身へ)の選択カード版。
+    // var で選んだ場のカードへ進行中の攻撃対象を変更する（redirectPendingAttackToTargetと同型）。
+    const selected = scriptSelection({ var: effect.var }, context)[0]?.card;
+    const slot = selected ? findFieldCardSlot(selected) : null;
+    if (slot) {
+      state.pendingAttack.targetOwner = slot.owner;
+      state.pendingAttack.targetZone = slot.zone;
+      state.pendingAttack.targetType = effectiveCardType(selected) === "monster" ? "monster" : "fieldCard";
+      addLog(`${context.card?.name || "効果"}の効果で攻撃対象を${selected.name}に変更しました。`);
     }
   }
   if (effect.op === "putTopDeckToGaugeEqualToLastDamage") {
@@ -1529,6 +1669,52 @@ async function executeAbilityEffect(effect, context) {
     });
     addLog(`${context.card?.name || "効果"}の効果で、このターン中に対象のモンスターは破壊されなくなりました。`);
   }
+  if (effect.op === "grantTurnProtection") {
+    // Z4(e)(S-UB-C03/0043): 【対抗】等でそのターン(turns:1、既定)または複数ターン(turns:2等)限定の
+    // レスト/能力無効化/手札戻し耐性を付与する。scope:"both"は entry.scope を undefined にすることで
+    // turnProtectionBlocks（05-stats.js）のowner一致判定をスキップし両者対象にする。
+    // state.turnProtections はターン終了(clearTurnModifiers)の都度 remainingTurnEnds を1減算し、
+    // 0で除去する（turns:2 = ターン終了2回分＝そのターン＋次のターン中）。
+    state.turnProtections ||= [];
+    state.turnProtections.push({
+      kinds: effect.kinds || [],
+      owner: context.owner,
+      scope: effect.scope === "both" ? undefined : effect.scope || "self",
+      zoneIn: effect.zoneIn || null,
+      filter: effect.filter || null,
+      remainingTurnEnds: effect.turns || 1,
+    });
+    addLog(`${context.card?.name || "効果"}の効果で保護を付与しました。`);
+  }
+  if (effect.op === "grantTurnDamageReduction") {
+    // Z4(f)(S-UB-C03/0051): そのターン中、受けるダメージを毎回N減らす(damageReceivedReductionForが参照。
+    // 04-cost-resource.js)。既存の継続 damageReceivedReduction（場のカード発）とは独立レイヤ。
+    state.turnDamageReductions ||= [];
+    const reductionOwner = effect.scope === "opponent" ? 1 - context.owner : context.owner;
+    state.turnDamageReductions.push({ owner: reductionOwner, amount: effect.amount || 0 });
+    addLog(`${context.card?.name || "効果"}の効果で、そのターン中に受けるダメージが${effect.amount || 0}減るようになりました。`);
+  }
+  if (effect.op === "setPreventNextLeaveField" && target?.card) {
+    // Z9(S-UB-C03/0072): 次に場から離れる(受動的な破壊/手札戻し等)場合、そのカードを場に残す。
+    // preventNextDestroyCountと異なりターン限定でない（clearTurnModifiersでは消さない・恒久カウンタ）。
+    // 自発の移動(equipSelf等)は対象外＝消費フック側(11/08/15)で受動的離場のみ消費する。
+    target.card.preventNextLeaveFieldCount = (target.card.preventNextLeaveFieldCount || 0) + (effect.amount || 1);
+    addLog(`${context.card?.name || "効果"}の効果で、次に${target.card.name}が場から離れる場合、場に残せるようにしました。`);
+  }
+  if (effect.op === "preventStandThisTurn" && target?.card) {
+    // Z14(g)(S-UB-C03/0038): そのターン中、指定カードはスタンドできない。clearTurnModifiersでクリア。
+    // 既存 preventStandNextTurn(15:1173付近)とは別物・そちらは使わない（0038は「そのターン中」限定）。
+    target.card.cannotStandThisTurn = true;
+    addLog(`${context.card?.name || "効果"}の効果で、${target.card.name}はそのターン中スタンドできなくなりました。`);
+  }
+  if (effect.op === "endFinalPhase") {
+    // Z6(S-UB-C03/0054): ファイナルフェイズを終了しターンを終える。必殺技はファイナルフェイズでのみ
+    // 使用できる(08-card-use.js useCardAction)ため呼び出し時点で state.phase は既に"final"。
+    // endTurn()を直接ここで呼ぶと、呼び出し元(useHandAbilityAction等)の後続処理がターン交代後の
+    // stateを前提外に触ってしまう恐れがあるため、useCardActionの解決アンワインド完了地点
+    // （08-card-use.js末尾）まで実行を遅延させるフラグだけを立てる。
+    state.pendingEndTurn = true;
+  }
   if (effect.op === "setDelayedDestroyAtOpponentTurnEnd" && context.card) {
     context.card.destroyAtEndOfTurnOwner = 1 - context.owner;
   }
@@ -1759,9 +1945,11 @@ function resolveAmountFrom(spec, context) {
   }
   if (spec.source === "targetStat") {
     // 効果の対象($target)のカードの visible stat（破壊する対象のサイズ分ダメージ等）。size も読める。
+    // per 乗数対応（S-UB-C03/0082「そのキャラのサイズの数値分、このカードの攻撃力+3000」= size×3000）。
     const tcard = context.target?.card;
     if (!tcard) return 0;
-    return spec.stat === "size" ? tcard.size || 0 : visibleFieldStat(tcard, spec.stat || "critical");
+    const base = spec.stat === "size" ? tcard.size || 0 : visibleFieldStat(tcard, spec.stat || "critical");
+    return base * (spec.per ?? 1);
   }
   if (spec.source === "damageSourceStat") {
     // ダメージ源(context.damageSource.card)の visible stat（自分がダメージを受けた時、与えてきたカードのサイズ分ダメージ等 0020）。
@@ -1789,6 +1977,14 @@ function resolveAmountFrom(spec, context) {
   if (spec.source === "dropCount") {
     const owner = ownerOf(spec.controller);
     const count = (state.players[owner]?.drop || []).filter((card) => matchesCardFilter(card, spec.filter || {})).length;
+    const capped = spec.max !== undefined ? Math.min(count, spec.max) : count;
+    return capped * (spec.per ?? 1);
+  }
+  if (spec.source === "buddyZoneCount") {
+    // Z1/Z2(S-UB-C03): 指定controllerのバディゾーン裏向きカード枚数×per（既定は自分。「君のバディゾーンの
+    // 裏向きのカードの枚数まで選び」0048/0049等でselectCardsのmaxFromからも同じ経路で使われる）。
+    const owner = ownerOf(spec.controller || "self");
+    const count = (state.players[owner]?.buddyZoneFaceDown || []).length;
     const capped = spec.max !== undefined ? Math.min(count, spec.max) : count;
     return capped * (spec.per ?? 1);
   }
@@ -1875,17 +2071,34 @@ function modifyStatsDelta(effect, context) {
   };
 }
 
-function applyModifyStatsDelta(targetCard, duration, delta) {
+// Z4(c)(S-UB-C03/0056): cause.byOpponent（対象カードの所有者とは異なる側からの効果）の場合のみ、
+// grantStatDecreaseImmunity で保護されたstatの負デルタを0に丸める。自分自身の効果によるデバフは対象外
+// （0056は「相手のカードの効果で」限定・自効果は通す）。cause省略時（発生源不明の旧呼び出し）は
+// 保護を適用しない（挙動不変・後方互換）。
+// Z4(c)(S-UB-C03/0056): 相手発(cause.byOpponent)の負デルタで、grantStatDecreaseImmunity が保護する
+// stat のみ0に丸める共通シンク。単体modifyStats(applyModifyStatsDelta)・AoE(modifyStatsAll)・
+// 条件付き(modifyStatsIfTarget*)の全ステ変更経路がこれを通すことで「相手のカードの効果で減らない」を
+// 一撃op全体に一貫適用する。cause省略/自効果(byOpponent=false)/正デルタは素通し（後方互換）。
+function guardStatDelta(targetCard, stat, value, cause) {
+  return cause?.byOpponent && value < 0 && statDecreaseProtected(targetCard, stat) ? 0 : value;
+}
+
+function applyModifyStatsDelta(targetCard, duration, delta, cause = null) {
+  const guardedDelta = {
+    power: guardStatDelta(targetCard, "power", delta.power, cause),
+    defense: guardStatDelta(targetCard, "defense", delta.defense, cause),
+    critical: guardStatDelta(targetCard, "critical", delta.critical, cause),
+  };
   if (duration === "permanent") {
-    targetCard.power = (targetCard.power || 0) + delta.power;
-    targetCard.defense = (targetCard.defense || 0) + delta.defense;
-    targetCard.critical = (targetCard.critical || 0) + delta.critical;
+    targetCard.power = (targetCard.power || 0) + guardedDelta.power;
+    targetCard.defense = (targetCard.defense || 0) + guardedDelta.defense;
+    targetCard.critical = (targetCard.critical || 0) + guardedDelta.critical;
     return;
   }
   const prefix = duration === "turn" ? "turn" : "battle";
-  targetCard[`${prefix}PowerBonus`] += delta.power;
-  targetCard[`${prefix}DefenseBonus`] += delta.defense;
-  targetCard[`${prefix}CriticalBonus`] += delta.critical;
+  targetCard[`${prefix}PowerBonus`] += guardedDelta.power;
+  targetCard[`${prefix}DefenseBonus`] += guardedDelta.defense;
+  targetCard[`${prefix}CriticalBonus`] += guardedDelta.critical;
 }
 
 function matchesRelativeCardFilter(card, filter = {}, context = {}) {

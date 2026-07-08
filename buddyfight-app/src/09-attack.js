@@ -260,6 +260,37 @@ function applyAttackRedirectContinuous() {
       return;
     }
   }
+  // Z12(a)(S-UB-C03/0009): redirectAttackToFilter — 攻撃対象を、条件に一致する防御側の自陣カードへ変更する
+  // （redirectAttackToSelfの一般化。対象は継続の発生源自身とは限らない。一致ゼロなら変更なし）。
+  for (const zone of zones) {
+    const source = state.players[defenderOwner]?.field?.[zone];
+    if (!source) {
+      continue;
+    }
+    const redirectEffect = activeContinuousEffects(source).find(
+      (effect) =>
+        effect.op === "redirectAttackToFilter" &&
+        checkCardConditions(effect.conditions || [], defenderOwner, { card: source, zone }),
+    );
+    if (!redirectEffect) {
+      continue;
+    }
+    const allowedZones = Array.isArray(redirectEffect.zones) ? redirectEffect.zones : zones;
+    const newZone = allowedZones.find((z) => {
+      const candidate = state.players[defenderOwner]?.field?.[z];
+      return candidate && matchesCardFilter(candidate, redirectEffect.filter || {});
+    });
+    // 一致ゼロ(newZone undefined)や既に当該ゾーンが対象なら、この継続源では変更しない。
+    // 他のリダイレクト源も評価できるよう return ではなく continue（複数源の将来ケース対応）。
+    if (!newZone || pending.targetZone === newZone) {
+      continue;
+    }
+    const newCard = state.players[defenderOwner].field[newZone];
+    pending.targetZone = newZone;
+    pending.targetType = effectiveCardType(newCard) === "monster" ? "monster" : "fieldCard";
+    addLog(`${newCard.name}の効果で攻撃対象が${newCard.name}に変更されました。`);
+    return;
+  }
 }
 
 async function runAttackedTriggers(attackers) {
@@ -326,6 +357,8 @@ async function runAttackDeclarationTriggers(attackers) {
       owner: attacker.owner,
       zone: attacker.zone,
       attack: state.pendingAttack,
+      // Z14(f)(S-UB-C03/0022,0029): 連携攻撃メンバー一覧（eventAttackersInclude条件opが参照）。
+      attackers,
     });
     // 場全体への攻撃誘発（allyAttack/opponentAttack）。設置魔法等の「(味方の)カードが攻撃した時」用（0047/0075）。
     await runFieldEventTriggers("attack", attacker.owner, attacker.card, attacker.zone, {

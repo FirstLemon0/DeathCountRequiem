@@ -252,7 +252,9 @@ function cannotReturnToHand(card) {
       );
     }),
   );
-  return fieldPrevents || soulContinuousGrantsOp(card, "preventReturnToHand");
+  // Z4(e)(S-UB-C03/0043(b)): 【対抗】等でそのターン（＋次ターン等）限定に付与される手札戻し耐性
+  // （state.turnProtections、05-stats.js）。既存の恒久 preventReturnToHand とは独立レイヤ。
+  return fieldPrevents || soulContinuousGrantsOp(card, "preventReturnToHand") || cardProtectedFrom(card, "returnToHand");
 }
 
 function targetSourceConditionMatches(targetSpec, context = {}) {
@@ -372,23 +374,41 @@ function matchesCardFilter(card, filter = {}, options = {}) {
       return false;
     }
   }
-  if (filter.attribute && !card.attributes?.includes(filter.attribute)) {
-    return false;
-  }
-  if (filter.attributeIn && !filter.attributeIn.some((attribute) => card.attributes?.includes(attribute))) {
-    return false;
-  }
-  if (filter.attributeIncludes && !card.attributes?.some((attribute) => attribute.includes(filter.attributeIncludes))) {
-    return false;
-  }
-  if (
-    filter.attributeIncludesAny &&
-    !filter.attributeIncludesAny.some((needle) => card.attributes?.some((attribute) => attribute.includes(needle)))
-  ) {
-    return false;
+  // Z3(S-UB-C03/0028): grantAttribute 継続による付与属性込みの実効属性（effectiveAttributes、05-stats.js）。
+  // filter が属性系キーを1つも持たない大多数の呼び出しでは effectiveAttributes を一切呼ばない
+  // （matchesCardFilterは超高頻度に呼ばれるため、無関係なfilterでも継続走査が走るのを避ける）。
+  if (filter.attribute || filter.attributeIn || filter.attributeIncludes || filter.attributeIncludesAny) {
+    const attributesOf = effectiveAttributes(card);
+    if (filter.attribute && !attributesOf?.includes(filter.attribute)) {
+      return false;
+    }
+    if (filter.attributeIn && !filter.attributeIn.some((attribute) => attributesOf?.includes(attribute))) {
+      return false;
+    }
+    if (filter.attributeIncludes && !attributesOf?.some((attribute) => attribute.includes(filter.attributeIncludes))) {
+      return false;
+    }
+    if (
+      filter.attributeIncludesAny &&
+      !filter.attributeIncludesAny.some((needle) => attributesOf?.some((attribute) => attribute.includes(needle)))
+    ) {
+      return false;
+    }
   }
   // 追加のカード名(gainNameAsSelected 等)も名前判定に含める。
   const cardNames = card.additionalNames?.length ? [card.name, ...card.additionalNames] : [card.name];
+  // Z1(S-UB-C03): filter.buddy — 対象がその所有者の登録バディ(同名)であるか。継続の requireBuddy と
+  // 同じ判定(turnTreatAsBuddyも許容)だが、matchesCardFilter は owner を引数に取らないため
+  // findFieldCardSlot で対象自身の所有者を特定する（場外のカードは buddy 判定不能=false）。
+  if (filter.buddy !== undefined) {
+    const buddySlot = findFieldCardSlot(card);
+    const isBuddy =
+      Boolean(buddySlot) &&
+      (card.turnTreatAsBuddy || cardNames.includes(state.players[buddySlot.owner]?.buddy?.name));
+    if (Boolean(filter.buddy) !== isBuddy) {
+      return false;
+    }
+  }
   if (filter.name && !cardNames.includes(filter.name)) {
     return false;
   }
@@ -399,6 +419,11 @@ function matchesCardFilter(card, filter = {}, options = {}) {
     return false;
   }
   if (filter.nameNot && cardNames.includes(filter.nameNot)) {
+    return false;
+  }
+  // nameNotIncludes（S-UB-C03/0008/0037/0039「[キャラ名]以外」）: 部分一致の否定。本弾のカード名は
+  // 「肩書き＋キャラ名」形式のため、キャラ名を含むカード(＝当人)を除外するには部分一致でなければならない。
+  if (filter.nameNotIncludes && cardNames.some((n) => n.includes(filter.nameNotIncludes))) {
     return false;
   }
   if (filter.keyword && !hasKeyword(card, filter.keyword)) {

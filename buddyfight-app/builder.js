@@ -556,7 +556,9 @@ function unusableCardsForFlag(flag) {
 function isCardAllowedByFlag(flag, card) {
   // 『角王』(deckAnyFlag): ワールドに関係なくどのフラッグのデッキにも入れられる。
   // 投入枚数の制限（ホーム以外なら1枚等）は cardCopyLimitForFlag が別途判定する。
-  if (card?.deckAnyFlag) {
+  // closedPool（S-UB-C03等のロゴ製品フラッグ）は角王のこの素通しを遮断する。角王は原則全フラッグに
+  // 投入可だが、プール完全閉鎖のロゴ製品フラッグだけは例外として自製品カードのみに限定する。
+  if (card?.deckAnyFlag && !flag?.closedPool) {
     return true;
   }
   return isCardNativelyAllowedByFlag(flag, card);

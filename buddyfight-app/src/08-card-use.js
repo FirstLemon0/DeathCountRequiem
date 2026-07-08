@@ -84,6 +84,15 @@ async function useCardAction() {
   if (selectedCard.type === "impact") {
     await castImpact(selectedCard);
   }
+  // Z6(S-UB-C03/0054): endFinalPhase効果op(15-ability-effects.js)が立てた state.pendingEndTurn を、
+  // カード使用の解決が完全にアンワインドしたこの地点で消費してターンを終える。必殺技はファイナルフェイズ
+  // でのみ使用できる(上のcastImpact到達条件)ため、この時点でstate.phaseは既に"final"のはず。
+  if (state.pendingEndTurn) {
+    state.pendingEndTurn = false;
+    if (!state.winner && !hasPendingResolution() && state.phase === "final") {
+      await endTurn();
+    }
+  }
 }
 
 // 場に preventControllerSpellUse フラグを持つ自分のカードがあると、そのコントローラーは魔法を使えない（0016）。
@@ -599,9 +608,12 @@ function resetLeftFieldCardState(card) {
   card.scheduledStatBonus = [];
   card.conditionalSize = null;
   card.currentType = card.baseType || card.type;
+  // r3 L4(S-UB-C03/0066): 裏向きトークン化(faceDownMonster)による印字値の恒久上書きも、
+  // 場を離れたタイミングで印字値へ復元する（restoreFaceDownMonsterPrintがno-opガード付き）。
+  restoreFaceDownMonsterPrint(card);
 }
 
-function returnFieldTargetToHand(target, sourceName = "効果") {
+function returnFieldTargetToHand(target, sourceName = "効果", details = {}) {
   const ownerPlayer = state.players[target.owner];
   const returned = ownerPlayer?.field[target.zone];
   if (!returned) {
@@ -610,6 +622,12 @@ function returnFieldTargetToHand(target, sourceName = "効果") {
   }
   if (cannotReturnToHand(returned)) {
     addLog(`${returned.name}は手札に戻せません。`);
+    return null;
+  }
+  // Z9(S-UB-C03/0072): 「次に場から離れる場合、そのカードを場に残す」。
+  if (returned.preventNextLeaveFieldCount > 0) {
+    returned.preventNextLeaveFieldCount -= 1;
+    addLog(`${returned.name}は効果により場に残りました。`);
     return null;
   }
   ownerPlayer.drop.push(...(returned.soul || []));
@@ -624,7 +642,8 @@ function returnFieldTargetToHand(target, sourceName = "効果") {
   addLog(`${sourceName}で${returned.name}を手札に戻しました。`);
   handleDestroyedDuringPending({ owner: target.owner, zone: target.zone });
   // 「場のモンスターが手札に戻った時」誘発（D・R・システム等）。発生源は既に場から外れている。
-  queueMonsterReturnedTriggers(returned, target.owner, target.zone);
+  // Z14(b)(S-UB-C03/0017): details.returnCause があれば伝播（「君のカードの効果で」判定用）。
+  queueMonsterReturnedTriggers(returned, target.owner, target.zone, details);
   return returned;
 }
 

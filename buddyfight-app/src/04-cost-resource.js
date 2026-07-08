@@ -177,6 +177,13 @@ function damageReceivedReductionFor(owner, byAttack, incomingDamage = Infinity) 
       if (effect.op !== "damageReceivedReduction" || effect.controller === "opponent") {
         return;
       }
+      // Z4(S-UB-C03/0039): 継続 damageReceivedReduction の conditions を評価する（位置限定等）。
+      // 0039「このカードがセンターにいるなら、君が受けるダメージを2減らす」は
+      // conditions:[{op:"sourceZoneIn",zones:["center"]}] を持つ。context に発生源カードの
+      // 在ゾーン(zone)と所有者(owner)を渡し、sourceZoneIn が in-center 判定できるようにする。
+      if (effect.conditions?.length && !checkCardConditions(effect.conditions, owner, { card: source, zone, owner })) {
+        return;
+      }
       if (effect.nonAttackOnly && byAttack) {
         return; // 攻撃以外限定の軽減は攻撃ダメージには効かない
       }
@@ -188,6 +195,17 @@ function damageReceivedReductionFor(owner, byAttack, incomingDamage = Infinity) 
         best = { amount, source: source.name };
       }
     });
+  });
+  // Z4(f)(S-UB-C03/0051): 【対抗】等で付与されたターン限定ダメージ軽減（state.turnDamageReductions）。
+  // 場のカード発の継続 damageReceivedReduction と同じ「最大1件のみ適用（加算しない）」規約に合わせる。
+  (state.turnDamageReductions || []).forEach((entry) => {
+    if (entry.owner !== owner) {
+      return;
+    }
+    const amount = entry.amount || 0;
+    if (amount > 0 && (!best || amount > best.amount)) {
+      best = { amount, source: "ターン限定効果" };
+    }
   });
   return best;
 }

@@ -385,6 +385,15 @@ async function executeAbilityScriptStep(step, context) {
   if (step.op === "callSelfFromHand") {
     return callSelfFromHandForScript(step, context);
   }
+  if (step.op === "callSelfFromSoul") {
+    return callSelfFromSoulForScript(step, context);
+  }
+  if (step.op === "swapFieldPositions") {
+    return swapFieldPositionsForScript(step, context);
+  }
+  if (step.op === "callTopDeckAsMonster") {
+    return callTopDeckAsMonsterForScript(step, context);
+  }
   if (step.op === "callSelectedAsMonster") {
     return callSelectedAsMonsterForScript(step, context);
   }
@@ -606,6 +615,11 @@ function scriptCardMatches(card, owner, zone, step, context) {
     return false;
   }
   if (step.excludeSource === true && card.instanceId === context.card?.instanceId) {
+    return false;
+  }
+  // excludeBattling（S-UB-C03/0074「バトルしていないキャラ1枚を選び」）: 進行中のバトルに
+  // 参加している（攻撃側/防御対象の）カードを候補から除外する。
+  if (step.excludeBattling === true && card.instanceId && pendingBattleCardIds().has(card.instanceId)) {
     return false;
   }
   if (!matchesCardFilter(card, step.filter || {})) {
@@ -880,6 +894,8 @@ function detachFieldCardForMove(owner, zone, expectedCard = null) {
     player.arrivalCardId = null;
   }
   applyLifeLink(card, owner);
+  // r3 L4(S-UB-C03/0066): script経由の場外移動(selectCards/moveSelected等)でも印字値を復元する。
+  restoreFaceDownMonsterPrint(card);
   return card;
 }
 
@@ -1296,7 +1312,14 @@ function modifySelectedStatsForScript(step, context) {
 async function restSelectedForScript(step, context) {
   for (const entry of scriptSelection(step, context)) {
     if (entry.card) {
-      await restFieldCard(entry.owner ?? context.owner, entry.zone, entry.card, { source: context.card });
+      // Z4(a)(S-UB-C03/0021,0077): grantRestImmunity/ターン限定保護で保護されたカードは
+      // 相手の効果でレストされない（cardProtectedFrom、05-stats.js）。
+      const restCause = makeEffectCause(context, entry.owner ?? context.owner);
+      if (restCause.byOpponent && cardProtectedFrom(entry.card, "rest", restCause)) {
+        addLog(`${entry.card.name}は相手のカードの効果でレストされません。`);
+        continue;
+      }
+      await restFieldCard(entry.owner ?? context.owner, entry.zone, entry.card, { source: context.card, restCause });
     }
   }
   return true;
@@ -1394,7 +1417,10 @@ function standSelectedForScript(step, context) {
     const slot = findFieldCardSlot(entry.card);
     if (slot) {
       const live = state.players[slot.owner].field[slot.zone];
-      if (live) {
+      // Z14(g)(S-UB-C03/0038): そのターン中スタンドできないカードはスキップ。
+      if (live && live.cannotStandThisTurn) {
+        addLog(`${live.name}はそのターン中スタンドできません。`);
+      } else if (live) {
         live.used = false;
         if (step.log !== false) {
           addLog(`${live.name}を【スタンド】しました。`);
@@ -1922,6 +1948,191 @@ async function callSelfFromHandForScript(step, context) {
   return true;
 }
 
+// Z5(S-UB-C03/0058): 「このカードがキャラのソウルにあるなら、ソウルにあるこのカードをコールする」。
+// 発見経路: findUsableSoulAbilities（13-abilities-core.js）が既存の soulAbilities 走査で無改修対応
+// （このopを持つ能力自体を soulAbilities に定義する。既存カードはsoulAbilitiesを持たないため後方互換）。
+// このカード自身がどこかの場カードのソウルに入っている前提で、そのソウルから取り出して場へコールする。
+// 0058 のテキストにコールコストの記載が無いためコストは支払わない（callSelfFromHandForScriptとの違い）。
+async function callSelfFromSoulForScript(step, context) {
+  const card = context.card;
+  if (!card) {
+    return { ok: false, reason: "self_missing" };
+  }
+  let host = null;
+  for (let owner = 0; owner < state.players.length && !host; owner += 1) {
+    for (const zone of zones) {
+      const fc = state.players[owner].field[zone];
+      if (fc?.soul?.some((s) => s.instanceId === card.instanceId)) {
+        host = fc;
+        break;
+      }
+    }
+  }
+  if (!host) {
+    addLog(`${card.name}はソウルにありません。`);
+    return step.require === false ? true : { ok: false, reason: "not_in_soul" };
+  }
+  const player = state.players[context.owner];
+  const zone = context.vars?.[step.zoneVar] || step.zone;
+  if (!fieldZones.includes(zone)) {
+    addLog(`${card.name}のコール先を選んでください。`);
+    return { ok: false, reason: "missing_call_zone" };
+  }
+  const soulIndex = host.soul.findIndex((s) => s.instanceId === card.instanceId);
+  const [removed] = host.soul.splice(soulIndex, 1);
+  if (player.field[zone]) {
+    dropFieldCardByRule(player, zone);
+  }
+  removed.conditionalSize = null; // 再コール時は前回のサイズ上書きをリセット
+  player.field[zone] = removed;
+  applyScriptGrantedKeywords(removed, step.grantKeywords || []);
+  enforceSizeLimit(player, zone);
+  addLog(`${removed.name}をソウルから${zoneLabel(zone)}にコールしました。`);
+  if (step.resolveOnEnter !== false) {
+    await resolveOnEnter(removed, player, null, { byEffect: true });
+  }
+  return true;
+}
+
+// Z8(S-UB-C03/0078): 選択2枚(var、同一オーナー・場ゾーン在)のフィールドゾーンを入れ替える。
+// レスト状態・ソウル・ターン修正はカードオブジェクトに載っているため自動追従。継続効果はクエリ時計算
+// （05-stats.js）のため再評価不要。pendingAttackの対象/攻撃者ゾーンも安全のため追従書き換えする。
+function swapFieldPositionsForScript(step, context) {
+  const selected = scriptSelection(step, context);
+  const entryA = selected[0];
+  const entryB = selected[1];
+  if (!entryA?.card || !entryB?.card || entryA.owner !== entryB.owner) {
+    addLog(`${context.card?.name || "効果"}で入れ替えるカードを選んでください。`);
+    return step.require === false ? true : { ok: false, reason: "invalid_swap_selection" };
+  }
+  const owner = entryA.owner;
+  const player = state.players[owner];
+  const zoneA = entryA.zone;
+  const zoneB = entryB.zone;
+  if (!zoneA || !zoneB || zoneA === zoneB) {
+    return step.require === false ? true : { ok: false, reason: "invalid_swap_zones" };
+  }
+  const cardA = player.field[zoneA];
+  const cardB = player.field[zoneB];
+  player.field[zoneA] = cardB;
+  player.field[zoneB] = cardA;
+  const pending = state.pendingAttack;
+  if (pending) {
+    if (pending.targetOwner === owner) {
+      if (pending.targetZone === zoneA) pending.targetZone = zoneB;
+      else if (pending.targetZone === zoneB) pending.targetZone = zoneA;
+    }
+    (pending.attackers || []).forEach((attacker) => {
+      if (attacker.owner !== owner) return;
+      if (attacker.zone === zoneA) attacker.zone = zoneB;
+      else if (attacker.zone === zoneB) attacker.zone = zoneA;
+    });
+    if (pending.attackerOwner === owner) {
+      if (pending.attackerZone === zoneA) pending.attackerZone = zoneB;
+      else if (pending.attackerZone === zoneB) pending.attackerZone = zoneA;
+    }
+  }
+  addLog(`${context.card?.name || "効果"}の効果で${zoneLabel(zoneA)}と${zoneLabel(zoneB)}のカードを入れ替えました。`);
+  return true;
+}
+
+// Z13(S-UB-C03/0066《あの子》): デッキ最上位1枚を見ずに取り、裏向きモンスターとして空きエリアに出す。
+// callSelectedAsMonsterForScript（既存・トークン専用）の配置本体を、デッキトップ直取り版に流用する。
+// selectCards(from:"deck")は全デッキが見える仕様のため使用禁止（このopがデッキトップ直取りを担う）。
+async function callTopDeckAsMonsterForScript(step, context) {
+  const player = context.player || state.players[context.owner];
+  const card = player.deck.pop();
+  if (!card) {
+    addLog(`${context.card?.name || "効果"}の効果を使いましたが、デッキがありません。`);
+    declareDeckLoss(player);
+    return step.require === false ? true : { ok: false, reason: "deck_empty" };
+  }
+  const allowedZones = Array.isArray(step.zones) ? step.zones : fieldZones;
+  const emptyZones = allowedZones.filter((zone) => fieldZones.includes(zone) && !player.field[zone]);
+  if (emptyZones.length === 0) {
+    player.deck.push(card); // 置き場が無ければデッキに戻す（本来は空きエリアがある前提の効果）
+    addLog(`${context.card?.name || "効果"}の効果を使いましたが、置くエリアがありません。`);
+    return true;
+  }
+  let zone = emptyZones[0];
+  if (emptyZones.length > 1) {
+    const selectedZone = await chooseCardEntries(
+      emptyZones.map((candidateZone) => ({
+        card: { name: step.name || "裏向きのカード", rules: [], attributes: [], keywords: [], costs: {} },
+        zone: candidateZone,
+        note: zoneLabel(candidateZone),
+      })),
+      {
+        title: `${context.card?.name || "効果"}のコール先`,
+        lead: "コールするエリアを選んでください。",
+        min: 1,
+        max: 1,
+        forceDialog: true,
+        promptSeat: context.owner,
+        purpose: "move",
+      },
+    );
+    zone = selectedZone?.[0]?.zone || zone;
+  }
+  // r3 L4: 以下は実カード(card)の印字値を裏向きトークン表示用に恒久上書きする。上書き前に
+  // printedFaceDownBackup へ退避しておき、場を離れる時に restoreFaceDownMonsterPrint で復元する
+  // （復元しないと、離場後もドロップ/手札で「あの子」のまま名前/rules/属性/ステータスが残ってしまう）。
+  card.printedFaceDownBackup = {
+    name: card.name,
+    rules: card.rules,
+    attributes: card.attributes,
+    additionalNames: card.additionalNames,
+    printedAdditionalNames: card.printedAdditionalNames,
+    size: card.size,
+    power: card.power,
+    critical: card.critical,
+    defense: card.defense,
+  };
+  card.currentType = "monster";
+  card.faceDownMonster = true;
+  card.name = step.name || card.name;
+  card.additionalNames = [];
+  card.printedAdditionalNames = [];
+  card.size = step.size ?? 0;
+  card.power = step.power ?? 0;
+  card.critical = step.critical ?? 0;
+  card.defense = step.defense ?? 0;
+  card.attributes = step.attributes || [];
+  card.rules = [];
+  card.conditionalSize = null;
+  player.field[zone] = card;
+  enforceSizeLimit(player, zone);
+  if (player.deck.length === 0) {
+    declareDeckLoss(player);
+  }
+  addLog(`${context.card?.name || "効果"}の効果でデッキの上から1枚を裏向きで${zoneLabel(zone)}に置きました。`);
+  return true;
+}
+
+// r3 L4(S-UB-C03/0066《あの子》): callTopDeckAsMonsterForScriptが実カードへ恒久上書きした
+// 裏向きトークン用の表示値(name/rules/attributes/additionalNames/size/power/critical/defense)を、
+// このカードが場を離れる際に printedFaceDownBackup から復元する。faceDownMonster でないカードや
+// バックアップが無いカード（callSelectedAsMonsterForScript由来の既存トークン等）には何もしない。
+// 呼び出し元: resetLeftFieldCardState（手札/デッキへの帰還系）、destroyFieldCard・dropFieldCardByRule
+// （破壊/ドロップ系）、detachFieldCardForMove（scriptによる場外移動系）。
+function restoreFaceDownMonsterPrint(card) {
+  if (!card?.faceDownMonster || !card.printedFaceDownBackup) {
+    return;
+  }
+  const backup = card.printedFaceDownBackup;
+  card.name = backup.name;
+  card.rules = backup.rules;
+  card.attributes = backup.attributes;
+  card.additionalNames = backup.additionalNames;
+  card.printedAdditionalNames = backup.printedAdditionalNames;
+  card.size = backup.size;
+  card.power = backup.power;
+  card.critical = backup.critical;
+  card.defense = backup.defense;
+  card.faceDownMonster = false;
+  delete card.printedFaceDownBackup;
+}
+
 async function callSelectedAsMonsterForScript(step, context) {
   const entry = scriptSelection(step, context)[0];
   const zone = context.vars[step.zoneVar] || step.zone;
@@ -2191,6 +2402,16 @@ function isScriptEffectStep(step) {
     "winGame",
     "lookTopSelectToHandRestToBottom",
     "revealTopDamagePerMatchRestToBottom",
+    // Z2/Z4(e)/Z4(f)/Z6/Z9/Z12(b)/Z14(g)（S-UB-C03）: script(ability.script)からも使えるよう許可リストに追加。
+    "putTopDeckToBuddyZoneFaceDown",
+    "moveSelfToBuddyZoneFaceDown",
+    "redirectPendingAttackToSelected",
+    "grantTurnProtection",
+    "grantTurnDamageReduction",
+    "grantTurnDestroyImmunity",
+    "setPreventNextLeaveField",
+    "preventStandThisTurn",
+    "endFinalPhase",
   ].includes(step.op);
 }
 

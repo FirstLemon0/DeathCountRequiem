@@ -211,6 +211,10 @@ function createPlayer(name, profile) {
     partnerCalled: false,
     arrivalCardId: null,
     oncePerTurn: {},
+    // Z2(S-UB-C03): バディゾーンの裏向きパイル（カード実体の配列）。「登録バディ名一致」を表す
+    // 既存 filter.buddy / player.partnerCalled とは別概念。読む側は必ず (player.buddyZoneFaceDown || []) で
+    // ガードする（旧セーブ/権威サーバ再構築state等、本フィールドを持たない旧state との互換のため）。
+    buddyZoneFaceDown: [],
     field: {
       left: null,
       center: null,

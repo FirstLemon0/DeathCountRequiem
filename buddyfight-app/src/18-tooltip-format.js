@@ -423,6 +423,7 @@ function keywordAliases(keyword) {
     penetrate: ["penetrate", "貫通"],
     doubleAttack: ["doubleAttack", "2回攻撃", "２回攻撃"],
     tripleAttack: ["tripleAttack", "3回攻撃", "３回攻撃"],
+    quadrupleAttack: ["quadrupleAttack", "4回攻撃", "４回攻撃"], // Z14(c)(S-UB-C03/0021)
     lifeLink: ["lifeLink"],
   }[keyword] || [keyword];
 }
