@@ -302,6 +302,11 @@ function populateSavedDecks() {
     ...officialDecks.map((deck) => [deck.id, `公式: ${deck.name}`]),
     ...savedDecks.map((deck) => [deck.id, `保存: ${deck.name}`]),
   ]);
+  // setOptions は select.innerHTML を丸ごと差し替えるため、追補済みの「マイ: 」option も消える。
+  // user-api.js がログイン中ならここで即座に再注入する（未ログイン/未読込なら何もしない）。
+  if (typeof userRefreshMyDeckOptions === "function") {
+    userRefreshMyDeckOptions();
+  }
 }
 
 function setOptions(select, entries) {
@@ -948,7 +953,12 @@ function fromBase64Url(code) {
   return decodeURIComponent(escape(atob(b)));
 }
 function encodeDeckShareCode() {
-  const d = exportableDeck();
+  return encodeDeckObjectShareCode(exportableDeck());
+}
+// 任意のデッキオブジェクト{name,flag,buddy,recipe}をBFD1コード化する。
+// user-api.js の「端末→サーバーへ一括移行」がlocalStorageの各保存済みデッキ（currentDeck以外）を
+// コード化するのに使う（encodeDeckShareCodeはcurrentDeckしか見ないため個別デッキ向けに切り出し）。
+function encodeDeckObjectShareCode(d) {
   const payload = [1, d.name, canonicalFlagId(d.flag), d.buddy || "", d.recipe]; // [version, name, flag, buddy, recipe]
   return "BFD1." + toBase64Url(JSON.stringify(payload));
 }
@@ -1029,6 +1039,21 @@ function loadSavedDecks() {
 
 function loadSelectedSavedDeck() {
   const id = elements.savedDeckSelect.value;
+  if (id.startsWith("mydeck-")) {
+    const profile = typeof userCachedMyDeckProfile === "function" ? userCachedMyDeckProfile(id) : null;
+    if (!profile) {
+      setStatus("マイデッキを読み込めませんでした。もう一度「マイデッキ」を選び直してください。");
+      return;
+    }
+    if (!confirmDiscardIfDirty()) {
+      return;
+    }
+    currentDeck = cloneDeck({ flag: profile.flag, buddy: profile.buddy, name: profile.name, recipe: profile.recipe });
+    updateDeckSnapshot();
+    render();
+    setStatus(`${profile.name}を読み込みました。`);
+    return;
+  }
   const deck = [...officialDecks, ...loadSavedDecks()].find((candidate) => candidate.id === id);
   if (!deck) {
     setStatus("読み込むデッキを選んでください。");
@@ -1047,6 +1072,24 @@ function deleteSelectedSavedDeck() {
   const id = elements.savedDeckSelect.value;
   if (!id) {
     setStatus("削除する保存済みデッキを選んでください。");
+    return;
+  }
+  if (id.startsWith("mydeck-")) {
+    const profile = typeof userCachedMyDeckProfile === "function" ? userCachedMyDeckProfile(id) : null;
+    if (!profile) {
+      setStatus("マイデッキ情報を取得できませんでした。もう一度「マイデッキ」を選び直してください。");
+      return;
+    }
+    if (!window.confirm(`サーバー上のマイデッキ「${profile.name}」を削除します。元に戻せません。よろしいですか？`)) {
+      return;
+    }
+    if (typeof userDeleteMyDeck !== "function") {
+      setStatus("サーバー機能が利用できません。");
+      return;
+    }
+    userDeleteMyDeck(profile.serverId)
+      .then(() => setStatus("マイデッキをサーバーから削除しました。"))
+      .catch((error) => setStatus(`削除に失敗しました: ${error.message}`));
     return;
   }
   if (officialDecks.some((deck) => deck.id === id)) {

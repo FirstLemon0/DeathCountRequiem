@@ -2103,6 +2103,69 @@ body.thin-client:not(.game-started) .hand-dock {
   font-size: 0.85rem;
 }
 
+/* ---- アカウントバー (user-api.js: ユーザー登録＋マイデッキ) ---- */
+/* builder.html/play.html の #accountBar コンテナに userMountAccountBar() が innerHTML で描画する。 */
+.account-bar-slot {
+  grid-column: 1 / -1;
+}
+.account-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgb(var(--panel-rgb) / 0.9);
+  box-shadow: var(--shadow);
+  font-size: 0.85rem;
+}
+.account-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.account-input {
+  width: 140px;
+  min-height: 34px;
+}
+.account-bar button {
+  min-height: 34px;
+  padding: 0 10px;
+}
+.account-name {
+  font-weight: 700;
+  color: var(--text);
+}
+.account-label {
+  color: var(--muted);
+}
+.account-error {
+  color: #ff5d6c;
+  font-size: 0.78rem;
+}
+.account-error:empty {
+  display: none;
+}
+.account-link-button {
+  background: none;
+  border: none;
+  color: var(--primary);
+  text-decoration: underline;
+  min-width: 0;
+  min-height: auto;
+  padding: 0;
+}
+.account-admin-panel {
+  width: 100%;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line-soft);
+}
+.account-admin-panel select {
+  min-width: 220px;
+}
+
 /* 攻撃対象選択中のハイライト: 攻撃可能な相手の対象（モンスターのいるエリア／センター空時は本体＝装備枠）を強調。 */
 .attack-target-highlight {
   outline: 3px solid #ff5d6c;

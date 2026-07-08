@@ -11,11 +11,20 @@ const path = require("path");
 const crypto = require("crypto");
 const { GameRoom } = require("./engine-host");
 const roomStore = require("./room-store");
+const userStore = require("./user-store");
+const deckCode = require("../deck-code");
 
 const rootDir = path.resolve(__dirname, "..");
 // 永続データ(P4)の保存先。token を含むため web root の外に置く（静的配信で漏らさない）。
 const dataDir = process.env.AUTH_DATA_DIR || path.resolve(rootDir, "..", "buddyfight-auth-data");
 const persistTimers = new Map(); // roomId -> debounce timer
+
+// ---- ユーザー登録＋マイデッキ（新規）関連の定数 ----
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30日・利用のたびスライド延長
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const RATE_LIMIT_MAX = 10; // 同一IPで10回/10分（register/login）
+const SCRYPT_KEYLEN = 64;
+const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1 };
 const portArgIndex = process.argv.findIndex((arg) => arg === "--port" || arg === "-p");
 const hostArgIndex = process.argv.findIndex((arg) => arg === "--host" || arg === "-h");
 const port =
@@ -80,6 +89,159 @@ function readJson(req) {
       }
     });
   });
+}
+
+// ---- ユーザー登録＋マイデッキ（新規） ----
+// この節のヘルパ・ルートは /auth/register|login|logout|me|mydecks*|admin/* のみが対象。
+// 既存の部屋API(/auth/rooms/*)は同一オリジンのまま無改変（CORSヘッダも付けない）。
+
+function sendJsonCors(res, statusCode, payload) {
+  const body = JSON.stringify(payload);
+  res.writeHead(statusCode, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Content-Length": Buffer.byteLength(body),
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE",
+  });
+  res.end(body);
+}
+function sendNoContentCors(res, statusCode = 204) {
+  res.writeHead(statusCode, {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE",
+  });
+  res.end();
+}
+
+function isUserApiPath(pathname) {
+  return (
+    pathname === "/auth/register" ||
+    pathname === "/auth/login" ||
+    pathname === "/auth/logout" ||
+    pathname === "/auth/me" ||
+    pathname === "/auth/mydecks" ||
+    pathname.startsWith("/auth/mydecks/") ||
+    pathname === "/auth/admin/users" ||
+    pathname === "/auth/admin/reset-password" ||
+    pathname.startsWith("/auth/admin/users/")
+  );
+}
+
+// scrypt(N=16384,r=8,p=1) パスワードハッシュ。形式 "s1$<saltB64>$<hashB64>"。
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16);
+  const hash = crypto.scryptSync(String(password), salt, SCRYPT_KEYLEN, SCRYPT_PARAMS);
+  return `s1$${salt.toString("base64")}$${hash.toString("base64")}`;
+}
+function verifyPassword(password, passHash) {
+  const parts = String(passHash || "").split("$");
+  if (parts.length !== 3 || parts[0] !== "s1") return false;
+  try {
+    const salt = Buffer.from(parts[1], "base64");
+    const expected = Buffer.from(parts[2], "base64");
+    const actual = crypto.scryptSync(String(password), salt, expected.length, SCRYPT_PARAMS);
+    return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
+  } catch {
+    return false;
+  }
+}
+function generateToken() {
+  return crypto.randomBytes(32).toString("base64url");
+}
+function hashToken(token) {
+  return crypto.createHash("sha256").update(String(token)).digest("hex");
+}
+
+// Authorization: Bearer <token> を検証し、成功時はセッションをスライド延長してユーザーを返す。
+async function authenticateRequest(req) {
+  const header = req.headers["authorization"] || "";
+  const match = /^Bearer\s+(.+)$/i.exec(header);
+  if (!match) return null;
+  const tokenHash = hashToken(match[1].trim());
+  const session = await userStore.getSession(tokenHash);
+  if (!session) return null;
+  const now = Date.now();
+  if (session.expiresAt <= now) {
+    await userStore.deleteSession(tokenHash);
+    return null;
+  }
+  const user = await userStore.getUserById(session.userId);
+  if (!user) return null;
+  await userStore.putSession({ tokenHash, userId: user.id, expiresAt: now + SESSION_TTL_MS });
+  return user;
+}
+
+// register/login のレート制限（同一IPで10回/10分。プロセス内カウンタで十分な個人運用規模）。
+const rateLimitHits = new Map(); // ip -> timestamps[]
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const arr = (rateLimitHits.get(ip) || []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+  if (arr.length >= RATE_LIMIT_MAX) {
+    rateLimitHits.set(ip, arr);
+    return false;
+  }
+  arr.push(now);
+  rateLimitHits.set(ip, arr);
+  return true;
+}
+function clientIp(req) {
+  return req.socket?.remoteAddress || "unknown";
+}
+
+// デッキ保存の検証用データ（全カードID・全フラッグID）。getDeckList と同様の遅延キャッシュ方式だが、
+// engine-host(GameRoom) 経由ではなく data/ 配下を直接読む（GameRoom.loadData はデッキ一覧のみを返し
+// カード/フラッグの全量を公開していないため）。
+let deckValidationCache = null;
+async function getDeckValidationSets() {
+  if (deckValidationCache) return deckValidationCache;
+  const cardIds = new Set();
+  const flagIds = new Set();
+  const stripBom = (text) => text.replace(/^﻿/, "");
+  try {
+    const cardsets = JSON.parse(stripBom(fs.readFileSync(path.join(rootDir, "data", "cardsets.json"), "utf8")));
+    for (const set of cardsets.sets || []) {
+      if (!set.file) continue;
+      try {
+        const data = JSON.parse(stripBom(fs.readFileSync(path.join(rootDir, set.file), "utf8")));
+        for (const card of data.cards || []) {
+          if (card.type === "flag") continue;
+          if (card.id) cardIds.add(card.id);
+        }
+      } catch (error) {
+        console.warn(`[user-store] カードセット読込失敗: ${set.file}: ${error.message}`);
+      }
+    }
+  } catch (error) {
+    console.warn(`[user-store] cardsets.json 読込失敗: ${error.message}`);
+  }
+  try {
+    const flagsData = JSON.parse(stripBom(fs.readFileSync(path.join(rootDir, "data", "flags.json"), "utf8")));
+    for (const flag of flagsData.flags || []) {
+      if (flag.id) flagIds.add(flag.id);
+      for (const alias of flag.aliases || []) flagIds.add(alias);
+    }
+  } catch (error) {
+    console.warn(`[user-store] flags.json 読込失敗: ${error.message}`);
+  }
+  deckValidationCache = { cardIds, flagIds };
+  return deckValidationCache;
+}
+
+// env ADMIN_USER_NAME/ADMIN_USER_PASSWORD があれば起動時に管理者を確保（存在すればパス更新+is_admin=1）。
+async function ensureAdminUser() {
+  const name = process.env.ADMIN_USER_NAME;
+  const password = process.env.ADMIN_USER_PASSWORD;
+  if (!name || !password) return;
+  const passHash = hashPassword(password);
+  const existing = await userStore.getUserByName(name);
+  if (existing) {
+    await userStore.setPassword(existing.id, passHash);
+    await userStore.setAdmin(existing.id, true);
+  } else {
+    await userStore.createUser({ name, passHash, isAdmin: true });
+  }
 }
 
 // ---- 部屋・メンバー・席モデル ----
@@ -380,6 +542,256 @@ async function handleApi(req, res, url) {
 
   if (req.method === "GET" && url.pathname === "/healthz") {
     sendJson(res, 200, { ok: true, rooms: rooms.size });
+    return true;
+  }
+
+  // ---- ユーザー登録＋マイデッキ（新規）。CORS対象はこの節のパスのみ ----
+  if (req.method === "OPTIONS" && isUserApiPath(url.pathname)) {
+    sendNoContentCors(res, 204);
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/auth/register") {
+    if (!checkRateLimit(clientIp(req))) {
+      sendJsonCors(res, 429, { error: "しばらくしてから再試行してください" });
+      return true;
+    }
+    const body = await readJson(req);
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    if (!name || name.length > 24) {
+      sendJsonCors(res, 400, { error: "名前は1〜24字で指定してください" });
+      return true;
+    }
+    if (password.length < 4) {
+      sendJsonCors(res, 400, { error: "パスワードは4字以上で指定してください" });
+      return true;
+    }
+    const existing = await userStore.getUserByName(name);
+    if (existing) {
+      sendJsonCors(res, 409, { error: "その名前は既に使われています" });
+      return true;
+    }
+    const user = await userStore.createUser({ name, passHash: hashPassword(password), isAdmin: false });
+    if (!user) {
+      sendJsonCors(res, 409, { error: "その名前は既に使われています" });
+      return true;
+    }
+    const token = generateToken();
+    await userStore.putSession({ tokenHash: hashToken(token), userId: user.id, expiresAt: Date.now() + SESSION_TTL_MS });
+    sendJsonCors(res, 201, { token, name: user.name, isAdmin: user.isAdmin });
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/auth/login") {
+    if (!checkRateLimit(clientIp(req))) {
+      sendJsonCors(res, 429, { error: "しばらくしてから再試行してください" });
+      return true;
+    }
+    const body = await readJson(req);
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    const user = name ? await userStore.getUserByName(name) : null;
+    if (!user || !verifyPassword(password, user.passHash)) {
+      sendJsonCors(res, 401, { error: "名前またはパスワードが違います" });
+      return true;
+    }
+    const token = generateToken();
+    await userStore.putSession({ tokenHash: hashToken(token), userId: user.id, expiresAt: Date.now() + SESSION_TTL_MS });
+    sendJsonCors(res, 200, { token, name: user.name, isAdmin: user.isAdmin });
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/auth/logout") {
+    const header = req.headers["authorization"] || "";
+    const match = /^Bearer\s+(.+)$/i.exec(header);
+    if (match) {
+      await userStore.deleteSession(hashToken(match[1].trim()));
+    }
+    sendNoContentCors(res, 204);
+    return true;
+  }
+
+  if (req.method === "GET" && url.pathname === "/auth/me") {
+    const user = await authenticateRequest(req);
+    if (!user) {
+      sendJsonCors(res, 401, { error: "unauthorized" });
+      return true;
+    }
+    const deckCount = await userStore.countDecks(user.id);
+    sendJsonCors(res, 200, { name: user.name, isAdmin: user.isAdmin, deckCount });
+    return true;
+  }
+
+  if (req.method === "GET" && url.pathname === "/auth/mydecks") {
+    const user = await authenticateRequest(req);
+    if (!user) {
+      sendJsonCors(res, 401, { error: "unauthorized" });
+      return true;
+    }
+    const decks = await userStore.listDecks(user.id);
+    sendJsonCors(res, 200, { decks });
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/auth/mydecks") {
+    const user = await authenticateRequest(req);
+    if (!user) {
+      sendJsonCors(res, 401, { error: "unauthorized" });
+      return true;
+    }
+    const body = await readJson(req);
+    let payload;
+    try {
+      payload = deckCode.decodeDeckShareCode(body.code);
+    } catch (error) {
+      sendJsonCors(res, 400, { error: `共有コードが不正です: ${error.message}` });
+      return true;
+    }
+    const { cardIds, flagIds } = await getDeckValidationSets();
+    const result = deckCode.validateDeckCodePayload(payload, { cardIds, flagIds });
+    if (!result.ok) {
+      sendJsonCors(res, 400, { error: result.reason });
+      return true;
+    }
+    const limit = Number(process.env.USER_DECK_LIMIT) || 500;
+    const count = await userStore.countDecks(user.id);
+    if (count >= limit) {
+      sendJsonCors(res, 409, { error: "マイデッキの保存上限に達しています" });
+      return true;
+    }
+    const name = typeof body.name === "string" && body.name.trim() ? body.name.trim() : result.normalized.name;
+    const cardCount = result.normalized.recipe.reduce((sum, [, c]) => sum + c, 0);
+    const deck = await userStore.putDeck(user.id, {
+      name,
+      code: String(body.code),
+      flag: result.normalized.flag,
+      buddy: result.normalized.buddy,
+      cardCount,
+      position: count,
+    });
+    sendJsonCors(res, 201, { deck });
+    return true;
+  }
+
+  // PUT/DELETE /auth/mydecks/:id
+  if ((req.method === "PUT" || req.method === "DELETE") && /^\/auth\/mydecks\/[^/]+$/.test(url.pathname)) {
+    const user = await authenticateRequest(req);
+    if (!user) {
+      sendJsonCors(res, 401, { error: "unauthorized" });
+      return true;
+    }
+    const deckId = decodeURIComponent(url.pathname.slice("/auth/mydecks/".length));
+    const existing = await userStore.getDeck(user.id, deckId);
+    if (!existing) {
+      sendJsonCors(res, 404, { error: "デッキが見つかりません" });
+      return true;
+    }
+    if (req.method === "DELETE") {
+      await userStore.deleteDeck(user.id, deckId);
+      sendNoContentCors(res, 204);
+      return true;
+    }
+    const body = await readJson(req);
+    const patch = { id: existing.id };
+    if (typeof body.name === "string" && body.name.trim()) {
+      patch.name = body.name.trim();
+    }
+    if (typeof body.position === "number" && Number.isFinite(body.position)) {
+      patch.position = body.position;
+    }
+    if (typeof body.code === "string" && body.code) {
+      let payload;
+      try {
+        payload = deckCode.decodeDeckShareCode(body.code);
+      } catch (error) {
+        sendJsonCors(res, 400, { error: `共有コードが不正です: ${error.message}` });
+        return true;
+      }
+      const { cardIds, flagIds } = await getDeckValidationSets();
+      const result = deckCode.validateDeckCodePayload(payload, { cardIds, flagIds });
+      if (!result.ok) {
+        sendJsonCors(res, 400, { error: result.reason });
+        return true;
+      }
+      patch.code = body.code;
+      patch.flag = result.normalized.flag;
+      patch.buddy = result.normalized.buddy;
+      patch.cardCount = result.normalized.recipe.reduce((sum, [, c]) => sum + c, 0);
+      if (typeof body.name !== "string" || !body.name.trim()) {
+        patch.name = result.normalized.name;
+      }
+    }
+    const deck = await userStore.putDeck(user.id, { ...existing, ...patch });
+    sendJsonCors(res, 200, { deck });
+    return true;
+  }
+
+  if (req.method === "GET" && url.pathname === "/auth/admin/users") {
+    const user = await authenticateRequest(req);
+    if (!user) {
+      sendJsonCors(res, 401, { error: "unauthorized" });
+      return true;
+    }
+    if (!user.isAdmin) {
+      sendJsonCors(res, 403, { error: "forbidden" });
+      return true;
+    }
+    const users = await userStore.listUsers();
+    sendJsonCors(res, 200, { users });
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/auth/admin/reset-password") {
+    const user = await authenticateRequest(req);
+    if (!user) {
+      sendJsonCors(res, 401, { error: "unauthorized" });
+      return true;
+    }
+    if (!user.isAdmin) {
+      sendJsonCors(res, 403, { error: "forbidden" });
+      return true;
+    }
+    const body = await readJson(req);
+    const targetName = typeof body.name === "string" ? body.name.trim() : "";
+    const newPassword = typeof body.newPassword === "string" ? body.newPassword : "";
+    if (newPassword.length < 4) {
+      sendJsonCors(res, 400, { error: "パスワードは4字以上で指定してください" });
+      return true;
+    }
+    const target = targetName ? await userStore.getUserByName(targetName) : null;
+    if (!target) {
+      sendJsonCors(res, 404, { error: "ユーザーが見つかりません" });
+      return true;
+    }
+    await userStore.setPassword(target.id, hashPassword(newPassword));
+    await userStore.deleteSessionsByUser(target.id);
+    sendNoContentCors(res, 204);
+    return true;
+  }
+
+  if (req.method === "DELETE" && /^\/auth\/admin\/users\/[^/]+$/.test(url.pathname)) {
+    const user = await authenticateRequest(req);
+    if (!user) {
+      sendJsonCors(res, 401, { error: "unauthorized" });
+      return true;
+    }
+    if (!user.isAdmin) {
+      sendJsonCors(res, 403, { error: "forbidden" });
+      return true;
+    }
+    const targetName = decodeURIComponent(url.pathname.slice("/auth/admin/users/".length));
+    if (targetName.toLowerCase() === user.name.toLowerCase()) {
+      sendJsonCors(res, 400, { error: "自分自身は削除できません" });
+      return true;
+    }
+    const target = await userStore.getUserByName(targetName);
+    if (!target) {
+      sendJsonCors(res, 404, { error: "ユーザーが見つかりません" });
+      return true;
+    }
+    await userStore.deleteUser(target.id);
+    sendNoContentCors(res, 204);
     return true;
   }
 
@@ -777,6 +1189,21 @@ if (require.main === module) {
       await restoreRooms();
     } catch (error) {
       console.warn(`[restore] 永続層の初期化/復元に失敗（新規起動として続行）: ${error.message}`);
+    }
+    try {
+      await userStore.init({
+        backend: process.env.USER_STORE_BACKEND || "file",
+        dataDir: path.join(dataDir, "user"),
+        tursoUrl: process.env.TURSO_DATABASE_URL,
+        tursoToken: process.env.TURSO_AUTH_TOKEN,
+      });
+      await ensureAdminUser();
+      await userStore.gcSessions(Date.now());
+      setInterval(() => {
+        userStore.gcSessions(Date.now()).catch((error) => console.warn(`[user-store] gcSessions失敗: ${error.message}`));
+      }, 24 * 60 * 60 * 1000).unref();
+    } catch (error) {
+      console.warn(`[user-store] 初期化に失敗（ユーザー機能は無効のまま続行）: ${error.message}`);
     }
     startServer(server, host, port, { openBrowser: process.argv.includes("--open") });
   })();

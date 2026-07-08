@@ -240,6 +240,7 @@
             <button type="button" class="dp-chip" data-value="">全区分</button>
             <button type="button" class="dp-chip" data-value="official">公式</button>
             <button type="button" class="dp-chip" data-value="developer">開発者</button>
+            <button type="button" class="dp-chip" data-value="mydeck">マイデッキ</button>
             <button type="button" class="dp-chip" data-value="custom">自作</button>
           </div>
           <div class="dp-select-row">

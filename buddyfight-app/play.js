@@ -138,6 +138,11 @@
       option.textContent = `自作: ${deck.name}`;
       select.append(option);
     });
+    // select.innerHTML を丸ごと差し替えたため、user-api.js が追補した「マイ: 」optionも消えている。
+    // ログイン中なら再注入する（user-api.js未ロード/未ログイン時は何もしない）。
+    if (typeof userRefreshMyDeckOptions === "function") {
+      userRefreshMyDeckOptions();
+    }
   }
 
   // ---- SSE ----
