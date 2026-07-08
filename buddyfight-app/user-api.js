@@ -129,6 +129,10 @@
     }
     if (!res.ok) {
       var msg = (data && data.error) || "サーバーエラー (HTTP " + res.status + ")";
+      // サーバがDB接続失敗の理由（detail）を付けている時は原因を画面に出す（登録できない時の切り分け用）。
+      if (data && data.detail) {
+        msg += "（" + data.detail + "）";
+      }
       var err = new Error(msg);
       err.status = res.status;
       throw err;

@@ -117,6 +117,7 @@ function sendNoContentCors(res, statusCode = 204) {
 
 function isUserApiPath(pathname) {
   return (
+    pathname === "/auth/dbhealth" ||
     pathname === "/auth/register" ||
     pathname === "/auth/login" ||
     pathname === "/auth/logout" ||
@@ -579,7 +580,34 @@ async function handleApi(req, res, url) {
   }
   if (isUserApiPath(url.pathname)) {
     // require 経路（スモーク/e2e）でも初期化漏れにならないよう、ユーザールートは必ず初期化を待つ。
-    await ensureUserStoreInitialized();
+    // 初期化（Turso接続・スキーマ作成）が失敗したら、CORS付き503で「本当の理由」をブラウザに返す
+    // （CORS無しの500だとブラウザが読めず「接続できません」に化けて原因不明になるため）。
+    try {
+      await ensureUserStoreInitialized();
+    } catch (error) {
+      sendJsonCors(res, 503, {
+        error: "ユーザーDBに接続できません",
+        detail: String(error && error.message ? error.message : error),
+        backend: process.env.USER_STORE_BACKEND || "file",
+      });
+      return true;
+    }
+  }
+
+  // 接続診断: デプロイ先URL/ローカルでブラウザから開くだけで、バックエンド種別と実DB往復の成否・
+  // 失敗理由が確認できる（登録できない時の一次切り分け用）。認証不要・データは返さない。
+  if (req.method === "GET" && url.pathname === "/auth/dbhealth") {
+    try {
+      const info = await userStore.ping();
+      sendJsonCors(res, 200, { ok: true, ...info });
+    } catch (error) {
+      sendJsonCors(res, 503, {
+        ok: false,
+        backend: process.env.USER_STORE_BACKEND || "file",
+        error: String(error && error.message ? error.message : error),
+      });
+    }
+    return true;
   }
 
   if (req.method === "POST" && url.pathname === "/auth/register") {
@@ -1148,7 +1176,14 @@ const server = http.createServer(async (req, res) => {
     }
     serveStatic(req, res, url);
   } catch (error) {
-    sendJson(res, 500, { error: error.message });
+    // ユーザーAPI経路の例外（Turso往復失敗など）は CORS 付き 503 で本当の理由を返す
+    // （別オリジン配信のbuilder/index から fetch した時、CORS無し500だとブラウザが本文を読めず
+    //  原因不明の「接続できません」になるため）。それ以外は従来どおり 500。
+    if (isUserApiPath(url.pathname)) {
+      sendJsonCors(res, 503, { error: "ユーザーDB処理に失敗しました", detail: error.message });
+    } else {
+      sendJson(res, 500, { error: error.message });
+    }
   }
 });
 

@@ -58,3 +58,21 @@ PORT=8080 AUTH_DATA_DIR=/var/lib/buddyfight-auth pm2 start "npm run start:auth"
 ---
 
 > ネット対戦は権威サーバ版（`/play.html`）に一本化しています。旧・中継版（`netplay.html` / `netplay-server.js`）は使用しません。
+
+
+## ユーザーDB（マイデッキ保管）の環境変数
+
+Render 等の無料枠はファイルシステムが一時的なため、ユーザーDBは外部の Turso を使う。
+ダッシュボードの Environment に以下を設定（値は `../buddyfight-auth-data/turso.conf` と同じもの）:
+
+```
+USER_STORE_BACKEND=turso
+TURSO_DATABASE_URL=libsql://<db名>-<org>.turso.io
+TURSO_AUTH_TOKEN=<Tursoで発行したトークン>
+ADMIN_USER_NAME=<管理者アカウント名>
+ADMIN_USER_PASSWORD=<管理者パスワード>
+```
+
+- 未設定時は file バックエンド（`AUTH_DATA_DIR/user/`）で動く（ローカル開発向け。Render無料枠では再起動で消える）。
+- 管理者は起動時に自動作成/更新される（is_admin=1）。builder にログインすると「管理」からパスワードリセット可。
+- 動作確認: `node server/user-store.smoke.js`（Turso環境変数があれば実DBでも一周する）。

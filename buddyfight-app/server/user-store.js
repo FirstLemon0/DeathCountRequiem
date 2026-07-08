@@ -86,6 +86,11 @@ function deckOf(userId, deckId) {
 // ===================== file backend =====================
 
 const fileImpl = {
+  async ping() {
+    // ファイルバックエンド: データディレクトリが読み書きできるかを確認（実書き込みはしない）。
+    fs.accessSync(fileDir, fs.constants.R_OK | fs.constants.W_OK);
+    return { backend: "file", dataDir: fileDir, userCount: loadUsersState().users.length };
+  },
   async getUserByName(name) {
     const state = loadUsersState();
     const lower = String(name || "").toLowerCase();
@@ -226,7 +231,14 @@ const fileImpl = {
 // ===================== turso backend（libSQL HTTP API v2。fetchのみ・依存追加なし） =====================
 
 function normalizeTursoUrl(u) {
-  return String(u || "").replace(/^libsql:\/\//, "https://");
+  // Turso の URL は libsql:// で配布される。HTTP pipeline は https:// で叩く。
+  // ws(s):// 表記や scheme 無しのホスト名、末尾スラッシュも許容して https:// に正規化する。
+  let s = String(u || "").trim();
+  s = s.replace(/^libsql:\/\//i, "https://").replace(/^wss:\/\//i, "https://").replace(/^ws:\/\//i, "http://");
+  if (!/^https?:\/\//i.test(s)) {
+    s = "https://" + s; // scheme 無し（ホスト名だけ貼られた）場合の保険
+  }
+  return s.replace(/\/+$/, "");
 }
 
 function tursoArg(value) {
@@ -350,6 +362,18 @@ function rowToDeck(row) {
 }
 
 const tursoImpl = {
+  async ping() {
+    // Turso: 実DBへ往復（SELECT 1）して接続・認証・スキーマ健全性を確認する。
+    const r = await tursoExec("SELECT 1 AS ok", []);
+    const rows = tursoRows(r);
+    const usersRows = tursoRows(await tursoExec("SELECT COUNT(*) AS c FROM users", []));
+    return {
+      backend: "turso",
+      host: normalizeTursoUrl(tursoUrl),
+      roundtrip: rows.length ? Number(rows[0].ok) : null,
+      userCount: usersRows.length ? Number(usersRows[0].c) : null,
+    };
+  },
   async getUserByName(name) {
     const result = await tursoExec("SELECT id, name, pass_hash, is_admin, created_at FROM users WHERE name = ?", [String(name || "")]);
     const rows = tursoRows(result);
@@ -511,6 +535,7 @@ module.exports = {
     return backend;
   },
 
+  ping: (...args) => impl().ping(...args),
   getUserByName: (...args) => impl().getUserByName(...args),
   getUserById: (...args) => impl().getUserById(...args),
   createUser: (...args) => impl().createUser(...args),
