@@ -467,6 +467,16 @@ async function selectCardsForScript(step, context) {
     min = resolveAmountFrom(step.minFrom, context);
     max = Math.max(max, min);
   }
+  if (max <= 0) {
+    // 選択上限が0（maxFrom:buddyZoneCount が0 / maxByEmptyFieldZones が0 等）なら、候補が
+    // 残っていても「0枚選択」として解決し、決定不能の選択ダイアログ（罠）を出さない。
+    // allowEmpty:true と同じ扱い。min>0 の必須指定のみ require に従い不成立扱いにする。
+    context.vars[step.var] = [];
+    if (step.emptyMessage) {
+      addLog(step.emptyMessage);
+    }
+    return min > 0 && step.require !== false ? { ok: false, reason: "no_selectable_slots" } : true;
+  }
   recordDiagnosticEvent("effect_script", {
     stage: "select_candidates",
     op: step.op,
