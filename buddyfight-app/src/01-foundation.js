@@ -155,3 +155,65 @@ let longPressTimer = null; // ロングプレス検出タイマー
 let suppressNextZoneClick = false; // ロングプレス後のclick抑制フラグ
 let thinViewerSeat = null; // シンクライアント(play.html)の視点席。手札ドックを常に自分側にする
 
+// --------------------------------------------------------------------------
+// 乱数のシード化（B1）
+// RNG の内部状態は必ず state の中に置く（state.rngSeed / state.rngCounter）。理由: state は
+// 権威サーバの部屋スナップショット永続化・deepClone・engine-host の setState/viewFor で JSON 往復する。
+// RNG 位置をモジュールスコープのクロージャに持つと、サーバ再起動→部屋復元の直後に RNG が巻き戻り、
+// 以降のシャッフル結果が保存前と食い違う。そこでカウンタベースPRNG（(seed, counter) だけで次値が決まる
+// ステートレス実装）を使い、状態を数値2個に抑えて JSON セーフにする。
+// シード未設定（従来経路＝tests/既存スモーク/ローカルの旧挙動）では Math.random に素通しし、
+// 既存挙動を完全に維持する（後方互換絶対）。
+// --------------------------------------------------------------------------
+
+// 32bit uint へ正規化する（null は「シード無し＝素通し」を表す）。
+function normalizeRngSeed(value) {
+  if (value == null) {
+    return null;
+  }
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric >>> 0 : null;
+}
+
+// 記録用シードの生成。種そのものは Math.random ベースでよい（種は決定論の対象外＝記録するための値）。
+// 生成後は state.rngSeed に載り、リプレイ／不具合報告時にユーザーが貼れる。
+function generateRngSeed() {
+  return Math.floor(Math.random() * 0x100000000) >>> 0;
+}
+
+// mulberry32 を (seed, counter) だけで評価するステートレス版。mulberry32(seed) を counter 回
+// 呼んだ時の出目と一致する（内部の加算状態を seed + counter*step で再構成する＝クロージャ状態ゼロ）。
+function mulberry32At(seed, counter) {
+  let a = (seed + Math.imul(counter, 0x6d2b79f5)) | 0;
+  let t = Math.imul(a ^ (a >>> 15), 1 | a);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+// [0,1) の乱数。シード未確立時は Math.random に素通し（＝既存挙動不変）。
+// シードがあれば state.rngCounter を1つ進めて決定的な値を返す。
+function rngNext() {
+  if (!state || state.rngSeed == null) {
+    return Math.random();
+  }
+  state.rngCounter = (state.rngCounter + 1) >>> 0;
+  return mulberry32At(state.rngSeed >>> 0, state.rngCounter);
+}
+
+// [0, maxExclusive) の整数（Fisher-Yates 等）。maxExclusive<=0 は 0。
+function rngInt(maxExclusive) {
+  if (!(maxExclusive > 0)) {
+    return 0;
+  }
+  return Math.floor(rngNext() * maxExclusive);
+}
+
+// シードを載せ直す（state 必須。counter は 0 から）。null を渡すとシード解除＝素通しに戻す。
+function setRngSeed(seed) {
+  if (!state) {
+    return;
+  }
+  state.rngSeed = normalizeRngSeed(seed);
+  state.rngCounter = 0;
+}
+

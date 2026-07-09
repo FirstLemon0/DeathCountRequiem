@@ -180,6 +180,16 @@ class GameRoom {
     this.started = false;
     // 直近に applyAction を呼んだ席（プロンプト往復の既定の宛先＝手番プレイヤー）。
     this.actingSeat = null;
+    // B2: リプレイ記録。true の時 startGame で記録を開始し、applyAction 境界を step として刻む。
+    this.recordReplay = Boolean(options.record);
+    // startGame の入力（seed は下で確定済み）を記録メタとして保持する。
+    this.customDecks = Array.isArray(options.customDecks) ? options.customDecks : [];
+    this.replayDeckIds = null;
+    this.replayFirstSeat = null;
+    // B1: 乱数シードを state に固定して部屋復元／リプレイを決定化する（省略時は生成）。
+    // seed は state.rngSeed に載り、部屋スナップショットに含まれて再起動をまたいで復元される。
+    this.seed =
+      options.seed != null ? options.seed >>> 0 : Math.floor(Math.random() * 0x100000000) >>> 0;
   }
 
   async loadData() {
@@ -188,13 +198,27 @@ class GameRoom {
   }
 
   // deckIds: [seat0, seat1] のデッキID（プリセット/カスタム問わず deckProfiles に存在するID）。
-  startGame(deckIds = []) {
+  // options.firstSeat: 0|1|"random"（省略時 seat0＝既存スモークは不変）。
+  startGame(deckIds = [], options = {}) {
     const profiles = this.api.getDeckProfiles();
     const pick = (i) => (deckIds[i] && profiles.some((d) => d.id === deckIds[i]) ? deckIds[i] : profiles[i]?.id);
     this.api.elements.p1DeckSelect.value = pick(0) || profiles[0]?.id || "";
     this.api.elements.p2DeckSelect.value = pick(1) || profiles[1]?.id || profiles[0]?.id || "";
-    this.api.newGame();
+    this.replayDeckIds = [pick(0) || null, pick(1) || null];
+    this.replayFirstSeat = options.firstSeat != null ? options.firstSeat : null;
+    this.api.newGame({ seed: this.seed, firstSeat: options.firstSeat });
     this.started = true;
+    // B2: 記録モードなら newGame 確定直後に記録を開始する（初期状態はメタとして持ち、以降を step 化）。
+    if (this.recordReplay) {
+      this.api.replayStartRecording({
+        seed: this.seed,
+        firstSeat: this.replayFirstSeat,
+        deckIds: this.replayDeckIds,
+        customDecks: this.customDecks,
+      });
+    }
+    // シードは対戦ログ(state.log)へは載せない（両席へ配信され先読みされる）。運用者は stdout で追う。
+    console.log(`[engine-host] 乱数シード: ${this.seed}`);
     return this.api.getState();
   }
 
@@ -237,8 +261,20 @@ class GameRoom {
     if (!fn) {
       throw new Error(`未知のアクション: ${type}`);
     }
-    await fn();
+    // B2: このアクションを1 step として刻む。プロンプト応答は chooseCardEntries seam が
+    // 現在の step へ自動で溜める。例外時も step を確定させるため finally で閉じる（記録オフなら no-op）。
+    this.api.replayBeginStep(seat, type, params);
+    try {
+      await fn();
+    } finally {
+      this.api.replayEndStep();
+    }
     return this.api.getState();
+  }
+
+  // B2: 記録済みリプレイ（JSONセーフな複製）を取り出す。B3（保存・共有URL）はこれを持ち回る。
+  getRecording() {
+    return this.api.replayGetRecording();
   }
 
   // 役割別の伏せ字 view。role: 0 | 1 | "spectator"。
@@ -249,6 +285,9 @@ class GameRoom {
     // 内部診断データは全状態スナップショット（両者の手札名等）を含むためクライアントへ送らない。
     delete view.diagnosticLog;
     delete view.diagnosticSeq;
+    // B1: 乱数の内部位置はクライアントへ出さない。露出すると以降のシャッフル/ドローを先読みできてしまう。
+    delete view.rngSeed;
+    delete view.rngCounter;
     const spectator = role === "spectator";
     const seat = spectator ? null : Number(role);
     view.players.forEach((player, index) => {
@@ -293,4 +332,39 @@ class GameRoom {
   }
 }
 
-module.exports = { GameRoom, createEngineContext };
+// B2: 記録（recording）から headless で対戦を再現する。
+// 1) seed/firstSeat/デッキで newGame → 2) steps を順に適用し、各 step の間 chooseCardEntries を
+//    「記録された selectedIndexes を順に返す」再生キューに差し替える → 3) 最終 state を返す。
+// step ごとに応答キューを入れ替え、適用後に未消費応答が残っていれば失敗させる（記録過多を検出）。
+// 応答不足は chooseCardEntries seam（replayNextSelection）が投げる。どちらでも「黙って別の対戦」にならない。
+async function replayGame(recording) {
+  if (!recording || typeof recording !== "object") {
+    throw new Error("リプレイ: recording が不正です");
+  }
+  const room = new GameRoom({ seed: recording.seed, customDecks: recording.customDecks || [] });
+  await room.loadData();
+
+  const drain = (label) => {
+    const remaining = room.api.replayPlaybackRemaining();
+    if (remaining > 0) {
+      throw new Error(`リプレイ: ${label} で記録された応答が余りました（${remaining}件・記録過多）`);
+    }
+  };
+
+  // newGame(配牌)中の選択（通常は空）。setup 中もキューを立てておき、想定外の選択要求を即検出する。
+  room.api.replaySetPlaybackQueue(recording.setupResponses || []);
+  room.startGame(recording.deckIds || [], { firstSeat: recording.firstSeat });
+  drain("newGame(setup)");
+
+  const steps = Array.isArray(recording.steps) ? recording.steps : [];
+  for (let index = 0; index < steps.length; index += 1) {
+    const step = steps[index];
+    room.api.replaySetPlaybackQueue(step.promptResponses || []);
+    await room.applyAction(step.seat, step.type, step.params || {});
+    drain(`step#${index}(${step.type})`);
+  }
+  room.api.replayClearPlayback();
+  return room.api.getState();
+}
+
+module.exports = { GameRoom, createEngineContext, replayGame };

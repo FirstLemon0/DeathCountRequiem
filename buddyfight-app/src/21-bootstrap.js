@@ -131,7 +131,11 @@ document.querySelectorAll(".fighter-panel[data-fighter-owner]").forEach((panel) 
   });
 });
 
-elements.newGameButton.addEventListener("click", () => runNetworkMutation("新規ゲーム", newGame));
+// ローカル実プレイ: 記録用シードを生成し、先攻はシード乱数で決める（P1固定を廃止。B1）。
+// ネット対戦は権威サーバが newGame を駆動するため、この経路はローカル対戦専用。
+elements.newGameButton.addEventListener("click", () =>
+  runNetworkMutation("新規ゲーム", () => newGame({ seed: generateRngSeed(), firstSeat: "random" })),
+);
 elements.exportLogButton?.addEventListener("click", downloadBattleLog);
 elements.rulesButton.addEventListener("click", () => elements.rulesDialog.showModal());
 elements.closeRulesButton.addEventListener("click", () => elements.rulesDialog.close());
@@ -269,6 +273,16 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
       resolvePendingResolution,
       toggleCounterHand,
     },
+    // B2: リプレイの記録・再生の制御（engine-host の GameRoom/replayGame から叩く）。
+    replayStartRecording,
+    replayStopRecording,
+    replayGetRecording,
+    replayIsRecording,
+    replayBeginStep,
+    replayEndStep,
+    replaySetPlaybackQueue,
+    replayClearPlayback,
+    replayPlaybackRemaining,
   };
 } else if (globalThis.__BUDDYFIGHT_TEST__) {
   globalThis.__buddyfightTestApi = {
@@ -349,6 +363,29 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
       };
     },
     useCardAction,
+    // B1（乱数シード化）の回帰テスト用: newGame(options)・データ読込・RNG シームを直接叩けるよう公開。
+    // （executeAbilityEffect は上で既に公開済み）
+    newGame,
+    loadGameData,
+    applyDeckValues,
+    rngNext,
+    rngInt,
+    setRngSeed,
+    generateRngSeed,
+    // B2（リプレイ記録・再生）の回帰テスト用: seam を直接叩けるよう公開
+    // （createInstanceId/resolveRockPaperScissors は上で公開済み）。
+    chooseCardEntries,
+    replayStartRecording,
+    replayStopRecording,
+    replayGetRecording,
+    replayIsRecording,
+    replayIsPlaying,
+    replayBeginStep,
+    replayEndStep,
+    replayRecordSelection,
+    replaySetPlaybackQueue,
+    replayClearPlayback,
+    replayPlaybackRemaining,
   };
 } else {
   initializeApp();

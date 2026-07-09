@@ -18,6 +18,7 @@ const rootDir = path.resolve(__dirname, "..");
 // 永続データ(P4)の保存先。token を含むため web root の外に置く（静的配信で漏らさない）。
 const dataDir = process.env.AUTH_DATA_DIR || path.resolve(rootDir, "..", "buddyfight-auth-data");
 const persistTimers = new Map(); // roomId -> debounce timer
+const persistChains = new Map(); // roomId -> 永続化の直列化チェーン(Promise)
 
 // ---- ユーザー登録＋マイデッキ（新規）関連の定数 ----
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30日・利用のたびスライド延長
@@ -33,6 +34,13 @@ const host = process.env.HOST || (hostArgIndex >= 0 ? process.argv[hostArgIndex 
 
 const rooms = new Map();
 const roomTtlMs = 6 * 60 * 60 * 1000;
+const ROOM_TTL_HOURS = Number(process.env.ROOM_TTL_HOURS) || 48; // 永続層(room-store)の古いスナップショット掃除
+const ROOM_PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+// ROOM_STORE_BACKEND 未指定なら USER_STORE_BACKEND を継承（ユーザーDBが turso なら部屋も turso）。
+function resolveRoomStoreBackend() {
+  return process.env.ROOM_STORE_BACKEND || process.env.USER_STORE_BACKEND || "file";
+}
 
 // デッキ一覧（プリセット）の遅延キャッシュ。
 let deckListCache = null;
@@ -316,17 +324,34 @@ function snapshotRoom(room) {
   };
 }
 
+// 同一部屋の永続化を発行順に直列化する。turso backend では save/delete が fetch(数十〜数百ms)で、
+// 直列化しないと (a) 同時飛行した save の完了順が入れ替わり古いスナップショットが新しいものを
+// 上書きする、(b) 部屋削除より後に save が着地して削除済みの部屋がDBに復活する。
+// file backend は同期書込みで実害が無いが、経路を分けず同じチェーンに乗せる。
+function enqueuePersist(roomId, task) {
+  const prev = persistChains.get(roomId) || Promise.resolve();
+  const next = prev
+    .then(task)
+    .catch((error) => {
+      console.warn(`[persist] room ${roomId} の永続化に失敗: ${error.message}`);
+    })
+    .then(() => {
+      if (persistChains.get(roomId) === next) persistChains.delete(roomId);
+    });
+  persistChains.set(roomId, next);
+  return next;
+}
+
 function persistNow(room) {
   // busy(applyAction 途中)はライブ state の途中変異を拾うため保存しない＝整合する確定局面のみ保存。
   if (room.busy) {
     schedulePersist(room);
     return;
   }
-  try {
-    roomStore.save(room.id, snapshotRoom(room));
-  } catch (error) {
-    console.warn(`[persist] room ${room.id} の保存に失敗: ${error.message}`);
-  }
+  // スナップショットは busy=false のこの瞬間に同期で確定させる。チェーン実行時に撮ると、
+  // その時点では次のアクションで busy=true になっていて途中変異した state を保存しうる。
+  const snapshot = snapshotRoom(room);
+  enqueuePersist(room.id, () => roomStore.save(room.id, snapshot));
 }
 
 function schedulePersist(room) {
@@ -339,9 +364,29 @@ function schedulePersist(room) {
   persistTimers.set(room.id, timer);
 }
 
+// 部屋の破棄。保留中のデバウンスを先に止めてから削除をチェーン末尾に積む
+// （止めないと 200ms 後に persistNow が走り、削除済みの部屋を保存し直してしまう）。
+function persistDelete(roomId) {
+  const timer = persistTimers.get(roomId);
+  if (timer) {
+    clearTimeout(timer);
+    persistTimers.delete(roomId);
+  }
+  return enqueuePersist(roomId, () => roomStore.delete(roomId));
+}
+
+// 指定部屋の永続化チェーンが空になるまで待つ（テスト用。連鎖中に積まれた分も待つ）。
+async function flushPersist(roomId) {
+  let guard = 0;
+  while (persistChains.has(roomId) && guard < 100) {
+    guard += 1;
+    await persistChains.get(roomId);
+  }
+}
+
 // 起動時に永続ファイルから rooms を再構築・局面復元（members は sse=null で再接続待機）。
 async function restoreRooms() {
-  for (const snap of roomStore.loadAll()) {
+  for (const snap of await roomStore.loadAll()) {
     try {
       const room = {
         id: snap.id,
@@ -597,14 +642,28 @@ async function handleApi(req, res, url) {
   // 接続診断: デプロイ先URL/ローカルでブラウザから開くだけで、バックエンド種別と実DB往復の成否・
   // 失敗理由が確認できる（登録できない時の一次切り分け用）。認証不要・データは返さない。
   if (req.method === "GET" && url.pathname === "/auth/dbhealth") {
+    // room-store は起動直後(require経路のスモーク等)だと未initの場合があるため個別に try する
+    // （既存キー(ok/backend/...)は壊さず、roomBackend/roomCountを追加するだけ）。
+    let roomInfo = { roomBackend: resolveRoomStoreBackend(), roomCount: null, roomError: null };
+    try {
+      if (roomStore.isInitialized()) {
+        const info = await roomStore.ping();
+        roomInfo = { roomBackend: info.backend, roomCount: info.roomCount, roomError: null };
+      } else {
+        roomInfo.roomError = "room-store 未初期化";
+      }
+    } catch (error) {
+      roomInfo.roomError = String(error && error.message ? error.message : error);
+    }
     try {
       const info = await userStore.ping();
-      sendJsonCors(res, 200, { ok: true, ...info });
+      sendJsonCors(res, 200, { ok: true, ...info, ...roomInfo });
     } catch (error) {
       sendJsonCors(res, 503, {
         ok: false,
         backend: process.env.USER_STORE_BACKEND || "file",
         error: String(error && error.message ? error.message : error),
+        ...roomInfo,
       });
     }
     return true;
@@ -1133,7 +1192,8 @@ async function startGame(room) {
   const game = new GameRoom({ customDecks, onPrompt: (req) => dispatchPrompt(room, req) });
   await game.loadData();
   const deckIds = [seat0.deck?.id, seat1.deck?.id];
-  game.startGame(deckIds);
+  // B1: 先攻は部屋作成者(seat0)固定を廃止し、シード乱数で決める（GameRoom がシードを生成・記録）。
+  game.startGame(deckIds, { firstSeat: "random" });
   room.game = game;
   room.started = true;
 }
@@ -1193,7 +1253,7 @@ setInterval(() => {
     const anyOnline = [...room.members.values()].some((m) => m.sse);
     if (!anyOnline && now - room.updatedAt > roomTtlMs) {
       rooms.delete(roomId);
-      roomStore.delete(roomId); // 孤児スナップショットも掃除
+      persistDelete(roomId); // 孤児スナップショットも掃除（飛行中の save より必ず後に着地する）
     }
   }
 }, 10 * 60 * 1000).unref();
@@ -1251,8 +1311,24 @@ if (require.main === module) {
   // 直接起動時のみ永続層を初期化し rooms を復元（モジュール import 経路＝スモークでは復元しない）。
   (async () => {
     try {
-      roomStore.init({ dataDir });
+      await roomStore.init({
+        backend: resolveRoomStoreBackend(),
+        dataDir,
+        tursoUrl: process.env.TURSO_DATABASE_URL,
+        tursoToken: process.env.TURSO_AUTH_TOKEN,
+      });
       await restoreRooms();
+      const maxAgeMs = ROOM_TTL_HOURS * 60 * 60 * 1000;
+      const pruned = await roomStore.pruneExpired(maxAgeMs);
+      if (pruned) console.log(`[room-store] 期限切れの部屋スナップショットを ${pruned} 件削除しました`);
+      setInterval(() => {
+        roomStore
+          .pruneExpired(maxAgeMs)
+          .then((n) => {
+            if (n) console.log(`[room-store] 期限切れの部屋スナップショットを ${n} 件削除しました`);
+          })
+          .catch((error) => console.warn(`[room-store] pruneExpired失敗: ${error.message}`));
+      }, ROOM_PRUNE_INTERVAL_MS).unref();
     } catch (error) {
       console.warn(`[restore] 永続層の初期化/復元に失敗（新規起動として続行）: ${error.message}`);
     }
@@ -1279,4 +1355,7 @@ module.exports = {
   startServer,
   snapshotRoom,
   restoreRooms,
+  persistNow,
+  persistDelete,
+  flushPersist,
 };

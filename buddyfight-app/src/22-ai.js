@@ -991,7 +991,7 @@ function aiChooseSelection(normalized, options) {
     case "search":
       return byValueDesc().slice(0, Math.max(options.min, 1));
     case "rps":
-      return [normalized[Math.floor(Math.random() * normalized.length)]];
+      return [normalized[rngInt(normalized.length)]]; // B1: シード乱数（未設定時は Math.random 素通し）
     case "move": {
       const center = normalized.find((entry) => entry.zone === "center");
       if (center) {
@@ -1122,7 +1122,9 @@ function aiBeforeNewGame() {
   }
   const select = document.querySelector("#p2DeckSelect");
   if (select && select.value === "__cpu_random__" && deckProfiles.length) {
-    const profile = deckProfiles[Math.floor(Math.random() * deckProfiles.length)];
+    // aiBeforeNewGame は newGame の state 再構築より前に走るため、ここでの rng は前ゲームの seed
+    // （初回や未設定時は Math.random）に従う。デッキ選択のランダム性としては十分（B1）。
+    const profile = deckProfiles[rngInt(deckProfiles.length)];
     select.value = profile.id;
     aiUi.restoreRandomDeck = true;
   }
@@ -1143,8 +1145,10 @@ function aiAfterNewGame() {
   if (!aiEnabled()) {
     return; // CPUモードOFF: 先攻は従来どおりプレイヤー1固定（既存挙動不変）
   }
+  // 先攻決定は newGame と同じ resolveFirstSeat に集約（重複排除）。CPU-UI は "0"/"1"/"random" 値。
+  // UI が無い（ヘッドレス）場合は従来どおりランダム。newGame が options.firstSeat で置いた値を上書きする。
   const preference = aiUi.firstSelect?.value;
-  const firstSeat = preference === "0" || preference === "1" ? Number(preference) : Math.random() < 0.5 ? 0 : 1;
+  const firstSeat = resolveFirstSeat(preference === "0" || preference === "1" ? preference : "random");
   state.active = firstSeat;
   addLog(`CPU対戦: 先攻は${state.players[firstSeat].name}です。`);
 }

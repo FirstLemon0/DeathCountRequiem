@@ -17,7 +17,8 @@ async function initializeApp() {
     initializeDeckSelectors();
     initializeNetworkUi();
     disableAllActions(false);
-    newGame();
+    // ローカル実プレイ: 記録用シードを生成し、先攻はシード乱数で決める（P1固定を廃止。B1）。
+    newGame({ seed: generateRngSeed(), firstSeat: "random" });
   } catch (error) {
     elements.turnLabel.textContent = "読込失敗";
     elements.selectionLabel.textContent = error.message;
@@ -165,6 +166,14 @@ function validateCardCanBeUsedByOwner(owner, card) {
 }
 
 function createInstanceId() {
+  // B2: シードが確立している間は state 常駐カウンタから決定的な id を振る。理由: randomUUID だと
+  // 同じシードで再生しても instanceId が変わり「再生結果が元と完全一致する」ことを機械検証できない。
+  // カウンタは state に置く（rngCounter と同じく JSON 往復・部屋復元で保たれる）。
+  // シード未設定（従来経路＝tests/既存スモーク/ローカルの旧挙動）は randomUUID のまま＝後方互換絶対。
+  if (state && state.rngSeed != null) {
+    state.instanceSeq = (state.instanceSeq || 0) + 1;
+    return `c${state.instanceSeq}`;
+  }
   return globalThis.crypto?.randomUUID?.() ?? `card-${Date.now()}-${Math.random()}`;
 }
 
@@ -181,7 +190,7 @@ function makeDeck(recipe) {
 function shuffle(cards) {
   const copy = [...cards];
   for (let index = copy.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
+    const swapIndex = rngInt(index + 1); // シード確立時は決定的、未設定時は Math.random 素通し（B1）
     [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
   }
   return copy;
@@ -189,7 +198,7 @@ function shuffle(cards) {
 
 function shuffleInPlace(cards) {
   for (let index = cards.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
+    const swapIndex = rngInt(index + 1); // 同上（B1: 山札シャッフルの再現性）
     [cards[index], cards[swapIndex]] = [cards[swapIndex], cards[index]];
   }
   return cards;
@@ -238,16 +247,36 @@ function createPlayer(name, profile) {
   return player;
 }
 
-function newGame() {
+// 先攻席の決定（B1）。0/1 は固定、"random" は rng 抽選、それ以外（未指定）は従来どおり 0。
+// 後方互換: 呼び出し側が firstSeat を渡さない限り seat0 固定＝既存の tests/スモークは不変。
+function resolveFirstSeat(preference) {
+  if (preference === 0 || preference === "0") {
+    return 0;
+  }
+  if (preference === 1 || preference === "1") {
+    return 1;
+  }
+  if (preference === "random") {
+    return rngInt(2);
+  }
+  return 0;
+}
+
+// options.seed: 乱数シード（省略時は素通し＝従来挙動）。options.firstSeat: 0|1|"random"（省略時 seat0）。
+function newGame(options = {}) {
   if (typeof aiBeforeNewGame === "function") {
     aiBeforeNewGame(); // CPU対戦(src/22): CPU席の反映・CPUデッキのランダム選択（OFF時は素通り）
   }
+  // シードは最初のシャッフル（createPlayer→makeDeck→shuffle は rngNext→state.rngSeed を読む）より
+  // 前に state へ確立する必要がある。そのため骨格 state を先に代入してから players を埋める（順序が命）。
+  const seed = normalizeRngSeed(options.seed);
   state = {
-    players: [
-      createPlayer("プレイヤー1", selectedDeckProfile(0)),
-      createPlayer("プレイヤー2", selectedDeckProfile(1)),
-    ],
+    players: [],
     active: 0,
+    rngSeed: seed,
+    rngCounter: 0,
+    // B2: 決定的 instanceId のカウンタ（createInstanceId がシード確立時に消費）。state に載せて JSON 往復で保つ。
+    instanceSeq: 0,
     phase: "charge",
     selected: null,
     chargedThisTurn: false,
@@ -278,11 +307,27 @@ function newGame() {
     diagnosticSeq: 0,
     fightId: createFightId(),
   };
+  // シード確立後に players を組み立てる（この中の shuffle が確定シードを使う）。
+  state.players = [
+    createPlayer("プレイヤー1", selectedDeckProfile(0)),
+    createPlayer("プレイヤー2", selectedDeckProfile(1)),
+  ];
+  // 先攻はオプトイン。CPU対戦時は下の aiAfterNewGame が CPU-UI の選択で上書きする。
+  state.active = resolveFirstSeat(options.firstSeat);
+  // シードは不具合報告・リプレイ用にログへ残すが、権威サーバでは絶対に残さない。
+  // state.log は viewFor で伏せられず両席へ配信される。シードが相手に見えると、
+  // 消費数（シャッフル2回＝98、先攻抽選＋1）が決定的なので以降の全シャッフル/ドローを
+  // 先読みできてしまう（viewFor が rngSeed/rngCounter を消しても意味がない）。
+  // サーバ側はシードを stdout と state.rngSeed（スナップショット）で追える。
+  if (seed != null && !globalThis.__BUDDYFIGHT_SERVER__) {
+    addLog(`乱数シード: ${seed}`);
+  }
   addLog(`ゲーム開始。${ruleEraLabel}で進行します。`);
   if (typeof aiAfterNewGame === "function") {
     aiAfterNewGame(); // CPU対戦(src/22): 先攻の適用（ランダム/選択）・AIターンスコープのリセット
   }
-  // 先攻はCPU対戦フックが変更しうるため、確定後の activePlayer 名でログする（OFF時は従来どおりプレイヤー1）。
+  // 先攻は firstSeat オプション／CPU対戦フックで変わりうるため、確定後の activePlayer 名でログする
+  // （firstSeat 省略時は seat0＝プレイヤー1固定で従来どおり）。
   addLog(`先攻1ターン目はスタートフェイズのドローを行いません。${activePlayer().name}のチャージから開始します。`);
   render();
 }

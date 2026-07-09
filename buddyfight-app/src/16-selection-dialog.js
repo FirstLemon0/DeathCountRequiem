@@ -24,7 +24,24 @@ async function chooseDeckCardIndex(player, predicate, title) {
   return selected?.[0]?.index ?? -1;
 }
 
+// B2: リプレイの記録・再生はこの seam を通す。プロンプト応答（選択ダイアログ・じゃんけん・確認）は
+// すべて chooseCardEntries に集約されているため、ここ1箇所でローカルUI・CPU・権威サーバ・60秒タイムアウト
+// 自動確定の全経路を同形で捕捉/再現できる（HTTP 層ではなくエンジン seam で扱う理由）。
+// - 再生中: 記録された選択をそのまま返し、本体（Impl）は実行しない。
+// - 記録中: 本体の戻り値（＝実際に確定した選択）を返る直前に記録する。
+// - 記録も再生もオフの時は関数呼び出し2回ぶんだけで素通し（オーバーヘッド実質ゼロ）。
 async function chooseCardEntries(candidates, options = {}) {
+  if (typeof replayIsPlaying === "function" && replayIsPlaying()) {
+    return replayNextSelection(candidates);
+  }
+  const result = await chooseCardEntriesImpl(candidates, options);
+  if (typeof replayIsRecording === "function" && replayIsRecording()) {
+    replayRecordSelection(result);
+  }
+  return result;
+}
+
+async function chooseCardEntriesImpl(candidates, options = {}) {
   const normalized = (candidates || []).map((candidate, index) => ({
     ...candidate,
     choiceIndex: index,

@@ -441,7 +441,7 @@ async function executeAbilityEffect(effect, context) {
     if (!source?.card) {
       return;
     }
-    if (effect.chance !== undefined && Math.random() >= effect.chance) {
+    if (effect.chance !== undefined && rngNext() >= effect.chance) { // B1: シード乱数で成否を再現可能に
       addLog(`${context.card.name}の判定は成功しませんでした。`);
       return;
     }
@@ -1850,7 +1850,7 @@ async function resolveTopTwoRevealOneOpponentRandomToHandOrGauge(effect, context
     },
   );
   const revealed = selected?.[0]?.card || cards[0];
-  const randomPick = cards[Math.floor(Math.random() * cards.length)];
+  const randomPick = cards[rngInt(cards.length)]; // B1: シード乱数（未設定時は Math.random 素通し）
   const destination = randomPick.name === revealed.name ? "hand" : "gauge";
   player[destination].push(...cards);
   addLog(
