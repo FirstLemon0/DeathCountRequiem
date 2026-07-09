@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>バディファイト リプレイ再生</title>
+    <link rel="stylesheet" href="styles.css?v=20260710b" />
+    <style>
+      /* 再生ビューア: 盤面/操作パネル/ツールバーは閲覧専用（クリックで局面を壊さないよう無効化）。
+         局面の変化は下の再生コントロール（最初から/1ステップ/最後まで）だけで進める。 */
+      .playmat,
+      .action-panel,
+      .topbar .toolbar {
+        pointer-events: none;
+      }
+      .replay-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        padding: 10px 14px;
+        margin: 8px 0;
+        border-radius: 10px;
+        background: rgba(127, 127, 127, 0.12);
+      }
+      .replay-controls button {
+        pointer-events: auto;
+        padding: 8px 14px;
+        font-size: 1em;
+        cursor: pointer;
+      }
+      .replay-controls .replay-status {
+        font-weight: 600;
+      }
+      .replay-controls .replay-meta {
+        opacity: 0.75;
+        font-size: 0.9em;
+      }
+    </style>
+    <script>
+      // テーマbootstrap(描画前にdata-themeを確定しFOUC回避)。3画面共通。
+      (function () {
+        try {
+          var saved = localStorage.getItem("bf-theme");
+          if (saved === "light" || saved === "dark") {
+            document.documentElement.setAttribute("data-theme", saved);
+          }
+        } catch (e) {}
+        function effective() {
+          return (
+            document.documentElement.getAttribute("data-theme") ||
+            (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
+          );
+        }
+        window.updateThemeToggleIcon = function () {
+          var btn = document.getElementById("themeToggle");
+          if (!btn) return;
+          var mode = effective();
+          btn.textContent = mode === "light" ? "\u{1F319}" : "☀️";
+        };
+        window.toggleTheme = function () {
+          var next = effective() === "light" ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", next);
+          try { localStorage.setItem("bf-theme", next); } catch (e) {}
+          window.updateThemeToggleIcon();
+        };
+        document.addEventListener("DOMContentLoaded", window.updateThemeToggleIcon);
+      })();
+    </script>
+    <script>
+      // リプレイ再生専用ページ: 対話操作・ネットUI・自動開始はせず、再生ドライバの起点だけを使う。
+      window.__BUDDYFIGHT_REPLAY__ = true;
+    </script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">対戦リプレイ</p>
+          <h1>バディファイト リプレイ再生</h1>
+        </div>
+        <div class="toolbar" aria-label="ゲーム操作">
+          <button type="button" id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="テーマ切替" style="pointer-events:auto">☀️</button>
+          <label class="deck-picker"><span>1P</span><select id="p1DeckSelect" aria-label="プレイヤー1のデッキ"></select></label>
+          <label class="deck-picker"><span>2P</span><select id="p2DeckSelect" aria-label="プレイヤー2のデッキ"></select></label>
+          <a class="toolbar-link" href="index.html" style="pointer-events:auto">ローカル対戦</a>
+          <a class="toolbar-link" href="play.html" style="pointer-events:auto">ネット対戦</a>
+          <button id="newGameButton" type="button">新規</button>
+          <button id="exportLogButton" type="button">ログ保存</button>
+          <button id="rulesButton" type="button">ルール</button>
+        </div>
+      </header>
+
+      <div class="replay-controls" aria-label="リプレイ操作">
+        <button type="button" id="replayResetButton">⏮ 最初から</button>
+        <button type="button" id="replayStepButton">▶ 1ステップ進む</button>
+        <button type="button" id="replayRunButton">⏭ 最後まで</button>
+        <span class="replay-status" id="replayStatus">読込中…</span>
+        <span class="replay-meta" id="replayMeta"></span>
+      </div>
+
+      <div class="targeting-banner" id="targetingBanner" role="status" aria-live="polite">
+        <span id="targetingText"></span>
+        <button type="button" class="targeting-cancel" id="targetingCancelButton">キャンセル</button>
+      </div>
+
+      <div id="toast" role="status" aria-live="polite" aria-hidden="true"></div>
+
+      <section class="status-strip" aria-label="ターン状況" role="status" aria-live="polite">
+        <div class="turn-card"><span class="label">ターン</span><strong id="turnLabel">-</strong></div>
+        <div class="turn-card"><span class="label">フェイズ</span><strong id="phaseLabel">-</strong></div>
+        <div class="turn-card wide"><span class="label">選択中</span><strong id="selectionLabel">なし</strong></div>
+      </section>
+
+      <section class="playmat" aria-label="ゲーム盤面">
+        <section class="player-zone opponent" id="player2Zone" aria-label="プレイヤー2">
+          <div class="fighter-panel" data-fighter-owner="1">
+            <div class="fp-id">
+              <p class="player-name">プレイヤー2</p>
+              <p class="stat-line"><span>ライフ</span><strong id="p2Life">10</strong></p>
+            </div>
+            <div class="partner-slot buddy-cell world-tile" id="p2Partner" data-owner="1">ワールド</div>
+            <div class="mini-stats"><span id="p2Hand">手0</span><span id="p2Gauge">ゲ0</span><span id="p2Deck">山0</span></div>
+          </div>
+          <div class="board-grid board-grid-opponent">
+            <button class="zone pile drop-zone" type="button" data-owner="1" data-zone="drop">墓地</button>
+            <button class="zone field item flag-item-zone" type="button" data-owner="1" data-zone="item">装備</button>
+            <div class="set-spell-cell"><button class="zone set-pile" type="button" data-owner="1" data-zone="setpile">配置魔法</button></div>
+            <button class="zone field" type="button" data-owner="1" data-zone="right">ライト</button>
+            <button class="zone field center" type="button" data-owner="1" data-zone="center">センター</button>
+            <button class="zone field" type="button" data-owner="1" data-zone="left">レフト</button>
+          </div>
+          <div class="buddyzone-row"><button class="zone buddyzone-pile" type="button" data-owner="1" data-zone="buddyzone">バディゾーン</button></div>
+          <div class="hand-preview" id="p2HandPreview"></div>
+        </section>
+
+        <section class="action-panel" aria-label="操作">
+          <div class="action-grid">
+            <button id="drawButton" type="button">ドロー</button>
+            <button id="chargeButton" type="button">チャージ&ドロー</button>
+            <button id="mainPhaseButton" type="button">メインへ</button>
+            <button id="castButton" type="button">使用 / 装備</button>
+            <button id="resolveAttackButton" type="button">攻撃解決</button>
+            <button id="counterHandButton" type="button">攻防手札切替</button>
+            <button id="attackPhaseButton" type="button">アタックへ</button>
+            <button id="linkToggleButton" type="button">連携に追加</button>
+            <button id="finalPhaseButton" type="button">ファイナルへ</button>
+            <button id="endTurnButton" type="button">ターン終了</button>
+          </div>
+          <div class="summon-grid" aria-label="コール先">
+            <button type="button" data-call-zone="left">レフトへコール</button>
+            <button type="button" data-call-zone="center">センターへコール</button>
+            <button type="button" data-call-zone="right">ライトへコール</button>
+            <button type="button" id="partnerCallButton">バディコール宣言</button>
+          </div>
+          <div class="attack-row">
+            <select id="attackTarget" aria-label="攻撃対象"></select>
+            <select id="effectTarget" aria-label="効果対象"></select>
+            <button id="attackButton" type="button">攻撃</button>
+          </div>
+        </section>
+
+        <section class="player-zone active-player" id="player1Zone" aria-label="プレイヤー1">
+          <div class="fighter-panel" data-fighter-owner="0">
+            <div class="fp-id">
+              <p class="player-name">プレイヤー1</p>
+              <p class="stat-line"><span>ライフ</span><strong id="p1Life">10</strong></p>
+            </div>
+            <div class="partner-slot buddy-cell world-tile" id="p1Partner" data-owner="0">ワールド</div>
+            <div class="mini-stats"><span id="p1Hand">手0</span><span id="p1Gauge">ゲ0</span><span id="p1Deck">山0</span></div>
+          </div>
+          <div class="board-grid">
+            <button class="zone field" type="button" data-owner="0" data-zone="left">レフト</button>
+            <button class="zone field center" type="button" data-owner="0" data-zone="center">センター</button>
+            <button class="zone field" type="button" data-owner="0" data-zone="right">ライト</button>
+            <div class="set-spell-cell"><button class="zone set-pile" type="button" data-owner="0" data-zone="setpile">配置魔法</button></div>
+            <button class="zone field item flag-item-zone" type="button" data-owner="0" data-zone="item">装備</button>
+            <button class="zone pile drop-zone" type="button" data-owner="0" data-zone="drop">墓地</button>
+          </div>
+          <div class="buddyzone-row"><button class="zone buddyzone-pile" type="button" data-owner="0" data-zone="buddyzone">バディゾーン</button></div>
+          <div class="hand-preview" id="p1HandPreview"></div>
+        </section>
+      </section>
+
+      <section class="hand-dock" aria-label="現在表示中の手札">
+        <div class="hand-header">
+          <h2 id="handTitle">手札</h2>
+          <span id="sizeLabel">サイズ 0 / 3</span>
+        </div>
+        <div class="hand-list" id="handList"></div>
+      </section>
+
+      <section class="log-panel" aria-label="対戦ログ">
+        <h2>ログ</h2>
+        <ol id="logList" aria-live="polite" aria-relevant="additions" aria-atomic="false"></ol>
+      </section>
+    </main>
+
+    <dialog id="rulesDialog">
+      <div class="dialog-content">
+        <header><h2>ルール</h2><button id="closeRulesButton" type="button" title="閉じる">閉じる</button></header>
+        <ul><li>2018年6月以前（詳細ルール ver.2.05）基準のリプレイです。</li></ul>
+      </div>
+    </dialog>
+    <dialog id="dropDialog">
+      <div class="dialog-content drop-dialog-body">
+        <header><h2 id="dropDialogTitle">ドロップゾーン</h2><button id="closeDropDialogButton" type="button" title="閉じる">閉じる</button></header>
+        <ol id="dropDialogList" class="drop-dialog-list"></ol>
+      </div>
+    </dialog>
+    <dialog id="selectionDialog">
+      <div class="dialog-content selection-dialog-body">
+        <header>
+          <h2 id="selectionDialogTitle">カード選択</h2>
+          <div class="selection-dialog-tools">
+            <button id="selectionBoardButton" type="button" title="盤面を確認">盤面確認</button>
+            <button id="selectionCancelButton" type="button" title="キャンセル">キャンセル</button>
+          </div>
+        </header>
+        <p id="selectionDialogLead" class="selection-dialog-lead"></p>
+        <aside id="selectionDialogPreview" class="selection-dialog-preview" aria-live="polite"></aside>
+        <div id="selectionDialogList" class="selection-dialog-list"></div>
+        <div class="selection-dialog-actions"><button id="selectionConfirmButton" type="button">決定</button></div>
+      </div>
+    </dialog>
+    <div class="card-tooltip" id="cardTooltip" role="tooltip" aria-hidden="true"></div>
+
+    <dialog id="cardSheet" class="card-sheet">
+      <div class="dialog-content card-sheet-body">
+        <header><h2 id="cardSheetTitle">カード</h2><button id="closeCardSheetButton" type="button" title="閉じる">閉じる</button></header>
+        <div id="cardSheetDetail" class="card-sheet-detail"></div>
+        <div id="cardSheetActions" class="card-sheet-actions"></div>
+      </div>
+    </dialog>
+    <dialog id="deckInfoDialog" class="deck-info-dialog">
+      <div class="dialog-content">
+        <header><h2 id="deckInfoTitle">デッキ情報</h2><button id="closeDeckInfoButton" type="button" title="閉じる">閉じる</button></header>
+        <dl id="deckInfoBody" class="deck-info-body"></dl>
+      </div>
+    </dialog>
+    <dialog id="confirmDialog" class="confirm-dialog">
+      <div class="dialog-content">
+        <p id="confirmMessage" class="confirm-message"></p>
+        <div class="confirm-actions">
+          <button id="confirmCancelButton" type="button">キャンセル</button>
+          <button id="confirmOkButton" type="button">OK</button>
+        </div>
+      </div>
+    </dialog>
+
+    <script>
+      // src モジュールは番号順の同期ロードが必須（同一グローバル共有）。document.write の classic script は
+      // 順序・同期実行が保証される。バージョンはこの1定数だけを更新する（他ローダと揃える）。
+      (function () {
+        var ENGINE_VERSION = "20260710b";
+        // データJSON(loadJson)を ?v= 付きURL＋ブラウザキャッシュに載せる（初期ロード最適化 D2）。
+        window.__BUDDYFIGHT_DATA_VERSION = ENGINE_VERSION;
+        var modules = [
+          "src/01-foundation.js",
+          "src/02-data-load.js",
+          "src/03-setup.js",
+          "src/04-cost-resource.js",
+          "src/05-stats.js",
+          "src/06-log.js",
+          "src/07-actions-turn.js",
+          "src/08-card-use.js",
+          "src/09-attack.js",
+          "src/10-battle-resolve.js",
+          "src/11-destroy-turn.js",
+          "src/12-render.js",
+          "src/13-abilities-core.js",
+          "src/14-ability-script.js",
+          "src/15-ability-effects.js",
+          "src/16-selection-dialog.js",
+          "src/17-targeting.js",
+          "src/18-tooltip-format.js",
+          "src/19-netplay.js",
+          "src/20-ui-touch.js",
+          "src/21-bootstrap.js",
+          "src/22-ai.js",
+          "src/23-replay.js",
+          "src/24-match-history.js",
+          "deck-picker.js",
+          "deck-code.js",
+          "user-api.js"
+        ];
+        for (var i = 0; i < modules.length; i += 1) {
+          document.write('<script src="' + modules[i] + '?v=' + ENGINE_VERSION + '"><\/script>');
+        }
+      })();
+    </script>
+    <script>
+      // 再生コントロール。src/23 の replayCreatePlayer（ブラウザ用ドライバ）を叩き、1 step ずつ進める。
+      // recording は GET /replay/:id から取得。seam 応答（選択/確認）は各 step 直前に再生キューへ載る。
+      (function () {
+        var reply = window.__buddyfightReplay;
+        var statusEl = document.getElementById("replayStatus");
+        var metaEl = document.getElementById("replayMeta");
+        var resetBtn = document.getElementById("replayResetButton");
+        var stepBtn = document.getElementById("replayStepButton");
+        var runBtn = document.getElementById("replayRunButton");
+        var player = null;
+
+        function setStatus(text) { statusEl.textContent = text; }
+        function setProgress() {
+          if (!player) return;
+          metaEl.textContent = "ステップ " + player.currentIndex() + " / " + player.total;
+          stepBtn.disabled = player.atEnd();
+          runBtn.disabled = player.atEnd();
+        }
+        function setEnabled(on) {
+          resetBtn.disabled = !on;
+          stepBtn.disabled = !on;
+          runBtn.disabled = !on;
+        }
+
+        function getReplayId() {
+          try {
+            return new URLSearchParams(window.location.search).get("id");
+          } catch (e) {
+            return null;
+          }
+        }
+
+        setEnabled(false);
+
+        (async function init() {
+          if (!reply) {
+            setStatus("リプレイ・エンジンの初期化に失敗しました。");
+            return;
+          }
+          var id = getReplayId();
+          if (!id) {
+            setStatus("URL に ?id=<リプレイID> を付けて開いてください。");
+            return;
+          }
+          try {
+            await reply.loadGameData();
+            reply.initializeDeckSelectors();
+          } catch (e) {
+            setStatus("カードデータの読込に失敗しました: " + e.message);
+            return;
+          }
+          var recording;
+          try {
+            var res = await fetch("/replay/" + encodeURIComponent(id));
+            if (!res.ok) {
+              setStatus("リプレイを取得できません (" + res.status + ")。");
+              return;
+            }
+            var data = await res.json();
+            recording = data.recording;
+          } catch (e) {
+            setStatus("リプレイの取得に失敗しました: " + e.message);
+            return;
+          }
+          try {
+            player = reply.createPlayer(recording);
+          } catch (e) {
+            setStatus("リプレイの読込に失敗しました: " + e.message);
+            return;
+          }
+          setEnabled(true);
+          try {
+            await player.reset(); // 初期局面を描画
+            setStatus("再生準備完了。");
+            setProgress();
+          } catch (e) {
+            setStatus("初期局面の再生に失敗しました: " + e.message);
+          }
+        })();
+
+        resetBtn.addEventListener("click", async function () {
+          if (!player) return;
+          setEnabled(false);
+          try {
+            await player.reset();
+            setStatus("最初に戻しました。");
+          } catch (e) {
+            setStatus("再生エラー: " + e.message);
+          }
+          setEnabled(true);
+          setProgress();
+        });
+        stepBtn.addEventListener("click", async function () {
+          if (!player) return;
+          setEnabled(false);
+          try {
+            var advanced = await player.stepOnce();
+            setStatus(advanced ? "1ステップ進めました。" : "最後まで再生済みです。");
+          } catch (e) {
+            setStatus("再生エラー: " + e.message);
+          }
+          setEnabled(true);
+          setProgress();
+        });
+        runBtn.addEventListener("click", async function () {
+          if (!player) return;
+          setEnabled(false);
+          setStatus("最後まで再生中…");
+          try {
+            await player.runToEnd();
+            setStatus("最後まで再生しました。");
+          } catch (e) {
+            setStatus("再生エラー: " + e.message);
+          }
+          setEnabled(true);
+          setProgress();
+        });
+      })();
+    </script>
+  </body>
+</html>
