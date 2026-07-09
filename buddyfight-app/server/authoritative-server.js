@@ -11,6 +11,7 @@ const path = require("path");
 const crypto = require("crypto");
 const { GameRoom } = require("./engine-host");
 const roomStore = require("./room-store");
+const replayStore = require("./replay-store");
 const userStore = require("./user-store");
 const deckCode = require("../deck-code");
 
@@ -36,10 +37,49 @@ const rooms = new Map();
 const roomTtlMs = 6 * 60 * 60 * 1000;
 const ROOM_TTL_HOURS = Number(process.env.ROOM_TTL_HOURS) || 48; // 永続層(room-store)の古いスナップショット掃除
 const ROOM_PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const REPLAY_TTL_DAYS = Number(process.env.REPLAY_TTL_DAYS) || 30; // 保存済みリプレイの古い共有を掃除
 
 // ROOM_STORE_BACKEND 未指定なら USER_STORE_BACKEND を継承（ユーザーDBが turso なら部屋も turso）。
 function resolveRoomStoreBackend() {
   return process.env.ROOM_STORE_BACKEND || process.env.USER_STORE_BACKEND || "file";
+}
+
+// REPLAY_STORE_BACKEND 未指定なら ROOM_STORE_BACKEND→USER_STORE_BACKEND を継承（room-store と同型の継承鎖）。
+function resolveReplayStoreBackend() {
+  return (
+    process.env.REPLAY_STORE_BACKEND ||
+    process.env.ROOM_STORE_BACKEND ||
+    process.env.USER_STORE_BACKEND ||
+    "file"
+  );
+}
+
+// リプレイストアの遅延初期化（memoize）。直接起動時は main が先に呼ぶが、require 経路（スモーク/e2e）でも
+// 保存/取得ルートが最初に踏まれた時に必ず初期化されるようにする（userStore と同型）。
+let replayStoreInitPromise = null;
+function ensureReplayStoreInitialized() {
+  if (!replayStoreInitPromise && typeof replayStore.isInitialized === "function" && replayStore.isInitialized()) {
+    replayStoreInitPromise = Promise.resolve();
+  }
+  if (!replayStoreInitPromise) {
+    replayStoreInitPromise = replayStore
+      .init({
+        backend: resolveReplayStoreBackend(),
+        dataDir,
+        tursoUrl: process.env.TURSO_DATABASE_URL,
+        tursoToken: process.env.TURSO_AUTH_TOKEN,
+      })
+      .catch((error) => {
+        replayStoreInitPromise = null; // 失敗時は次のリクエストで再試行できるように
+        throw error;
+      });
+  }
+  return replayStoreInitPromise;
+}
+
+// 公開共有URL用のリプレイID（推測困難・ファイル名/URL安全な base64url）。
+function randomReplayId() {
+  return crypto.randomBytes(12).toString("base64url");
 }
 
 // デッキ一覧（プリセット）の遅延キャッシュ。
@@ -132,6 +172,9 @@ function isUserApiPath(pathname) {
     pathname === "/auth/me" ||
     pathname === "/auth/mydecks" ||
     pathname.startsWith("/auth/mydecks/") ||
+    pathname === "/auth/replays" ||
+    pathname === "/auth/matches" ||
+    pathname === "/auth/matches/stats" ||
     pathname === "/auth/admin/users" ||
     pathname === "/auth/admin/reset-password" ||
     pathname.startsWith("/auth/admin/users/")
@@ -207,6 +250,18 @@ async function authenticateRequest(req) {
   if (!user) return null;
   await userStore.putSession({ tokenHash, userId: user.id, expiresAt: now + SESSION_TTL_MS });
   return user;
+}
+
+// 部屋の作成/参加時に Bearer からログインユーザーIDを best-effort で解決する（D5・戦績用）。
+// 認証やユーザーDBが不通でも部屋参加自体は絶対に失敗させない＝失敗時は null（未ログイン扱い）。
+async function resolveOptionalUserId(req) {
+  try {
+    await ensureUserStoreInitialized();
+    const user = await authenticateRequest(req);
+    return user ? user.id : null;
+  } catch {
+    return null;
+  }
 }
 
 // register/login のレート制限（同一IPで10回/10分。プロセス内カウンタで十分な個人運用規模）。
@@ -319,6 +374,7 @@ function snapshotRoom(room) {
       name: m.name,
       role: m.role,
       deck: m.deck || null,
+      userId: m.userId || null, // D5: 復元後の対戦でも席→ユーザーの戦績記録を続けられるように保つ
     })),
     state: room.started && room.game ? room.game.api.getState() : null,
   };
@@ -406,7 +462,10 @@ async function restoreRooms() {
           const m = room.members.get(seatId);
           if (m && m.deck && m.deck.custom) customDecks.push(m.deck.custom);
         }
-        const game = new GameRoom({ customDecks, onPrompt: (req) => dispatchPrompt(room, req) });
+        // record:true は復元時には効かない（記録は startGame の replayStartRecording で始まるが復元は
+        // setState 復元のため）。整合性のため startGame と同じオプションを渡すが、復元された対戦は
+        // getRecording()=null となり /replay 保存では 409（記録なし）になる。
+        const game = new GameRoom({ record: true, customDecks, onPrompt: (req) => dispatchPrompt(room, req) });
         await game.loadData();
         game.api.setState(snap.state);
         game.started = true;
@@ -419,10 +478,12 @@ async function restoreRooms() {
   }
 }
 
-function addMember(room, { name }) {
+function addMember(room, { name, userId = null }) {
   const clientId = randomId(6);
   const token = randomId(16);
-  const member = { clientId, token, name: name || "プレイヤー", role: null, deck: null, sse: null };
+  // userId: 参加時に Bearer が有効だった場合のログイン済みユーザーID（未ログインは null）。
+  // 決着時に席へ紐づくログインユーザーへ戦績を記録するために控える（D5）。
+  const member = { clientId, token, name: name || "プレイヤー", role: null, deck: null, sse: null, userId };
   // 既定の席割り: 1人目=seat0, 2人目=seat1, 以降=観戦（あとで変更可）
   if (!room.seats[0]) {
     room.seats[0] = clientId;
@@ -618,6 +679,27 @@ async function handleApi(req, res, url) {
     return true;
   }
 
+  // GET /replay/:id  （公開共有: 保存済みリプレイの recording を返す。認証不要・CORS付き）。
+  // 保存は「決着後のみ」なので、共有URLを踏んでもシード漏洩で進行中対戦を先読みされる恐れはない。
+  if (req.method === "GET" && parts[0] === "replay" && parts[1]) {
+    try {
+      await ensureReplayStoreInitialized();
+    } catch (error) {
+      sendJsonCors(res, 503, {
+        error: "リプレイ保管に接続できません",
+        detail: String(error && error.message ? error.message : error),
+      });
+      return true;
+    }
+    const blob = await replayStore.load(parts[1]);
+    if (!blob || !blob.replay) {
+      sendJsonCors(res, 404, { error: "リプレイが見つかりません" });
+      return true;
+    }
+    sendJsonCors(res, 200, { id: parts[1], recording: blob.replay });
+    return true;
+  }
+
   // ---- ユーザー登録＋マイデッキ（新規）。CORS対象はこの節のパスのみ ----
   if (req.method === "OPTIONS" && isUserApiPath(url.pathname)) {
     sendNoContentCors(res, 204);
@@ -655,15 +737,27 @@ async function handleApi(req, res, url) {
     } catch (error) {
       roomInfo.roomError = String(error && error.message ? error.message : error);
     }
+    let replayInfo = { replayBackend: resolveReplayStoreBackend(), replayCount: null, replayError: null };
+    try {
+      if (replayStore.isInitialized()) {
+        const info = await replayStore.ping();
+        replayInfo = { replayBackend: info.backend, replayCount: info.count, replayError: null };
+      } else {
+        replayInfo.replayError = "replay-store 未初期化";
+      }
+    } catch (error) {
+      replayInfo.replayError = String(error && error.message ? error.message : error);
+    }
     try {
       const info = await userStore.ping();
-      sendJsonCors(res, 200, { ok: true, ...info, ...roomInfo });
+      sendJsonCors(res, 200, { ok: true, ...info, ...roomInfo, ...replayInfo });
     } catch (error) {
       sendJsonCors(res, 503, {
         ok: false,
         backend: process.env.USER_STORE_BACKEND || "file",
         error: String(error && error.message ? error.message : error),
         ...roomInfo,
+        ...replayInfo,
       });
     }
     return true;
@@ -738,6 +832,92 @@ async function handleApi(req, res, url) {
     }
     const deckCount = await userStore.countDecks(user.id);
     sendJsonCors(res, 200, { name: user.name, isAdmin: user.isAdmin, deckCount });
+    return true;
+  }
+
+  // GET /auth/replays  （自分が保存したリプレイ一覧。Bearer 必須。未ログイン保存=userId:null は出さない）。
+  if (req.method === "GET" && url.pathname === "/auth/replays") {
+    const user = await authenticateRequest(req);
+    if (!user) {
+      sendJsonCors(res, 401, { error: "unauthorized" });
+      return true;
+    }
+    try {
+      await ensureReplayStoreInitialized();
+    } catch (error) {
+      sendJsonCors(res, 503, {
+        error: "リプレイ保管に接続できません",
+        detail: String(error && error.message ? error.message : error),
+      });
+      return true;
+    }
+    const recent = await replayStore.listRecent(200);
+    const mine = recent
+      .filter((entry) => entry.recording && entry.recording.userId === user.id)
+      .map((entry) => ({
+        id: entry.id,
+        createdAt: entry.createdAt,
+        roomId: entry.recording.roomId || null,
+        // 一覧は軽量メタのみ（recording 本体は共有URL /replay/:id で取得する）。
+        steps: Array.isArray(entry.recording.replay?.steps) ? entry.recording.replay.steps.length : 0,
+      }));
+    sendJsonCors(res, 200, { replays: mine });
+    return true;
+  }
+
+  // GET /auth/matches/stats  （自分のデッキ別勝敗・勝率。Bearer 必須）。※/matches より前に判定する。
+  if (req.method === "GET" && url.pathname === "/auth/matches/stats") {
+    const user = await authenticateRequest(req);
+    if (!user) {
+      sendJsonCors(res, 401, { error: "unauthorized" });
+      return true;
+    }
+    const stats = await userStore.matchStats(user.id);
+    sendJsonCors(res, 200, { stats });
+    return true;
+  }
+
+  // GET /auth/matches  （自分の対戦履歴。新しい順。Bearer 必須）。
+  if (req.method === "GET" && url.pathname === "/auth/matches") {
+    const user = await authenticateRequest(req);
+    if (!user) {
+      sendJsonCors(res, 401, { error: "unauthorized" });
+      return true;
+    }
+    const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit")) || 100));
+    const matches = await userStore.listMatches(user.id, limit);
+    sendJsonCors(res, 200, { matches });
+    return true;
+  }
+
+  // POST /auth/matches  （ローカル対戦の自己申告を記録。Bearer 必須）。
+  // 【セキュリティ】source は必ず "client" に固定する。同一 fightId に権威記録(source:"server")が既にあれば
+  // user-store 側が上書きを拒む＝クライアント申告で勝敗を盛れない（勝敗はサーバが state から判定する）。
+  if (req.method === "POST" && url.pathname === "/auth/matches") {
+    const user = await authenticateRequest(req);
+    if (!user) {
+      sendJsonCors(res, 401, { error: "unauthorized" });
+      return true;
+    }
+    const body = await readJson(req);
+    if (body.outcome !== "win" && body.outcome !== "loss") {
+      sendJsonCors(res, 400, { error: "outcome は win / loss で指定してください" });
+      return true;
+    }
+    // 許可フィールドのみ渡す（seed / token 等は user-store 側でも弾かれるが、ここでも渡さない）。
+    const match = await userStore.putMatch(user.id, {
+      fightId: body.fightId,
+      finishedAt: body.finishedAt,
+      outcome: body.outcome,
+      reason: body.reason,
+      firstSeat: body.firstSeat,
+      turnCount: body.turnCount,
+      deckId: body.deckId,
+      opponentDeckId: body.opponentDeckId,
+      replayId: body.replayId,
+      source: "client", // 必ずクライアント申告として保存（body.source は無視）
+    });
+    sendJsonCors(res, 201, { match });
     return true;
   }
 
@@ -923,7 +1103,8 @@ async function handleApi(req, res, url) {
   if (req.method === "POST" && url.pathname === "/auth/rooms") {
     const body = await readJson(req);
     const room = createRoom();
-    const member = addMember(room, { name: body.name });
+    const userId = await resolveOptionalUserId(req); // D5: ログイン中なら席に userId を紐づける
+    const member = addMember(room, { name: body.name, userId });
     if (body.deck) {
       member.deck = body.deck;
     }
@@ -944,13 +1125,79 @@ async function handleApi(req, res, url) {
   // POST /auth/rooms/:id/join
   if (req.method === "POST" && parts[3] === "join") {
     const body = await readJson(req);
-    const member = addMember(room, { name: body.name });
+    const userId = await resolveOptionalUserId(req); // D5
+    const member = addMember(room, { name: body.name, userId });
     if (body.deck) {
       member.deck = body.deck;
     }
     broadcastLobby(room);
     schedulePersist(room);
     sendJson(res, 200, { roomId: room.id, clientId: member.clientId, token: member.token, role: member.role });
+    return true;
+  }
+
+  // POST /auth/rooms/:id/replay  （決着済み対戦のリプレイを保存し {id} を返す。部屋メンバーのみ・進行中は409・冪等）
+  if (req.method === "POST" && parts[3] === "replay") {
+    const body = await readJson(req);
+    const member = memberByToken(room, body.token);
+    if (!member) {
+      sendJson(res, 403, { error: "invalid token" });
+      return true;
+    }
+    if (!room.started || !room.game) {
+      sendJson(res, 409, { error: "ゲーム未開始" });
+      return true;
+    }
+    // 【最重要・セキュリティ】アクション適用中（プロンプト往復のホールド含む）は保存しない＝busy=false の確定局面のみ。
+    // state.winner は決着中に「立って戻り得る（可逆）」: ライフリンクのダメージで一旦 winner が立ち、対抗の
+    // ライフリンク相殺 clearWinnerIfNoCurrentLoss(src/11) が life を戻すと winner を null に戻す。この相殺の可否を
+    // 問う往復プロンプトの間 room.busy=true になり、その瞬間に相手が /replay を叩くと winner!=null をすり抜けて
+    // 進行中対戦の seed をリプレイJSON経由で共有URLへ漏らせてしまう（B1 で塞いだシード漏洩の復活）。
+    // persistNow と同じく busy 中は拒否し、決着が確定した安定局面でのみ保存する。
+    if (room.busy) {
+      sendJson(res, 409, { error: "他の操作を処理中です（決着が確定してから保存できます）" });
+      return true;
+    }
+    // リプレイJSONには seed が必須で入る。決着後のみ許可し、クライアントを信用せずサーバで強制する（state.winner）。
+    const gameState = room.game.api.getState();
+    if (!gameState || gameState.winner == null) {
+      sendJson(res, 409, { error: "対戦が決着してから保存できます（進行中は共有できません）" });
+      return true;
+    }
+    // 冪等: 既に保存済みなら同じ id を返す（再送しても複製しない）。
+    if (room.savedReplayId) {
+      sendJson(res, 200, { id: room.savedReplayId });
+      return true;
+    }
+    // 保存対象は必ず getRecording() の戻り値のみ。部屋スナップショット全体は member.token を含み漏洩する。
+    const recording = room.game.getRecording();
+    if (!recording) {
+      sendJson(res, 409, { error: "この対戦は記録されていません（復元された対戦などは保存できません）" });
+      return true;
+    }
+    try {
+      await ensureReplayStoreInitialized();
+    } catch (error) {
+      sendJson(res, 503, {
+        error: "リプレイ保管に接続できません",
+        detail: String(error && error.message ? error.message : error),
+      });
+      return true;
+    }
+    // 保存者の userId は任意の Bearer から（部屋メンバー認可は token 済み）。未ログインなら null＝一覧に出さない。
+    let userId = null;
+    try {
+      await ensureUserStoreInitialized();
+      const user = await authenticateRequest(req);
+      if (user) userId = user.id;
+    } catch {
+      /* ユーザーDB不通でもリプレイ保存自体は続行（userId=null で保存） */
+    }
+    const id = randomReplayId();
+    await replayStore.save(id, { replay: recording, userId, roomId: room.id, savedAt: Date.now() });
+    room.savedReplayId = id;
+    await backfillMatchReplayId(room, id); // D5: この対戦の戦績に replayId を後付け（履歴→再生の導線）
+    sendJson(res, 201, { id });
     return true;
   }
 
@@ -1139,6 +1386,7 @@ async function handleApi(req, res, url) {
     }
     room.updatedAt = Date.now();
     broadcastView(room, body.label || body.type);
+    await maybeRecordMatch(room); // D5: 決着していれば席のログインユーザーへ戦績を記録（best-effort・内部で握る）
     persistNow(room); // busy=false 確定後の最新局面を保存（往復ホールド後もここで保存される）
     sendJson(res, 200, { ok: true });
     return true;
@@ -1189,13 +1437,87 @@ async function startGame(room) {
       customDecks.push(m.deck.custom);
     }
   }
-  const game = new GameRoom({ customDecks, onPrompt: (req) => dispatchPrompt(room, req) });
+  // B3: record:true で実対戦を記録する（決着後に /replay で保存できるように）。記録オフ時のオーバーヘッドは
+  // B2 で担保済み・オン時のメモリ増は「操作数×数百バイト」程度（1ゲーム概ね数十〜200KB）。
+  const game = new GameRoom({ record: true, customDecks, onPrompt: (req) => dispatchPrompt(room, req) });
   await game.loadData();
   const deckIds = [seat0.deck?.id, seat1.deck?.id];
   // B1: 先攻は部屋作成者(seat0)固定を廃止し、シード乱数で決める（GameRoom がシードを生成・記録）。
   game.startGame(deckIds, { firstSeat: "random" });
   room.game = game;
   room.started = true;
+}
+
+// D5(戦績): 決着を state から検知し、席に紐づくログイン済みユーザーへ記録する。勝敗はサーバが判定し
+// クライアント申告は信用しない（source:"server"）。未ログイン席は黙って飛ばす。1対戦1回（room.matchRecorded）。
+// fightId keyed の upsert なので、万一二重に呼ばれても複製しない。
+async function maybeRecordMatch(room) {
+  if (!room || room.matchRecorded || !room.game) return;
+  let st;
+  try {
+    st = room.game.api.getState();
+  } catch {
+    return;
+  }
+  const mr = st && st.matchResult;
+  if (!mr) return; // 未決着（engine の決着フックが state.matchResult を確定させるまで何もしない）
+  room.matchRecorded = true;
+  room.decidedFightId = st.fightId || null;
+  try {
+    await ensureUserStoreInitialized();
+  } catch {
+    return; // ユーザーDB不通なら戦績はスキップ（対戦進行・応答には影響させない）
+  }
+  const deckIds = Array.isArray(mr.deckIds) ? mr.deckIds : [null, null];
+  for (const seat of [0, 1]) {
+    const member = room.members.get(room.seats[seat]);
+    if (!member || member.userId == null) continue; // 未ログイン席は記録しない
+    const record = {
+      fightId: st.fightId || null,
+      finishedAt: Date.now(),
+      outcome: seat === mr.winnerSeat ? "win" : "loss",
+      reason: mr.reason,
+      firstSeat: mr.firstSeat,
+      turnCount: mr.turnCount,
+      deckId: deckIds[seat] ?? null,
+      opponentDeckId: deckIds[1 - seat] ?? null,
+      replayId: room.savedReplayId || null,
+      source: "server", // 権威判定＝クライアント申告(source:"client")に勝つ
+    };
+    try {
+      await userStore.putMatch(member.userId, record);
+    } catch (error) {
+      console.warn(`[match] room ${room.id} seat ${seat} の戦績記録に失敗: ${error.message}`);
+    }
+  }
+}
+
+// D5: リプレイ保存後に、その対戦の戦績レコードへ replayId を後付けする（決着時は未確定のため）。
+async function backfillMatchReplayId(room, replayId) {
+  if (!room || !room.game) return;
+  let fightId = room.decidedFightId || null;
+  if (!fightId) {
+    try {
+      fightId = room.game.api.getState()?.fightId || null;
+    } catch {
+      fightId = null;
+    }
+  }
+  if (!fightId) return;
+  try {
+    await ensureUserStoreInitialized();
+  } catch {
+    return;
+  }
+  for (const seat of [0, 1]) {
+    const member = room.members.get(room.seats[seat]);
+    if (!member || member.userId == null) continue;
+    try {
+      await userStore.setMatchReplayId(member.userId, fightId, replayId);
+    } catch {
+      /* best-effort */
+    }
+  }
 }
 
 function serveStatic(req, res, url) {
@@ -1217,9 +1539,18 @@ function serveStatic(req, res, url) {
       sendJson(res, 404, { error: "not found" });
       return;
     }
-    res.writeHead(200, {
-      "Content-Type": contentTypes[path.extname(filePath)] || "application/octet-stream",
-    });
+    const ext = path.extname(filePath);
+    const headers = { "Content-Type": contentTypes[ext] || "application/octet-stream" };
+    // キャッシュ方針（初期ロード最適化 D2）:
+    // - *.html はローダ本体。ENGINE_VERSION 更新を即反映させるため常に再検証させる（no-cache）。
+    // - data/**（カードJSON・imgpack）と ?v= 付きアセットは内容がURLで固定される＝長期immutable。
+    //   ?v= 付きは builder.js/deck-picker 等・src モジュール（?v=ENGINE_VERSION）も含む。
+    if (ext === ".html") {
+      headers["Cache-Control"] = "no-cache";
+    } else if (requestPath.startsWith("/data/") || url.searchParams.has("v")) {
+      headers["Cache-Control"] = "public, max-age=31536000, immutable";
+    }
+    res.writeHead(200, headers);
     res.end(content);
   });
 }
@@ -1333,6 +1664,22 @@ if (require.main === module) {
       console.warn(`[restore] 永続層の初期化/復元に失敗（新規起動として続行）: ${error.message}`);
     }
     try {
+      await ensureReplayStoreInitialized();
+      const replayMaxAgeMs = REPLAY_TTL_DAYS * 24 * 60 * 60 * 1000;
+      const prunedReplays = await replayStore.pruneExpired(replayMaxAgeMs);
+      if (prunedReplays) console.log(`[replay-store] 期限切れのリプレイを ${prunedReplays} 件削除しました`);
+      setInterval(() => {
+        replayStore
+          .pruneExpired(replayMaxAgeMs)
+          .then((n) => {
+            if (n) console.log(`[replay-store] 期限切れのリプレイを ${n} 件削除しました`);
+          })
+          .catch((error) => console.warn(`[replay-store] pruneExpired失敗: ${error.message}`));
+      }, ROOM_PRUNE_INTERVAL_MS).unref();
+    } catch (error) {
+      console.warn(`[replay-store] 初期化に失敗（リプレイ保存は無効のまま続行）: ${error.message}`);
+    }
+    try {
       await ensureUserStoreInitialized();
       setInterval(() => {
         userStore.gcSessions(Date.now()).catch((error) => console.warn(`[user-store] gcSessions失敗: ${error.message}`));
@@ -1358,4 +1705,5 @@ module.exports = {
   persistNow,
   persistDelete,
   flushPersist,
+  maybeRecordMatch, // D5(戦績): 決着記録の直接検証用（スモーク）
 };

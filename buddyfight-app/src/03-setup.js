@@ -302,16 +302,28 @@ function newGame(options = {}) {
     enteredEventWindow: null,
     extraTurnOwner: null,
     winner: null,
+    // D5(戦績): state.winner はプレイヤー名文字列でデッキと紐付かないため、決着時の勝者席・理由・
+    // 使用デッキ・先攻席を別に控える。matchResult は決着フック(src/24)が一度だけ確定させる
+    // 決定論レコード（冪等マーカ兼用）。いずれも決着まで null／確定値のまま JSON 往復・部屋復元で保つ。
+    winnerSeat: null,
+    winReason: null,
+    matchResult: null,
+    deckIds: [null, null],
+    firstSeat: 0,
     log: [],
     diagnosticLog: [],
     diagnosticSeq: 0,
     fightId: createFightId(),
   };
   // シード確立後に players を組み立てる（この中の shuffle が確定シードを使う）。
+  // 使用デッキプロファイルは createPlayer と同じものを控える（CPUランダムデッキ選択後の select 値で
+  // 確定済み。selectedDeckProfile を二度呼んで食い違わせない）。
+  const deckProfilesInUse = [selectedDeckProfile(0), selectedDeckProfile(1)];
   state.players = [
-    createPlayer("プレイヤー1", selectedDeckProfile(0)),
-    createPlayer("プレイヤー2", selectedDeckProfile(1)),
+    createPlayer("プレイヤー1", deckProfilesInUse[0]),
+    createPlayer("プレイヤー2", deckProfilesInUse[1]),
   ];
+  state.deckIds = [deckProfilesInUse[0]?.id ?? null, deckProfilesInUse[1]?.id ?? null];
   // 先攻はオプトイン。CPU対戦時は下の aiAfterNewGame が CPU-UI の選択で上書きする。
   state.active = resolveFirstSeat(options.firstSeat);
   // シードは不具合報告・リプレイ用にログへ残すが、権威サーバでは絶対に残さない。
@@ -326,6 +338,9 @@ function newGame(options = {}) {
   if (typeof aiAfterNewGame === "function") {
     aiAfterNewGame(); // CPU対戦(src/22): 先攻の適用（ランダム/選択）・AIターンスコープのリセット
   }
+  // D5(戦績): 先攻席は firstSeat オプション／CPU対戦フックで確定するため、aiAfterNewGame の後で控える
+  // （active はターンで変わるので別フィールドに固定する）。
+  state.firstSeat = state.active;
   // 先攻は firstSeat オプション／CPU対戦フックで変わりうるため、確定後の activePlayer 名でログする
   // （firstSeat 省略時は seat0＝プレイヤー1固定で従来どおり）。
   addLog(`先攻1ターン目はスタートフェイズのドローを行いません。${activePlayer().name}のチャージから開始します。`);

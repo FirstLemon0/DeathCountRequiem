@@ -422,19 +422,32 @@ function openDeckInfo(owner) {
 
 // ---- 確認ダイアログ（不可逆操作）----
 function confirmAction(message) {
-  if (!elements.confirmDialog || !elements.confirmMessage) {
-    return Promise.resolve(window.confirm(message));
+  // B3: リプレイ再生中は記録済みの真偽値を返す（確認ダイアログを出さない・確認UIは変えない）。
+  if (typeof replayIsPlaying === "function" && replayIsPlaying()) {
+    return Promise.resolve(replayNextConfirm());
   }
-  // 先行の確認が未解決なら安全に破棄してから新規を張る（resolverの握り潰し防止）
-  if (confirmDialogResolver) {
-    resolveConfirmDialog(false);
-  }
-  elements.confirmMessage.textContent = message;
-  return new Promise((resolve) => {
-    confirmDialogResolver = resolve;
-    if (!elements.confirmDialog.open) {
-      elements.confirmDialog.showModal();
+  const compute = () => {
+    if (!elements.confirmDialog || !elements.confirmMessage) {
+      return Promise.resolve(window.confirm(message));
     }
+    // 先行の確認が未解決なら安全に破棄してから新規を張る（resolverの握り潰し防止）
+    if (confirmDialogResolver) {
+      resolveConfirmDialog(false);
+    }
+    elements.confirmMessage.textContent = message;
+    return new Promise((resolve) => {
+      confirmDialogResolver = resolve;
+      if (!elements.confirmDialog.open) {
+        elements.confirmDialog.showModal();
+      }
+    });
+  };
+  // 記録中なら確認応答（真偽値）として控える。
+  return Promise.resolve(compute()).then((answer) => {
+    if (typeof replayRecordConfirm === "function") {
+      replayRecordConfirm(answer);
+    }
+    return answer;
   });
 }
 

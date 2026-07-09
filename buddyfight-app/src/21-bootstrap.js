@@ -146,9 +146,11 @@ elements.chargeButton.addEventListener("click", () => runNetworkMutation("チャ
 elements.mainPhaseButton.addEventListener("click", () => runNetworkMutation("メインフェイズ", goMainPhase));
 elements.castButton.addEventListener("click", () => runNetworkMutation("カード使用", useCardAction));
 elements.resolveAttackButton.addEventListener("click", () => runNetworkMutation("解決", resolvePendingResolution));
-elements.counterHandButton.addEventListener("click", toggleCounterHand);
+// B3: ローカル記録の step 境界は src/23 がグローバル束縛を包んで実現するため、遅延束縛にする
+// （直接 fn を渡すと登録時の未包み参照を握り、包み後を呼ばない）。挙動は不変。
+elements.counterHandButton.addEventListener("click", () => toggleCounterHand());
 elements.attackPhaseButton.addEventListener("click", () => runNetworkMutation("アタックフェイズ", goAttackPhase));
-elements.linkToggleButton.addEventListener("click", toggleLinkAttacker);
+elements.linkToggleButton.addEventListener("click", () => toggleLinkAttacker());
 elements.finalPhaseButton.addEventListener("click", () => runNetworkMutation("ファイナルフェイズ", goFinalPhase));
 elements.attackButton.addEventListener("click", () => {
   // B2: 対象未指定なら対象選択モードへ。値があれば従来どおり宣言。
@@ -162,7 +164,7 @@ elements.endTurnButton.addEventListener("click", () => {
   // 権威版仕様: 確認なしで即ターン終了。
   runNetworkMutation("ターン終了", endTurn);
 });
-elements.partnerCallButton.addEventListener("click", partnerCall);
+elements.partnerCallButton.addEventListener("click", () => partnerCall()); // B3: 遅延束縛（記録ラッパを拾うため）
 elements.attackTarget.addEventListener("change", renderActions);
 elements.effectTarget.addEventListener("change", renderActions);
 elements.p1DeckSelect.addEventListener("change", () => syncNetworkDeckChoice(0));
@@ -283,6 +285,11 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     replaySetPlaybackQueue,
     replayClearPlayback,
     replayPlaybackRemaining,
+    // B3: 確認応答（真偽値）の記録・再生（seam を通らない確認の一本化）。
+    replayRecordConfirm,
+    replayNextConfirm,
+    // D5(戦績): 権威サーバが applyAction 後に決着を確定させる（state.matchResult を読んで席別に記録）。
+    matchRecordCheckpoint,
   };
 } else if (globalThis.__BUDDYFIGHT_TEST__) {
   globalThis.__buddyfightTestApi = {
@@ -375,6 +382,7 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     // B2（リプレイ記録・再生）の回帰テスト用: seam を直接叩けるよう公開
     // （createInstanceId/resolveRockPaperScissors は上で公開済み）。
     chooseCardEntries,
+    confirmChoiceAsync,
     replayStartRecording,
     replayStopRecording,
     replayGetRecording,
@@ -386,6 +394,34 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     replaySetPlaybackQueue,
     replayClearPlayback,
     replayPlaybackRemaining,
+    // B3: 確認応答の記録・再生とローカル step 境界・ブラウザ再生ドライバの回帰テスト用に公開。
+    replayRecordConfirm,
+    replayNextConfirm,
+    replaySetLocalRecording,
+    replayLocalRecordingEnabled,
+    replayWrapLocalAction,
+    replayCreatePlayer,
+    // D5(戦績): 決着フック・集計・シンク差し替え、および4つの勝利経路を実エンジンで再現するための
+    // 勝者設定関数を回帰テスト(tests/match-history.smoke.js)から直接叩けるよう公開。
+    matchRecordCheckpoint,
+    matchBuildResult,
+    matchComputeDeckStats,
+    matchSetResultSink,
+    matchLoadLocalHistory,
+    checkWinner,
+    declareDeckLoss,
+    applyWinOnFighterDamage,
+  };
+} else if (globalThis.__BUDDYFIGHT_REPLAY__) {
+  // リプレイ再生専用ページ（replay.html）。対話操作・ネットUI・自動開始は行わず、データ読込と
+  // 再生ドライバ（src/23 replayCreatePlayer）の起点だけを公開する。盤面/ログ描画は通常の render。
+  globalThis.__buddyfightReplay = {
+    loadGameData,
+    initializeDeckSelectors,
+    createPlayer: (recording) => replayCreatePlayer(recording),
+    getState: () => state,
+    render,
+    elements,
   };
 } else {
   initializeApp();

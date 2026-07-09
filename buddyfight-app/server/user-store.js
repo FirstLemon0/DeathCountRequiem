@@ -16,6 +16,49 @@ let backend = "file";
 let fileDir = null;
 let usersState = null; // { nextId, users:[{id,name,passHash,isAdmin,createdAt}], sessions:[{tokenHash,userId,expiresAt}] }
 const deckStateCache = new Map(); // userId -> { nextId, decks:[...] }
+const matchStateCache = new Map(); // userId -> { matches:[...] }（戦績 D5）
+
+// 戦績レコードの保持上限（ユーザーあたり）。古いものから捨てる。
+const MATCH_LIMIT_PER_USER = 1000;
+
+// 戦績レコードの許可フィールドのみを通す（seed / token 等が万一渡っても保存されないための防御）。
+// 【セキュリティ】戦績は一覧APIで他人にも見え得るため、seed（進行中対戦の先読みに使える）と
+// member.token は絶対に保存しない。source は "server"(権威判定) / "client"(自己申告) のみ。
+function sanitizeMatchRecord(record) {
+  const rec = record || {};
+  return {
+    fightId: rec.fightId != null ? String(rec.fightId) : null,
+    finishedAt: Number.isFinite(Number(rec.finishedAt)) ? Number(rec.finishedAt) : Date.now(),
+    outcome: rec.outcome === "win" ? "win" : "loss",
+    reason: typeof rec.reason === "string" ? rec.reason : "unknown",
+    firstSeat: rec.firstSeat === 0 || rec.firstSeat === 1 ? rec.firstSeat : null,
+    turnCount: Number.isFinite(Number(rec.turnCount)) ? Number(rec.turnCount) : 0,
+    deckId: rec.deckId != null ? String(rec.deckId) : null,
+    opponentDeckId: rec.opponentDeckId != null ? String(rec.opponentDeckId) : null,
+    replayId: rec.replayId != null ? String(rec.replayId) : null,
+    source: rec.source === "server" ? "server" : "client",
+  };
+}
+
+// 戦績（デッキ別）の集計。file / turso 共通ロジック。
+function aggregateDeckStats(matches) {
+  const map = new Map();
+  for (const m of matches || []) {
+    const key = m.deckId == null ? "__unknown__" : String(m.deckId);
+    if (!map.has(key)) {
+      map.set(key, { deckId: m.deckId ?? null, wins: 0, losses: 0 });
+    }
+    const row = map.get(key);
+    if (m.outcome === "win") row.wins += 1;
+    else row.losses += 1;
+  }
+  const rows = [...map.values()].map((row) => {
+    const total = row.wins + row.losses;
+    return { ...row, total, winRate: total > 0 ? row.wins / total : 0 };
+  });
+  rows.sort((a, b) => b.total - a.total || b.winRate - a.winRate);
+  return rows;
+}
 
 // ---- turso backend state ----
 let tursoUrl = null;
@@ -28,6 +71,9 @@ function usersFilePath() {
 }
 function userDecksFilePath(userId) {
   return path.join(fileDir, "userdecks", `${userId}.json`);
+}
+function userMatchesFilePath(userId) {
+  return path.join(fileDir, "matches", `${userId}.json`);
 }
 
 function atomicWriteJson(file, data) {
@@ -83,6 +129,19 @@ function deckOf(userId, deckId) {
   return state.decks.find((d) => String(d.id) === String(deckId)) || null;
 }
 
+function loadMatchState(userId) {
+  const key = Number(userId);
+  let state = matchStateCache.get(key);
+  if (state) return state;
+  state = loadJsonSafe(userMatchesFilePath(key), { matches: [] });
+  state.matches = state.matches || [];
+  matchStateCache.set(key, state);
+  return state;
+}
+function saveMatchState(userId) {
+  atomicWriteJson(userMatchesFilePath(Number(userId)), matchStateCache.get(Number(userId)));
+}
+
 // ===================== file backend =====================
 
 const fileImpl = {
@@ -133,8 +192,14 @@ const fileImpl = {
     state.sessions = state.sessions.filter((s) => s.userId !== Number(userId));
     saveUsersState();
     deckStateCache.delete(Number(userId));
+    matchStateCache.delete(Number(userId));
     try {
       fs.unlinkSync(userDecksFilePath(userId));
+    } catch {
+      /* 無ければ無視 */
+    }
+    try {
+      fs.unlinkSync(userMatchesFilePath(userId));
     } catch {
       /* 無ければ無視 */
     }
@@ -225,6 +290,53 @@ const fileImpl = {
   },
   async countDecks(userId) {
     return loadDeckState(userId).decks.length;
+  },
+
+  // ---- 戦績 (D5) ----
+  // 同一 fightId は upsert する。ただし権威記録(source:"server")はクライアント申告(source:"client")で
+  // 上書きさせない（自己申告で勝率を盛れないように＝勝敗はサーバが state から判定する）。
+  async putMatch(userId, record) {
+    const rec = sanitizeMatchRecord(record);
+    const state = loadMatchState(userId);
+    if (rec.fightId) {
+      const idx = state.matches.findIndex((m) => m.fightId === rec.fightId);
+      if (idx >= 0) {
+        const existing = state.matches[idx];
+        if (existing.source === "server" && rec.source !== "server") {
+          return { ...existing }; // 権威記録はクライアント申告で上書き不可
+        }
+        state.matches[idx] = { ...existing, ...rec };
+        saveMatchState(userId);
+        return { ...state.matches[idx] };
+      }
+    }
+    state.matches.push(rec);
+    if (state.matches.length > MATCH_LIMIT_PER_USER) {
+      state.matches.splice(0, state.matches.length - MATCH_LIMIT_PER_USER); // 古いものから捨てる
+    }
+    saveMatchState(userId);
+    return { ...rec };
+  },
+  async listMatches(userId, limit = 100) {
+    const state = loadMatchState(userId);
+    const sorted = [...state.matches].sort((a, b) => b.finishedAt - a.finishedAt);
+    return sorted.slice(0, Math.max(0, Number(limit) || 0));
+  },
+  async matchStats(userId) {
+    return aggregateDeckStats(loadMatchState(userId).matches);
+  },
+  async countMatches(userId) {
+    return loadMatchState(userId).matches.length;
+  },
+  // リプレイ保存後に replayId を後付けする（決着時は replayId 未確定のため）。
+  async setMatchReplayId(userId, fightId, replayId) {
+    if (!fightId) return false;
+    const state = loadMatchState(userId);
+    const m = state.matches.find((x) => x.fightId === String(fightId));
+    if (!m) return false;
+    m.replayId = replayId != null ? String(replayId) : null;
+    saveMatchState(userId);
+    return true;
   },
 };
 
@@ -341,6 +453,25 @@ async function initTursoSchema() {
       )`,
     },
     { sql: `CREATE INDEX IF NOT EXISTS idx_decks_user ON decks(user_id, position)` },
+    {
+      sql: `CREATE TABLE IF NOT EXISTS matches (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        fight_id TEXT,
+        finished_at INTEGER NOT NULL,
+        outcome TEXT NOT NULL,
+        reason TEXT,
+        first_seat INTEGER,
+        turn_count INTEGER,
+        deck_id TEXT,
+        opponent_deck_id TEXT,
+        replay_id TEXT,
+        source TEXT NOT NULL DEFAULT 'client'
+      )`,
+    },
+    // 同一ユーザー×同一 fightId は1件（upsert の衝突キー）。
+    { sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_matches_user_fight ON matches(user_id, fight_id)` },
+    { sql: `CREATE INDEX IF NOT EXISTS idx_matches_user ON matches(user_id, finished_at)` },
   ]);
 }
 
@@ -358,6 +489,20 @@ function rowToDeck(row) {
     position: row.position ?? 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+function rowToMatch(row) {
+  return {
+    fightId: row.fight_id ?? null,
+    finishedAt: row.finished_at,
+    outcome: row.outcome,
+    reason: row.reason ?? "unknown",
+    firstSeat: row.first_seat === 0 || row.first_seat === 1 ? row.first_seat : null,
+    turnCount: row.turn_count ?? 0,
+    deckId: row.deck_id ?? null,
+    opponentDeckId: row.opponent_deck_id ?? null,
+    replayId: row.replay_id ?? null,
+    source: row.source === "server" ? "server" : "client",
   };
 }
 
@@ -408,6 +553,7 @@ const tursoImpl = {
   async deleteUser(userId) {
     const id = Number(userId);
     await tursoPipeline([
+      { sql: "DELETE FROM matches WHERE user_id = ?", args: [id] },
       { sql: "DELETE FROM decks WHERE user_id = ?", args: [id] },
       { sql: "DELETE FROM sessions WHERE user_id = ?", args: [id] },
       { sql: "DELETE FROM users WHERE id = ?", args: [id] },
@@ -498,6 +644,65 @@ const tursoImpl = {
     const rows = tursoRows(result);
     return rows.length ? Number(rows[0].c) : 0;
   },
+
+  // ---- 戦績 (D5) ----
+  async putMatch(userId, record) {
+    const rec = sanitizeMatchRecord(record);
+    const uid = Number(userId);
+    if (rec.fightId) {
+      const existingRows = tursoRows(
+        await tursoExec("SELECT * FROM matches WHERE user_id = ? AND fight_id = ?", [uid, rec.fightId]),
+      );
+      if (existingRows.length) {
+        const existing = rowToMatch(existingRows[0]);
+        if (existing.source === "server" && rec.source !== "server") {
+          return existing; // 権威記録はクライアント申告で上書き不可
+        }
+      }
+      // fight_id 有り: UNIQUE(user_id, fight_id) で upsert。
+      await tursoExec(
+        `INSERT INTO matches (user_id, fight_id, finished_at, outcome, reason, first_seat, turn_count, deck_id, opponent_deck_id, replay_id, source)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(user_id, fight_id) DO UPDATE SET
+           finished_at = excluded.finished_at, outcome = excluded.outcome, reason = excluded.reason,
+           first_seat = excluded.first_seat, turn_count = excluded.turn_count, deck_id = excluded.deck_id,
+           opponent_deck_id = excluded.opponent_deck_id, replay_id = excluded.replay_id, source = excluded.source`,
+        [uid, rec.fightId, rec.finishedAt, rec.outcome, rec.reason, rec.firstSeat, rec.turnCount, rec.deckId, rec.opponentDeckId, rec.replayId, rec.source],
+      );
+    } else {
+      await tursoExec(
+        `INSERT INTO matches (user_id, fight_id, finished_at, outcome, reason, first_seat, turn_count, deck_id, opponent_deck_id, replay_id, source)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [uid, null, rec.finishedAt, rec.outcome, rec.reason, rec.firstSeat, rec.turnCount, rec.deckId, rec.opponentDeckId, rec.replayId, rec.source],
+      );
+    }
+    return { ...rec };
+  },
+  async listMatches(userId, limit = 100) {
+    const result = await tursoExec(
+      "SELECT * FROM matches WHERE user_id = ? ORDER BY finished_at DESC LIMIT ?",
+      [Number(userId), Math.max(0, Number(limit) || 0)],
+    );
+    return tursoRows(result).map(rowToMatch);
+  },
+  async matchStats(userId) {
+    const result = await tursoExec("SELECT * FROM matches WHERE user_id = ?", [Number(userId)]);
+    return aggregateDeckStats(tursoRows(result).map(rowToMatch));
+  },
+  async countMatches(userId) {
+    const result = await tursoExec("SELECT COUNT(*) as c FROM matches WHERE user_id = ?", [Number(userId)]);
+    const rows = tursoRows(result);
+    return rows.length ? Number(rows[0].c) : 0;
+  },
+  async setMatchReplayId(userId, fightId, replayId) {
+    if (!fightId) return false;
+    await tursoExec("UPDATE matches SET replay_id = ? WHERE user_id = ? AND fight_id = ?", [
+      replayId != null ? String(replayId) : null,
+      Number(userId),
+      String(fightId),
+    ]);
+    return true;
+  },
 };
 
 // ===================== 公開I/F（backend で振り分け） =====================
@@ -555,4 +760,11 @@ module.exports = {
   putDeck: (...args) => impl().putDeck(...args),
   deleteDeck: (...args) => impl().deleteDeck(...args),
   countDecks: (...args) => impl().countDecks(...args),
+
+  // 戦績 (D5)
+  putMatch: (...args) => impl().putMatch(...args),
+  listMatches: (...args) => impl().listMatches(...args),
+  matchStats: (...args) => impl().matchStats(...args),
+  countMatches: (...args) => impl().countMatches(...args),
+  setMatchReplayId: (...args) => impl().setMatchReplayId(...args),
 };

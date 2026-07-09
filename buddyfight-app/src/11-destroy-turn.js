@@ -966,24 +966,37 @@ function soulguardNullifiedFor(card) {
 // 双方とも追加の prompt 種別を要しない。ブラウザ/中継/テストは従来の同期 window.confirm を維持
 // （＝後方互換。回帰テストは window.confirm 経路のまま挙動不変）。
 async function confirmChoiceAsync(owner, message, options = {}) {
+  // B3: リプレイ再生中は記録済みの真偽値を返す（UI/往復を出さない）。確認は seam(chooseCardEntries)とは
+  // 別種の応答として記録キューに載っているため、ここで消費する（選択応答と混線しない）。
+  if (typeof replayIsPlaying === "function" && replayIsPlaying()) {
+    return replayNextConfirm();
+  }
+  let answer;
   if (globalThis.__BUDDYFIGHT_SERVER__ && typeof globalThis.__serverPrompt === "function") {
-    const selected = await chooseCardEntries(
+    // 権威サーバ: 該当プレイヤーへ2択を往復で問う。既存の選択ダイアログ往復を再利用するが、記録は
+    // 「確認応答(真偽値)」へ一本化するため、記録フック付きの chooseCardEntries ではなく素の Impl を呼ぶ
+    // （seam に選択として二重記録させない）。再生時は上の replayNextConfirm で {confirm} を消費する。
+    const selected = await chooseCardEntriesImpl(
       [
         { key: "yes", card: { name: options.yesLabel || "使う", rules: [], attributes: [], keywords: [], costs: {} } },
         { key: "no", card: { name: options.noLabel || "使わない", rules: [], attributes: [], keywords: [], costs: {} } },
       ],
       { title: message, lead: options.lead || "", min: 1, max: 1, forceDialog: true, allowCancel: false, promptSeat: owner },
     );
-    return selected?.[0]?.key === "yes";
-  }
-  if (typeof aiShouldAnswerPrompt === "function" && aiShouldAnswerPrompt(owner)) {
+    answer = selected?.[0]?.key === "yes";
+  } else if (typeof aiShouldAnswerPrompt === "function" && aiShouldAnswerPrompt(owner)) {
     // CPU対戦: CPU席宛の確認は src/22-ai.js が答える（window.confirm を人間に出さない）。
-    return aiAnswerConfirm(owner, message, options);
+    answer = await aiAnswerConfirm(owner, message, options);
+  } else if (typeof window !== "undefined" && typeof window.confirm === "function") {
+    answer = window.confirm(message);
+  } else {
+    answer = true;
   }
-  if (typeof window !== "undefined" && typeof window.confirm === "function") {
-    return window.confirm(message);
+  // B3: 記録中なら確認応答として控える（ローカル/サーバ/CPU いずれの経路も同一キューへ一本化）。
+  if (typeof replayRecordConfirm === "function") {
+    replayRecordConfirm(answer);
   }
-  return true;
+  return answer;
 }
 
 async function shouldUseSoulguard(card, owner) {
@@ -1035,6 +1048,8 @@ function applyLifeLink(card, owner) {
   if (instantDefeat) {
     if (!state.winner) {
       state.winner = state.players[1 - owner]?.name || null;
+      state.winnerSeat = 1 - owner; // D5(戦績): ライフリンクによる即敗北（効果起因）
+      state.winReason = "effect";
     }
     addLog(`${card.name}'s Life Link causes defeat for ${state.players[owner].name}.`);
     return event;
@@ -1186,6 +1201,8 @@ function clearWinnerIfNoCurrentLoss() {
   const stillLost = state.players.some((player) => player.life <= 0 || player.deck.length === 0);
   if (!stillLost) {
     state.winner = null;
+    state.winnerSeat = null; // D5(戦績): 巻き戻し時は勝者席・理由も消す（決着フックは pending 解消後に再判定）
+    state.winReason = null;
   }
 }
 
@@ -1509,10 +1526,14 @@ function checkWinner() {
   state.players.forEach((player, index) => {
     if (player.life <= 0 && !state.winner) {
       state.winner = state.players[1 - index].name;
+      state.winnerSeat = 1 - index; // D5(戦績): 名前はデッキと紐付かないため勝者席・理由を刻む
+      state.winReason = "life";
       addLog(`${state.winner}の勝利です。`);
     }
     if (player.deck.length === 0 && !state.winner) {
       state.winner = state.players[1 - index].name;
+      state.winnerSeat = 1 - index; // D5(戦績)
+      state.winReason = "deckout";
       addLog(`${player.name}のデッキが0枚のため、${state.winner}の勝利です。`);
     }
   });
@@ -1527,6 +1548,8 @@ function declareDeckLoss(player) {
     return;
   }
   state.winner = state.players[1 - loserIndex].name;
+  state.winnerSeat = 1 - loserIndex; // D5(戦績)
+  state.winReason = "deckout";
   addLog(`${player.name}のデッキが0枚のため、${state.winner}の勝利です。`);
 }
 

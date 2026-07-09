@@ -47,8 +47,25 @@ function Get-ContentType($Path) {
   }
 }
 
-function Send-Response($Stream, [int]$Status, [string]$StatusText, [byte[]]$Body, [string]$ContentType) {
-  $Header = "HTTP/1.1 $Status $StatusText`r`nContent-Length: $($Body.Length)`r`nContent-Type: $ContentType`r`nConnection: close`r`n`r`n"
+# キャッシュ方針（authoritative-server の serveStatic と揃える。初期ロード最適化 D2）:
+# - *.html はローダ本体 → 常に再検証（no-cache）で ENGINE_VERSION 更新を即反映。
+# - data/**（カードJSON・imgpack）と ?v= 付きアセットは内容がURLで固定 → 長期immutable。
+function Get-CacheControl([string]$RequestPath, [bool]$HasVersionQuery) {
+  if ([System.IO.Path]::GetExtension($RequestPath).ToLowerInvariant() -eq ".html") {
+    return "no-cache"
+  }
+  if ($RequestPath.StartsWith("data/", [System.StringComparison]::OrdinalIgnoreCase) -or $HasVersionQuery) {
+    return "public, max-age=31536000, immutable"
+  }
+  return ""
+}
+
+function Send-Response($Stream, [int]$Status, [string]$StatusText, [byte[]]$Body, [string]$ContentType, [string]$CacheControl = "") {
+  $Header = "HTTP/1.1 $Status $StatusText`r`nContent-Length: $($Body.Length)`r`nContent-Type: $ContentType`r`n"
+  if (-not [string]::IsNullOrEmpty($CacheControl)) {
+    $Header += "Cache-Control: $CacheControl`r`n"
+  }
+  $Header += "Connection: close`r`n`r`n"
   $HeaderBytes = [System.Text.Encoding]::ASCII.GetBytes($Header)
   $Stream.Write($HeaderBytes, 0, $HeaderBytes.Length)
   if ($Body.Length -gt 0) {
@@ -77,6 +94,7 @@ try {
         Send-Response $Stream 405 "Method Not Allowed" ([System.Text.Encoding]::UTF8.GetBytes("Method Not Allowed")) "text/plain; charset=utf-8"
         continue
       }
+      $HasVersionQuery = $Parts[1] -match "[?&]v="
       $RequestPath = [Uri]::UnescapeDataString(($Parts[1] -split "\?")[0].TrimStart("/"))
       if ([string]::IsNullOrWhiteSpace($RequestPath)) {
         $RequestPath = "index.html"
@@ -91,7 +109,7 @@ try {
         continue
       }
       $Bytes = [System.IO.File]::ReadAllBytes($FullPath)
-      Send-Response $Stream 200 "OK" $Bytes (Get-ContentType $FullPath)
+      Send-Response $Stream 200 "OK" $Bytes (Get-ContentType $FullPath) (Get-CacheControl $RequestPath $HasVersionQuery)
     } catch [System.ObjectDisposedException] {
       break
     } catch {

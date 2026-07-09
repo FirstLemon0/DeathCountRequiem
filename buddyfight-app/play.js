@@ -61,10 +61,10 @@
     } catch { /* noop */ }
   }
 
-  async function api(pathname, body) {
+  async function api(pathname, body, extraHeaders) {
     const options = body
-      ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
-      : undefined;
+      ? { method: "POST", headers: { "Content-Type": "application/json", ...(extraHeaders || {}) }, body: JSON.stringify(body) }
+      : (extraHeaders ? { headers: { ...extraHeaders } } : undefined);
     const res = await fetch(pathname, options);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -294,7 +294,14 @@
         setStatus("参加する部屋番号を入力してください");
         return;
       }
-      const data = await api(pathname, { name: askName(), deck });
+      // D5(戦績): ログイン中なら Bearer を添えて席にログインユーザーを紐づける（決着時にサーバが戦績を記録）。
+      // 未ログイン・トークン失効でもサーバ側は握って未ログイン扱いにするだけ＝参加は失敗しない。
+      let authHeaders;
+      try {
+        const token = typeof window.userSession === "function" ? window.userSession()?.token : null;
+        if (token) authHeaders = { Authorization: "Bearer " + token };
+      } catch (_) { /* localStorage 不可環境等は無視 */ }
+      const data = await api(pathname, { name: askName(), deck }, authHeaders);
       Object.assign(session, { roomId: data.roomId, token: data.token, clientId: data.clientId, role: data.role });
       session.started = false;
       ui.lastViewKey = null; // 別部屋へ入り直したら次のviewを必ず再適用する

@@ -7,6 +7,35 @@ function getFieldSize(player) {
   return fieldZones.reduce((total, zone) => total + effectiveSize(player.field[zone]), 0);
 }
 
+// ── 実効サイズ/実効属性のパス内メモ化 ──────────────────────────────────
+// effectiveSize / effectiveAttributes は「盤面を書き換えない同期評価」の間は純関数
+// （＝同じカード・同じ盤面なら常に同じ値）。ところが cardCount ゲート継続
+// （「君の場に《アイドル》が3種類以上あるなら〜」S-UB-C03/0001 等）を持つカードが並ぶと、
+//   matchesCardFilter → effectiveSize(→continuousStatBonus→continuousEffectApplies
+//     →checkCardConditions(cardCount)→再び matchesCardFilter) ／ matchesCardFilter → effectiveAttributes
+// の相互再帰が「カードごとに毎回ゼロから」走る。カード単位の再入ガード(sizeEvaluationStack/
+// grantAttributeEvaluationStack)は同一カードの無限再帰は止めるが、異なるカード間の指数的
+// ファンアウト(深さ≒盤面枚数・幅≒ゲート継続数×枚数)は止められず、アイドルを並べると1手の
+// 採点/戦闘解決/描画が数十秒に膨らむ（effectiveAttributes 実測1670万回）。
+// そこで「最外の評価が始まってから返るまで＝盤面が不変な1パス」だけ結果をメモ化して指数を多項式に落とす。
+// 最外の呼び出しが返る境界（＝次の評価では盤面が変わり得る）でメモを必ず捨てるため、
+// 古い値を盤面変更を跨いで使い回すことはない。再入ガードで印字値に打ち切った近似値は
+// メモに入れない（完全値のみ格納）ので、メモ経由でも従来と同じ値を返す。
+let statMemoDepth = 0;
+const statMemoSize = new Map(); // card → effectiveSize（完全値のみ）
+const statMemoAttributes = new Map(); // card → effectiveAttributes（完全値のみ）
+function statMemoBegin() {
+  statMemoDepth += 1;
+}
+function statMemoEnd() {
+  statMemoDepth -= 1;
+  if (statMemoDepth <= 0) {
+    statMemoDepth = 0;
+    statMemoSize.clear();
+    statMemoAttributes.clear();
+  }
+}
+
 // 継続 modifyStats の size 増減を反映した実効サイズ（従者ガープ0013「サイズを1減らす」等）。最小0。
 // 再入ガード: サイズ条件(ownFieldCardExists の filter.sizeIn 等)の評価が、このカード自身の
 // effectiveSize を再帰呼び出しして無限ループになるのを防ぐ（サイズ参照の自己言及を印字サイズで打ち切る）。
@@ -18,25 +47,37 @@ function effectiveSize(card) {
   if (!card) {
     return 0;
   }
-  // conditionalSize: 付与元カード(granterInstanceId)が場にある間、サイズを固定値に上書きする
-  // （大首領アンノウン 0029「そのカードはアンノウンが場にいるならサイズ0」）。
-  // 上書きは「そのカード自身が場にいる」時だけ有効。ドロップ/ソウル等の場外では印字サイズを見る
-  // （非破壊でドロップへ行った札が古いサイズ0を引きずらない。破壊時サイズは destroyedEventWindow の
-  //  sizeAtDestroy で別途凍結済み。findFieldCardSlot は override がある時のみ呼ぶので負荷は無い）。
-  const override = card.conditionalSize;
-  const overrideActive =
-    Boolean(override) &&
-    (override.unconditional || granterOnField(override.granterInstanceId)) &&
-    Boolean(findFieldCardSlot(card));
-  const baseSize = overrideActive ? override.size || 0 : card.size || 0;
-  if (sizeEvaluationStack.has(card)) {
-    return Math.max(0, baseSize);
-  }
-  sizeEvaluationStack.add(card);
+  statMemoBegin();
   try {
-    return Math.max(0, baseSize + continuousStatBonus(card, "size"));
+    const cached = statMemoSize.get(card);
+    if (cached !== undefined) {
+      return cached;
+    }
+    // conditionalSize: 付与元カード(granterInstanceId)が場にある間、サイズを固定値に上書きする
+    // （大首領アンノウン 0029「そのカードはアンノウンが場にいるならサイズ0」）。
+    // 上書きは「そのカード自身が場にいる」時だけ有効。ドロップ/ソウル等の場外では印字サイズを見る
+    // （非破壊でドロップへ行った札が古いサイズ0を引きずらない。破壊時サイズは destroyedEventWindow の
+    //  sizeAtDestroy で別途凍結済み。findFieldCardSlot は override がある時のみ呼ぶので負荷は無い）。
+    const override = card.conditionalSize;
+    const overrideActive =
+      Boolean(override) &&
+      (override.unconditional || granterOnField(override.granterInstanceId)) &&
+      Boolean(findFieldCardSlot(card));
+    const baseSize = overrideActive ? override.size || 0 : card.size || 0;
+    if (sizeEvaluationStack.has(card)) {
+      // 再入時は印字サイズで打ち切る近似値。完全値ではないのでメモには入れない。
+      return Math.max(0, baseSize);
+    }
+    sizeEvaluationStack.add(card);
+    try {
+      const value = Math.max(0, baseSize + continuousStatBonus(card, "size"));
+      statMemoSize.set(card, value);
+      return value;
+    } finally {
+      sizeEvaluationStack.delete(card);
+    }
   } finally {
-    sizeEvaluationStack.delete(card);
+    statMemoEnd();
   }
 }
 
@@ -391,6 +432,11 @@ function continuousStatBonus(card, statKey) {
   if (!slot) {
     return 0;
   }
+  // continuousStatBonus 自体は結果をメモ化しない（this の値は effectiveSize 側でメモ化される）が、
+  // この評価中に走る effectiveSize/effectiveAttributes のメモ有効範囲を継続評価の全体に広げる
+  // ことで、cardCount ゲート越しの兄弟カード参照が同一パスのメモを共有できるようにする。
+  statMemoBegin();
+  try {
   const player = state.players[slot.owner];
   let bonus = 0;
   zones.forEach((zone) => {
@@ -455,6 +501,9 @@ function continuousStatBonus(card, statKey) {
     }
   });
   return bonus;
+  } finally {
+    statMemoEnd();
+  }
 }
 
 function continuousPowerBonus(card) {
@@ -709,54 +758,64 @@ function effectiveAttributes(card) {
   if (!card) {
     return [];
   }
-  const printed = card.attributes || [];
-  // 再入ガードは関数冒頭で確定させる（matchesCardFilterはこの関数を経由するため、
-  // 下の高速パス判定自体が isAbilitiesNullified 経由で matchesCardFilter→effectiveAttributes を
-  // 再帰し得る。ガードを後回しにすると同一カードの多重再入で無限再帰し得るため先に確保する）。
-  if (card.instanceId && grantAttributeEvaluationStack.has(card.instanceId)) {
-    return printed;
-  }
-  if (card.instanceId) {
-    grantAttributeEvaluationStack.add(card.instanceId);
-  }
+  statMemoBegin();
   try {
-    // 高速パス判定: 継続の生配列を直接見る（activeContinuousEffects経由だとisAbilitiesNullifiedが
-    // 他カードのnullifyAbilities filterを介してmatchesCardFilter→effectiveAttributesを誘発し得るため、
-    // ここでは意図的に無効化判定を経由しない生スキャンにする。既存1,917枚は誰も grantAttribute を
-    // 持たないため、この生スキャンは通常 false で即 return する＝ホットパスは実質無コスト）。
-    const hasAnyGrant = state?.players?.some((player) =>
-      zones.some((zone) => (player.field[zone]?.continuous || []).some((e) => e.op === "grantAttribute")),
-    );
-    if (!hasAnyGrant) {
+    const cached = statMemoAttributes.get(card);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const printed = card.attributes || [];
+    // 再入ガードは関数冒頭で確定させる（matchesCardFilterはこの関数を経由するため、
+    // 下の高速パス判定自体が isAbilitiesNullified 経由で matchesCardFilter→effectiveAttributes を
+    // 再帰し得る。ガードを後回しにすると同一カードの多重再入で無限再帰し得るため先に確保する）。
+    // 再入時は印字属性で打ち切る近似値。完全値ではないのでメモには入れない。
+    if (card.instanceId && grantAttributeEvaluationStack.has(card.instanceId)) {
       return printed;
     }
-    const granted = [];
-    const targetSlot = findFieldCardSlot(card);
-    state.players.forEach((player, sourceOwner) => {
-      zones.forEach((zone) => {
-        const source = player.field[zone];
-        activeContinuousEffects(source).forEach((e) => {
-          if (e.op !== "grantAttribute") return;
-          if (e.scope === "self" && (!targetSlot || targetSlot.owner !== sourceOwner)) return;
-          if (e.scope === "opponent" && (!targetSlot || targetSlot.owner === sourceOwner)) return;
-          if (e.zones && targetSlot && !e.zones.includes(targetSlot.zone)) return;
-          if (e.filter && Object.keys(e.filter).length && !matchesCardFilter(card, e.filter)) return;
-          if (e.conditions && !checkCardConditions(e.conditions, sourceOwner, { card: source, zone })) return;
-          const names = e.attributes || (e.attribute ? [e.attribute] : []);
-          names.forEach((name) => {
-            if (!granted.includes(name)) granted.push(name);
+    if (card.instanceId) {
+      grantAttributeEvaluationStack.add(card.instanceId);
+    }
+    try {
+      // 高速パス判定: 継続の生配列を直接見る（activeContinuousEffects経由だとisAbilitiesNullifiedが
+      // 他カードのnullifyAbilities filterを介してmatchesCardFilter→effectiveAttributesを誘発し得るため、
+      // ここでは意図的に無効化判定を経由しない生スキャンにする。既存1,917枚は誰も grantAttribute を
+      // 持たないため、この生スキャンは通常 false で即 return する＝ホットパスは実質無コスト）。
+      const hasAnyGrant = state?.players?.some((player) =>
+        zones.some((zone) => (player.field[zone]?.continuous || []).some((e) => e.op === "grantAttribute")),
+      );
+      if (!hasAnyGrant) {
+        statMemoAttributes.set(card, printed);
+        return printed;
+      }
+      const granted = [];
+      const targetSlot = findFieldCardSlot(card);
+      state.players.forEach((player, sourceOwner) => {
+        zones.forEach((zone) => {
+          const source = player.field[zone];
+          activeContinuousEffects(source).forEach((e) => {
+            if (e.op !== "grantAttribute") return;
+            if (e.scope === "self" && (!targetSlot || targetSlot.owner !== sourceOwner)) return;
+            if (e.scope === "opponent" && (!targetSlot || targetSlot.owner === sourceOwner)) return;
+            if (e.zones && targetSlot && !e.zones.includes(targetSlot.zone)) return;
+            if (e.filter && Object.keys(e.filter).length && !matchesCardFilter(card, e.filter)) return;
+            if (e.conditions && !checkCardConditions(e.conditions, sourceOwner, { card: source, zone })) return;
+            const names = e.attributes || (e.attribute ? [e.attribute] : []);
+            names.forEach((name) => {
+              if (!granted.includes(name)) granted.push(name);
+            });
           });
         });
       });
-    });
-    if (granted.length === 0) {
-      return printed;
+      const result = granted.length === 0 ? printed : [...printed, ...granted.filter((name) => !printed.includes(name))];
+      statMemoAttributes.set(card, result);
+      return result;
+    } finally {
+      if (card.instanceId) {
+        grantAttributeEvaluationStack.delete(card.instanceId);
+      }
     }
-    return [...printed, ...granted.filter((name) => !printed.includes(name))];
   } finally {
-    if (card.instanceId) {
-      grantAttributeEvaluationStack.delete(card.instanceId);
-    }
+    statMemoEnd();
   }
 }
 

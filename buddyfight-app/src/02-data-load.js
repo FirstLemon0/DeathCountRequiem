@@ -49,7 +49,13 @@ async function loadSetFile(set) {
 }
 
 async function loadJson(path) {
-  const response = await fetch(path, { cache: "no-store" });
+  // データJSONはバージョン付きURL(?v=…)＋ブラウザキャッシュに載せて毎回の再取得を避ける
+  // （旧 cache:"no-store" はカードJSON 3MB超を毎回落とし直していた）。ローダHTMLが
+  // globalThis.__BUDDYFIGHT_DATA_VERSION=ENGINE_VERSION を定義した時だけ ?v= を付ける。
+  // 未定義の環境（旧ローダ・FSスタブのみのvm）では従来どおり no-store にフォールバックし挙動を変えない。
+  const version = globalThis.__BUDDYFIGHT_DATA_VERSION;
+  const url = version ? `${path}${path.includes("?") ? "&" : "?"}v=${version}` : path;
+  const response = await fetch(url, version ? undefined : { cache: "no-store" });
   if (!response.ok) {
     throw new Error(`${path} を読み込めませんでした。`);
   }

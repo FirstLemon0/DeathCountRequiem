@@ -44,6 +44,7 @@ const elements = {
   shareCodeInput: document.querySelector("#shareCodeInput"),
   issueShareCodeButton: document.querySelector("#issueShareCodeButton"),
   importShareCodeButton: document.querySelector("#importShareCodeButton"),
+  copyShareUrlButton: document.querySelector("#copyShareUrlButton"),
   saveMenuButton: document.querySelector("#saveMenuButton"),
   saveMenu: document.querySelector("#saveMenu"),
   saveLocalMenuItem: document.querySelector("#saveLocalMenuItem"),
@@ -72,6 +73,7 @@ async function initializeBuilder() {
     populateDeckOptions();
     populateSavedDecks();
     loadFirstAvailableDeck();
+    applyDeckFromUrl(); // builder.html?deck=BFD1.… があれば初期デッキを上書き
     bindEvents();
     render();
     updateDeckSnapshot();
@@ -115,7 +117,12 @@ async function loadSetFile(set) {
 }
 
 async function loadJson(path) {
-  const response = await fetch(path, { cache: "no-store" });
+  // データJSONはバージョン付きURL(?v=…)＋ブラウザキャッシュに載せて毎回の再取得を避ける
+  // （旧 cache:"no-store" はカードJSON 3MB超を毎回落とし直していた）。builder.html が
+  // globalThis.__BUDDYFIGHT_DATA_VERSION を定義した時だけ ?v= を付ける。未定義なら従来どおり no-store。
+  const version = globalThis.__BUDDYFIGHT_DATA_VERSION;
+  const url = version ? `${path}${path.includes("?") ? "&" : "?"}v=${version}` : path;
+  const response = await fetch(url, version ? undefined : { cache: "no-store" });
   if (!response.ok) {
     throw new Error(`${path} を読み込めませんでした。`);
   }
@@ -277,6 +284,7 @@ function bindEvents() {
   });
   elements.issueShareCodeButton?.addEventListener("click", exportDeckShareCode);
   elements.importShareCodeButton?.addEventListener("click", importDeckShareCode);
+  elements.copyShareUrlButton?.addEventListener("click", copyShareUrl);
   // 未保存の編集があるまま離脱/再読込しようとしたら確認（ツールバーのリンク遷移・タブ閉じを含む）。
   window.addEventListener("beforeunload", (event) => {
     if (isDeckDirty()) {
@@ -729,24 +737,71 @@ function builderEnsurePack(pack) {
   return builderPackPromises[pack];
 }
 
-// レンダー後、サムネイルimgに製品パックのdata URLを流し込む（未読込は製品パックを読み込んでから）。
+// レンダー後、サムネイルimgに製品パックのdata URLを流し込む。
+// 製品パック(data/images/*.imgpack.json)は1製品で最大3MB弱。旧実装は描画済みサムネ全件（検索結果140件＋
+// デッキ）へ可視性を一切見ずに builderEnsurePack を発火し、跨る製品パックを起動時に丸ごと落としていた
+// （src/12 ensureImagePackLoaded の遅延読込設計を無効化していた）。IntersectionObserver で「実際に
+// ビューポートへ入ったカードの製品パックだけ」を取得する。非対応環境（jsdom/古いブラウザ）は即時読込にフォールバック。
+// observer は root ごとに1つを root 自身へ結び付け、再検索・フィルタ変更でDOMを総入れ替えする前に
+// 古い observer を disconnect してリークを防ぐ。
 function builderFillThumbs(root) {
   if (!root) {
     return;
   }
+  // 同じ root への再描画では前回張った監視を必ず捨てる（DOMノードが差し替わり監視対象が宙に浮くため）。
+  if (root.builderThumbObserver) {
+    root.builderThumbObserver.disconnect();
+    root.builderThumbObserver = null;
+  }
+  const pending = [];
   root.querySelectorAll("img.builder-card-thumb[data-cid]").forEach((img) => {
     const cid = img.dataset.cid;
+    // 読込済みパックのカードは監視せず即流し込む（fetch も監視も不要）。
     if (builderPacks[cid]) {
       setBuilderThumbSrc(img, builderPacks[cid]);
       return;
     }
-    builderEnsurePack(img.dataset.pack).then(() => {
-      if (builderPacks[cid]) {
-        setBuilderThumbSrc(img, builderPacks[cid]);
-      } else {
-        builderCardImgError(img);
-      }
-    });
+    pending.push(img);
+  });
+  if (!pending.length) {
+    return;
+  }
+  if (typeof IntersectionObserver !== "function") {
+    // 非対応環境: 旧来の即時読込（可視性ゲート無し）にフォールバック。
+    pending.forEach((img) => builderLoadThumb(img));
+    return;
+  }
+  // rootMargin で画面外少し手前から先読みし、スクロール時のちらつきを抑える。
+  const observer = new IntersectionObserver(
+    (entries, obs) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) {
+          return;
+        }
+        obs.unobserve(entry.target); // 一度読み込んだら監視解除（多重発火・多重fetchを防ぐ）。
+        builderLoadThumb(entry.target);
+      });
+    },
+    { rootMargin: "200px" },
+  );
+  root.builderThumbObserver = observer;
+  pending.forEach((img) => observer.observe(img));
+}
+
+// サムネイル1枚の実読込: 製品パックを（未読込なら）取得してから data URL を流し込む。
+// builderEnsurePack は builderPackPromises でメモ化済みなので同一パックへの多重fetchは起きない。
+function builderLoadThumb(img) {
+  const cid = img.dataset.cid;
+  if (builderPacks[cid]) {
+    setBuilderThumbSrc(img, builderPacks[cid]);
+    return;
+  }
+  builderEnsurePack(img.dataset.pack).then(() => {
+    if (builderPacks[cid]) {
+      setBuilderThumbSrc(img, builderPacks[cid]);
+    } else {
+      builderCardImgError(img);
+    }
   });
 }
 
@@ -1004,42 +1059,56 @@ function confirmDiscardIfDirty() {
   return !isDeckDirty() || window.confirm("編集中のデッキに保存していない変更があります。破棄して続けますか？");
 }
 
-// ---- デッキ共有コード（versioned base64url。クロスデバイス持ち寄り。flag/buddy/cardId は card.id スラグ＝サーバ custom 経路と整合） ----
-function toBase64Url(str) {
-  return btoa(unescape(encodeURIComponent(str))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-function fromBase64Url(code) {
-  let b = code.replace(/-/g, "+").replace(/_/g, "/");
-  while (b.length % 4) b += "=";
-  return decodeURIComponent(escape(atob(b)));
-}
-function encodeDeckShareCode() {
-  return encodeDeckObjectShareCode(exportableDeck());
-}
-// 任意のデッキオブジェクト{name,flag,buddy,recipe}をBFD1コード化する。
-// user-api.js の「端末→サーバーへ一括移行」がlocalStorageの各保存済みデッキ（currentDeck以外）を
-// コード化するのに使う（encodeDeckShareCodeはcurrentDeckしか見ないため個別デッキ向けに切り出し）。
+// ---- デッキ共有コード（BFD1）: encode/decode/validate は deck-code.js（builder.html が読み込む共通モジュール）に一本化。
+// 以前ここに toBase64Url/fromBase64Url/encodeDeckShareCode/decodeDeckShareCode を重複実装していたが、
+// サーバ（authoritative-server）と同じ deck-code.js を使うよう削除した。builder 固有の canonicalFlagId 解決だけ
+// 薄いラッパで残す（他デバイス発行や旧保存デッキの別名フラッグを正規idへ寄せる。旧実装の挙動をバイト等価で保存）。----
+
+// 任意のデッキオブジェクト{name,flag,buddy,recipe}をBFD1コード化する。flag は builder の別名解決を通してから
+// deck-code.js の encodeDeckShareCode へ渡す（旧 encodeDeckObjectShareCode が canonicalFlagId(d.flag) を
+// 適用していた挙動をそのまま保つ）。user-api.js の一括移行や URL 生成もこの入口を共有する。
 function encodeDeckObjectShareCode(d) {
-  const payload = [1, d.name, canonicalFlagId(d.flag), d.buddy || "", d.recipe]; // [version, name, flag, buddy, recipe]
-  return "BFD1." + toBase64Url(JSON.stringify(payload));
+  return encodeDeckShareCode({ ...d, flag: canonicalFlagId(d.flag) });
 }
-function decodeDeckShareCode(code) {
-  const body = String(code || "").trim().replace(/^BFD1\./, "");
-  const arr = JSON.parse(fromBase64Url(body));
-  const [ver, name, flag, buddy, recipe] = arr;
-  if (ver !== 1) throw new Error("未対応の共有コードバージョン: " + ver);
-  if (!flag || !Array.isArray(recipe)) throw new Error("共有コードの形式が不正です");
-  return {
-    id: createDeckId("custom"),
-    name: name || "共有デッキ",
-    flag: canonicalFlagId(flag),
-    buddy: buddy || "",
-    recipe: recipe.map(([id, count]) => [id, Number(count)]),
-  };
+
+// validateDeckCodePayload 用の実在ID集合。実在しないカード/フラッグを弾く（authoritative-server の
+// getDeckValidationSets と同じ構成: カードは type:flag を除く全id、フラッグは flags.json のid＋別名）。
+function shareCodeCardIds() {
+  return new Set(cards.filter((card) => card.type !== "flag").map((card) => card.id));
 }
+function shareCodeFlagIds() {
+  const ids = new Set(flagCards().map((card) => card.id));
+  flagIdAliases.forEach((_canonical, alias) => ids.add(alias));
+  return ids;
+}
+
+// 共有コード文字列を decode（deck-code.js）→ validateDeckCodePayload（実在カード/フラッグ照合）まで通す共通処理。
+// URL の ?deck= と「共有コード取込」ボタンで共用する。戻り値 {ok:true, deck} | {ok:false, message}。
+function readDeckShareCode(raw) {
+  let payload;
+  try {
+    payload = decodeDeckShareCode(raw);
+  } catch (error) {
+    // decode 段（base64/JSON 破損）は deck-code.js が日本語メッセージを投げる。
+    return {
+      ok: false,
+      message: error.message || "コードを読み取れませんでした。BFD1. で始まる全文を貼り付けてください。",
+    };
+  }
+  const result = validateDeckCodePayload(payload, {
+    cardIds: shareCodeCardIds(),
+    flagIds: shareCodeFlagIds(),
+  });
+  if (!result.ok) {
+    return { ok: false, message: result.reason };
+  }
+  // normalized = {name, flag, buddy(null可), recipe}。cloneDeck に渡す前段の生データを返す。
+  return { ok: true, deck: result.normalized };
+}
+
 async function exportDeckShareCode() {
   if (!elements.shareCodeInput) return;
-  const code = encodeDeckShareCode();
+  const code = encodeDeckObjectShareCode(exportableDeck());
   elements.shareCodeInput.value = code;
   elements.shareCodeInput.focus();
   elements.shareCodeInput.select();
@@ -1057,19 +1126,68 @@ async function exportDeckShareCode() {
 function importDeckShareCode() {
   if (!elements.shareCodeInput) return;
   if (!confirmDiscardIfDirty()) return;
-  try {
-    const deck = decodeDeckShareCode(elements.shareCodeInput.value);
-    currentDeck = cloneDeck(deck);
-    updateDeckSnapshot();
-    render();
-    setStatus("共有コードを取り込みました。");
-  } catch (error) {
-    const known = /共有コード|バージョン/.test(error.message);
-    setStatus(
-      "共有コード取込失敗: " +
-        (known ? error.message : "コードを読み取れませんでした。BFD1. で始まる全文を貼り付けてください。"),
-    );
+  const result = readDeckShareCode(elements.shareCodeInput.value);
+  if (!result.ok) {
+    setStatus("共有コード取込失敗: " + result.message);
+    return;
   }
+  currentDeck = cloneDeck(result.deck);
+  updateDeckSnapshot();
+  render();
+  setStatus("共有コードを取り込みました。");
+}
+
+// 現在のデッキを ?deck=BFD1.… 付き共有URLにしてクリップボードへ。URLは最大約850文字＋オリジンと長いので、
+// コピー後に文字数も出す（貼り付け先の文字数制限に引っかかっていないか目視できるように）。
+async function copyShareUrl() {
+  const code = encodeDeckObjectShareCode(exportableDeck());
+  const base = window.location.origin + window.location.pathname;
+  const url = `${base}?deck=${code}`;
+  if (elements.shareCodeInput) {
+    elements.shareCodeInput.value = code; // 共有コード欄にもコードを残す（コード単体で欲しい人向け）
+  }
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setStatus(`共有URLをコピーしました（${url.length}文字）。`);
+      return;
+    } catch {
+      // HTTPS外/権限なしでは失敗するので、下の手動コピー用フォールバックへ。
+    }
+  }
+  // クリップボード不可: URL全文をコード欄に出して選択状態にし、手動コピーしてもらう。
+  if (elements.shareCodeInput) {
+    elements.shareCodeInput.value = url;
+    elements.shareCodeInput.focus();
+    elements.shareCodeInput.select();
+  }
+  setStatus(`共有URLを発行しました（${url.length}文字）。コード欄を選択済みです。`);
+}
+
+// builder.html?deck=BFD1.… で起動したら、そのデッキを初期表示にする（不正コードは握り潰さず日本語で通知）。
+function applyDeckFromUrl() {
+  let params;
+  try {
+    params = new URLSearchParams(window.location.search || "");
+  } catch {
+    return false;
+  }
+  const code = params.get("deck");
+  if (!code) {
+    return false;
+  }
+  const result = readDeckShareCode(code);
+  if (!result.ok) {
+    setStatus("共有URLのデッキを読み込めませんでした: " + result.message);
+    return false;
+  }
+  currentDeck = cloneDeck(result.deck);
+  // 再共有しやすいよう共有コード欄にも復元しておく（render 前なので DOM 反映は render 任せ）。
+  if (elements.shareCodeInput) {
+    elements.shareCodeInput.value = encodeDeckObjectShareCode(currentDeck);
+  }
+  setStatus("共有URLからデッキを読み込みました。");
+  return true;
 }
 
 // ---- 保存▾ スプリットメニュー ----
@@ -1128,7 +1246,7 @@ async function saveCurrentDeckToServer() {
   }
   try {
     const deck = exportableDeck();
-    const code = encodeDeckShareCode();
+    const code = encodeDeckObjectShareCode(deck);
     await userSaveMyDeck(deck.name, code);
     if (typeof userRefreshMyDeckOptions === "function") {
       await userRefreshMyDeckOptions();

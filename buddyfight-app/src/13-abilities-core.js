@@ -569,10 +569,20 @@ function checkCondition(condition, owner, context = {}) {
   if (condition.op === "confirmPrompt") {
     // メタ的な自己申告条件（例: ギャラホルンの「君が小学生なら」）を確認ポップアップで判定。
     // 何度も評価されると複数回ポップアップするため、ability.conditions ではなく script の ifCondition 内で使うこと。
-    if (typeof window !== "undefined" && typeof window.confirm === "function") {
-      return Boolean(window.confirm(condition.prompt || "この効果を使いますか？"));
+    // B3: リプレイ再生中は記録済みの真偽値を返す／記録中は同期で控える（確認UIは変えない）。
+    if (typeof replayIsPlaying === "function" && replayIsPlaying()) {
+      return replayNextConfirm();
     }
-    return Boolean(condition.default);
+    let answer;
+    if (typeof window !== "undefined" && typeof window.confirm === "function") {
+      answer = Boolean(window.confirm(condition.prompt || "この効果を使いますか？"));
+    } else {
+      answer = Boolean(condition.default);
+    }
+    if (typeof replayRecordConfirm === "function") {
+      replayRecordConfirm(answer);
+    }
+    return answer;
   }
   if (condition.op === "cardCount" || condition.op === "cardCountGte" || condition.op === "cardCountLte") {
     // 汎用枚数条件: controller(self/opponent/both) × pile(field/center/item/drop/hand/deck/gauge/soul) × filter × distinct × cmp

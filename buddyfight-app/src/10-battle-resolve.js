@@ -389,6 +389,8 @@ function applyWinOnFighterDamage(pending, dealtDamage) {
   }
   const winnerSeat = pending.attackerOwner;
   state.winner = state.players[winnerSeat].name;
+  state.winnerSeat = winnerSeat; // D5(戦績)
+  state.winReason = "checkmate";
   addLog(`${state.winner}はチェック・メイトの条件を満たしゲームに勝利しました。`);
 }
 

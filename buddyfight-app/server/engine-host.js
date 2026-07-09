@@ -49,9 +49,11 @@ function dummyElement() {
 }
 
 // loadJson(path) は fetch(path,{cache}) → .json()。data/ をFSから返すスタブ。
+// loadJson はキャッシュ運用のため ?v=<version> 付きURLを投げてくる（__BUDDYFIGHT_DATA_VERSION 定義時）。
+// FS読込ではクエリを落とさないとファイルが見つからず loadData が落ちるので、先頭で ? 以降を除去する。
 function makeFsFetch() {
   return function fsFetch(reqPath) {
-    const rel = String(reqPath).replace(/^[./]+/, "");
+    const rel = String(reqPath).split("?")[0].replace(/^[./]+/, "");
     const file = path.join(root, rel);
     const exists = fs.existsSync(file);
     return Promise.resolve({
@@ -80,6 +82,9 @@ function makeLocalStorage(customDecks) {
 function createEngineContext({ customDecks = [], onServerPrompt = null } = {}) {
   const context = {
     __BUDDYFIGHT_SERVER__: true,
+    // loadJson の ?v= キャッシュ経路をサーバ側でも通す（＝実ローダと同じコードパスを検証する）。
+    // FS読込ではクエリは makeFsFetch が落とすので値は任意でよい。
+    __BUDDYFIGHT_DATA_VERSION: "engine-host",
     console,
     crypto: {
       randomUUID: () =>
@@ -268,6 +273,12 @@ class GameRoom {
       await fn();
     } finally {
       this.api.replayEndStep();
+    }
+    // D5(戦績): アクション解決後の整合局面で決着を確定させる（state.matchResult に一度だけ載る）。
+    // authoritative-server はこの後 getState().matchResult を読んで席別ユーザーに戦績を記録する。
+    // 記録オフでも state を stamp するだけで害はない（決定論・冪等）。復元対戦でも matchResult は正しく載る。
+    if (typeof this.api.matchRecordCheckpoint === "function") {
+      this.api.matchRecordCheckpoint();
     }
     return this.api.getState();
   }

@@ -258,6 +258,28 @@
     return null;
   }
 
+  // D5(戦績): ローカル対戦の自己申告をサーバへ記録する（best-effort。未ログイン/未設定は黙って何もしない）。
+  // サーバ側で source:"client" 固定＝権威記録(net対戦)は上書きできない。呼び元(src/24)は失敗を握る。
+  async function userRecordMatch(record) {
+    if (!userSession() || userApiBase() === null) {
+      return null; // 未ログイン or サーバーURL未設定なら送らない
+    }
+    return userApiFetch("/auth/matches", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(record || {}),
+    });
+  }
+
+  // GET: 自分の対戦履歴／デッキ別集計（ログインUIから使う想定。未使用でもAPIとして公開）。
+  async function userListMatches(limit) {
+    var q = limit ? "?limit=" + encodeURIComponent(limit) : "";
+    return userApiFetch("/auth/matches" + q, { method: "GET" });
+  }
+  async function userMatchStats() {
+    return userApiFetch("/auth/matches/stats", { method: "GET" });
+  }
+
   async function userSaveMyDeck(name, code) {
     var data = await userApiFetch("/auth/mydecks", {
       method: "POST",
@@ -885,7 +907,12 @@
         when: "loggedIn",
         onClick: async function () {
           var deck = exportableDeck();
-          var code = encodeDeckShareCode();
+          // encodeDeckShareCode は deck-code.js 一本化でデッキ引数を取る形になった（旧builderの無引数版は廃止）。
+          // builder 固有の canonicalFlagId 解決を通す encodeDeckObjectShareCode を優先し、無い環境は user 側フォールバック。
+          var code =
+            typeof encodeDeckObjectShareCode === "function"
+              ? encodeDeckObjectShareCode(deck)
+              : userEncodeDeckObjectShareCode(deck);
           await userSaveMyDeck(deck.name, code);
           if (typeof showBuilderToast === "function") showBuilderToast(deck.name + " をサーバーに保存しました。");
         },
@@ -951,6 +978,9 @@
   window.userCachedMyDeckProfile = userCachedMyDeckProfile;
   window.userSaveMyDeck = userSaveMyDeck;
   window.userDeleteMyDeck = userDeleteMyDeck;
+  window.userRecordMatch = userRecordMatch;
+  window.userListMatches = userListMatches;
+  window.userMatchStats = userMatchStats;
   window.userAdminListUsers = userAdminListUsers;
   window.userAdminResetPassword = userAdminResetPassword;
   window.userRefreshMyDeckOptions = userRefreshMyDeckOptions;

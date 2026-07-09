@@ -18,6 +18,9 @@ function render() {
   if (typeof aiOnRender === "function") {
     aiOnRender(); // CPU対戦(src/22): 状態変化のたびにCPUの手番/応答を駆動（OFF時は即return）
   }
+  if (typeof matchRecordCheckpoint === "function") {
+    matchRecordCheckpoint(); // D5(戦績): 決着済み・整合局面で一度だけ戦績を確定（未決着/pending 中は即 return）
+  }
 }
 
 function renderNetworkChrome() {

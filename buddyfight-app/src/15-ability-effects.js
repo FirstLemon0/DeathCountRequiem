@@ -1768,6 +1768,8 @@ async function executeAbilityEffect(effect, context) {
   if (effect.op === "winGame") {
     // state.winner はプレイヤー名文字列（checkWinner 等と統一）。席index を入れると席0で falsy になり終局しない。
     state.winner = state.players[context.owner]?.name || null;
+    state.winnerSeat = context.owner; // D5(戦績): 効果による即勝利
+    state.winReason = "effect";
     addLog(`${player.name}は${context.card.name}の効果で勝利しました。`);
   }
 }
