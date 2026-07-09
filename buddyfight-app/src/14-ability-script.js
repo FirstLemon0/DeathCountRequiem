@@ -67,9 +67,9 @@ async function runTriggeredAbilities(card, event, baseContext = {}) {
         addLog(`${card.name}の任意能力を使いませんでした。`);
         continue;
       }
-      if (ability.target && !context.target && !Array.isArray(ability.script)) {
+      if (ability.target && (!context.target || context.target.__fromEvent) && !Array.isArray(ability.script)) {
         context.target = await chooseAbilityTarget(card, ability, owner);
-        if (!context.target && !ability.allowMissingTarget) {
+        if (!context.target && !ability.allowMissingTarget && !ability.target?.allowMissingTarget) {
           addLog(`${card.name}の対象が選ばれなかったため、能力を解決しませんでした。`);
           continue;
         }

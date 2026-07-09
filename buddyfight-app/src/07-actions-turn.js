@@ -396,7 +396,7 @@ async function runAllyEnterTriggers(enteredCard, owner, enteredZone) {
         enteredCard,
         enteredOwner: owner,
         enteredZone,
-        target: { owner, zone: enteredZone, card: enteredCard },
+        target: { owner, zone: enteredZone, card: enteredCard, __fromEvent: true },
       });
     }
     // ドロップゾーンの登場誘発（triggerZones:["drop"]|fromDropZone を持つ能力のみ）。戦闘員 ネバッド 0023 等。
@@ -416,7 +416,7 @@ async function runAllyEnterTriggers(enteredCard, owner, enteredZone) {
         enteredCard,
         enteredOwner: owner,
         enteredZone,
-        target: { owner, zone: enteredZone, card: enteredCard },
+        target: { owner, zone: enteredZone, card: enteredCard, __fromEvent: true },
         __abilityFilter: isDropEnter,
       });
     }
@@ -451,7 +451,7 @@ async function runFieldEventTriggers(eventBase, eventOwner, eventCard, eventZone
         eventFieldCard: eventCard,
         eventOwner,
         eventZone,
-        target: { owner: eventOwner, zone: eventZone, card: eventCard },
+        target: { owner: eventOwner, zone: eventZone, card: eventCard, __fromEvent: true },
         ...detailRest,
       });
     }

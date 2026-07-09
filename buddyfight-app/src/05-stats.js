@@ -10,6 +10,9 @@ function getFieldSize(player) {
 // 継続 modifyStats の size 増減を反映した実効サイズ（従者ガープ0013「サイズを1減らす」等）。最小0。
 // 再入ガード: サイズ条件(ownFieldCardExists の filter.sizeIn 等)の評価が、このカード自身の
 // effectiveSize を再帰呼び出しして無限ループになるのを防ぐ（サイズ参照の自己言及を印字サイズで打ち切る）。
+// キーは instanceId ではなく**カードオブジェクト自体**にする。任意能力の「使う/使わない」など
+// instanceId を持たない疑似カードでもガードが効くようにするため（instanceId 基準だとガードが
+// 素通りし、サイズ条件を持つ継続効果＝S-UB-C03フラッグ等がある場で無限再帰→クリック不能になった）。
 const sizeEvaluationStack = new Set();
 function effectiveSize(card) {
   if (!card) {
@@ -26,18 +29,14 @@ function effectiveSize(card) {
     (override.unconditional || granterOnField(override.granterInstanceId)) &&
     Boolean(findFieldCardSlot(card));
   const baseSize = overrideActive ? override.size || 0 : card.size || 0;
-  if (card.instanceId && sizeEvaluationStack.has(card.instanceId)) {
+  if (sizeEvaluationStack.has(card)) {
     return Math.max(0, baseSize);
   }
-  if (card.instanceId) {
-    sizeEvaluationStack.add(card.instanceId);
-  }
+  sizeEvaluationStack.add(card);
   try {
     return Math.max(0, baseSize + continuousStatBonus(card, "size"));
   } finally {
-    if (card.instanceId) {
-      sizeEvaluationStack.delete(card.instanceId);
-    }
+    sizeEvaluationStack.delete(card);
   }
 }
 
