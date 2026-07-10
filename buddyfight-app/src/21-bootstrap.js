@@ -290,6 +290,8 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     replayNextConfirm,
     // D5(戦績): 権威サーバが applyAction 後に決着を確定させる（state.matchResult を読んで席別に記録）。
     matchRecordCheckpoint,
+    // 退出/切断による投了。engine-host.declareForfeit から呼ぶ（相手を勝者に確定＋決着フックまで走らせる）。
+    matchDeclareForfeit,
   };
 } else if (globalThis.__BUDDYFIGHT_TEST__) {
   globalThis.__buddyfightTestApi = {

@@ -1136,6 +1136,94 @@ async function handleApi(req, res, url) {
     return true;
   }
 
+  // POST /auth/rooms/:id/leave  （部屋から退出）。ロビー中=単純退出／対戦中の対戦者=投了／決着後・観戦者=退出のみ。
+  if (req.method === "POST" && parts[3] === "leave") {
+    const body = await readJson(req);
+    const member = memberByToken(room, body.token);
+    if (!member) {
+      sendJson(res, 403, { error: "invalid token" });
+      return true;
+    }
+    // アクション適用/プロンプト往復ホールド中は state を触らせない（/replay と同じ確定性ゲート）。クライアントはリトライ。
+    if (room.busy) {
+      sendJson(res, 409, { error: "他の操作を処理中です（少し待って再試行してください）" });
+      return true;
+    }
+    const gameState = room.started && room.game ? room.game.api.getState() : null;
+    const inGame = Boolean(room.started && room.game && gameState && gameState.winner == null);
+    const isPlayer = member.role === 0 || member.role === 1;
+    if (inGame && isPlayer) {
+      // 対戦中の対戦者の退出＝投了。退出者の負け＝相手の勝ちで決着させ、戦績に記録する。
+      // declareForfeit が winner/winnerSeat/winReason を単一 seat から立てるので名前↔席は必ず整合する。
+      room.game.declareForfeit(member.role);
+      room.updatedAt = Date.now();
+      // 決着記録は退出者を members/seats から外す前に行う。外した後だと退出者=ログインユーザーの
+      // 敗戦が記録されない（maybeRecordMatch は room.seats→member.userId で席のユーザーを引くため）。
+      // state.matchResult を読んで席のユーザーへ記録（勝者=win/敗者=loss。二重記録は room.matchRecorded ガード）。
+      await maybeRecordMatch(room);
+      // 退出者は members から削除し席を空ける。相手は「勝ち」表示のまま部屋に残す（相手も後で /leave するか TTL で掃除）。
+      vacateSeatOf(room, member.clientId);
+      room.members.delete(member.clientId);
+      // 残るメンバーへ勝者viewを配信し、対戦者へ「相手退出＝あなたの勝ち」を通知（token/伏せ札/seed は載せない＝テキストのみ）。
+      broadcastView(room, "相手が退出しました");
+      for (const other of room.members.values()) {
+        if (other.sse && (other.role === 0 || other.role === 1)) {
+          writeSse(other.sse, { type: "notice", text: "相手が退出しました（あなたの勝ちです）" });
+        }
+      }
+      persistNow(room); // 決着後の確定局面を保存（相手が再接続しても勝者viewを復元できる）
+      sendJson(res, 200, { ok: true, left: true, forfeited: true });
+      return true;
+    }
+    // ロビー中・決着後・観戦者＝単純退出（投了は起きない）。メンバーが0人になった部屋は閉じる。
+    vacateSeatOf(room, member.clientId);
+    room.members.delete(member.clientId);
+    if (room.members.size === 0) {
+      rooms.delete(room.id);
+      persistDelete(room.id);
+    } else {
+      broadcastLobby(room);
+      persistNow(room);
+    }
+    sendJson(res, 200, { ok: true, left: true });
+    return true;
+  }
+
+  // POST /auth/rooms/:id/abort  （試合中断＝勝敗を残さず部屋を閉じる）。対戦者のみ・片側の操作で成立（相手の同意は不要）。
+  if (req.method === "POST" && parts[3] === "abort") {
+    const body = await readJson(req);
+    const member = memberByToken(room, body.token);
+    if (!member) {
+      sendJson(res, 403, { error: "invalid token" });
+      return true;
+    }
+    if (member.role !== 0 && member.role !== 1) {
+      sendJson(res, 403, { error: "観戦者は中断できません" });
+      return true;
+    }
+    // /leave と同じく処理中は 409（クライアントがリトライ）。
+    if (room.busy) {
+      sendJson(res, 409, { error: "他の操作を処理中です（少し待って再試行してください）" });
+      return true;
+    }
+    const gameState = room.started && room.game ? room.game.api.getState() : null;
+    if (!(room.started && room.game && gameState && gameState.winner == null)) {
+      sendJson(res, 409, { error: "中断できる対戦がありません" });
+      return true;
+    }
+    // 勝敗は記録しない（matchRecordCheckpoint を呼ばない・winner を立てない＝アボート）。
+    // 全メンバー（観戦者含む）へ中断を通知してから部屋を閉じる。
+    for (const m of room.members.values()) {
+      if (m.sse) {
+        writeSse(m.sse, { type: "aborted", text: "試合が中断されました" });
+      }
+    }
+    rooms.delete(room.id);
+    persistDelete(room.id);
+    sendJson(res, 200, { ok: true, aborted: true });
+    return true;
+  }
+
   // POST /auth/rooms/:id/replay  （決着済み対戦のリプレイを保存し {id} を返す。部屋メンバーのみ・進行中は409・冪等）
   if (req.method === "POST" && parts[3] === "replay") {
     const body = await readJson(req);

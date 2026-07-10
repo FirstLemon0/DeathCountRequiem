@@ -288,6 +288,17 @@ class GameRoom {
     return this.api.replayGetRecording();
   }
 
+  // 投了（オンライン対戦の退出/切断で片側から強制決着させる）。loserSeat の相手を勝者に確定させ、
+  // エンジンの matchDeclareForfeit が matchRecordCheckpoint まで走らせるので、この後サーバは
+  // getState().matchResult を読んで席のログインユーザーへ戦績を記録できる。
+  // winner/winnerSeat/winReason は単一 seat から導出されるため名前↔席のズレは起きない。
+  declareForfeit(loserSeat) {
+    if (typeof this.api.matchDeclareForfeit !== "function") {
+      return null;
+    }
+    return this.api.matchDeclareForfeit(loserSeat);
+  }
+
   // 役割別の伏せ字 view。role: 0 | 1 | "spectator"。
   // role: 0 | 1 | "spectator"。隠しゾーンを役割別に伏せ字化する。
   viewFor(role) {

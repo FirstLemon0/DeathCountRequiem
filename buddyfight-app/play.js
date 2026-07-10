@@ -212,6 +212,7 @@
       // 相手(player1Zone=active-player)を上段へ入れ替える（styles.css の body.seat-flip 規則）。
       document.body.classList.toggle("seat-flip", seat === 1);
       $("lobbySeatLabel").textContent = `役割: ${roleLabel(message.role)}`;
+      updateRoomControls(); // 開戦/決着で「試合を中断」の表示可否を更新
       // 初回ガイド(コーチ)を開戦時に一度だけ。
       try {
         const coach = document.getElementById("coachDialog");
@@ -225,6 +226,16 @@
       if (mySeat() === null) return;
       if (message.requestId === ui.activePromptId) return; // 再接続時の再送重複を吸収
       showPrompt(message);
+    } else if (message.type === "notice") {
+      // 相手退出＝自分の勝ち等の通知（テキストのみ）。勝者viewは別途 type:"view" で届くので、ここは文言表示のみ。
+      setStatus(message.text || "");
+      updateRoomControls(); // 勝者確定に伴い「試合を中断」を隠す
+    } else if (message.type === "aborted") {
+      // 相手（または自分）が試合を中断＝部屋が閉じた。勝敗なしで初期（作成/参加）画面へ戻す。
+      // 自分発の中断は POST 応答側でも resetToLobbyScreen 済み。session 済クリア時はガードで二重処理を防ぐ。
+      if (session.roomId) {
+        resetToLobbyScreen(message.text || "試合が中断されました");
+      }
     }
   }
 
@@ -274,6 +285,7 @@
         setStatus("相手が切断中です（再接続を待機中）");
       }
     }
+    updateRoomControls(); // 入室/席変更/開始のたびに退出・中断ボタンの表示を更新
   }
 
   // ---- ロビー操作 ----
@@ -310,6 +322,7 @@
       saveSession();
       $("lobbyRoomInput").value = data.roomId;
       connectSse();
+      updateRoomControls(); // 入室直後に「部屋を出る」を表示（hello 到着前でも押せるように）
       setStatus(`部屋 ${data.roomId} ${kind === "create" ? "を作成" : "に参加"}しました`);
     } catch (error) {
       setStatus(`${kind === "create" ? "作成" : "参加"}失敗: ${error.message}`);
@@ -369,6 +382,73 @@
   // 解決ボタン（攻撃/行動の保留を解決＝対抗・割り込みで「何も使わない（パス）」する手段）。
   // pending がある間だけ render() が有効化する（攻撃側/防御側の双方が押せ、可否はサーバが canActorActNow で判定）。
   wireButton("resolveAttackButton", "resolve");
+
+  // ---- 部屋の退出（対戦中は投了）・試合の中断（勝敗なし・部屋を閉じる） ----
+  // 退出/中断で部屋が閉じたら SSE を切り、localStorage の該当セッションも掃除して初期（作成/参加）画面へ戻す。
+  function resetToLobbyScreen(message) {
+    const roomId = session.roomId;
+    try { session.es?.close(); } catch { /* noop */ }
+    session.es = null;
+    clearSession(roomId); // bf_auth_session:<roomId> / bf_auth_last を掃除
+    Object.assign(session, { roomId: "", token: "", clientId: "", role: null, started: false });
+    ui.lastViewKey = null;
+    ui.activePromptId = null;
+    closeMenu();
+    // 盤面表示状態を解除してロビー（作成/参加）画面を前面へ戻す。
+    document.body.classList.remove("game-started", "network-connected", "seat-flip");
+    [0, 1].forEach((i) => {
+      const z = document.getElementById(`player${i + 1}Zone`);
+      z?.classList.remove("local-seat", "remote-seat");
+    });
+    updateRoomControls();
+    setStatus(message || "部屋から退出しました");
+  }
+
+  // ツールバーの「部屋を出る」「試合を中断」ボタンの表示を現在の局面に合わせる。
+  function updateRoomControls() {
+    const leaveBtn = $("leaveRoomButton");
+    const abortBtn = $("abortMatchButton");
+    const inRoom = Boolean(session.roomId);
+    const st = thin?.getState?.();
+    // 対戦中＝開始済み・自分が対戦者・まだ勝者未確定。中断（勝敗なし終了）はこの時だけ出す。
+    const inGame = Boolean(session.started && mySeat() !== null && st && !st.winner);
+    if (leaveBtn) leaveBtn.hidden = !inRoom; // 退出はロビーでも対戦中でも表示
+    if (abortBtn) abortBtn.hidden = !inGame;
+  }
+
+  async function leaveRoom() {
+    if (!session.roomId || !session.token) {
+      setStatus("退出できる部屋がありません");
+      return;
+    }
+    const st = thin?.getState?.();
+    const inGame = Boolean(session.started && mySeat() !== null && st && !st.winner);
+    // 対戦中の退出は投了＝負け扱いになる旨を確認する。
+    const confirmMsg = inGame
+      ? "投了して部屋を出ます。よろしいですか？"
+      : "この部屋から退出します。よろしいですか？";
+    if (!window.confirm(confirmMsg)) return;
+    try {
+      await api(`auth/rooms/${encodeURIComponent(session.roomId)}/leave`, { token: session.token });
+      resetToLobbyScreen(inGame ? "投了して退出しました" : "部屋から退出しました");
+    } catch (error) {
+      // busy 中は 409（サーバ処理中）。少し待って再試行を促す。
+      setStatus(`退出できませんでした: ${error.message}`);
+    }
+  }
+
+  async function abortMatch() {
+    if (!session.roomId || !session.token) return;
+    if (!window.confirm("試合を中断します（勝敗なし・部屋も閉じます）。よろしいですか？")) return;
+    try {
+      await api(`auth/rooms/${encodeURIComponent(session.roomId)}/abort`, { token: session.token });
+      resetToLobbyScreen("試合を中断しました（勝敗なし・部屋を閉じました）");
+    } catch (error) {
+      setStatus(`中断できませんでした: ${error.message}`);
+    }
+  }
+  $("leaveRoomButton")?.addEventListener("click", leaveRoom);
+  $("abortMatchButton")?.addEventListener("click", abortMatch);
 
   // ---- 選択＋アクションメニュー ----
   function clearSelection() {
