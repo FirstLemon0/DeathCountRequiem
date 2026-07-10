@@ -209,10 +209,31 @@ async function useFieldAbilityAction(card, loc = null) {
   const owner = loc ? loc.owner : state.selected.owner;
   const zone = loc ? loc.zone : state.selected.zone;
   const inDrop = Boolean(loc?.inDrop);
-  const usableAbilities =
+  let usableAbilities =
     loc?.abilities || (inDrop ? findUsableDropAbilities(card, owner) : findUsableFieldAbilities(card, owner));
+  // ソウル一覧から「この能力を使う」と名指しされた場合はそれに絞る（権威版は state.selected に載せて送る）。
+  // 絞った結果が空なら（条件が変わった等）絞らず従来どおり全候補から選ばせる。
+  const wantedAbilityId = loc?.abilityId ?? state.selected?.abilityId;
+  const wantedSoulInstanceId = loc?.soulInstanceId ?? state.selected?.soulInstanceId;
+  if (wantedAbilityId) {
+    const narrowed = usableAbilities.filter(
+      (ability) =>
+        ability.id === wantedAbilityId &&
+        (!wantedSoulInstanceId || ability.soulSourceCard?.instanceId === wantedSoulInstanceId),
+    );
+    if (narrowed.length > 0) {
+      usableAbilities = narrowed;
+    }
+  }
   if (usableAbilities.length === 0) {
-    addLog(inDrop ? "今使えるドロップからの起動能力はありません。" : "今使える起動能力はありません。");
+    // 理由（タイミング/1ターン1回/使用条件）を説明できるなら、それを出す。
+    // 「ありません」だけだと、ソウルの能力が壊れているのか条件未達なのかユーザーが判別できない。
+    const reasons = inDrop ? [] : describeUnusableFieldAbilities(card, owner);
+    if (reasons.length > 0) {
+      reasons.forEach((reason) => addLog(reason));
+    } else {
+      addLog(inDrop ? "今使えるドロップからの起動能力はありません。" : "今使える起動能力はありません。");
+    }
     return;
   }
   const ability =
@@ -449,8 +470,9 @@ async function chooseFieldAbility(card, abilities, owner) {
       },
     })),
     {
-      title: `${card.name}の起動能力`,
-      lead: "使う能力を選んでください。",
+      // 対抗窓では対抗能力も並ぶため「起動能力」と決め打ちしない（ソウルの対抗を選ぶ場面がある）。
+      title: `${card.name}の能力`,
+      lead: "使う能力を選んでください（ソウルの能力もここに並びます）。",
       min: 1,
       max: 1,
       forceDialog: true,
@@ -460,6 +482,112 @@ async function chooseFieldAbility(card, abilities, owner) {
     },
   );
   return selected?.[0]?.ability || null;
+}
+
+// 「今使える起動能力はありません。」だけだと、能力が壊れているのか条件を満たしていないだけなのかが
+// 分からない（ソウルの能力は特に、ホストのカードしか見えないので原因が追えない）。宣言されている
+// 起動/対抗能力を1つずつ見て、最初に引っかかったゲート（タイミング / 1ターン1回 / 使用条件）を返す。
+// カード名のハードコードはせず、条件 op から汎用に説明する（説明できない op は理由なしで従来文言）。
+const ABILITY_TIMING_LABELS = { ...phaseLabels, counter: "対抗" };
+const ABILITY_ZONE_LABELS = {
+  hand: "手札",
+  drop: "ドロップ",
+  left: "モンスタースペース",
+  center: "モンスタースペース",
+  right: "モンスタースペース",
+  item: "アイテム枠",
+  item2: "アイテム枠",
+  item3: "アイテム枠",
+  item4: "アイテム枠",
+};
+
+function describeAbilityCondition(condition) {
+  if (!condition || typeof condition !== "object") {
+    return null;
+  }
+  if (condition.op === "lifeLte") return `自分のライフ${condition.amount}以下`;
+  if (condition.op === "lifeGte") return `自分のライフ${condition.amount}以上`;
+  if (condition.op === "phaseIs") return `${ABILITY_TIMING_LABELS[condition.phase] || condition.phase}フェイズ中`;
+  if (condition.op === "turnOwnerIsSelf") return "自分のターン中";
+  if (condition.op === "turnOwnerIsOpponent") return "相手のターン中";
+  if (condition.op === "hostMatches") return "装備している（搭乗/変身）カードの条件";
+  if (condition.op === "sourceStanding") return "このカードがスタンドしていること";
+  if (condition.op === "sourceZoneIn") {
+    // left/center/right や item/item2… は同じ表示名に畳む（「モンスタースペース・モンスタースペース…」を防ぐ）。
+    const zoneNames = [
+      ...new Set((condition.zones || []).map((zone) => ABILITY_ZONE_LABELS[zone] || zone)),
+    ].join("・");
+    return zoneNames ? `このカードが${zoneNames}にあること` : null;
+  }
+  return null;
+}
+
+// ability の発生源表示名（ソウルの能力はソウルのカード名を出す。ホスト名だけでは何の能力か分からない）。
+function abilitySourceLabel(card, ability) {
+  return ability.fromSoul && ability.soulSourceCard?.name
+    ? `ソウルの${ability.soulSourceCard.name}`
+    : card.name;
+}
+
+// 使えない理由の説明を配列で返す（説明できるものが無ければ空配列＝呼び元は従来の文言に落とす）。
+// options.soulCard を渡すと、そのソウルカードが持つ能力の理由だけに絞る（ソウル詳細シート用）。
+function describeUnusableFieldAbilities(card, owner, options = {}) {
+  if (isAbilitiesNullified(card)) {
+    return [`${card.name}の能力は無効化されています。`];
+  }
+  const onlySoulCard = options.soulCard || null;
+  const timing = state.pendingAttack || state.pendingAction ? "counter" : state.phase;
+  const declared = [
+    ...(onlySoulCard ? [] : (card.abilities || []).filter(isFieldActivatedAbility).map((ability) => ({ ...ability }))),
+    ...(card.soul || [])
+      .filter((soulCard) => !onlySoulCard || soulCard.instanceId === onlySoulCard.instanceId)
+      .flatMap((soulCard) =>
+        (soulCard.soulAbilities || [])
+          .filter(isFieldActivatedAbility)
+          .map((ability) => ({ ...ability, fromSoul: true, soulSourceCard: soulCard })),
+      ),
+  ];
+  // 宣言されている能力を**すべて**説明する。最初の1件で打ち切ると、ホスト自身の能力の理由だけを出して
+  // 肝心のソウルの能力に触れない（＝ユーザーが探している能力の理由が出ない）。
+  const reasons = [];
+  for (const ability of declared) {
+    const who = abilitySourceLabel(card, ability);
+    const kindLabel = isCounterAbility(ability) ? "対抗能力" : "起動能力";
+    if (!abilityTimingIncludes(ability, timing)) {
+      const allowed = (ability.timing || []).map((t) => ABILITY_TIMING_LABELS[t] || t).join("・");
+      reasons.push(
+        allowed
+          ? `${who}の${kindLabel}は今のタイミングでは使えません（${allowed}）。`
+          : `${who}の${kindLabel}は今のタイミングでは使えません。`,
+      );
+      continue;
+    }
+    if (isAbilityLimitUsed(owner, ability.soulSourceCard || card, ability)) {
+      reasons.push(`${who}の${kindLabel}はこのターン既に使用しています。`);
+      continue;
+    }
+    const conditionContext = ability.fromSoul
+      ? {
+          card: ability.soulSourceCard,
+          hostCard: card,
+          hostOwner: owner,
+          hostZone: findFieldCardSlot(card)?.zone,
+        }
+      : { card };
+    const failing = (ability.conditions || []).find(
+      (condition) => !checkCardConditions([condition], owner, conditionContext),
+    );
+    if (failing) {
+      const desc = describeAbilityCondition(failing);
+      reasons.push(
+        desc
+          ? `${who}の${kindLabel}は使用条件を満たしていません（${desc}）。`
+          : `${who}の${kindLabel}は使用条件を満たしていません。`,
+      );
+    }
+  }
+  // 同一文言（同じカードの同型能力が複数など）は畳む。多すぎるとログが埋まるので上限3件。
+  return [...new Set(reasons)].slice(0, 3);
 }
 
 function fieldAbilityLabel(card, ability) {
@@ -472,7 +600,14 @@ function fieldAbilityLabel(card, ability) {
   if (isEquipSelf) {
     return "このカードを装備する（変身／搭乗）";
   }
-  return ability.name || "起動能力";
+  const base = ability.name || (isCounterAbility(ability) ? "対抗能力" : "起動能力");
+  // ソウルの能力は発生源（ソウルにあるカード）を明示する。ホスト（武器/変身元）の名前しか出さないと、
+  // ホスト自身の能力とソウルの能力が同じ「起動能力」ラベルで並び、どちらがソウルのものか選べない
+  // （アーマナイト系＝武器のソウルに入って起動/対抗を与えるカードで顕在化）。
+  if (ability.fromSoul && ability.soulSourceCard?.name) {
+    return `ソウル: ${ability.soulSourceCard.name} の${base}`;
+  }
+  return base;
 }
 
 function isFieldActivatedAbility(ability) {

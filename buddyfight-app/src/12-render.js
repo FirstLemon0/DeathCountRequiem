@@ -315,6 +315,51 @@ function showDropDialog(owner) {
   }
 }
 
+// 盤面カードの「ソウル N」バッジ→ソウル一覧。ソウルのカードをタップすると詳細シート（＋使える能力のボタン）へ。
+// ソウルは公開情報なので相手のカードのソウルも見られる（能力ボタンは自分の使える能力だけ出る）。
+function showSoulDialog(owner, zone) {
+  const host = state.players[owner]?.field?.[zone];
+  if (!host || !elements.soulDialog || !elements.soulDialogList) {
+    return;
+  }
+  const souls = host.soul || [];
+  hideCardTooltip();
+  elements.soulDialogTitle.textContent = `${host.name}のソウル（${souls.length}枚）`;
+  elements.soulDialogList.innerHTML = "";
+  if (souls.length === 0) {
+    const emptyItem = document.createElement("li");
+    emptyItem.className = "drop-dialog-empty";
+    emptyItem.textContent = "なし";
+    elements.soulDialogList.append(emptyItem);
+  } else {
+    souls.forEach((soulCard, index) => {
+      const item = document.createElement("li");
+      const cardButton = document.createElement("button");
+      cardButton.type = "button";
+      cardButton.className = "drop-dialog-card";
+      cardButton.innerHTML = `
+        <span class="drop-dialog-order">${index + 1}</span>
+        <span class="drop-dialog-name">${escapeHtml(soulCard.name)}</span>
+        <span class="drop-dialog-type">${escapeHtml(typeLabels[effectiveCardType(soulCard)] || "")}</span>
+      `;
+      attachTooltip(cardButton, soulCard, { touchPreview: true });
+      // タップ＝そのソウルカードの詳細シート（下に使える能力のボタンが並ぶ）。
+      cardButton.addEventListener("click", () => openSoulCardSheet(owner, zone, soulCard));
+      item.append(cardButton);
+      elements.soulDialogList.append(item);
+    });
+  }
+  if (!elements.soulDialog.open) {
+    elements.soulDialog.showModal();
+  }
+}
+
+function closeSoulDialog() {
+  if (elements.soulDialog?.open) {
+    elements.soulDialog.close();
+  }
+}
+
 // ドロップ一覧の「発動」から、ドロップのカードの起動能力を使う。
 // thin/権威クライアントは globalThis.__onDropAbilityActivate に橋渡し、ローカルは直接実行。
 function activateDropAbilityFromPile(owner, card) {
@@ -355,6 +400,11 @@ function renderHand() {
       cardButton.addEventListener("click", () => {
         if (cardButton.dataset.tooltipPreview) {
           delete cardButton.dataset.tooltipPreview; // 長押しプレビュー後の click はメニューを開かない
+          return;
+        }
+        // 選択ダイアログの「盤面確認」中は詳細を見るだけ（手札から操作を始めさせない）。
+        if (isBoardInspectMode()) {
+          openReadOnlyCardSheet(card);
           return;
         }
         handCardMenuLocal(card.instanceId);
@@ -438,7 +488,12 @@ function createCardElement(card, interactive = false) {
   if (soulNames.length) {
     const peek = document.createElement("span");
     peek.className = "card-stack-peek";
-    peek.title = soulNames.join(" / ");
+    // ソウルバッジはタップでソウル一覧を開く（配線は各クライアントのゾーンclickで data-soul-peek を拾う）。
+    // <button> にすると盤面カードの <button> と入れ子になるため span のまま role/tabindex で押せるようにする。
+    peek.dataset.soulPeek = "1";
+    peek.setAttribute("role", "button");
+    peek.tabIndex = 0;
+    peek.title = `タップしてソウルを見る: ${soulNames.join(" / ")}`;
     peek.textContent = `ソウル ${soulNames.length}`;
     cardElement.append(peek);
   }
@@ -511,7 +566,11 @@ function ensureImagePackLoaded(card) {
   if (imagePackPromises[pack]) {
     return imagePackPromises[pack];
   }
-  imagePackPromises[pack] = fetch(`data/images/${pack}.imgpack.json`, { cache: "force-cache" })
+  // imgpack も loadJson と同じく ?v=DATA_VERSION でバスト。付けないと serveStatic の immutable 1年
+  // キャッシュ下で既存パック再生成が最長1年届かない（カードJSONはバージョン付きなので非対称になる）。
+  const __v = globalThis.__BUDDYFIGHT_DATA_VERSION;
+  const __packUrl = `data/images/${pack}.imgpack.json${__v ? `?v=${__v}` : ""}`;
+  imagePackPromises[pack] = fetch(__packUrl, { cache: "force-cache" })
     .then((response) => (response.ok ? response.json() : {}))
     .then((map) => {
       Object.assign(cardImagePacks, map);

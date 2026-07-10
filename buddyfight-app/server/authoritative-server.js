@@ -399,15 +399,31 @@ function enqueuePersist(roomId, task) {
 }
 
 function persistNow(room) {
+  // 閉じた部屋は保存しない。飛行中の /action が await 中に別の /abort・/leave で部屋が消えた後、
+  // /action 再開時のこの persistNow が delete より後に save を積むと、閉じたはずの部屋がストアに
+  // 復活する（チェーンは同一部屋なので delete→save の順で着地する）。closed 印で確実に弾く。
+  if (room.closed) return;
   // busy(applyAction 途中)はライブ state の途中変異を拾うため保存しない＝整合する確定局面のみ保存。
   if (room.busy) {
     schedulePersist(room);
     return;
   }
-  // スナップショットは busy=false のこの瞬間に同期で確定させる。チェーン実行時に撮ると、
-  // その時点では次のアクションで busy=true になっていて途中変異した state を保存しうる。
-  const snapshot = snapshotRoom(room);
+  // スナップショットは busy=false のこの瞬間に**値ごと凍結**する（deep-clone）。snapshotRoom は
+  // getState() の live 参照を載せるだけで、直列化は save 内の JSON.stringify まで遅延する。file backend は
+  // save が同期でチェーンが microtask で drain しきるため安全だが、turso backend では前段 save の fetch が
+  // 滞留する間に別アクションが busy=true で state を途中変異させ、遅延実行時の live state（effect 解決途中）を
+  // 保存しうる。捕捉時に clone しておけば file/turso 両方で「busy=false の瞬間の局面」が保証される。
+  const snapshot = JSON.parse(JSON.stringify(snapshotRoom(room)));
   enqueuePersist(room.id, () => roomStore.save(room.id, snapshot));
+}
+
+// 部屋を閉じて忘れる（中断・空退出・TTL掃除の共通処理）。closed 印を先に立ててから rooms から外し、
+// 削除をチェーン末尾へ積む。飛行中アクションの遅延 save は persistNow の closed ガードで弾かれる。
+function closeAndForgetRoom(room, roomId) {
+  const id = roomId != null ? roomId : room && room.id;
+  if (room) room.closed = true;
+  rooms.delete(id);
+  persistDelete(id);
 }
 
 function schedulePersist(room) {
@@ -449,7 +465,9 @@ async function restoreRooms() {
         members: new Map((snap.members || []).map((m) => [m.clientId, { ...m, sse: null }])),
         seats: snap.seats || [null, null],
         game: null,
-        started: Boolean(snap.started),
+        // state 欠損（started:true なのに state:null）の破損スナップショットを「開始済みだが盤面なし」の
+        // ゾンビ部屋として復元しない。遊べも畳めもせず TTL まで残るため、未開始扱いに落とす。
+        started: Boolean(snap.started && snap.state),
         busy: false,
         pendingPrompts: new Map(),
         promptSeq: 0,
@@ -1179,8 +1197,7 @@ async function handleApi(req, res, url) {
     vacateSeatOf(room, member.clientId);
     room.members.delete(member.clientId);
     if (room.members.size === 0) {
-      rooms.delete(room.id);
-      persistDelete(room.id);
+      closeAndForgetRoom(room);
     } else {
       broadcastLobby(room);
       persistNow(room);
@@ -1218,8 +1235,7 @@ async function handleApi(req, res, url) {
         writeSse(m.sse, { type: "aborted", text: "試合が中断されました" });
       }
     }
-    rooms.delete(room.id);
-    persistDelete(room.id);
+    closeAndForgetRoom(room);
     sendJson(res, 200, { ok: true, aborted: true });
     return true;
   }
@@ -1549,17 +1565,19 @@ async function maybeRecordMatch(room) {
   }
   const mr = st && st.matchResult;
   if (!mr) return; // 未決着（engine の決着フックが state.matchResult を確定させるまで何もしない）
-  room.matchRecorded = true;
-  room.decidedFightId = st.fightId || null;
+  if (room.matchRecorded) return; // 既に記録済み（冪等ガード）。
   try {
     await ensureUserStoreInitialized();
   } catch {
-    return; // ユーザーDB不通なら戦績はスキップ（対戦進行・応答には影響させない）
+    return; // ユーザーDB不通なら**フラグを立てず**スキップ＝次の機会（次アクション等）に再試行させる。
   }
   const deckIds = Array.isArray(mr.deckIds) ? mr.deckIds : [null, null];
+  let eligible = 0; // 記録対象（ログイン済み席）の数
+  let recorded = 0; // 実際に書けた数
   for (const seat of [0, 1]) {
     const member = room.members.get(room.seats[seat]);
     if (!member || member.userId == null) continue; // 未ログイン席は記録しない
+    eligible += 1;
     const record = {
       fightId: st.fightId || null,
       finishedAt: Date.now(),
@@ -1574,9 +1592,17 @@ async function maybeRecordMatch(room) {
     };
     try {
       await userStore.putMatch(member.userId, record);
+      recorded += 1;
     } catch (error) {
       console.warn(`[match] room ${room.id} seat ${seat} の戦績記録に失敗: ${error.message}`);
     }
+  }
+  // matchRecorded は「記録すべき席が全部書けた」時だけ立てる（全員未ログイン＝eligible0 も完了扱い）。
+  // DB 一時不通で書けなかった席が残る場合はフラグを立てず、次の機会に再試行させる。
+  // putMatch は (userId, fightId) 冪等 upsert なので、成功済みの席を再試行しても二重記録にならない。
+  if (recorded === eligible) {
+    room.matchRecorded = true;
+    room.decidedFightId = st.fightId || null;
   }
 }
 
@@ -1671,8 +1697,7 @@ setInterval(() => {
   for (const [roomId, room] of rooms) {
     const anyOnline = [...room.members.values()].some((m) => m.sse);
     if (!anyOnline && now - room.updatedAt > roomTtlMs) {
-      rooms.delete(roomId);
-      persistDelete(roomId); // 孤児スナップショットも掃除（飛行中の save より必ず後に着地する）
+      closeAndForgetRoom(room, roomId); // 孤児スナップショットも掃除（飛行中の save は closed ガードで弾く）
     }
   }
 }, 10 * 60 * 1000).unref();
@@ -1793,5 +1818,6 @@ module.exports = {
   persistNow,
   persistDelete,
   flushPersist,
+  closeAndForgetRoom, // 部屋復活レースの回帰検証用（スモーク）
   maybeRecordMatch, // D5(戦績): 決着記録の直接検証用（スモーク）
 };

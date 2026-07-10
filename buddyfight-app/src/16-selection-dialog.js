@@ -3,6 +3,15 @@
 // 旧 app.js L9192-9478 由来。全モジュールはグローバルスコープを共有し、
 // HTML で番号順に <script> 読み込みする（連結すると旧 app.js とバイト等価）。
 // ==========================================================================
+// 選択ダイアログの「盤面確認」中は、盤面カードをタップして詳細（閲覧専用シート）だけ見られるようにする。
+// dialog.showModal() は背後の文書を inert にするため、モーダルのままだと盤面が見えてもタップできない。
+// 盤面確認中だけ非モーダル(show)へ切り替え、各クライアントのタップ配線はこのフラグを見て
+// 「詳細を開くだけ・盤面操作はしない」に落とす。
+let selectionBoardInspect = false;
+function isBoardInspectMode() {
+  return selectionBoardInspect;
+}
+
 async function chooseDeckCardIndex(player, predicate, title) {
   const candidates = player.deck
     .map((card, index) => ({ card, index }))
@@ -179,14 +188,39 @@ function showCardSelectionDialog(candidates, options = {}) {
     const allowCancel = options.allowCancel !== false;
     let settled = false;
 
+    // 盤面確認中はモーダル→非モーダルへ切り替える。モーダル(showModal)の間は背後の文書が inert になり、
+    // 盤面が見えていてもカードをタップできない（＝詳細が見られない）ため。
+    // close() の close イベントは「キューされたタスク」で発火するので、同期で open し直せば
+    // 既存の close ハンドラ冒頭の `if (open) return` に吸収され、キャンセル扱いにならない。
+    const applyModality = (modal) => {
+      const dialog = elements.selectionDialog;
+      if (!dialog.open) {
+        return;
+      }
+      dialog.close();
+      if (modal || typeof dialog.show !== "function") {
+        dialog.showModal();
+      } else {
+        dialog.show();
+      }
+    };
+
+    let boardPeekOn = false;
     const setBoardPeek = (enabled) => {
       elements.selectionDialog.classList.toggle("selection-board-peek", enabled);
+      selectionBoardInspect = enabled; // 早期returnより前に必ず反映（前のダイアログの状態を残さない）
       if (elements.selectionBoardButton) {
         elements.selectionBoardButton.textContent = enabled ? "選択に戻る" : "盤面確認";
-        elements.selectionBoardButton.title = enabled ? "選択ダイアログに戻る" : "盤面を確認";
+        elements.selectionBoardButton.title = enabled ? "選択ダイアログに戻る" : "盤面のカードをタップして詳細を見る";
         elements.selectionBoardButton.setAttribute("aria-pressed", String(enabled));
       }
       hideCardTooltip();
+      if (boardPeekOn === enabled) {
+        return; // モーダル切替は状態が変わった時だけ（無駄な close/open を避ける）
+      }
+      boardPeekOn = enabled;
+      selectionBoardInspect = enabled;
+      applyModality(!enabled);
     };
 
     const toggleBoardPeek = () => {
@@ -296,7 +330,7 @@ function showCardSelectionDialog(candidates, options = {}) {
       button.dataset.choiceIndex = String(candidate.choiceIndex);
       button.dataset.choiceName = candidate.card?.name || "";
       button.innerHTML = selectionChoiceMarkup(candidate.card, index, candidate.note);
-      attachTooltip(button, candidate.card);
+      attachTooltip(button, candidate.card, { touchPreview: true }); // タッチでも長押しで候補カードの詳細を見られるように
       button.addEventListener("mouseenter", () => updateSelectionPreview(candidate.card));
       button.addEventListener("focus", () => updateSelectionPreview(candidate.card));
       button.addEventListener("click", () => {

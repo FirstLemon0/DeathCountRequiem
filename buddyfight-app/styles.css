@@ -1278,12 +1278,21 @@ dialog::backdrop {
   justify-content: flex-end;
 }
 
+/* 盤面確認中は非モーダル(dialog.show())へ切り替える。非モーダルの dialog は top layer に入らず
+   既定で position:absolute になるため、明示的に fixed で右上に固定し、盤面より前面へ持ち上げる。 */
 dialog.selection-board-peek {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  left: auto;
+  bottom: auto;
+  margin: 0;
+  z-index: 242;
   width: min(360px, calc(100vw - 28px));
   max-width: min(360px, calc(100vw - 28px));
-  margin: 14px 14px auto auto;
 }
 
+/* 非モーダルでは ::backdrop は出ない（＝盤面をタップできる）。モーダルのまま class が付く経路への保険。 */
 dialog.selection-board-peek::backdrop {
   background: rgba(0, 0, 0, 0.16);
 }
@@ -1852,6 +1861,22 @@ dialog.selection-board-peek .selection-dialog-actions {
   display: grid;
   gap: 8px;
   margin: 0;
+}
+/* デッキ情報のバディ行: タップで閲覧専用カードシート（能力詳細）を開くリンク風ボタン。
+   ローカル(src/20)と権威版(play.js)の両方から使う共有クラス。 */
+.buddy-detail-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent, #7fd1ff);
+  text-decoration: underline;
+  cursor: pointer;
+  text-align: left;
+}
+.buddy-detail-link:hover,
+.buddy-detail-link:focus-visible {
+  filter: brightness(1.2);
 }
 .deck-info-body div {
   display: grid;
@@ -2681,4 +2706,20 @@ body.thin-client:not(.game-started) .hand-dock {
     max-height: 88vh;
     border-radius: 12px 12px 0 0;
   }
+}
+
+/* ソウルバッジ（カード左下の「ソウル N」）はタップでソウル一覧を開くので、押せることを見せる。 */
+.card-stack-peek[data-soul-peek] {
+  cursor: pointer;
+}
+.card-stack-peek[data-soul-peek]:hover,
+.card-stack-peek[data-soul-peek]:focus-visible {
+  filter: brightness(1.35);
+  outline: none;
+}
+
+.soul-dialog-lead {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  color: var(--muted, #9aa4b2);
 }

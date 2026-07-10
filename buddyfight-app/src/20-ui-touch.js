@@ -18,11 +18,69 @@ function escapeHtml(value) {
 // ============================================================
 
 // 現在カードシートに表示すべきカードを返す
+// ソウル詳細モード: ソウル一覧から選んだカードの詳細＋そのカードが持つ「今使える能力」のボタンを出す。
+// ホスト（そのソウルを持つ場のカード）経由で発動するので owner/zone も覚えておく。
+let cardSheetSoulContext = null;
+
 function cardSheetCard() {
+  if (cardSheetSoulContext) {
+    return cardSheetSoulContext.soulCard;
+  }
   if (cardSheetReadOnly) {
     return cardSheetReadOnlyCard;
   }
   return getSelectedCard();
+}
+
+// ソウルのカード1枚を詳細表示する（下に使える能力のボタン／使えないなら理由が出る）。
+function openSoulCardSheet(owner, zone, soulCard) {
+  if (!elements.cardSheet || !soulCard) {
+    return;
+  }
+  cardSheetReadOnly = false;
+  cardSheetReadOnlyCard = null;
+  cardSheetSoulContext = { owner, zone, soulCard };
+  refreshCardSheet();
+  if (!elements.cardSheet.open) {
+    elements.cardSheet.showModal();
+  }
+}
+
+// そのソウルカードが今使える能力（ホスト経由）を、シートのボタン定義に変換する。
+function soulCardSheetActionSpecs(context) {
+  const host = state.players[context.owner]?.field?.[context.zone];
+  if (!host) {
+    return [];
+  }
+  const usable = findUsableFieldAbilities(host, context.owner).filter(
+    (ability) => ability.fromSoul && ability.soulSourceCard?.instanceId === context.soulCard.instanceId,
+  );
+  return usable.map((ability) => ({
+    label: `${fieldAbilityLabel(host, ability)}を使う`,
+    primary: true,
+    run: () => activateSoulAbility(context.owner, context.zone, context.soulCard, ability),
+  }));
+}
+
+// ソウルの能力を発動する。ローカルは実操作経路（useFieldAbilityAction の loc.abilities 経由）、
+// thin/権威版は __onSoulAbilityActivate でサーバへ橋渡し（ドロップ起動と同じ作法）。
+function activateSoulAbility(owner, zone, soulCard, ability) {
+  closeCardSheet();
+  closeSoulDialog();
+  const host = state.players[owner]?.field?.[zone];
+  if (!host) {
+    return;
+  }
+  if (typeof globalThis.__onSoulAbilityActivate === "function") {
+    globalThis.__onSoulAbilityActivate(owner, zone, host, soulCard, ability);
+    return;
+  }
+  runNetworkMutation("カード使用", async () => {
+    if (!selectFieldCard(owner, zone)) {
+      return; // 手番/対抗窓の条件を満たさない（selectFieldCard と同じガードに従う）
+    }
+    await useFieldAbilityAction(host, { owner, zone, abilities: [ability] });
+  });
 }
 
 // 選択中カードのシートを開く（操作可能）
@@ -54,6 +112,7 @@ function openReadOnlyCardSheet(card) {
 function closeCardSheet() {
   cardSheetReadOnly = false;
   cardSheetReadOnlyCard = null;
+  cardSheetSoulContext = null;
   if (elements.cardSheet?.open) {
     elements.cardSheet.close();
   }
@@ -153,7 +212,11 @@ function resolveClickedItemZone(event, owner, zone) {
   if (zone !== "item") {
     return zone;
   }
-  const layer = event?.target?.closest?.("[data-item-zone]");
+  // タップされたカード要素のスロットを最優先で使う（権威版 play.js と同じ解決順）。
+  // data-item-zone はカード要素(.card)に載っているが、内部の画像/ソウルバッジをタップした時も
+  // closest で拾えるようにしておく。取り違えると別アイテムのソウル能力を開いてしまう。
+  const layer =
+    event?.target?.closest?.(".card[data-item-zone]") || event?.target?.closest?.("[data-item-zone]");
   if (layer?.dataset?.itemZone && state.players[owner]?.field?.[layer.dataset.itemZone]) {
     return layer.dataset.itemZone;
   }
@@ -243,11 +306,28 @@ function refreshCardSheet() {
     closeCardSheet();
     return;
   }
-  elements.cardSheetTitle.textContent = card.name;
+  elements.cardSheetTitle.textContent = cardSheetSoulContext ? `ソウル: ${card.name}` : card.name;
   elements.cardSheetDetail.innerHTML = cardTooltipHtml(card);
   elements.cardSheetActions.innerHTML = "";
-  const specs = cardSheetReadOnly ? [] : cardSheetActionSpecs();
-  if (specs.length === 0 && !cardSheetReadOnly) {
+  let specs;
+  if (cardSheetSoulContext) {
+    specs = soulCardSheetActionSpecs(cardSheetSoulContext);
+  } else if (cardSheetReadOnly) {
+    specs = [];
+  } else {
+    specs = cardSheetActionSpecs();
+  }
+  if (specs.length === 0 && cardSheetSoulContext) {
+    // 使える能力が無い時は、なぜ使えないか（タイミング/使用条件）をシート上でも示す。
+    const host = state.players[cardSheetSoulContext.owner]?.field?.[cardSheetSoulContext.zone];
+    const reasons = host
+      ? describeUnusableFieldAbilities(host, cardSheetSoulContext.owner, { soulCard: card })
+      : [];
+    const note = document.createElement("p");
+    note.className = "card-sheet-empty";
+    note.textContent = reasons.length > 0 ? reasons[0] : "このソウルのカードに、今使える能力はありません。";
+    elements.cardSheetActions.append(note);
+  } else if (specs.length === 0 && !cardSheetReadOnly) {
     const note = document.createElement("p");
     note.className = "card-sheet-empty";
     note.textContent = "今このカードで行える操作はありません。";
@@ -409,12 +489,30 @@ function openDeckInfo(owner) {
     ["プレイヤー", player.name],
     ["デッキ名", deckName],
     ["使用ワールド", world],
-    ["バディ", buddyName],
   ];
   elements.deckInfoTitle.textContent = `${player.name} のデッキ情報`;
   elements.deckInfoBody.innerHTML = rows
     .map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`)
     .join("");
+  // バディ行はDOMで組む: カードがあればタップで能力詳細（閲覧専用カードシート）を開く。
+  // 対戦中もデッキ情報からバディの効果を確認したい、という要望（権威版 play.js と同じ動線）。
+  const buddyRow = document.createElement("div");
+  const buddyDt = document.createElement("dt");
+  buddyDt.textContent = "バディ";
+  const buddyDd = document.createElement("dd");
+  if (player.buddy) {
+    const buddyButton = document.createElement("button");
+    buddyButton.type = "button";
+    buddyButton.className = "buddy-detail-link";
+    buddyButton.textContent = buddyName;
+    buddyButton.title = "タップでバディの詳細を表示";
+    buddyButton.addEventListener("click", () => openReadOnlyCardSheet(player.buddy));
+    buddyDd.append(buddyButton);
+  } else {
+    buddyDd.textContent = buddyName;
+  }
+  buddyRow.append(buddyDt, buddyDd);
+  elements.deckInfoBody.append(buddyRow);
   if (!elements.deckInfoDialog.open) {
     elements.deckInfoDialog.showModal();
   }

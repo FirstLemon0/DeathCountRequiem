@@ -36,6 +36,21 @@ document.querySelectorAll(".zone.field").forEach((zoneButton) => {
     }
     const owner = Number(zoneButton.dataset.owner);
     const zone = zoneButton.dataset.zone;
+    // 「ソウル N」バッジのタップ＝ソウル一覧（対象選択中は邪魔しないので通常時のみ）。
+    if (!uiTargeting && event.target?.closest?.("[data-soul-peek]")) {
+      showSoulDialog(owner, resolveClickedItemZone(event, owner, zone));
+      return;
+    }
+    // 選択ダイアログの「盤面確認」中は、盤面カードの詳細を見るだけ（盤面操作・選択はしない）。
+    // モーダルを非モーダルへ落として初めてここに届く（src/16 の setBoardPeek）。
+    if (isBoardInspectMode()) {
+      const inspectZone = resolveClickedItemZone(event, owner, zone);
+      const inspectCard = state.players[owner]?.field?.[inspectZone];
+      if (inspectCard) {
+        openReadOnlyCardSheet(inspectCard);
+      }
+      return;
+    }
     // 対象選択モード中（権威版仕様）: 候補タップ＝確定 / 相手の装備枠タップ＝本体攻撃 /
     // 自分のカードタップ＝選択し直し / それ以外の候補外タップは無視（キャンセルはバナーのボタン）。
     if (uiTargeting?.mode === "attack") {
@@ -140,6 +155,7 @@ elements.exportLogButton?.addEventListener("click", downloadBattleLog);
 elements.rulesButton.addEventListener("click", () => elements.rulesDialog.showModal());
 elements.closeRulesButton.addEventListener("click", () => elements.rulesDialog.close());
 elements.closeDropDialogButton?.addEventListener("click", () => elements.dropDialog?.close());
+elements.closeSoulDialogButton?.addEventListener("click", () => elements.soulDialog?.close());
 elements.dropDialog?.addEventListener("close", hideCardTooltip);
 elements.drawButton.addEventListener("click", () => runNetworkMutation("ドロー", drawAction));
 elements.chargeButton.addEventListener("click", () => runNetworkMutation("チャージ&ドロー", chargeAction));

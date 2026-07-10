@@ -121,7 +121,10 @@ function replayPlaybackRemaining() {
 }
 
 // 再生中に chooseCardEntries が呼ばれた時、記録された応答を1つ取り出して候補へ再マップする。
-// 応答が尽きたら明確に失敗させる（黙って別の対戦にならないよう、取りこぼしを即エラーにする）。
+// 応答の過不足・種別（選択/確認）のズレは即エラーにする。ただし**プロンプトの回数・順序・種別を変えない
+// 値だけの分岐**（記録済み selectedIndexes が分岐後の別候補を指す）は検出できず黙って別対戦になりうる。
+// 実運用の記録源＝権威サーバ net play は AI 非関与で決定的なのでこの経路は踏まないが、ローカル CPU 録画を
+// 有効化する場合は AI の rng 消費が再生時に再現されずズレる（既定オフ・HANDOFF の既知の限界参照）。
 function replayNextSelection(candidates) {
   if (!replayPlaybackQueue) {
     throw new Error("リプレイ: 再生キューが無い状態で選択が要求されました");

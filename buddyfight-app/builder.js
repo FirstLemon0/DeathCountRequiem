@@ -730,7 +730,10 @@ function builderEnsurePack(pack) {
   if (builderPackPromises[pack]) {
     return builderPackPromises[pack];
   }
-  builderPackPromises[pack] = fetch(`data/images/${pack}.imgpack.json`, { cache: "force-cache" })
+  // imgpack も ?v=DATA_VERSION でバスト（immutable 1年下で既存パック再生成が届かない非対称を防ぐ）。
+  const packVer = globalThis.__BUDDYFIGHT_DATA_VERSION;
+  const packUrl = `data/images/${pack}.imgpack.json${packVer ? `?v=${packVer}` : ""}`;
+  builderPackPromises[pack] = fetch(packUrl, { cache: "force-cache" })
     .then((r) => (r.ok ? r.json() : {}))
     .then((map) => Object.assign(builderPacks, map))
     .catch(() => {});

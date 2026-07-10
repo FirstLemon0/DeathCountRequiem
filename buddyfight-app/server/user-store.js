@@ -676,6 +676,14 @@ const tursoImpl = {
         [uid, null, rec.finishedAt, rec.outcome, rec.reason, rec.firstSeat, rec.turnCount, rec.deckId, rec.opponentDeckId, rec.replayId, rec.source],
       );
     }
+    // 1ユーザーあたり MATCH_LIMIT_PER_USER 件で頭打ち（file backend と挙動を揃える。turso 側は
+    // これが無いと戦績行が無制限に増え、件数・集計の母数が backend 間でズレる）。古いものから捨てる。
+    await tursoExec(
+      `DELETE FROM matches WHERE user_id = ? AND rowid NOT IN (
+         SELECT rowid FROM matches WHERE user_id = ? ORDER BY finished_at DESC, rowid DESC LIMIT ?
+       )`,
+      [uid, uid, MATCH_LIMIT_PER_USER],
+    );
     return { ...rec };
   },
   async listMatches(userId, limit = 100) {

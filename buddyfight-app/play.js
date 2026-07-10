@@ -831,8 +831,7 @@
       btn.className = "buddy-detail-link";
       btn.textContent = buddyName;
       btn.title = "タップでバディの詳細を表示";
-      btn.style.cssText =
-        "background:none;border:none;padding:0;font:inherit;color:var(--accent,#7fd1ff);text-decoration:underline;cursor:pointer;text-align:left;";
+      // 見た目は styles.css の .buddy-detail-link（ローカル版 src/20 と共有）に寄せる。
       btn.addEventListener("click", () => {
         if (typeof openReadOnlyCardSheet === "function") openReadOnlyCardSheet(player.buddy);
       });
@@ -871,6 +870,15 @@
     if (!card) return;
     if (card.dataset.tooltipPreview) {
       delete card.dataset.tooltipPreview; // 長押しプレビュー後の click はメニューを開かない
+      return;
+    }
+    // 選択ダイアログの「盤面確認」中は詳細を見るだけ（ローカル版と同じ）。
+    if (typeof isBoardInspectMode === "function" && isBoardInspectMode()) {
+      const seat = mySeat();
+      const handCard = state?.players?.[seat]?.hand?.find((c) => c.instanceId === card.dataset.instanceId);
+      if (handCard) {
+        openReadOnlyCardSheet(handCard);
+      }
       return;
     }
     if (!canActNow()) {
@@ -916,6 +924,19 @@
       // 複数アイテム対応: タップしたカード要素を優先し、そのアイテムの実スロット(data-item-zone)を使う。
       const cardEl = event.target?.closest?.(".card[data-instance-id]") || zoneButton.querySelector(".card[data-instance-id]");
       const zone = cardEl?.dataset?.itemZone || zoneButton.dataset.zone;
+      // 「ソウル N」バッジのタップ＝ソウル一覧（対象選択中は邪魔しない）。ローカル版と同じ。
+      if (!ui.targeting && !ui.effectTargeting && event.target?.closest?.("[data-soul-peek]")) {
+        showSoulDialog(owner, zone);
+        return;
+      }
+      // 選択ダイアログの「盤面確認」中は詳細を見るだけ（サーバへ操作を送らない）。ローカル版と同じ。
+      if (typeof isBoardInspectMode === "function" && isBoardInspectMode()) {
+        const inspectCard = state?.players?.[owner]?.field?.[zone];
+        if (inspectCard) {
+          openReadOnlyCardSheet(inspectCard);
+        }
+        return;
+      }
       if (ui.effectTargeting) {
         const et = ui.effectTargeting;
         // 候補が算出できている時は候補ゾーンのみ受け付ける（ローカルと同じ。候補外タップは無視）。
@@ -1001,6 +1022,24 @@
     }
     sendAction("use", { selected: { source: "drop", owner, instanceId: card.instanceId } });
   };
+  // ソウルの起動/対抗能力: ホスト(場のカード)に対する "use" を、狙った能力を名指しして送る。
+  // サーバ側 useFieldAbilityAction が selected.abilityId/soulInstanceId で候補を絞る（複数能力でも選択窓が出ない）。
+  window.__onSoulAbilityActivate = (owner, zone, host, soulCard, ability) => {
+    if (owner !== mySeat() || !canActNow()) {
+      setStatus("相手の番です（あなたの操作番ではありません）");
+      return;
+    }
+    sendAction("use", {
+      selected: {
+        source: "field",
+        owner,
+        zone,
+        instanceId: host.instanceId,
+        abilityId: ability.id,
+        soulInstanceId: soulCard.instanceId,
+      },
+    });
+  };
   document.querySelectorAll(".set-pile").forEach((pile) => {
     pile.addEventListener("click", () => {
       if (!session.started || !state?.players) return; // 開始前/初回view未着は state 未同期のため開かない
@@ -1036,6 +1075,7 @@
 
   // thin: ダイアログの閉じ配線（src/21 の非thin側は走らないため自前で）。
   $("closeDropDialogButton")?.addEventListener("click", () => document.getElementById("dropDialog")?.close());
+  $("closeSoulDialogButton")?.addEventListener("click", () => document.getElementById("soulDialog")?.close());
   $("coachCloseButton")?.addEventListener("click", () => document.getElementById("coachDialog")?.close());
   ["dropDialog", "deckInfoDialog"].forEach((id) => {
     const dlg = document.getElementById(id);

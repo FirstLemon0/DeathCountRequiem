@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>バディファイト ネット対戦（権威版）</title>
-    <link rel="stylesheet" href="styles.css?v=20260710b" />
+    <link rel="stylesheet" href="styles.css?v=20260710g" />
     <script>
       // テーマbootstrap(描画前にdata-themeを確定しFOUC回避)。3画面共通。
       (function () {
@@ -274,6 +274,16 @@
         <ol id="dropDialogList" class="drop-dialog-list"></ol>
       </div>
     </dialog>
+    <dialog id="soulDialog">
+      <div class="dialog-content drop-dialog-body">
+        <header>
+          <h2 id="soulDialogTitle">ソウル</h2>
+          <button id="closeSoulDialogButton" type="button" title="閉じる">閉じる</button>
+        </header>
+        <p id="soulDialogLead" class="soul-dialog-lead">カードをタップすると詳細と、使える能力が表示されます。</p>
+        <ol id="soulDialogList" class="drop-dialog-list"></ol>
+      </div>
+    </dialog>
     <dialog id="selectionDialog">
       <div class="dialog-content selection-dialog-body">
         <header>
@@ -326,7 +336,7 @@
       // src モジュールは番号順の同期ロードが必須（同一グローバル共有）。document.write の classic script は
       // 順序・同期実行が保証される。バージョンはこの1定数だけを更新する（play.js も同じ定数を共有）。
       (function () {
-        var ENGINE_VERSION = "20260710c";
+        var ENGINE_VERSION = "20260710g";
         // データJSON(loadJson)を ?v= 付きURL＋ブラウザキャッシュに載せる（初期ロード最適化 D2）。
         window.__BUDDYFIGHT_DATA_VERSION = ENGINE_VERSION;
         var modules = [
