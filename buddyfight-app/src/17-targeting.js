@@ -311,6 +311,10 @@ function matchesCardFilter(card, filter = {}, options = {}) {
   if (filter.cardType && !cardTypeMatches(card, filter.cardType)) {
     return false;
   }
+  // X18(D-BT01/0027): 『角王』を持つカード = deckAnyFlag:true（角王アイコンの内部表現。builder と同じ判定）。
+  if (filter.deckAnyFlag !== undefined && Boolean(card.deckAnyFlag) !== Boolean(filter.deckAnyFlag)) {
+    return false;
+  }
   if (filter.cardTypeIn && !filter.cardTypeIn.some((wanted) => cardTypeMatches(card, wanted))) {
     return false;
   }
@@ -356,6 +360,10 @@ function matchesCardFilter(card, filter = {}, options = {}) {
   }
   // baseSize: 印字（元々の）サイズを見る（サイズ継続修整を無視し effectiveSize 再入を回避）。
   if (filter.baseSize !== undefined && (card.size || 0) !== filter.baseSize) {
+    return false;
+  }
+  // baseSizeLte: 印字サイズの上限（D-BT01/0131「サイズ2以下の《百鬼》」。effectiveSize 再入を避ける）。
+  if (filter.baseSizeLte !== undefined && (card.size || 0) > filter.baseSizeLte) {
     return false;
   }
   if (filter.baseSizeGte !== undefined && (card.size || 0) < filter.baseSizeGte) {

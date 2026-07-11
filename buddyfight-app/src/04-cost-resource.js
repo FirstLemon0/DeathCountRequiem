@@ -581,7 +581,7 @@ function canPayStructuredCost(player, costSteps = [], context = {}) {
     }
     if (step.op === "destroyOwnMonster") {
       const excludeId = step.excludeSource ? context.sourceCard?.instanceId : null;
-      const candidates = ownFieldCostCandidates(player, { cardType: "monster", ...(step.filter || {}) }).filter(
+      const candidates = ownFieldCostCandidates(player, step.includeAllTypes ? (step.filter || {}) : { cardType: "monster", ...(step.filter || {}) }).filter(
         (candidate) => candidate.card.instanceId !== excludeId,
       );
       if (candidates.length < amount) {
@@ -590,6 +590,50 @@ function canPayStructuredCost(player, costSteps = [], context = {}) {
     }
     if (step.op === "destroySource" && !findFieldCardSlot(context.sourceCard)) {
       return { ok: false, reason: "コストで破壊するこのカードが場にありません。" };
+    }
+    // X3(D-BT01): 発生源カードをレストするコスト（0037/0108「このカードをレストしてよい」）。
+    if (step.op === "restSource") {
+      if (!findFieldCardSlot(context.sourceCard) || context.sourceCard?.used) {
+        return { ok: false, reason: "コストでレストするこのカードが場にないか、既にレスト中です。" };
+      }
+    }
+    // X3(D-BT01/0085): 自分の場のモンスターをレストするコスト。
+    if (step.op === "restOwnMonster") {
+      const candidates = ownFieldCostCandidates(player, step.includeAllTypes ? (step.filter || {}) : { cardType: "monster", ...(step.filter || {}) }).filter(
+        (candidate) => !candidate.card.used,
+      );
+      if (candidates.length < amount) {
+        return { ok: false, reason: "コストでレストする自分のモンスターがいません。" };
+      }
+    }
+    // X3(D-BT01/0132/0134): ドロップの filter 一致カードをデッキの下に置くコスト。
+    if (step.op === "putDropToDeckBottom") {
+      const matching = player.drop.filter((card) => matchesCardFilter(card, step.filter || {}));
+      if (matching.length < amount) {
+        return { ok: false, reason: "コストでデッキの下に置くドロップのカードが足りません。" };
+      }
+    }
+    // X3(D-BT01/0131 離場置換コスト等): デッキの上から N 枚をドロップに置くコスト。
+    if (step.op === "putTopDeckToDrop") {
+      if (player.deck.length < amount) {
+        return { ok: false, reason: "デッキの枚数が足りません。" };
+      }
+    }
+    // X3(D-BT01/0120/0122): 自分の場の filter 一致カード1枚を選び、そのソウルから amount 枚をドロップに置くコスト。
+    if (step.op === "dropOwnFieldCardSoul") {
+      const hosts = ownFieldCostCandidates(player, step.filter || {}).filter(
+        (candidate) => (candidate.card.soul || []).length >= amount,
+      );
+      if (hosts.length === 0) {
+        return { ok: false, reason: "コストでソウルを置ける自分の場のカードがありません。" };
+      }
+    }
+    // X3(D-BT01/0079/0122): 代替コスト（options のいずれか1つを選んで支払う）。
+    if (step.op === "chooseCost") {
+      const options = step.options || [];
+      if (!options.some((option) => canPayStructuredCost(player, option, context).ok)) {
+        return { ok: false, reason: "いずれのコストも支払えません。" };
+      }
     }
     if (step.op === "returnOwnFieldCardToHand") {
       const candidates = returnFieldCostCandidates(player, step);
@@ -935,13 +979,64 @@ function payStructuredCost(player, costSteps = [], context = {}) {
     if (step.op === "destroyOwnMonster") {
       // 非対話経路: 先頭の候補を破壊。ソウルガード/破壊時誘発は同期のため反映されない近似。
       const excludeId = step.excludeSource ? context.sourceCard?.instanceId : null;
-      const target = ownFieldCostCandidates(player, { cardType: "monster", ...(step.filter || {}) }).find(
+      const target = ownFieldCostCandidates(player, step.includeAllTypes ? (step.filter || {}) : { cardType: "monster", ...(step.filter || {}) }).find(
         (candidate) => candidate.card.instanceId !== excludeId,
       );
       if (target) {
         const dropped = dropFieldCardByRule(player, target.zone);
         if (dropped) addLog(`${dropped.name}をコストで破壊しました。`);
       }
+    }
+    if (step.op === "restSource") {
+      // 非対話経路: used=true のみ（restイベントは対話経路=payWithSelection 側で発火する近似）。
+      if (findFieldCardSlot(sourceCard) && !sourceCard.used) {
+        sourceCard.used = true;
+        addLog(`${sourceCard.name}をコストで【レスト】しました。`);
+      }
+    }
+    if (step.op === "restOwnMonster") {
+      ownFieldCostCandidates(player, step.includeAllTypes ? (step.filter || {}) : { cardType: "monster", ...(step.filter || {}) })
+        .filter((candidate) => !candidate.card.used)
+        .slice(0, amount)
+        .forEach((candidate) => {
+          candidate.card.used = true;
+          addLog(`${candidate.card.name}をコストで【レスト】しました。`);
+        });
+    }
+    if (step.op === "putDropToDeckBottom") {
+      let moved = 0;
+      for (let index = player.drop.length - 1; index >= 0 && moved < amount; index -= 1) {
+        if (matchesCardFilter(player.drop[index], step.filter || {})) {
+          player.deck.unshift(player.drop.splice(index, 1)[0]); // 配列先頭=デッキの下
+          moved += 1;
+        }
+      }
+      if (moved > 0) addLog(`${player.name}はコストでドロップの${moved}枚をデッキの下に置きました。`);
+    }
+    if (step.op === "putTopDeckToDrop") {
+      for (let index = 0; index < amount; index += 1) {
+        const milled = player.deck.pop();
+        if (milled) putCardsToDropWithTrigger(player, state.players.indexOf(player), [milled], "deck");
+      }
+      if (player.deck.length === 0) declareDeckLoss(player);
+      addLog(`${player.name}はコストでデッキの上から${amount}枚をドロップゾーンに置きました。`);
+    }
+    if (step.op === "dropOwnFieldCardSoul") {
+      // 非対話経路: 先頭候補のソウル末尾から amount 枚をドロップへ。
+      const host = ownFieldCostCandidates(player, step.filter || {}).find(
+        (candidate) => (candidate.card.soul || []).length >= amount,
+      );
+      if (host) {
+        for (let index = 0; index < amount; index += 1) {
+          const soulCard = host.card.soul.pop();
+          if (soulCard) player.drop.push(soulCard);
+        }
+        addLog(`${host.card.name}のソウル${amount}枚をコストでドロップゾーンに置きました。`);
+      }
+    }
+    if (step.op === "chooseCost") {
+      const option = (step.options || []).find((candidate) => canPayStructuredCost(player, candidate, context).ok);
+      if (option) payStructuredCost(player, option, context);
     }
     if (step.op === "returnOwnFieldCardToHand") {
       returnFieldCostCandidates(player, step)
@@ -1199,7 +1294,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     }
     const amount = step.amount || 1;
     const excludeId = step.excludeSource ? context.sourceCard?.instanceId : null;
-    const candidates = ownFieldCostCandidates(player, { cardType: "monster", ...(step.filter || {}) }).filter(
+    const candidates = ownFieldCostCandidates(player, step.includeAllTypes ? (step.filter || {}) : { cardType: "monster", ...(step.filter || {}) }).filter(
       (candidate) =>
         candidate.card.instanceId !== excludeId &&
         !reservedCostZones.has(`${candidate.owner}:${candidate.zone}`),
@@ -1276,6 +1371,126 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
 
   const sourceCard = context.sourceCard;
   const includeOpponentGauge = Boolean(context.includeOpponentGauge);
+  // X3(D-BT01): restOwnMonster / putDropToDeckBottom / chooseCost の対話選択（他opと同じ収集→実行の2段構え）。
+  const restOwnMonsterSelections = [];
+  for (const step of applicableCostSteps) {
+    if (step.op !== "restOwnMonster") {
+      continue;
+    }
+    const amount = step.amount || 1;
+    const candidates = ownFieldCostCandidates(player, step.includeAllTypes ? (step.filter || {}) : { cardType: "monster", ...(step.filter || {}) }).filter(
+      (candidate) => !candidate.card.used && !reservedCostZones.has(`${candidate.owner}:${candidate.zone}`),
+    );
+    const selected = await chooseCardEntries(candidates, {
+      title: `${context.sourceCard?.name || "コスト"}で【レスト】するモンスター`,
+      lead: `コストで【レスト】する自分の場のモンスターを${amount}枚選んでください。`,
+      min: amount,
+      max: amount,
+      forceDialog: true,
+      promptSeat: state.players.indexOf(player),
+      purpose: "cost",
+    });
+    if (!selected || selected.length < amount) {
+      return { ok: false, reason: "コストで【レスト】するモンスターを選んでください。" };
+    }
+    selected.forEach((candidate) => reservedCostZones.add(`${candidate.owner}:${candidate.zone}`)); // 二重選択防止
+    restOwnMonsterSelections.push(selected);
+  }
+  const dropToBottomSelections = [];
+  for (const step of applicableCostSteps) {
+    if (step.op !== "putDropToDeckBottom") {
+      continue;
+    }
+    const amount = step.amount || 1;
+    const candidates = player.drop
+      .map((card) => ({ card, owner: state.players.indexOf(player) }))
+      .filter((entry) => matchesCardFilter(entry.card, step.filter || {}));
+    const selected = await chooseCardEntries(candidates, {
+      title: `${context.sourceCard?.name || "コスト"}でデッキの下に置くカード`,
+      lead: `コストでデッキの下に置くドロップのカードを${amount}枚選んでください（選んだ順に下から積みます）。`,
+      min: amount,
+      max: amount,
+      forceDialog: true,
+      promptSeat: state.players.indexOf(player),
+      purpose: "cost",
+    });
+    if (!selected || selected.length < amount) {
+      return { ok: false, reason: "コストでデッキの下に置くカードを選んでください。" };
+    }
+    dropToBottomSelections.push(selected);
+  }
+  const fieldSoulDropSelections = [];
+  for (const step of applicableCostSteps) {
+    if (step.op !== "dropOwnFieldCardSoul") {
+      continue;
+    }
+    const amount = step.amount || 1;
+    const hosts = ownFieldCostCandidates(player, step.filter || {}).filter(
+      (candidate) =>
+        (candidate.card.soul || []).length >= amount &&
+        !reservedCostZones.has(`${candidate.owner}:${candidate.zone}`), // 破壊/レスト予約済みカードのソウルは当てにしない
+    );
+    const hostPick = await chooseCardEntries(hosts, {
+      title: `${context.sourceCard?.name || "コスト"}でソウルを置くカード`,
+      lead: `ソウルをドロップゾーンに置く自分の場のカードを1枚選んでください。`,
+      min: 1,
+      max: 1,
+      forceDialog: true,
+      promptSeat: state.players.indexOf(player),
+      purpose: "cost",
+    });
+    const host = hostPick?.[0];
+    if (!host) {
+      return { ok: false, reason: "コストでソウルを置くカードを選んでください。" };
+    }
+    const soulPick = await chooseCardEntries(
+      (host.card.soul || []).map((soulCard) => ({ card: soulCard, owner: host.owner })),
+      {
+        title: `${host.card.name}のソウルから置くカード`,
+        lead: `ドロップゾーンに置くソウルを${amount}枚選んでください。`,
+        min: amount,
+        max: amount,
+        forceDialog: true,
+        promptSeat: state.players.indexOf(player),
+        purpose: "cost",
+      },
+    );
+    if (!soulPick || soulPick.length < amount) {
+      return { ok: false, reason: "コストで置くソウルを選んでください。" };
+    }
+    fieldSoulDropSelections.push({ host, souls: soulPick });
+  }
+  const chooseCostSelections = [];
+  for (const step of applicableCostSteps) {
+    if (step.op !== "chooseCost") {
+      continue;
+    }
+    const options = (step.options || []).map((option, index) => ({ option, index }));
+    const payable = options.filter(({ option }) => canPayStructuredCost(player, option, context).ok);
+    if (payable.length === 0) {
+      return { ok: false, reason: "いずれのコストも支払えません。" };
+    }
+    // 選択肢は疑似カード名で提示（labels を DSL で併記する。無ければ既定文言）。
+    const picked = await chooseCardEntries(
+      payable.map(({ option, index }) => ({
+        card: { name: (step.labels || [])[index] || `コスト${index + 1}`, instanceId: `choose-cost-${index}`, rules: [], attributes: [], keywords: [], costs: {} },
+        owner: state.players.indexOf(player),
+        note: (step.labels || [])[index] || "",
+      })),
+      {
+        title: `${context.sourceCard?.name || "コスト"}の支払い方法`,
+        lead: "支払うコストを1つ選んでください。",
+        min: 1,
+        max: 1,
+        forceDialog: true,
+        promptSeat: state.players.indexOf(player),
+        purpose: "cost",
+      },
+    );
+    const chosenIndex = Number(String(picked?.[0]?.card?.instanceId || "").replace("choose-cost-", ""));
+    const chosen = payable.find(({ index }) => index === chosenIndex) || payable[0];
+    chooseCostSelections.push(chosen.option);
+  }
   let discardStepIndex = 0;
   let handToSoulStepIndex = 0;
   let cardToSoulStepIndex = 0;
@@ -1287,6 +1502,10 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
   let lookTopSoulStepIndex = 0;
   let destroyOwnMonsterStepIndex = 0;
   let returnFieldToHandStepIndex = 0;
+  let restOwnMonsterStepIndex = 0;
+  let dropToBottomStepIndex = 0;
+  let chooseCostStepIndex = 0;
+  let fieldSoulDropStepIndex = 0;
   const discarded = [];
   for (const step of applicableCostSteps) {
     const amount = step.amount || 1;
@@ -1393,6 +1612,66 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       for (const target of targets) {
         const dropped = await destroyFieldCard(target.owner, target.zone, { cause: { byEffect: true }, ignoreDestroyReplacement: true });
         if (dropped) addLog(`${dropped.name}をコストで破壊しました。`);
+      }
+    }
+    if (step.op === "restSource") {
+      const slot = findFieldCardSlot(sourceCard);
+      if (slot && !sourceCard.used) {
+        await restFieldCard(slot.owner, slot.zone, sourceCard, { reason: "effect" }); // コストのレストも「効果でレスト」扱い（0082）
+        addLog(`${sourceCard.name}をコストで【レスト】しました。`);
+      }
+    }
+    if (step.op === "restOwnMonster") {
+      const targets = restOwnMonsterSelections[restOwnMonsterStepIndex] || [];
+      restOwnMonsterStepIndex += 1;
+      for (const target of targets) {
+        if (target.card && !target.card.used) {
+          await restFieldCard(target.owner, target.zone, target.card, { reason: "effect" });
+          addLog(`${target.card.name}をコストで【レスト】しました。`);
+        }
+      }
+    }
+    if (step.op === "putDropToDeckBottom") {
+      const targets = dropToBottomSelections[dropToBottomStepIndex] || [];
+      dropToBottomStepIndex += 1;
+      // レビュー修正: 「選んだ順に下から積む」= 最初に選んだカードが最下になるよう逆順で unshift する。
+      [...targets].reverse().forEach((target) => {
+        const dropIndex = player.drop.indexOf(target.card);
+        if (dropIndex >= 0) {
+          player.deck.unshift(player.drop.splice(dropIndex, 1)[0]); // 配列先頭=デッキの下
+        }
+      });
+      if (targets.length > 0) addLog(`${player.name}はコストでドロップの${targets.length}枚をデッキの下に置きました。`);
+    }
+    if (step.op === "putTopDeckToDrop") {
+      for (let index = 0; index < amount; index += 1) {
+        const milled = player.deck.pop();
+        if (milled) putCardsToDropWithTrigger(player, state.players.indexOf(player), [milled], "deck");
+      }
+      if (player.deck.length === 0) declareDeckLoss(player);
+      addLog(`${player.name}はコストでデッキの上から${amount}枚をドロップゾーンに置きました。`);
+    }
+    if (step.op === "dropOwnFieldCardSoul") {
+      const selection = fieldSoulDropSelections[fieldSoulDropStepIndex];
+      fieldSoulDropStepIndex += 1;
+      if (selection) {
+        selection.souls.forEach((entry) => {
+          const soulIndex = (selection.host.card.soul || []).indexOf(entry.card);
+          if (soulIndex >= 0) {
+            player.drop.push(selection.host.card.soul.splice(soulIndex, 1)[0]);
+          }
+        });
+        addLog(`${selection.host.card.name}のソウル${selection.souls.length}枚をコストでドロップゾーンに置きました。`);
+      }
+    }
+    if (step.op === "chooseCost") {
+      const chosenOption = chooseCostSelections[chooseCostStepIndex];
+      chooseCostStepIndex += 1;
+      if (chosenOption) {
+        const nested = await payStructuredCostWithSelection(player, chosenOption, context);
+        if (!nested.ok) {
+          return nested;
+        }
       }
     }
     if (step.op === "returnOwnFieldCardToHand") {

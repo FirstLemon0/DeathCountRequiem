@@ -235,6 +235,7 @@
             <button type="button" class="dp-chip" data-value="">全シリーズ</button>
             <button type="button" class="dp-chip" data-value="無印">無印</button>
             <button type="button" class="dp-chip" data-value="100">100</button>
+            <button type="button" class="dp-chip" data-value="DDD">DDD</button>
             <button type="button" class="dp-chip" data-value="神">神</button>
           </div>
           <div class="dp-chip-row" data-filter="category">

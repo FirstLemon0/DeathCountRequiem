@@ -324,7 +324,7 @@ async function castSetSpell(selectedCard) {
     addLog("配置魔法ゾーンが空いていません。");
     return;
   }
-  if (selectedCard.uniqueSet && setZones.some((candidate) => player.field[candidate]?.id === selectedCard.id)) {
+  if (selectedCard.uniqueSet && setZones.some((candidate) => player.field[candidate]?.name === selectedCard.name)) { // レビュー修正(D-BT01/0066): 「1枚だけ設置できる」は同名制限（再録混載でも1枚）
     addLog(`${selectedCard.name}はすでに配置されています。`);
     return;
   }
@@ -628,6 +628,10 @@ function returnFieldTargetToHand(target, sourceName = "効果", details = {}) {
   if (returned.preventNextLeaveFieldCount > 0) {
     returned.preventNextLeaveFieldCount -= 1;
     addLog(`${returned.name}は効果により場に残りました。`);
+    return null;
+  }
+  // X9(D-BT01/0131): コスト付き離場置換（単体の手札戻しもカバー）。
+  if (tryLeaveFieldReplacementSync(returned, target.owner)) {
     return null;
   }
   ownerPlayer.drop.push(...(returned.soul || []));

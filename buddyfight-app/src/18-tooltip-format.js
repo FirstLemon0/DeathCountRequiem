@@ -348,6 +348,15 @@ function isLifeGainByEffectPrevented(gainerOwner) {
 // 場札の continuous を走査し、controller が callerOwner を指し conditions を満たす制限のうち、
 // コールしようとしているカードが allowFilter に一致しないものがあれば true（=コール不可）。
 function isCallRestricted(callerOwner, card) {
+  // X6(D-BT01/0064): ターン限定コール制限（魔法など場に残らない発生源から。restrictCallThisTurn 効果opが積む）。
+  if (
+    (state.callRestrictionsThisTurn || []).some(
+      (restriction) =>
+        restriction.owner === callerOwner && !matchesCardFilter(card, restriction.allowFilter || {}),
+    )
+  ) {
+    return true;
+  }
   return state.players.some((player, pIdx) =>
     zones.some((zone) => {
       const source = player.field[zone];

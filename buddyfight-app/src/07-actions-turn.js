@@ -178,6 +178,14 @@ function impactMonsterCallAllowed(owner, card) {
   );
 }
 
+// X6(D-BT01/0064): ターン限定コール制限（restrictCallThisTurn）は効果によるコールにも掛かる。
+// 通常コールは isCallRestricted（src/18）が同リストを参照する。effect-call 5op はこのヘルパーで判定する。
+function turnCallRestrictionBlocks(owner, card) {
+  return (state.callRestrictionsThisTurn || []).some(
+    (restriction) => restriction.owner === owner && !matchesCardFilter(card, restriction.allowFilter || {}),
+  );
+}
+
 function recordImpactMonsterCall(owner, card) {
   if (card?.type !== "impactMonster") {
     return;

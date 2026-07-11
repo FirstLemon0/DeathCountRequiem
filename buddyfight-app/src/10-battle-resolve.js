@@ -148,6 +148,14 @@ async function runAttackDestroyedTriggers(attackers, pending, destroyedCard) {
         (state.attackDestroyedByAttribute[attackerOwnerForCount][attr] || 0) + 1;
     });
   }
+  // X13(D-BT01/0093): 設置魔法などの第三者が「味方の攻撃でモンスターを破壊した時」を拾えるフィールドイベント。
+  // イベントカード=先頭アタッカー（targetMatches で「《太陽竜》の攻撃で」等を判定できる）。
+  if (attackers[0]) {
+    await runFieldEventTriggers("monsterDestroyedByAttack", attackers[0].owner, attackers[0].card, attackers[0].zone, {
+      destroyedCard,
+      destroyedOwner: pending.targetOwner,
+    });
+  }
   for (const attacker of attackers) {
     await runTriggeredAbilities(attacker.card, "destroyByAttack", {
       card: attacker.card,

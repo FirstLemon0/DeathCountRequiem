@@ -232,6 +232,10 @@ function activeContinuousEffects(sourceCard) {
   if (isAbilitiesNullified(sourceCard)) {
     return [];
   }
+  // X19(D-BT01/0131): 起動効果が付与したターン限定の継続（turnContinuous）を印字継続に合流する。
+  if (sourceCard.turnContinuous?.length) {
+    return [...(sourceCard.continuous || []), ...sourceCard.turnContinuous];
+  }
   return sourceCard.continuous || [];
 }
 
@@ -320,6 +324,16 @@ function continuousDropStatAmount(effect, statKey, player) {
 // 継続 modifyStats の amountFrom:{source:"soulCount"|"soulStatSum"} 分を算出（sourceCard 自身のソウル参照）。
 // - soulCount: filter一致のソウル枚数 × per[statKey]（max で上限）。例: アーマナイト・アークエンジェル「ソウル1枚につき攻撃力+3000」。
 // - soulStatSum: filter一致のソウルの stat 合計を applyTo の各statに加算。例: デンジャラス・クレイドル「打撃力はソウルの《武器》の打撃力合計分」。
+// X11a(D-BT01/0059): 「このカードのサイズの数値分、攻撃力+1000…」= 実効サイズ×per の継続バフ。
+// effectiveSize は conditionalSize（アリスのサイズ変更）を反映するため、変更後のサイズで追随する。
+function continuousSelfSizeAmount(effect, statKey, sourceCard) {
+  if (effect.op !== "modifyStats" || effect.amountFrom?.source !== "selfSize") {
+    return 0;
+  }
+  const per = effect.amountFrom.per?.[statKey] ?? 0;
+  return per ? effectiveSize(sourceCard) * per : 0;
+}
+
 function continuousSoulStatAmount(effect, statKey, sourceCard) {
   if (effect.op !== "modifyStats" || !effect.amountFrom) {
     return 0;
@@ -441,7 +455,9 @@ function continuousStatBonus(card, statKey) {
   let bonus = 0;
   zones.forEach((zone) => {
     const sourceCard = player.field[zone];
-    (sourceCard?.continuous || []).forEach((effect) => {
+    // X19(D-BT01/0131): turnContinuous も合流（activeContinuousEffects と同等。無効化判定は
+    // continuousEffectApplies 側の isAbilitiesNullified が担う）。
+    [...(sourceCard?.continuous || []), ...(sourceCard?.turnContinuous || [])].forEach((effect) => {
       if (!continuousEffectApplies(effect, card, sourceCard)) {
         return;
       }
@@ -450,6 +466,7 @@ function continuousStatBonus(card, statKey) {
       }
       bonus += continuousDropStatAmount(effect, statKey, player);
       bonus += continuousSoulStatAmount(effect, statKey, sourceCard);
+      bonus += continuousSelfSizeAmount(effect, statKey, sourceCard); // X11a(D-BT01/0059)
       bonus += continuousFieldSoulStatAmount(effect, statKey, player);
       bonus += continuousFieldCardStatAmount(effect, statKey, slot.owner);
     });
@@ -475,7 +492,7 @@ function continuousStatBonus(card, statKey) {
   const crossField = state.players[crossOwner]?.field || {};
   zones.forEach((zone) => {
     const sourceCard = crossField[zone];
-    (sourceCard?.continuous || []).forEach((effect) => {
+    [...(sourceCard?.continuous || []), ...(sourceCard?.turnContinuous || [])].forEach((effect) => {
       if (!(effect.opposingFront || effect.controller === "opponent")) {
         return;
       }
@@ -490,6 +507,7 @@ function continuousStatBonus(card, statKey) {
       }
       bonus += continuousDropStatAmount(effect, statKey, state.players[crossOwner]);
       bonus += continuousSoulStatAmount(effect, statKey, sourceCard);
+      bonus += continuousSelfSizeAmount(effect, statKey, sourceCard); // X11a(D-BT01/0059)
     });
   });
   soulContinuousEffects(card, slot.owner).forEach(({ effect, sourceCard }) => {

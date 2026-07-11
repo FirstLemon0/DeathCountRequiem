@@ -238,10 +238,12 @@ async function executeAbilityScript(script, context) {
         abilityId: context.ability?.id || "",
       });
       context.vars = scriptContext.vars;
+      if (scriptContext.cardMoved) context.cardMoved = true; // レビュー修正(D-BT01/0027/0034): script内の自己移動を外側へ伝播
       return false;
     }
   }
   context.vars = scriptContext.vars;
+  if (scriptContext.cardMoved) context.cardMoved = true; // レビュー修正(D-BT01/0027/0034): script内の自己移動を外側へ伝播
   recordDiagnosticEvent("effect_script", {
     stage: "complete",
     card: compactCardForLog(context.card),
@@ -424,6 +426,9 @@ async function executeAbilityScriptStep(step, context) {
   if (step.op === "putTopDeckToSelectedSoul") {
     return putTopDeckToSelectedSoulForScript(step, context);
   }
+  if (step.op === "searchDeckToSelectedSoul") {
+    return searchDeckToSelectedSoulForScript(step, context);
+  }
   if (step.op === "moveSoulToGauge") {
     return moveSoulToGaugeForScript(step, context);
   }
@@ -598,10 +603,13 @@ function scriptCardSelectionCandidates(step, context) {
   const fromPiles = Array.isArray(from) ? from : [from];
   for (const pileKey of fromPiles) {
     for (const owner of scriptOwnersForController(step.controller || "self", context.owner)) {
-      const pile = scriptPileForSource(owner, pileKey, context);
+      const pile = scriptPileForSource(owner, pileKey, context, step);
       if (!pile) {
         continue;
       }
+      const soulHost = pileKey === "soul" && step.hostVar
+        ? scriptSelection({ var: step.hostVar }, context)[0]?.card || context.card
+        : context.card;
       pile.forEach((card, index) => {
         if (!scriptCardMatches(card, owner, null, step, context)) {
           return;
@@ -611,7 +619,7 @@ function scriptCardSelectionCandidates(step, context) {
           index,
           owner,
           source: pileKey,
-          sourceCard: pileKey === "soul" ? context.card : null,
+          sourceCard: pileKey === "soul" ? soulHost : null,
           note: step.note || scriptSourceLabel(pileKey),
         });
       });
@@ -630,6 +638,15 @@ function scriptCardMatches(card, owner, zone, step, context) {
   // excludeBattling（S-UB-C03/0074「バトルしていないキャラ1枚を選び」）: 進行中のバトルに
   // 参加している（攻撃側/防御対象の）カードを候補から除外する。
   if (step.excludeBattling === true && card.instanceId && pendingBattleCardIds().has(card.instanceId)) {
+    return false;
+  }
+  // X17(D-BT01/0102): 「バトルしている〜を選び」= 進行中バトルの参加者（攻撃側/防御対象）のみに絞る包含側フィルタ。
+  if (step.onlyBattling === true && !(card.instanceId && pendingBattleCardIds().has(card.instanceId))) {
+    return false;
+  }
+  // X20(D-BT01/0028): 場からの選択をゾーンで絞る（「相手のセンターのモンスター」等。filter.zone は
+  // matchesCardFilter が解釈しないため、step.zones で明示する）。
+  if (Array.isArray(step.zones) && zone && !step.zones.includes(zone)) {
     return false;
   }
   if (!matchesCardFilter(card, step.filter || {})) {
@@ -693,8 +710,19 @@ function scriptOwnersForController(controller = "self", contextOwner) {
   return [contextOwner];
 }
 
-function scriptPileForSource(owner, from, context) {
+function scriptPileForSource(owner, from, context, step = {}) {
   if (from === "soul") {
+    // X16(D-BT01/0020): hostVar 指定時は「事前に選択した場カード」のソウルを読む
+    //（既定は従来通り発生源カード自身のソウル＝後方互換）。
+    if (step.hostVar) {
+      const host = scriptSelection({ var: step.hostVar }, context)[0]?.card;
+      if (host) {
+        return host.soul || [];
+      }
+      // 事前充足チェック(canSatisfyScriptSteps)では hostVar が未確定のため、
+      // その owner の場カード全ソウルの和集合で楽観近似する（実行時は上の host 経路が使われる）。
+      return zones.flatMap((zone) => state.players[owner]?.field?.[zone]?.soul || []);
+    }
     return context.card?.soul || [];
   }
   return state.players[owner]?.[from] || null;
@@ -1329,7 +1357,8 @@ async function restSelectedForScript(step, context) {
         addLog(`${entry.card.name}は相手のカードの効果でレストされません。`);
         continue;
       }
-      await restFieldCard(entry.owner ?? context.owner, entry.zone, entry.card, { source: context.card, restCause });
+      // レビュー修正(D-BT01/0082): 効果によるレストは reason:"effect" を明示（eventReasonIs 条件が拾えるように）。
+      await restFieldCard(entry.owner ?? context.owner, entry.zone, entry.card, { source: context.card, restCause, reason: "effect" });
     }
   }
   return true;
@@ -1499,6 +1528,49 @@ function putTopDeckToSelectedSoulForScript(step, context) {
   return true;
 }
 
+// X4(D-BT01/0045): デッキから filter 一致カードを amount 枚まで選び、選択済みホスト(var)のソウルへ入れ、
+// デッキをシャッフルする（「デッキから『剣星機 J・スラスター』1枚までをそのカードのソウルに入れ、シャッフル」）。
+async function searchDeckToSelectedSoulForScript(step, context) {
+  const host = step.var ? scriptSelection(step, context)[0]?.card : context.hostCard || context.card;
+  if (!host) {
+    return step.require === false ? true : { ok: false, reason: "no_soul_host" };
+  }
+  const player = state.players[step.controller === "opponent" ? 1 - context.owner : context.owner];
+  const owner = state.players.indexOf(player);
+  const candidates = player.deck
+    .map((card) => ({ card, owner }))
+    .filter((entry) => matchesCardFilter(entry.card, step.filter || {}));
+  const wanted = step.amount || 1;
+  if (candidates.length > 0) {
+    const picked = await chooseCardEntries(candidates, {
+      title: `${context.card?.name || "効果"}のデッキサーチ`,
+      lead: `${host.name}のソウルに入れるカードを${wanted}枚まで選んでください。`,
+      min: step.require === true ? Math.min(wanted, candidates.length) : 0,
+      max: wanted,
+      forceDialog: true,
+      promptSeat: owner,
+      purpose: "search",
+    });
+    host.soul ||= [];
+    for (const entry of picked || []) {
+      const deckIndex = player.deck.indexOf(entry.card);
+      if (deckIndex >= 0) {
+        player.deck.splice(deckIndex, 1);
+        host.soul.push(entry.card);
+        addLog(`デッキから${entry.card.name}を${host.name}のソウルに入れました。`);
+      }
+    }
+  }
+  if (step.shuffle !== false) {
+    shuffleInPlace(player.deck);
+    addLog(`${player.name}はデッキをシャッフルしました。`);
+  }
+  if (player.deck.length === 0) {
+    declareDeckLoss(player);
+  }
+  return true;
+}
+
 // 発生源カード自身を取り出す（必殺技/呪文は解決前にドロップへ置かれているため drop から、設置等は場から）。
 function takeSelfFromDropOrField(context) {
   const player = context.player;
@@ -1534,9 +1606,19 @@ function moveSelfToSelectedSoulForScript(step, context) {
     return step.require === false ? true : { ok: false, reason: "no_soul_host" };
   }
   const fromZone = findFieldCardSlot(context.card) ? "field" : "drop";
-  const card = takeSelfFromDropOrField(context);
+  let card = takeSelfFromDropOrField(context);
   if (!card) {
-    return true;
+    // レビュー修正(D-BT01/0034): メインフェイズ魔法の解決中はカードが action.card に保持されており
+    // ドロップにも場にも無い。保持中のカード自身をソウルへ移し、cardMoved で解決後のドロップ積みを抑止する
+    // （黙って不発にしない。moveSelfToBuddyZoneFaceDown と同型）。
+    card = context.card;
+    if (!card) {
+      return true;
+    }
+    context.cardMoved = true;
+  }
+  if (card.instanceId === context.card?.instanceId) {
+    context.cardMoved = true;
   }
   putCardsToSoulWithTrigger(host, context.owner, [card], fromZone);
   if (step.log !== false) {
@@ -1636,7 +1718,7 @@ async function useSelectedCardForScript(step, context) {
       addLog("配置魔法ゾーンが空いていません。");
       return { ok: false, reason: "no_set_zone" };
     }
-    if (card.uniqueSet && setZones.some((candidate) => player.field[candidate]?.id === card.id)) {
+    if (card.uniqueSet && setZones.some((candidate) => player.field[candidate]?.name === card.name)) { // レビュー修正(D-BT01/0066): 同名制限
       addLog(`${card.name}はすでに配置されています。`);
       return { ok: false, reason: "already_set" };
     }
@@ -1867,6 +1949,10 @@ async function callSelectedForScript(step, context) {
     addLog(`${entry.card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
     return { ok: false, reason: "impact_monster_call_restricted" };
   }
+  if (turnCallRestrictionBlocks(entry.owner ?? context.owner, entry.card)) {
+    addLog(`${entry.card.name}はこのターン、コール制限によりコールできません。`);
+    return { ok: false, reason: "turn_call_restricted" };
+  }
   const player = state.players[entry.owner ?? context.owner];
   const zone = context.vars[step.zoneVar] || step.zone;
   if (!fieldZones.includes(zone)) {
@@ -1931,6 +2017,10 @@ async function callSelfFromHandForScript(step, context) {
   if (!impactMonsterCallAllowed(context.owner, card)) {
     addLog(`${card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
     return { ok: false, reason: "impact_monster_call_restricted" };
+  }
+  if (turnCallRestrictionBlocks(context.owner, card)) {
+    addLog(`${card.name}はこのターン、コール制限によりコールできません。`);
+    return { ok: false, reason: "turn_call_restricted" };
   }
   const cost = card.costs?.call || [];
   const adjustedSelfCallCost = adjustedCostSteps(player, card, "call", cost);
@@ -2004,6 +2094,10 @@ async function callSelfFromSoulForScript(step, context) {
   if (!impactMonsterCallAllowed(context.owner, card)) {
     addLog(`${card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
     return { ok: false, reason: "impact_monster_call_restricted" };
+  }
+  if (turnCallRestrictionBlocks(context.owner, card)) {
+    addLog(`${card.name}はこのターン、コール制限によりコールできません。`);
+    return { ok: false, reason: "turn_call_restricted" };
   }
   const soulIndex = host.soul.findIndex((s) => s.instanceId === card.instanceId);
   const [removed] = host.soul.splice(soulIndex, 1);
@@ -2205,6 +2299,10 @@ async function callSelectedToEmptyZonesForScript(step, context) {
       addLog(`${entry.card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
       continue;
     }
+    if (turnCallRestrictionBlocks(entry.owner ?? context.owner, entry.card)) {
+      addLog(`${entry.card.name}はこのターン、コール制限によりコールできません。`);
+      continue;
+    }
     const emptyZones = allowedZones.filter((zone) => fieldZones.includes(zone) && !player.field[zone]);
     if (emptyZones.length === 0) {
       break;
@@ -2262,7 +2360,11 @@ async function callSelectedToEmptyZonesForScript(step, context) {
 
 async function stackCallSelectedForScript(step, context) {
   const entry = scriptSelection(step, context)[0];
-  const zone = context.zone ?? findFieldCardSlot(context.card)?.zone;
+  // X16(D-BT01/0020): zoneVar 指定時は「事前に選択した場カード」のゾーンへ重ねる（既定は発生源の場所＝後方互換）。
+  const zoneFromVar = step.zoneVar
+    ? findFieldCardSlot(scriptSelection({ var: step.zoneVar }, context)[0]?.card)?.zone
+    : null;
+  const zone = zoneFromVar ?? context.zone ?? findFieldCardSlot(context.card)?.zone;
   if (!entry?.card || !fieldZones.includes(zone)) {
     addLog(`${context.card.name}で重ねてコールするカードを選んでください。`);
     return { ok: false, reason: "missing_stack_call_card" };
@@ -2271,6 +2373,10 @@ async function stackCallSelectedForScript(step, context) {
   if (!impactMonsterCallAllowed(entry.owner ?? context.owner, entry.card)) {
     addLog(`${entry.card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
     return { ok: false, reason: "impact_monster_call_restricted" };
+  }
+  if (turnCallRestrictionBlocks(entry.owner ?? context.owner, entry.card)) {
+    addLog(`${entry.card.name}はこのターン、コール制限によりコールできません。`);
+    return { ok: false, reason: "turn_call_restricted" };
   }
   const player = context.player;
   if (step.payCost) {
@@ -2380,6 +2486,11 @@ function isScriptEffectStep(step) {
     "treatAsBuddyThisTurn",
     "scheduleZoneMoveAtTurnEnd",
     "draw",
+    "searchDeckToHand", // X4(D-BT01)
+    "restrictCallThisTurn", // X6(D-BT01/0064)
+    "lookTopSelectToSoulRestToDrop", // X10(D-BT01/0044)
+    "setConditionalSizeScope", // X11b(D-BT01/0131)
+    "addTurnContinuous", // X19(D-BT01/0131)
     "putTopDeckToGauge",
     "putTopDeckToGaugeIfBuddyOnField",
     "moveTopDeckToDrop",

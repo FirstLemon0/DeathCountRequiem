@@ -225,6 +225,81 @@ function destroyTriggerUsesSoul(card) {
   );
 }
 
+// X9(D-BT01/0131): 「このカードが場から離れる時、[コスト]を払ってよい。払ったら、このカードを場に残す」。
+// 主経路（破壊 destroyFieldCard・全体手札戻し returnAllToHand）は非同期版を使い、確認は confirmChoiceAsync
+//（権威サーバ往復・CPU seam・リプレイ記録を完備）、支払いは対話経路（payStructuredCostWithSelection）。
+// 単体手札戻し（returnFieldTargetToHand=同期関数）だけは同期版で近似する（意図的近似・実装メモ参照）。
+async function tryLeaveFieldReplacement(card, owner) {
+  const replacement = card?.leaveFieldReplacement;
+  if (!replacement || card.__leaveReplacementResolving || isAbilitiesNullified(card)) {
+    return false;
+  }
+  const player = state.players[owner];
+  const cost = replacement.cost || [];
+  if (!canPayStructuredCost(player, cost, { sourceCard: card }).ok) {
+    return false;
+  }
+  card.__leaveReplacementResolving = true;
+  try {
+    if (replacement.optional !== false) {
+      const answer = await confirmChoiceAsync(owner, `${card.name}のコストを払って場に残しますか？`, {
+        yesLabel: "コストを払って場に残す",
+        noLabel: "場を離れる",
+      });
+      if (!answer) {
+        return false;
+      }
+    }
+    const paid = await payStructuredCostWithSelection(player, cost, { sourceCard: card });
+    if (!paid.ok) {
+      return false;
+    }
+  } finally {
+    card.__leaveReplacementResolving = false;
+  }
+  addLog(`${card.name}はコストを払って場に残りました。`);
+  return true;
+}
+
+function tryLeaveFieldReplacementSync(card, owner) {
+  const replacement = card?.leaveFieldReplacement;
+  if (!replacement || card.__leaveReplacementResolving || isAbilitiesNullified(card)) {
+    return false;
+  }
+  const player = state.players[owner];
+  const cost = replacement.cost || [];
+  if (!canPayStructuredCost(player, cost, { sourceCard: card }).ok) {
+    return false;
+  }
+  if (replacement.optional !== false) {
+    let answer;
+    if (typeof replayIsPlaying === "function" && replayIsPlaying()) {
+      answer = replayNextConfirm();
+    } else if (typeof window !== "undefined" && typeof window.confirm === "function") {
+      answer = Boolean(window.confirm(`${card.name}のコストを払って場に残しますか？`));
+      if (typeof replayRecordConfirm === "function") {
+        replayRecordConfirm(answer);
+      }
+    } else {
+      answer = true; // 非対話環境の既定: 残す（フィニッシャー保持が自然な既定）
+    }
+    if (!answer) {
+      return false;
+    }
+  }
+  card.__leaveReplacementResolving = true;
+  try {
+    const paid = payStructuredCost(player, cost, { sourceCard: card });
+    if (!paid.ok) {
+      return false;
+    }
+  } finally {
+    card.__leaveReplacementResolving = false;
+  }
+  addLog(`${card.name}はコストを払って場に残りました。`);
+  return true;
+}
+
 async function destroyFieldCard(owner, zone, options = {}) {
   const player = state.players[owner];
   const card = player.field[zone];
@@ -242,6 +317,10 @@ async function destroyFieldCard(owner, zone, options = {}) {
   if (!options.ignoreDestroyReplacement && card.preventNextLeaveFieldCount > 0) {
     card.preventNextLeaveFieldCount -= 1;
     addLog(`${card.name}は効果により場に残りました。`);
+    return null;
+  }
+  // X9(D-BT01/0131): コスト付き離場置換（破壊もカバー。成立時は破壊されていない）。
+  if (!options.ignoreDestroyReplacement && (await tryLeaveFieldReplacement(card, owner))) {
     return null;
   }
   if (!options.ignoreDestroyReplacement && (await applyDestroyReplacement(card, owner, options))) {
@@ -317,7 +396,7 @@ async function destroyFieldCard(owner, zone, options = {}) {
   if (!options.suppressLifeLink) {
     applyLifeLink(card, owner);
   }
-  recordDestroyedEventWindow(card, owner);
+  recordDestroyedEventWindow(card, owner, options.cause);
   // 破壊されてドロップへ行ったカードは、場限定のサイズ上書き(conditionalSize=大首領アンノウン0029等)を解除する。
   // 破壊された瞬間のサイズは destroyedEventWindow に凍結済みなので対抗札(lastDestroyedCardMatches)は不変。
   // ドロップ滞在中のサイズ参照(ドロップからのサイズ指定コール等)が印字サイズで正しく判定される。
@@ -536,6 +615,14 @@ function recordSpecialCallOpportunity(destroyedCard, owner, zone, options = {}) 
     phase: state.phase,
     reason: options.reason || "destroyed",
     lifeLinkEventId: lifeLinkEvent?.id || null,
+    // X7(D-BT01/0070): 破壊要因（効果/バトル・破壊した側）。「君のカードの効果で相手のモンスターを破壊した時」の照合用。
+    cause: options.cause
+      ? {
+          byEffect: Boolean(options.cause.byEffect),
+          byBattle: Boolean(options.cause.byBattle),
+          destroyerOwner: options.cause.sourceOwner ?? null,
+        }
+      : null,
     expired: false,
   });
   if (state.specialCallOpportunities.length > 20) {
@@ -572,6 +659,16 @@ function specialCallOpportunityMatches(event, owner, spec = {}) {
   } else if (spec.controller !== "any" && event.owner !== owner) {
     return false;
   }
+  // X7(D-BT01/0070): 破壊要因の照合（causeByEffect=効果破壊のみ・destroyerController=破壊した側が自分/相手）。
+  if (spec.causeByEffect && !event.cause?.byEffect) {
+    return false;
+  }
+  if (spec.destroyerController === "self" && event.cause?.destroyerOwner !== owner) {
+    return false;
+  }
+  if (spec.destroyerController === "opponent" && event.cause?.destroyerOwner === owner) {
+    return false;
+  }
   return matchesCardFilter(event.destroyedCard, spec.filter || {});
 }
 
@@ -598,9 +695,17 @@ function syncMonstersDestroyedThisTurn() {
   );
 }
 
-function recordDestroyedEventWindow(card, owner) {
+function recordDestroyedEventWindow(card, owner, cause = null) {
   const sizeAtDestroy = frozenSizeAtDestroy(card);
-  const entry = { card, owner, sizeAtDestroy };
+  // X7(D-BT01/0114): 破壊要因を窓に保存（lastDestroyedCardMatches の causeByEffect/destroyerController 用）。
+  const entry = {
+    card,
+    owner,
+    sizeAtDestroy,
+    cause: cause
+      ? { byEffect: Boolean(cause.byEffect), byBattle: Boolean(cause.byBattle), destroyerOwner: cause.sourceOwner ?? null }
+      : null,
+  };
   if (state.destroyedEventWindow && state.destroyedEventWindow.turnCount === state.turnCount) {
     state.destroyedEventWindow.entries.push(entry);
     return;
@@ -861,13 +966,15 @@ function queueAllyDestroyedTriggers(card, owner, zone, cause = null) {
 // 「場のモンスターが手札/デッキに戻った時」の誘発（D・R・システム / 竜剣 ドラムソード等、場の他カードが反応）。
 // 復帰処理は同期関数のため、破壊/手札破棄の誘発と同じくマイクロタスクで非同期発火する。
 function queueMonsterReturnedTriggers(card, owner, zone, details = {}) {
-  if (effectiveCardType(card) !== "monster") {
-    return;
-  }
   Promise.resolve()
     .then(async () => {
-      // Z14(b)(S-UB-C03/0017): details.returnCause を "monsterReturned" 誘発コンテキストへ伝播する。
-      await runFieldEventTriggers("monsterReturned", owner, card, zone, details);
+      if (effectiveCardType(card) === "monster") {
+        // Z14(b)(S-UB-C03/0017): details.returnCause を "monsterReturned" 誘発コンテキストへ伝播する。
+        await runFieldEventTriggers("monsterReturned", owner, card, zone, details);
+      }
+      // レビュー修正(D-BT01/0096/0100/0107): 「場のカードが手札に戻った時」= カード種を問わない cardReturned も
+      // 発火（新イベント・既存カードにリスナー無し＝後方互換。details は複製して汚染を避ける）。
+      await runFieldEventTriggers("cardReturned", owner, card, zone, { ...details });
       render();
     })
     .catch((error) => {
@@ -920,6 +1027,9 @@ function dropFieldCardByRule(player, zone) {
   if (!card) {
     return null;
   }
+  // 注: X9 の離場置換はここ（ルール処理ドロップ）には配線しない。コール先の明け渡しやサイズ超過処理で
+  // カードが残ると上書き消失/無限ループを招くため、既存 Z9(preventNextLeaveFieldCount) と同じく
+  // 破壊＋手札戻しのみカバーする（意図的近似・D-BT01実装メモ参照）。
   player.drop.push(...(card.soul || []));
   card.soul = [];
   player.drop.push(card);
@@ -1312,6 +1422,20 @@ async function runEndTurnEffects(endingOwner) {
 
 function clearTurnModifiers() {
   state.spiritStrikeDamageBonus = [0, 0]; // 霊撃ブースト（ターンスコープ）をリセット
+  state.callRestrictionsThisTurn = []; // X6(D-BT01/0064): ターン限定コール制限をリセット
+  // X11b(D-BT01/0131): ターンスコープのサイズ上書き(setConditionalSizeScope turnScoped)と
+  // X19 ターン限定継続(turnContinuous)を解除。
+  state.players.forEach((player) => {
+    zones.forEach((zone) => {
+      const fieldCard = player.field?.[zone];
+      if (fieldCard?.conditionalSize?.turnScoped) {
+        fieldCard.conditionalSize = null;
+      }
+      if (fieldCard?.turnContinuous) {
+        fieldCard.turnContinuous = null;
+      }
+    });
+  });
   // ターン終了時のプレイヤー単位ゾーン一括移動の予約を消費（scheduleZoneMoveAtTurnEnd。H-PP01/0060）。
   (state.turnEndZoneMoves || []).forEach((move) => {
     const movePlayer = state.players[move.owner];

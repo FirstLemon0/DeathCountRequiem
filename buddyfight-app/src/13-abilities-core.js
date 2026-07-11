@@ -749,7 +749,18 @@ function checkCondition(condition, owner, context = {}) {
   }
   if (condition.op === "targetMatches") {
     const ref = condition.ref ? resolveEffectReference(condition.ref, context) : context.target;
-    return Boolean(ref?.card && matchesCardFilter(ref.card, condition.filter || {}));
+    if (!ref?.card) {
+      return false;
+    }
+    // レビュー修正(D-BT01/0091): matchesCardFilter は zone を解釈しないため、ゾーン条件はここで判定する
+    // （「そのカードがセンターにいるなら、かわりに〜」の排他分岐用）。
+    if (condition.zone && ref.zone !== condition.zone) {
+      return false;
+    }
+    if (condition.zoneNot && ref.zone === condition.zoneNot) {
+      return false;
+    }
+    return matchesCardFilter(ref.card, condition.filter || {});
   }
   if (condition.op === "sourceIsBuddy") {
     return sourceIsBuddyCondition(owner, context);
@@ -1281,12 +1292,26 @@ function checkCondition(condition, owner, context = {}) {
       if (condition.controller === "opponent" && entry.owner === owner) {
         return false;
       }
+      // X7(D-BT01/0114): 「君のカードの効果で破壊した時」= 効果破壊のみ・破壊した側の照合。
+      if (condition.causeByEffect && !entry.cause?.byEffect) {
+        return false;
+      }
+      if (condition.destroyerController === "self" && entry.cause?.destroyerOwner !== owner) {
+        return false;
+      }
+      if (condition.destroyerController === "opponent" && entry.cause?.destroyerOwner === owner) {
+        return false;
+      }
       // サイズは破壊された瞬間の値(sizeAtDestroy)で判定（破壊後に conditionalSize をクリアしても不変）。
       return Boolean(
         entry.card &&
           matchesCardFilter(entry.card, condition.filter || {}, { effectiveSizeOverride: entry.sizeAtDestroy }),
       );
     });
+  }
+  if (condition.op === "eventReasonIs") {
+    // X8(D-BT01/0082): 発火イベントの理由（rest の reason:"effect"/"attack" 等）を照合する。
+    return (context.reason || null) === condition.reason;
   }
   if (condition.op === "hasArrival") {
     return Boolean(player.arrivalCardId);
