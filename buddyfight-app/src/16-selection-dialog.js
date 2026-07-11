@@ -365,7 +365,7 @@ function showCardSelectionDialog(candidates, options = {}) {
 function selectionChoiceMarkup(card, index, note = "") {
   const meta = [
     card.no,
-    typeLabels[effectiveCardType(card)] || typeLabels[card.type] || card.type,
+    typeLabels[displayCardType(card)] || typeLabels[card.type] || card.type,
     (card.attributes || []).join(" / "),
     note,
   ]
@@ -377,7 +377,7 @@ function selectionChoiceMarkup(card, index, note = "") {
       <span class="selection-choice-name">${escapeHtml(card.name)}</span>
       <span class="selection-choice-meta">${escapeHtml(meta)}</span>
     </span>
-    <span class="selection-choice-type">${escapeHtml(typeLabels[effectiveCardType(card)] || typeLabels[card.type] || card.type || "")}</span>
+    <span class="selection-choice-type">${escapeHtml(typeLabels[displayCardType(card)] || typeLabels[card.type] || card.type || "")}</span>
   `;
 }
 

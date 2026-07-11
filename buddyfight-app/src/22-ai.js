@@ -543,6 +543,48 @@ async function aiFinalStep(seat) {
     });
     return true;
   }
+  // 必殺モンスター(DDD): 自分のファイナルフェイズにのみコール可（1ターン1枚）。
+  // コール可能なら貪欲にコールする（デッキのフィニッシャーである前提の近似）。
+  if ((state.impactMonsterCallsThisTurn?.[seat] || 0) < 1) {
+    const calls = [];
+    for (const card of player.hand) {
+      if (card.type !== "impactMonster" || card.cannotCallNormally) continue;
+      if (!aiCanPayCardCost(player, card, "call")) continue;
+      if (card.callStack) {
+        // 重ねコール: 有効な重ね先ごとに列挙（メインフェイズのコール列挙と同じF7方式）。
+        const bases = aiWithSelected({ source: "hand", owner: seat, instanceId: card.instanceId }, () => {
+          try {
+            return effectTargetCandidates(card) || [];
+          } catch (error) {
+            return [];
+          }
+        });
+        for (const base of bases) {
+          if (base.owner !== seat || !base.zone) continue;
+          calls.push(aiCallAction(seat, card, base.zone, { stack: true, base }));
+        }
+        continue;
+      }
+      for (const zone of fieldZones) {
+        if (player.field[zone]) continue;
+        calls.push(aiCallAction(seat, card, zone, {}));
+      }
+    }
+    const bestCall = aiPickBestAction(calls.filter((action) => !aiSession.failedActionKeys.has(action.key)));
+    if (bestCall) {
+      await aiExecuteAction(bestCall);
+      return true;
+    }
+  }
+  // ファイナルフェイズ中の攻撃は canDeclareAttackInFinal（必殺モンスター等）に限定（src/09 と同じゲート）。
+  const finalAttacks = aiEnumerateAttacks(seat, (card) => canDeclareAttackInFinal(card)).filter(
+    (action) => !aiSession.failedActionKeys.has(action.key),
+  );
+  const bestAttack = aiPickBestAction(finalAttacks);
+  if (bestAttack) {
+    await aiExecuteAction(bestAttack);
+    return true;
+  }
   await endTurn();
   return true;
 }
@@ -613,6 +655,7 @@ function aiEnumerateMainActions(seat) {
   // （F2: 支払い不能バディコールの宣言⇄解除ループ防止。特殊コストの判定不能は列挙に倒す）。
   for (const card of player.hand) {
     if (!isCallableMonster(card) || card.cannotCallNormally) continue;
+    if (card.type === "impactMonster") continue; // 必殺モンスターはファイナルフェイズ限定（aiFinalStep で扱う）
     if (!aiCanPayCardCost(player, card, "call")) continue;
     const buddyable = !player.partnerCalled && isBuddyCard(player, card);
     if (card.callStack) {
@@ -710,12 +753,13 @@ function aiCallAction(seat, card, zone, options) {
   };
 }
 
-function aiEnumerateAttacks(seat) {
+function aiEnumerateAttacks(seat, attackerFilter) {
   const player = state.players[seat];
   const actions = [];
   for (const zone of Object.keys(player.field)) {
     const card = player.field[zone];
     if (!card || card.used) continue;
+    if (attackerFilter && !attackerFilter(card)) continue; // ファイナルフェイズの必殺モンスター限定攻撃(aiFinalStep)用
     if (!canDeclareAttack({ owner: seat, zone, card })) continue;
     const targets = aiWithSelected({ source: "field", owner: seat, zone, instanceId: card.instanceId }, () =>
       computeAttackTargetCandidates(),

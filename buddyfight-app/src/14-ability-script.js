@@ -1862,6 +1862,11 @@ async function callSelectedForScript(step, context) {
     addLog(`効果により、ドロップゾーンからそのカードをコールできません。`);
     return { ok: false, reason: "call_from_zone_restricted" };
   }
+  // 必殺モンスターの共通ゲート: 効果によるコールも「1ターンに1枚・自分のファイナルフェイズのみ」に服する。
+  if (!impactMonsterCallAllowed(entry.owner ?? context.owner, entry.card)) {
+    addLog(`${entry.card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
+    return { ok: false, reason: "impact_monster_call_restricted" };
+  }
   const player = state.players[entry.owner ?? context.owner];
   const zone = context.vars[step.zoneVar] || step.zone;
   if (!fieldZones.includes(zone)) {
@@ -1878,6 +1883,7 @@ async function callSelectedForScript(step, context) {
     dropFieldCardByRule(player, zone);
   }
   player.field[zone] = calledCard;
+  recordImpactMonsterCall(entry.owner ?? context.owner, calledCard);
   applyScriptGrantedKeywords(calledCard, step.grantKeywords || []);
   // 再コール時は前回付与のサイズ上書き(conditionalSize)を必ずリセットしてから、必要な時だけ新たに付与する。
   // （大首領アンノウン0029でコール→破壊→ドロップから別効果で再コールした際に、古いサイズ0を引きずらないため。
@@ -1921,6 +1927,11 @@ async function callSelfFromHandForScript(step, context) {
     addLog(`${card.name}のコール先を選んでください。`);
     return { ok: false, reason: "missing_call_zone" };
   }
+  // 必殺モンスターの共通ゲート（効果による自己コールも制限に服する）。
+  if (!impactMonsterCallAllowed(context.owner, card)) {
+    addLog(`${card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
+    return { ok: false, reason: "impact_monster_call_restricted" };
+  }
   const cost = card.costs?.call || [];
   const adjustedSelfCallCost = adjustedCostSteps(player, card, "call", cost);
   if (adjustedSelfCallCost.length && !canPayStructuredCost(player, adjustedSelfCallCost, { sourceCard: card }).ok) {
@@ -1948,6 +1959,7 @@ async function callSelfFromHandForScript(step, context) {
     dropFieldCardByRule(player, zone);
   }
   player.field[zone] = card;
+  recordImpactMonsterCall(context.owner, card);
   card.conditionalSize = null; // 再コール時は前回のサイズ上書き(アンノウン0029等)をリセット
   applyScriptGrantedKeywords(card, step.grantKeywords || []);
   enforceSizeLimit(player, zone);
@@ -1988,6 +2000,11 @@ async function callSelfFromSoulForScript(step, context) {
     addLog(`${card.name}のコール先を選んでください。`);
     return { ok: false, reason: "missing_call_zone" };
   }
+  // 必殺モンスターの共通ゲート（ソウルからの自己コールも制限に服する）。
+  if (!impactMonsterCallAllowed(context.owner, card)) {
+    addLog(`${card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
+    return { ok: false, reason: "impact_monster_call_restricted" };
+  }
   const soulIndex = host.soul.findIndex((s) => s.instanceId === card.instanceId);
   const [removed] = host.soul.splice(soulIndex, 1);
   if (player.field[zone]) {
@@ -1995,6 +2012,7 @@ async function callSelfFromSoulForScript(step, context) {
   }
   removed.conditionalSize = null; // 再コール時は前回のサイズ上書きをリセット
   player.field[zone] = removed;
+  recordImpactMonsterCall(context.owner, removed);
   applyScriptGrantedKeywords(removed, step.grantKeywords || []);
   enforceSizeLimit(player, zone);
   addLog(`${removed.name}をソウルから${zoneLabel(zone)}にコールしました。`);
@@ -2182,6 +2200,11 @@ async function callSelectedToEmptyZonesForScript(step, context) {
   // step.zones でコール先を限定できる（0010「レフトかライトにコール」）。既定は全フィールドゾーン。
   const allowedZones = Array.isArray(step.zones) ? step.zones : fieldZones;
   for (const entry of selected) {
+    // 必殺モンスターの共通ゲート: 効果によるコールも「1ターンに1枚・自分のファイナルフェイズのみ」に服する。
+    if (!impactMonsterCallAllowed(entry.owner ?? context.owner, entry.card)) {
+      addLog(`${entry.card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
+      continue;
+    }
     const emptyZones = allowedZones.filter((zone) => fieldZones.includes(zone) && !player.field[zone]);
     if (emptyZones.length === 0) {
       break;
@@ -2225,6 +2248,7 @@ async function callSelectedToEmptyZonesForScript(step, context) {
       continue;
     }
     player.field[zone] = calledCard;
+    recordImpactMonsterCall(entry.owner ?? context.owner, calledCard);
     calledCard.conditionalSize = null; // 再コール時は前回のサイズ上書き(アンノウン0029等)をリセット
     applyScriptGrantedKeywords(calledCard, step.grantKeywords || []);
     enforceSizeLimit(player, zone);
@@ -2242,6 +2266,11 @@ async function stackCallSelectedForScript(step, context) {
   if (!entry?.card || !fieldZones.includes(zone)) {
     addLog(`${context.card.name}で重ねてコールするカードを選んでください。`);
     return { ok: false, reason: "missing_stack_call_card" };
+  }
+  // 必殺モンスターの共通ゲート: 効果による重ねコールも「1ターンに1枚・自分のファイナルフェイズのみ」に服する。
+  if (!impactMonsterCallAllowed(entry.owner ?? context.owner, entry.card)) {
+    addLog(`${entry.card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
+    return { ok: false, reason: "impact_monster_call_restricted" };
   }
   const player = context.player;
   if (step.payCost) {
@@ -2262,6 +2291,7 @@ async function stackCallSelectedForScript(step, context) {
     return { ok: false, reason: "stack_call_card_missing" };
   }
   stackFieldCardAsSoul(player, zone, calledCard);
+  recordImpactMonsterCall(entry.owner ?? context.owner, calledCard);
   enforceSizeLimit(player, zone);
   addLog(`${context.card.name}の効果で${calledCard.name}を${zoneLabel(zone)}に重ねてコールしました。`);
   if (step.resolveOnEnter) {

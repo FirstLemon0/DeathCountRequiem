@@ -289,6 +289,7 @@ function newGame(options = {}) {
     resolvingPending: false,
     counterHandOwner: null,
     turnCount: 1,
+    impactMonsterCallsThisTurn: [0, 0], // 必殺モンスター(DDD)の「1ターンに1枚」コール数（席別）
     fightLimits: [{}, {}],
     monsterAttackForbidden: [false, false],
     monsterAttackForbiddenSources: [[], []],

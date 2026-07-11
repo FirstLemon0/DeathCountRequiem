@@ -1,0 +1,742 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-d-sd03-utsuronaru-kokuryu",
+    "name": "DDD ５００円スタートデッキ第３弾「ウツロナル黒竜」",
+    "kind": "スタートデッキ",
+    "generation": "DDD",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=40"
+  },
+  "cards": [
+    {
+      "id": "bf-d-sd03-0001",
+      "no": "D-SD03/0001",
+      "name": "双刃黒竜 ザルカンディラ",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、君のドロップゾーンの《黒竜》２枚をこのカードのソウルに入れる。（ソウルはこのカードの下に重ねる）",
+        "■相手のドロップゾーンが５枚以上なら、このカードは『２回攻撃』を得る。",
+        "『ソウルガード』（このカードが場から離れる場合、ソウル１枚を捨てて場に残せる）"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 5000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putDropToSoul",
+            "amount": 2,
+            "filter": {
+              "attribute": "黒竜"
+            }
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "doubleAttack",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "opponent",
+              "pile": "drop",
+              "cmp": "gte",
+              "amount": 5
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "soulguard"
+      ]
+    },
+    {
+      "id": "bf-d-sd03-0002",
+      "no": "D-SD03/0002",
+      "name": "黒き装騎竜 ペンタグラ",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 4000
+    },
+    {
+      "id": "bf-d-sd03-0003",
+      "no": "D-SD03/0003",
+      "name": "黒き襲撃者 ゴルスゴルビ",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが登場した時、相手の場のモンスター１枚を破壊する！"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 5000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-sd03-0003-enter",
+          "kind": "triggered",
+          "event": "enter",
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-sd03-0004",
+      "no": "D-SD03/0004",
+      "name": "黒き同伴者 ベフェゴル",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜",
+        "深淵"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■このカードが破壊された時、お互いのデッキの上から２枚をドロップゾーンに置き、君のライフを＋１する。"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 3,
+      "defense": 4000,
+      "abilities": [
+        {
+          "id": "bf-d-sd03-0004-destroyed",
+          "kind": "triggered",
+          "event": "destroyed",
+          "effects": [
+            {
+              "op": "moveTopDeckToDrop",
+              "amount": 2
+            },
+            {
+              "op": "moveTopDeckToDrop",
+              "amount": 2,
+              "player": "opponent"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-sd03-0005",
+      "no": "D-SD03/0005",
+      "name": "黒き揺籠 クレイブルス",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■このカードの攻撃でモンスターを破壊した時、相手のデッキの上から２枚を相手のドロップゾーンに置く。"
+      ],
+      "size": 1,
+      "power": 6000,
+      "critical": 1,
+      "defense": 1000,
+      "abilities": [
+        {
+          "id": "bf-d-sd03-0005-mill",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "moveTopDeckToDrop",
+              "amount": 2,
+              "player": "opponent"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-sd03-0006",
+      "no": "D-SD03/0006",
+      "name": "黒き衝撃 ノグデス",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 3,
+      "defense": 1000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "bf-d-sd03-0007",
+      "no": "D-SD03/0007",
+      "name": "黒き鬱屈 バルザム",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■このカードが登場した時、君の場に他の《黒竜》のモンスターがいるなら、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "abilities": [
+        {
+          "id": "bf-d-sd03-0007-enter",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "ownOtherFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "黒竜"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-sd03-0008",
+      "no": "D-SD03/0008",
+      "name": "黒き暴虐 ファナグル",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "『移動』（お互いのアタックフェイズ開始時に、場のこのカードを空いている別のエリアに置いてよい）"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "keywords": [
+        "move"
+      ]
+    },
+    {
+      "id": "bf-d-sd03-0009",
+      "no": "D-SD03/0009",
+      "name": "黒き星 シルス",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜",
+        "深淵"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [],
+      "size": 0,
+      "power": 1000,
+      "critical": 2,
+      "defense": 1000
+    },
+    {
+      "id": "bf-d-sd03-0010",
+      "no": "D-SD03/0010",
+      "name": "ヴォイド・スラッシャー",
+      "type": "spell",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■相手のドロップゾーンが５枚以上なら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■相手にダメージ１！ 相手のドロップゾーンが10枚以上なら、かわりに、相手にダメージ３！！「ヴォイド・スラッシャー」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-sd03-0010-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "opponent",
+              "pile": "drop",
+              "cmp": "gte",
+              "amount": 5
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 3,
+              "conditions": [
+                {
+                  "op": "cardCount",
+                  "controller": "opponent",
+                  "pile": "drop",
+                  "cmp": "gte",
+                  "amount": 10
+                }
+              ]
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "cardCount",
+                  "controller": "opponent",
+                  "pile": "drop",
+                  "cmp": "lte",
+                  "amount": 9
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "void-slasher"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-d-sd03-0011",
+      "no": "D-SD03/0011",
+      "name": "アビス・シンフォニア",
+      "type": "spell",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "深淵",
+        "ドロー"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君のライフが６以下なら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■カード２枚を引く。「アビス・シンフォニア」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-sd03-0011-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 6
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bt04-0042-draw"
+          }
+        }
+      ],
+      "_note": "再録元 bt04-0042 と「1ターンに1回」を名前単位で共有するため、limit.key を原本の既定キー(bt04-0042-draw)に揃えている。"
+    },
+    {
+      "id": "bf-d-sd03-0012",
+      "no": "D-SD03/0012",
+      "name": "デスブレイク",
+      "type": "spell",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "破壊"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【使用コスト】ゲージ３を払う。",
+        "■【対抗】相手の場のモンスター１枚を破壊する！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-sd03-0012-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 3
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-sd03-0013",
+      "no": "D-SD03/0013",
+      "name": "ダーク・スピリット",
+      "type": "spell",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜",
+        "強化"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【対抗】バトルしている《黒竜》のモンスター１枚を選び、このバトル中、攻撃力＋3000、防御力＋3000し、さらに『反撃』を与える！(反撃：このカードが攻撃された後、このカードが場にいるなら、このカードの攻撃力以下の防御力を持つ攻撃してきたモンスター１枚を破壊する）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-sd03-0013-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "battleCard",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "黒竜"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 3000,
+              "defense": 3000,
+              "duration": "battle"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "counterattack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-sd03-0014",
+      "no": "D-SD03/0014",
+      "name": "ドラゴンシールド 黒竜の盾",
+      "type": "spell",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜",
+        "防御"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君がダメージを受ける時、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】そのダメージを０に減らし、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-sd03-0014-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "pendingAttackDefenderIsSelf"
+                },
+                {
+                  "op": "pendingActionResponderIsSelf"
+                }
+              ]
+            }
+          ],
+          "effects": [
+            {
+              "op": "preventNextDamage"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-sd03-0015",
+      "no": "D-SD03/0015",
+      "name": "復讐の鎌 アベンジャー",
+      "type": "item",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "深淵",
+        "武器"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "【装備コスト】ゲージ１を払い、ライフ１を払う。",
+        "■このカードが攻撃した時、相手のデッキの上から１枚を相手のドロップゾーンに置き、相手のドロップゾーンが６枚以上なら、そのターン中、このカードは『貫通』を得る。"
+      ],
+      "power": 5000,
+      "critical": 2,
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-sd03-0015-attack",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            }
+          ],
+          "effects": [
+            {
+              "op": "moveTopDeckToDrop",
+              "amount": 1,
+              "player": "opponent"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "penetrate",
+              "duration": "turn",
+              "conditions": [
+                {
+                  "op": "cardCount",
+                  "controller": "opponent",
+                  "pile": "drop",
+                  "cmp": "gte",
+                  "amount": 6
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-sd03-0016",
+      "no": "D-SD03/0016",
+      "name": "黒竜剣 エビルフィアレス",
+      "type": "item",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜",
+        "武器"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [],
+      "power": 3000,
+      "critical": 2
+    },
+    {
+      "id": "bf-d-sd03-0017",
+      "no": "D-SD03/0017",
+      "name": "アビゲール “ロストホライゾン！”",
+      "type": "impactMonster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、君の場の《黒竜》のモンスター１枚を破壊する。",
+        "■このカードが登場した時、相手の場のカード１枚を破壊する！",
+        "（このカードはモンスターとしても必殺技としても扱う。必殺モンスターは１ターンに１枚、君のファイナルフェイズにのみコールできる。このカードは君のファイナルフェイズ中にも攻撃できる！！）"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 3,
+      "defense": 6000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "destroyOwnMonster",
+            "amount": 1,
+            "filter": {
+              "attribute": "黒竜"
+            }
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-sd03-0017-enter",
+          "kind": "triggered",
+          "event": "enter",
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "_note": "コール宣言の対話経路では destroyOwnMonster コストが destroyFieldCard 経由で破壊時誘発を発火する（ベフェゴル等）。非対話 pay 経路のみ既存近似（誘発なし）。"
+    },
+    {
+      "id": "bf-d-sd03-0018",
+      "no": "D-SD03/0018",
+      "name": "ダークネスドラゴンワールド",
+      "type": "flag",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "このファイターはダークネスドラゴンWのカードを使う。"
+      ]
+    }
+  ]
+}

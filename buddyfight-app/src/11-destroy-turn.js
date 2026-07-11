@@ -1253,6 +1253,7 @@ async function endTurn() {
   state.destroyedCardsThisTurn = [[], []]; // このターン破壊されたカード記録(destroyedThisTurnMatchingCountGte用)をリセット
   syncMonstersDestroyedThisTurn(); // monstersDestroyedThisTurn は destroyedCardsThisTurn からの導出（リセットで[0,0]になる）
   state.calledCardNamesThisTurn = [{}, {}]; // 「1ターンにN枚だけコール」(竜騎士 トモエ 0012 等)のカウンタをリセット
+  state.impactMonsterCallsThisTurn = [0, 0]; // 必殺モンスター「1ターンに1枚」コール数をリセット
   state.suppressLifeLinkThisTurn = [false, false]; // ライフリンク無効化(ターンスコープ)をリセット
   state.attackRedirectThisTurn = [null, null]; // 攻撃再誘導(ターンスコープ)をリセット
   state.opponentCounterLockThisTurn = []; // 対抗ロック(ターンスコープ)をリセット

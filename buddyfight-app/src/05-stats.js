@@ -544,6 +544,13 @@ function continuousEffectAppliesFromSoul(effect, targetCard, sourceCard, owner) 
   if (effect.sourceName && sourceCard?.name !== effect.sourceName) {
     return false;
   }
+  // conditions: 場側 continuousEffectApplies と同仕様の条件ゲート（D-SD02 ストレングス
+  // 「君のセンターにモンスターがいなくて〜」等）。owner はホストの持ち主（=「君」）。
+  if (effect.conditions?.length) {
+    if (!checkCardConditions(effect.conditions, owner, { card: sourceCard, targetCard })) {
+      return false;
+    }
+  }
   return true;
 }
 

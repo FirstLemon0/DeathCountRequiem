@@ -164,15 +164,39 @@ function recordCardCalledThisTurn(owner, card) {
   counts[card.name] = (counts[card.name] || 0) + 1;
 }
 
+// 必殺モンスター(DDD)のコール可否（共通ゲート）。「必殺モンスターは1ターンに1枚、君の
+// ファイナルフェイズにのみコールできる」（カード注記）は、通常コール・バディコール・特殊コール・
+// 効果によるコール（src/14 の callSelected 系）の全てに掛かる。非 impactMonster は常に許可（既存挙動不変）。
+function impactMonsterCallAllowed(owner, card) {
+  if (card?.type !== "impactMonster") {
+    return true;
+  }
+  return (
+    state.phase === "final" &&
+    owner === state.active &&
+    (state.impactMonsterCallsThisTurn?.[owner] || 0) < 1
+  );
+}
+
+function recordImpactMonsterCall(owner, card) {
+  if (card?.type !== "impactMonster") {
+    return;
+  }
+  state.impactMonsterCallsThisTurn ||= [0, 0];
+  state.impactMonsterCallsThisTurn[owner] = (state.impactMonsterCallsThisTurn[owner] || 0) + 1;
+}
+
 async function callMonster(zone) {
   const selectedCard = getSelectedCard();
   const selectedOwner = state.selected?.owner;
   const specialCallOpportunity = specialCallOpportunityForCard(selectedOwner, selectedCard);
   const player = state.players[selectedOwner ?? state.active];
+  // 必殺モンスター(DDD)は自分のファイナルフェイズにのみコール可。通常モンスターは従来通りメインのみ。
+  const callPhase = selectedCard?.type === "impactMonster" ? "final" : "main";
   if (
     (state.winner && !specialCallOpportunity) ||
     (hasPendingResolution() && !specialCallOpportunity) ||
-    (state.phase !== "main" && !specialCallOpportunity) ||
+    (state.phase !== callPhase && !specialCallOpportunity) ||
     state.selected?.source !== "hand" ||
     (!specialCallOpportunity && state.selected.owner !== state.active) ||
     !selectedCard ||
@@ -187,6 +211,12 @@ async function callMonster(zone) {
   // 通常コール禁止（特定カードの効果でのみ場に出せる。アルティメット・カードバーン等）。
   if (selectedCard.cannotCallNormally) {
     addLog(`${selectedCard.name}は通常のコールでは場に出せません（特定の効果でのみ）。`);
+    return;
+  }
+  // 必殺モンスターの共通ゲート（1ターン1枚・自分のファイナルフェイズのみ）。
+  // specialCallOpportunity（破壊時特殊コール等）でも免除しない＝カード注記は無限定のため。
+  if (selectedCard.type === "impactMonster" && !impactMonsterCallAllowed(selectedOwner, selectedCard)) {
+    addLog("必殺モンスターは1ターンに1枚、自分のファイナルフェイズにのみコールできます。");
     return;
   }
   const stackTarget = selectedCard.callStack ? getStackCallTarget(player, selectedCard) : null;
@@ -243,6 +273,8 @@ async function callMonster(zone) {
     specialCallOpportunity.used = true;
   }
   recordCardCalledThisTurn(selectedOwner, card);
+  // 必殺モンスターの「1ターンに1枚」は宣言成立（コスト支払い済み）時点で消費する（無効化されても戻らない）。
+  recordImpactMonsterCall(selectedOwner, card);
   addLog(`${player.name}は${card.name}を${zoneLabel(actualZone)}にコール宣言しました。対抗確認を行ってください。`);
   render();
 }
@@ -805,12 +837,25 @@ function grantedNullifyImmunity(card, owner) {
   );
 }
 
+// カード自身の cannotBeNullified を評価する。true（従来の無条件形）に加え、
+// {conditions:[...]} の条件付き形を許容（太陽の盾「君の場に《太陽竜》2枚以上があるなら無効化されない」等）。
+function cardCannotBeNullified(card, owner) {
+  const flag = card?.cannotBeNullified;
+  if (!flag) {
+    return false;
+  }
+  if (flag === true) {
+    return true;
+  }
+  return checkCardConditions(flag.conditions || [], owner, { card });
+}
+
 function nullifyPendingAction(sourceName = "効果") {
   if (!state.pendingAction) {
     return false;
   }
   const action = state.pendingAction;
-  if (action.card?.cannotBeNullified || grantedNullifyImmunity(action.card, action.owner)) {
+  if (cardCannotBeNullified(action.card, action.owner) || grantedNullifyImmunity(action.card, action.owner)) {
     addLog(`${action.card.name}は無効化されません。`);
     return false;
   }

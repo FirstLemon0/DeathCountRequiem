@@ -1,0 +1,598 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-d-sd01-bakunetsu-taiyoryu",
+    "name": "DDD ５００円スタートデッキ第１弾「爆熱太陽竜」",
+    "kind": "スタートデッキ",
+    "generation": "DDD",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=38"
+  },
+  "cards": [
+    {
+      "id": "bf-d-sd01-0001",
+      "no": "D-SD01/0001",
+      "name": "炎天の騎竜 ブレイジング・サン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【コールコスト】ゲージ３を払う。",
+        "■相手のセンターにモンスターがいないなら、このカードの防御力＋4000！",
+        "『移動』（お互いのアタックフェイズ開始時に、場のこのカードを空いている別のエリアに置いてよい）",
+        "『貫通』（このカードの攻撃で相手センターのモンスターを破壊したら、相手にも打撃力分ダメージを与える）"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 4,
+      "defense": 3000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "defense": 4000,
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "opponentCenterEmpty"
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "move",
+        "penetrate"
+      ]
+    },
+    {
+      "id": "bf-d-sd01-0002",
+      "no": "D-SD01/0002",
+      "name": "ジャイアントフレア・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが登場した時、相手のセンターのモンスターを破壊する。"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 4000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-sd01-0002-enter",
+          "kind": "triggered",
+          "event": "enter",
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster",
+              "zone": "center"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-sd01-0003",
+      "no": "D-SD01/0003",
+      "name": "シャインクレイモア・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 3000
+    },
+    {
+      "id": "bf-d-sd01-0004",
+      "no": "D-SD01/0004",
+      "name": "メッサーグルート・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [],
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 2000
+    },
+    {
+      "id": "bf-d-sd01-0005",
+      "no": "D-SD01/0005",
+      "name": "メラブレード・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■相手のセンターにモンスターがいないなら、このカードの打撃力＋１！"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "critical": 1,
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "opponentCenterEmpty"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-sd01-0006",
+      "no": "D-SD01/0006",
+      "name": "ビビッドフラッシュ・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■このカードが登場した時、そのターン中、相手の場のカード全ての防御力－2000！"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "abilities": [
+        {
+          "id": "bf-d-sd01-0006-enter",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "modifyStats",
+              "scope": "opponent",
+              "defense": -2000,
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-sd01-0007",
+      "no": "D-SD01/0007",
+      "name": "ライトシールド・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [],
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 6000
+    },
+    {
+      "id": "bf-d-sd01-0008",
+      "no": "D-SD01/0008",
+      "name": "ブライトハンマー・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "『貫通』（このカードの攻撃で相手センターのモンスターを破壊したら、相手にも打撃力分ダメージを与える）"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 1000,
+      "keywords": [
+        "penetrate"
+      ]
+    },
+    {
+      "id": "bf-d-sd01-0009",
+      "no": "D-SD01/0009",
+      "name": "ホット・ドラゴンJr.",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [],
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 2000
+    },
+    {
+      "id": "bf-d-sd01-0010",
+      "no": "D-SD01/0010",
+      "name": "ドラゴニック・グリモ",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "金竜",
+        "ドロー"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君のライフが５以下なら使える。",
+        "■君の手札全てを捨て、カード３枚を引く！「ドラゴニック・グリモ」は１ターンに１回だけ使える。（捨てる手札が０枚でも使えるぞ！）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-sd01-0010-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "dragonic-grimoire"
+          },
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 5
+            }
+          ],
+          "effects": [
+            {
+              "op": "discardAllHand"
+            },
+            {
+              "op": "draw",
+              "amount": 3
+            }
+          ]
+        }
+      ],
+      "effect": "grimoire"
+    },
+    {
+      "id": "bf-d-sd01-0011",
+      "no": "D-SD01/0011",
+      "name": "太陽の恵み",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "チャージ"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君のデッキの上から１枚をゲージに置く。さらに、君の場に《太陽竜》があるなら、君のデッキの上から２枚をゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-sd01-0011-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2,
+              "conditions": [
+                {
+                  "op": "cardCount",
+                  "pile": "field",
+                  "filter": {
+                    "attribute": "太陽竜"
+                  },
+                  "cmp": "gte",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-sd01-0012",
+      "no": "D-SD01/0012",
+      "name": "シャインエナジー",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "強化"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【対抗】バトルしている《太陽竜》のモンスター１枚を選び、このバトル中、攻撃力＋3000、防御力＋3000し、さらに『反撃』を与える！(反撃：このカードが攻撃された後、このカードが場にいるなら、このカードの攻撃力以下の防御力を持つ攻撃してきたモンスター１枚を破壊する）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-sd01-0012-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "battleCard",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "太陽竜"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 3000,
+              "defense": 3000,
+              "duration": "battle"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "counterattack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-sd01-0013",
+      "no": "D-SD01/0013",
+      "name": "ドラゴンシールド 緑竜の盾",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "緑竜",
+        "防御"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】その攻撃を無効化し、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-sd01-0013-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "effect": "green-shield"
+    },
+    {
+      "id": "bf-d-sd01-0014",
+      "no": "D-SD01/0014",
+      "name": "ドラゴンシールド 太陽の盾",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "防御"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいなくて、君の場に《太陽竜》があるなら使える。",
+        "■【対抗】その攻撃を無効化し、君のデッキの上から１枚をゲージに置き、君のライフを＋１する。君の場に《太陽竜》２枚以上があるなら、このカードは無効化されない。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-sd01-0014-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "cardCount",
+              "pile": "field",
+              "filter": {
+                "attribute": "太陽竜"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "cannotBeNullified": {
+        "conditions": [
+          {
+            "op": "cardCount",
+            "pile": "field",
+            "filter": {
+              "attribute": "太陽竜"
+            },
+            "cmp": "gte",
+            "amount": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "bf-d-sd01-0015",
+      "no": "D-SD01/0015",
+      "name": "太陽拳 ライジングナックル",
+      "type": "item",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜",
+        "武器"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【装備コスト】ゲージ２を払う。",
+        "『貫通』（このカードの攻撃で相手センターのモンスターを破壊したら、相手にも打撃力分ダメージを与える）"
+      ],
+      "power": 5000,
+      "critical": 2,
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate"
+      ]
+    },
+    {
+      "id": "bf-d-sd01-0016",
+      "no": "D-SD01/0016",
+      "name": "太陽剣 デイライト",
+      "type": "item",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜",
+        "武器"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [],
+      "power": 3000,
+      "critical": 2
+    },
+    {
+      "id": "bf-d-sd01-0017",
+      "no": "D-SD01/0017",
+      "name": "バルドラゴン “バルグランドストライク！”",
+      "type": "impactMonster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、君の場の《太陽竜》のモンスター１枚をゲージに置く。",
+        "（このカードはモンスターとしても必殺技としても扱う。必殺モンスターは１ターンに１枚、君のファイナルフェイズにのみコールできる。このカードは君のファイナルフェイズ中にも攻撃できる！！）",
+        "『貫通』"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 3,
+      "defense": 5000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putOwnFieldCardsToGauge",
+            "amount": 1,
+            "filter": {
+              "cardType": "monster",
+              "attribute": "太陽竜"
+            }
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate"
+      ]
+    },
+    {
+      "id": "bf-d-sd01-0018",
+      "no": "D-SD01/0018",
+      "name": "ドラゴンワールド",
+      "type": "flag",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "このファイターはドラゴンWのカードを使う。"
+      ]
+    }
+  ]
+}

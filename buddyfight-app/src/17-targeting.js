@@ -308,10 +308,10 @@ function matchesCardFilter(card, filter = {}, options = {}) {
     delete rest.anyOf;
     return filter.anyOf.some((candidate) => matchesCardFilter(card, { ...rest, ...candidate }, options));
   }
-  if (filter.cardType && effectiveCardType(card) !== filter.cardType) {
+  if (filter.cardType && !cardTypeMatches(card, filter.cardType)) {
     return false;
   }
-  if (filter.cardTypeIn && !filter.cardTypeIn.includes(effectiveCardType(card))) {
+  if (filter.cardTypeIn && !filter.cardTypeIn.some((wanted) => cardTypeMatches(card, wanted))) {
     return false;
   }
   if (filter.world && card.world !== filter.world) {

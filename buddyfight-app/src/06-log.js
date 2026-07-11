@@ -88,7 +88,7 @@ function compactCardForLog(card) {
     no: card.no || "",
     name: card.name,
     type: card.type,
-    currentType: effectiveCardType(card),
+    currentType: displayCardType(card), // 表示用スナップショット（必殺モンスターは印字通りに残す）
     world: card.world || "",
     attributes: [...(card.attributes || [])],
     size: card.size ?? null,

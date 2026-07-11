@@ -293,7 +293,7 @@ function showDropDialog(owner) {
       cardButton.innerHTML = `
         <span class="drop-dialog-order">${index + 1}</span>
         <span class="drop-dialog-name">${escapeHtml(card.name)}</span>
-        <span class="drop-dialog-type">${escapeHtml(typeLabels[effectiveCardType(card)] || "")}</span>
+        <span class="drop-dialog-type">${escapeHtml(typeLabels[displayCardType(card)] || "")}</span>
       `;
       attachTooltip(cardButton, card, { touchPreview: true });
       item.append(cardButton);
@@ -340,7 +340,7 @@ function showSoulDialog(owner, zone) {
       cardButton.innerHTML = `
         <span class="drop-dialog-order">${index + 1}</span>
         <span class="drop-dialog-name">${escapeHtml(soulCard.name)}</span>
-        <span class="drop-dialog-type">${escapeHtml(typeLabels[effectiveCardType(soulCard)] || "")}</span>
+        <span class="drop-dialog-type">${escapeHtml(typeLabels[displayCardType(soulCard)] || "")}</span>
       `;
       attachTooltip(cardButton, soulCard, { touchPreview: true });
       // タップ＝そのソウルカードの詳細シート（下に使える能力のボタンが並ぶ）。
@@ -441,7 +441,8 @@ function updateHandScrollHint() {
 
 function createCardElement(card, interactive = false) {
   const cardElement = document.createElement(interactive ? "button" : "span");
-  const displayType = effectiveCardType(card);
+  const displayType = displayCardType(card); // 必殺モンスターは機能上monsterだが、見た目は印字通り（横長フレーム等）
+
   // 必殺技・必殺モンスターは公式カードが横長なので、横長フレームで表示する。
   const landscape = ["impact", "impactMonster"].includes(displayType) ? " landscape" : "";
   cardElement.className = `card ${displayType} ${interactive ? "hand-card" : "board-card"}${landscape}`;
@@ -711,6 +712,7 @@ function renderActions() {
       state.winner ||
       inBattle ||
       !["attack", "final"].includes(state.phase) ||
+      (state.phase === "final" && !canDeclareAttackInFinal(selectedCard)) || // ファイナルは必殺モンスターのみ
       state.selected?.source !== "field" ||
       state.selected.owner !== state.active ||
       !selectedCard ||
@@ -723,6 +725,7 @@ function renderActions() {
       state.winner ||
       inBattle ||
       !["attack", "final"].includes(state.phase) ||
+      (state.phase === "final" && attackingCards.some((attacker) => !canDeclareAttackInFinal(attacker.card))) ||
       (state.turnCount === 1 && state.attacksThisTurn >= 1) ||
       attackingCards.length === 0 ||
       // B2: 対象未指定でも候補があれば押下可（押下で対象選択モードへ）。値があれば従来どおり宣言。
@@ -754,11 +757,13 @@ function renderActions() {
 
   document.querySelectorAll("[data-call-zone]").forEach((button) => {
     const canSpecialCall = specialCallOpportunityForCard(state.selected?.owner, selectedCard);
+    // 必殺モンスターは自分のファイナルフェイズにのみコール可（通常モンスターは従来通りメインのみ）。
+    const callPhase = selectedCard?.type === "impactMonster" ? "final" : "main";
     button.disabled = Boolean(
         (typeof aiShouldLockHumanControls === "function" && aiShouldLockHumanControls()) ||
         (state.winner && !canSpecialCall) ||
         (inBattle && !canSpecialCall) ||
-        (state.phase !== "main" && !canSpecialCall) ||
+        (state.phase !== callPhase && !canSpecialCall) ||
         state.selected?.source !== "hand" ||
         (!canSpecialCall && state.selected.owner !== state.active) ||
         !selectedCard ||

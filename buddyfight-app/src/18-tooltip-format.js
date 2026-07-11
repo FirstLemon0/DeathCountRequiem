@@ -104,11 +104,33 @@ function cardRules(card) {
 }
 
 function effectiveCardType(card) {
+  const type = card.currentType || card.type;
+  // 必殺モンスター(DDD)は「モンスターとしても必殺技としても扱う」。機能面の判定
+  // （攻撃対象・破壊・ソウルガード収集・filter の cardType:"monster" 等）はモンスターに
+  // 正規化する。必殺技側の一致は cardTypeMatches、表示は displayCardType が担う。
+  return type === "impactMonster" ? "monster" : type;
+}
+
+// 表示用の型（正規化しない）。type チップ・横長フレーム判定・ログ記録に使う。
+function displayCardType(card) {
   return card.currentType || card.type;
 }
 
+// filter の cardType/cardTypeIn 一致判定。必殺モンスターは印字上「必殺技」でもあるため、
+// wanted:"impact" にも一致させる（"monster" は effectiveCardType の正規化で一致済み）。
+// wanted:"impactMonster"（必殺モンスターそのものを指すfilter）は正規化前の印字タイプで判定する。
+function cardTypeMatches(card, wanted) {
+  if (wanted === "impactMonster") {
+    return (card.currentType || card.type) === "impactMonster";
+  }
+  if (effectiveCardType(card) === wanted) {
+    return true;
+  }
+  return card.type === "impactMonster" && wanted === "impact";
+}
+
 function typeLabel(card) {
-  const current = effectiveCardType(card);
+  const current = displayCardType(card);
   if (card.baseType && card.baseType !== current) {
     return `${typeLabels[card.baseType]} / ${typeLabels[current]}扱い`;
   }

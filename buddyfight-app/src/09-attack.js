@@ -3,6 +3,14 @@
 // 旧 app.js L3327-3776 由来。全モジュールはグローバルスコープを共有し、
 // HTML で番号順に <script> 読み込みする（連結すると旧 app.js とバイト等価）。
 // ==========================================================================
+// ファイナルフェイズに攻撃宣言できるカードか。ver2.05では攻撃はアタックフェイズのみで、
+// 例外は「このカードは君のファイナルフェイズ中にも攻撃できる」を持つ必殺モンスター（カード注記）。
+// 将来「ファイナルフェイズにも攻撃できる」を印字する通常カードが出たら canAttackInFinalPhase フラグで表す。
+// 効果による攻撃（performAttackDeclaration 直呼び。「もう1度攻撃」等）はこのゲートを通らない（従来通り）。
+function canDeclareAttackInFinal(card) {
+  return card?.type === "impactMonster" || Boolean(card?.canAttackInFinalPhase);
+}
+
 function toggleLinkAttacker() {
   if (state.winner || hasPendingResolution() || !["attack", "final"].includes(state.phase)) {
     return;
@@ -12,6 +20,10 @@ function toggleLinkAttacker() {
   }
   const card = getSelectedCard();
   if (!card || card.used) {
+    return;
+  }
+  if (state.phase === "final" && !canDeclareAttackInFinal(card)) {
+    addLog("ファイナルフェイズに攻撃できるのは必殺モンスターだけです。");
     return;
   }
   const slot = { owner: state.active, zone: state.selected.zone };
@@ -44,6 +56,11 @@ async function attackAction() {
     return;
   }
   const attackers = getAttackDeclarationAttackers();
+  // ver2.05: ファイナルフェイズに攻撃宣言できるのは必殺モンスター等の例外持ちのみ（連携相手も同様）。
+  if (state.phase === "final" && attackers.some((attacker) => !canDeclareAttackInFinal(attacker.card))) {
+    addLog("ファイナルフェイズに攻撃できるのは必殺モンスターだけです。");
+    return;
+  }
   if (attackers.length === 0) {
     if (state.selected?.source === "field") {
       const card = getSelectedCard();
