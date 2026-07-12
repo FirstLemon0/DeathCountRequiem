@@ -308,6 +308,9 @@ async function executeAbilityScriptStep(step, context) {
   if (step.op === "moveSelectedToDeckBottomOrdered") {
     return moveSelectedToDeckBottomOrderedForScript(step, context);
   }
+  if (step.op === "reorderTopOrdered") {
+    return reorderTopOrderedForScript(step, context);
+  }
   if (step.op === "payCost") {
     return payCostForScript(step, context);
   }
@@ -1225,6 +1228,65 @@ async function moveSelectedToDeckBottomOrderedForScript(step, context) {
   return true;
 }
 
+// G4(D-EB01/0025 スクルド): 「君か相手のデッキの上からN枚を見て、好きな順番で元のデッキの上に置く」。
+// moveSelectedToDeckBottomOrdered が「下」方向なのに対し、これは「上」方向（並べ替え）。デッキ上=末尾。
+// target: "self" | "opponent" | "choose"（既定 self。"choose" は能力主体がどちらのデッキか確認ダイアログで選ぶ）。
+async function reorderTopOrderedForScript(step, context) {
+  let deckOwner;
+  if (step.target === "opponent") {
+    deckOwner = 1 - context.owner;
+  } else if (step.target === "choose") {
+    const chooseOpponent = await confirmChoiceAsync(
+      context.owner,
+      `${context.card?.name || "効果"}: どちらのデッキの上を見ますか？`,
+      { yesLabel: "相手のデッキ", noLabel: "自分のデッキ", purpose: "scry" },
+    );
+    deckOwner = chooseOpponent ? 1 - context.owner : context.owner;
+  } else {
+    deckOwner = context.owner;
+  }
+  const player = state.players[deckOwner];
+  const count = step.count || 3;
+  const revealed = [];
+  for (let i = 0; i < count && player.deck.length > 0; i += 1) {
+    revealed.push(player.deck.pop()); // top = 末尾（drawCards/moveTopDeckToDrop と同規約）
+  }
+  if (revealed.length === 0) {
+    addLog(`${context.card?.name || "効果"}で見るカードがありません。`);
+    return true;
+  }
+  // 上から1番目..N番目に置くカードを順に選ばせる（1番目=最上段）。
+  let remaining = revealed.map((card) => ({ card, owner: deckOwner, zone: "deck", source: "deck" }));
+  const ordered = [];
+  while (remaining.length > 0) {
+    const picked = await chooseCardEntries(remaining, {
+      title: step.title || `${context.card?.name || "効果"}のデッキ上順序`,
+      lead: `デッキの上から${ordered.length + 1}番目に置くカードを選んでください。`,
+      min: 1,
+      max: 1,
+      forceDialog: true,
+      promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
+      purpose: "scry",
+    });
+    const entry = picked?.[0];
+    if (!entry) {
+      // キャンセル時は全カードを元の順序(revealed[0]=最上段)で戻し、カード消失を防ぐ。
+      for (let i = revealed.length - 1; i >= 0; i -= 1) {
+        player.deck.push(revealed[i]);
+      }
+      return true;
+    }
+    ordered.push(entry.card);
+    remaining = remaining.filter((candidate) => candidate.card.instanceId !== entry.card.instanceId);
+  }
+  // ordered[0] を最上段に置く。デッキ上=末尾のため、末尾が ordered[0] になるよう逆順で push。
+  for (let i = ordered.length - 1; i >= 0; i -= 1) {
+    player.deck.push(ordered[i]);
+  }
+  addLog(`${context.card?.name || "効果"}で${player.name}のデッキの上${ordered.length}枚を並べ替えました。`);
+  return true;
+}
+
 function scriptMoveDestinationOwner(step, entry, context) {
   if (step.toOwner === "self") {
     return context.owner;
@@ -1983,6 +2045,10 @@ async function callSelectedForScript(step, context) {
         unconditional: Boolean(step.grantConditionalSize.unconditional),
       }
     : null;
+  // G5(D-EB01/0023): コールしたカードへ「場を離れるまでファイナルフェイズ中にも攻撃できる」を付与。
+  if (step.grantFinalPhaseAttack) {
+    calledCard.grantedFinalPhaseAttack = true;
+  }
   enforceSizeLimit(player, zone);
   if (step.redirectPendingAttack && state.pendingAttack) {
     state.pendingAttack.targetOwner = entry.owner ?? context.owner;
@@ -2347,7 +2413,19 @@ async function callSelectedToEmptyZonesForScript(step, context) {
     }
     player.field[zone] = calledCard;
     recordImpactMonsterCall(entry.owner ?? context.owner, calledCard);
-    calledCard.conditionalSize = null; // 再コール時は前回のサイズ上書き(アンノウン0029等)をリセット
+    // G5(D-EB01/0023): 「そのカードは場から離れるまでサイズ0になり、ファイナル攻撃可」。
+    // enforceSizeLimit より前に conditionalSize を付与しないと元サイズでサイズ超過と誤判定される。
+    // 未指定時は従来通り null リセット（再コール時に古いサイズ上書きを引きずらない。アンノウン0029等）。
+    calledCard.conditionalSize = step.grantConditionalSize
+      ? {
+          size: step.grantConditionalSize.size ?? 0,
+          granterInstanceId: context.card?.instanceId,
+          unconditional: Boolean(step.grantConditionalSize.unconditional),
+        }
+      : null;
+    if (step.grantFinalPhaseAttack) {
+      calledCard.grantedFinalPhaseAttack = true;
+    }
     applyScriptGrantedKeywords(calledCard, step.grantKeywords || []);
     enforceSizeLimit(player, zone);
     addLog(`${context.card.name}の効果で${calledCard.name}を${zoneLabel(zone)}にコールしました。`);

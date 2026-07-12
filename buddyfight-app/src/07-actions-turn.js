@@ -167,14 +167,21 @@ function recordCardCalledThisTurn(owner, card) {
 // 必殺モンスター(DDD)のコール可否（共通ゲート）。「必殺モンスターは1ターンに1枚、君の
 // ファイナルフェイズにのみコールできる」（カード注記）は、通常コール・バディコール・特殊コール・
 // 効果によるコール（src/14 の callSelected 系）の全てに掛かる。非 impactMonster は常に許可（既存挙動不変）。
-function impactMonsterCallAllowed(owner, card) {
+function impactMonsterCallAllowed(owner, card, options = {}) {
   if (card?.type !== "impactMonster") {
     return true;
+  }
+  const underPerTurnLimit = (state.impactMonsterCallsThisTurn?.[owner] || 0) < 1;
+  // 0008 デュエルズィーガー等: カード自身の特殊コール文（「〜が破壊された時…コールしてよい」）が成立している
+  // 場合は、必殺モンスター一般注記の「自分のファイナルフェイズのみ」ゲートを免除する（カードテキスト優先原則。
+  // ライフリンク相殺の逆転コールは相手ターンの破壊で窓が開くため）。1ターン1枚の上限カウンタは維持する。
+  if (options.specialCall) {
+    return underPerTurnLimit;
   }
   return (
     state.phase === "final" &&
     owner === state.active &&
-    (state.impactMonsterCallsThisTurn?.[owner] || 0) < 1
+    underPerTurnLimit
   );
 }
 
@@ -222,8 +229,13 @@ async function callMonster(zone) {
     return;
   }
   // 必殺モンスターの共通ゲート（1ターン1枚・自分のファイナルフェイズのみ）。
-  // specialCallOpportunity（破壊時特殊コール等）でも免除しない＝カード注記は無限定のため。
-  if (selectedCard.type === "impactMonster" && !impactMonsterCallAllowed(selectedOwner, selectedCard)) {
+  // ただし specialCallOpportunity（破壊時特殊コール等）が成立している場合は phase/active 要求を免除する
+  //（カード自身の特殊コール文が一般注記のファイナル限定に優先＝カードテキスト優先原則。0008 デュエルズィーガーの
+  //  相手ターン破壊→逆転コール）。1ターン1枚の上限カウンタ・消費は維持する。
+  if (
+    selectedCard.type === "impactMonster" &&
+    !impactMonsterCallAllowed(selectedOwner, selectedCard, { specialCall: Boolean(specialCallOpportunity) })
+  ) {
     addLog("必殺モンスターは1ターンに1枚、自分のファイナルフェイズにのみコールできます。");
     return;
   }

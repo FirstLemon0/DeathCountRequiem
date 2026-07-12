@@ -281,6 +281,10 @@ async function executeAbilityEffect(effect, context) {
     context.movedToDropEntries.push(
       ...movedCards.map((card) => ({ owner: state.players.indexOf(receiver), card })),
     );
+    // G1(D-EB01/0019/0029/0050): 「今回めくって置いた」配列を context.milled に記録（都度上書き）。
+    // 直後の effects で amountFrom milledMatchCount / conditions milledDistinctAttributeCountGte /
+    // milledContains が参照する（movedToDrop は解決全体で累積するのに対し milled は最新のミルのみ）。
+    context.milled = movedCards.slice();
   }
   if (effect.op === "searchDeckToHand") {
     // X4(D-BT01/0072/0133): デッキから filter に一致するカードを amount 枚まで選んで手札に加え、デッキをシャッフルする。
@@ -378,7 +382,13 @@ async function executeAbilityEffect(effect, context) {
     //  clearTurnModifiers がターン境界で除去する）。
     if (context.card && effect.continuous) {
       context.card.turnContinuous ||= [];
-      context.card.turnContinuous.push(JSON.parse(JSON.stringify(effect.continuous)));
+      // effect.continuous は単一オブジェクト（D-BT01/0131）か配列（D-EB01/0027）の両形を取る。
+      // 配列をそのまま push するとネスト（[[{...}]]）し、activeContinuousEffects(src/05)の spread 後に
+      // 要素が配列になって .op を拾えず付与が無効化する。Array.isArray で正規化し各オブジェクトを個別に push する。
+      const continuousItems = Array.isArray(effect.continuous) ? effect.continuous : [effect.continuous];
+      continuousItems.forEach((item) => {
+        context.card.turnContinuous.push(JSON.parse(JSON.stringify(item)));
+      });
       addLog(`${context.card.name}のターン中の継続効果を適用しました。`);
     }
   }
@@ -2254,6 +2264,12 @@ function resolveAmountFrom(spec, context) {
       });
     });
     return total * (spec.per ?? 1);
+  }
+  if (spec.source === "milledMatchCount") {
+    // G1(D-EB01/0019): 直前の moveTopDeckToDrop で「今回めくって置いた」カード(context.milled)のうち
+    // filter に一致する枚数×per（「置いたその中の《髑髏武者》の枚数分ダメージ」）。
+    const count = (context.milled || []).filter((card) => matchesCardFilter(card, spec.filter || {})).length;
+    return count * (spec.per ?? 1);
   }
   return 0;
 }

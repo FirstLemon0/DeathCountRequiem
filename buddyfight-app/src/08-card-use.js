@@ -607,6 +607,9 @@ function resetLeftFieldCardState(card) {
   card.destroyReaction = null;
   card.scheduledStatBonus = [];
   card.conditionalSize = null;
+  // G5(D-EB01/0023): 「場を離れるまで」付与されたファイナル攻撃可フラグを離場時に解除する
+  // （conditionalSize と同じ「場在中のみ」寿命。印字カードは type/canAttackInFinalPhase 側で判定するため無関係）。
+  card.grantedFinalPhaseAttack = false;
   card.currentType = card.baseType || card.type;
   // r3 L4(S-UB-C03/0066): 裏向きトークン化(faceDownMonster)による印字値の恒久上書きも、
   // 場を離れたタイミングで印字値へ復元する（restoreFaceDownMonsterPrintがno-opガード付き）。

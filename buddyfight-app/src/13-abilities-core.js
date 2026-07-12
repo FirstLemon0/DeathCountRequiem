@@ -1025,6 +1025,20 @@ function checkCondition(condition, owner, context = {}) {
     // この解決中に context.movedToDrop へ置かれたカードのいずれかが filter に一致するか（moveTopDeckToDrop 等）。
     return (context.movedToDrop || []).some((card) => matchesCardFilter(card, condition.filter || {}));
   }
+  if (condition.op === "milledContains") {
+    // G1(D-EB01/0050): 直前のミル(context.milled)に filter 一致カードが含まれるか
+    //（「その中にモンスターがあるなら」）。context.movedToDrop（累積）ではなく最新ミルのみを見る。
+    return (context.milled || []).some((card) => matchesCardFilter(card, condition.filter || {}));
+  }
+  if (condition.op === "milledDistinctAttributeCountGte") {
+    // G1(D-EB01/0029): 直前のミル(context.milled)に含まれるカードの「属性」の異なり数が amount 以上か
+    //（「その中のカードの属性が4種類以上なら…」。段階判定は effect.conditions に amount:4/6/9 を並べる）。
+    const attrs = new Set();
+    (context.milled || []).forEach((card) => {
+      (card.attributes || []).forEach((attribute) => attrs.add(attribute));
+    });
+    return attrs.size >= condition.amount;
+  }
   if (condition.op === "ownItemIsMonster") {
     // 君のアイテム枠のカードが（元）モンスター＝『変身』か『搭乗』している状態か（equipSelfはcurrentTypeのみitem化）。
     return equippedItems(player).some((item) => item.currentType === "item" && item.type === "monster");

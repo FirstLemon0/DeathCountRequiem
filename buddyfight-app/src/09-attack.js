@@ -8,7 +8,66 @@
 // 将来「ファイナルフェイズにも攻撃できる」を印字する通常カードが出たら canAttackInFinalPhase フラグで表す。
 // 効果による攻撃（performAttackDeclaration 直呼び。「もう1度攻撃」等）はこのゲートを通らない（従来通り）。
 function canDeclareAttackInFinal(card) {
-  return card?.type === "impactMonster" || Boolean(card?.canAttackInFinalPhase);
+  if (!card) {
+    return false;
+  }
+  // 印字フラグ（必殺モンスター／将来の canAttackInFinalPhase 印字カード）。
+  if (card.type === "impactMonster" || card.canAttackInFinalPhase) {
+    return true;
+  }
+  // G5(D-EB01/0023): 場を離れるまで付与される instance フラグ（無償コールした魔王等。
+  // resetLeftFieldCardState で解除）。
+  if (card.grantedFinalPhaseAttack) {
+    return true;
+  }
+  // G5(D-EB01/0027/0015): 他カードが継続/ターン継続/ソウルで付与する grantFinalPhaseAttack。
+  return grantsFinalPhaseAttack(card);
+}
+
+// G5(D-EB01): 場の他カードの継続(＋turnContinuous)またはソウル内カードの soulContinuous が、
+// grantFinalPhaseAttack{controller,zoneIn,filter,excludeSource} で card にファイナル攻撃可を付与しているか。
+// 0027=addTurnContinuous によるターン付与（自場のワイダーサカー/妖精へ）／0015=ソウル在の自分が host 武器へ。
+// grantFinalPhaseAttack 継続を1つも持たない既存カードでは常に false を返す（高速パス・後方互換）。
+function grantsFinalPhaseAttack(card) {
+  if (!card || !state?.players) {
+    return false;
+  }
+  const targetSlot = findFieldCardSlot(card); // zones は item/set 枠も含むためアイテムも対象になり得る
+  if (!targetSlot) {
+    return false;
+  }
+  const fromField = state.players.some((player, sourceOwner) =>
+    zones.some((zone) => {
+      const source = player.field[zone];
+      if (!source) {
+        return false;
+      }
+      return activeContinuousEffects(source).some((effect) => {
+        if (effect.op !== "grantFinalPhaseAttack") return false;
+        if (effect.controller === "self" && targetSlot.owner !== sourceOwner) return false;
+        if (effect.controller === "opponent" && targetSlot.owner === sourceOwner) return false;
+        if (effect.excludeSource && source.instanceId === card.instanceId) return false;
+        if (effect.zoneIn && !effect.zoneIn.includes(targetSlot.zone)) return false;
+        if (effect.filter && !matchesCardFilter(card, effect.filter)) return false;
+        // 条件付き付与への備え: continuousEffectApplies(src/05) と同じく effect.conditions を発生源基準で評価する
+        //（引数形は checkCardConditions(conditions, sourceOwner, {card:発生源, zone, targetCard})）。
+        // 現行 D-EB01 の grantFinalPhaseAttack は conditions を持たないため挙動不変（将来の条件付きカード向け）。
+        if (
+          effect.conditions?.length &&
+          !checkCardConditions(effect.conditions, sourceOwner, { card: source, zone, targetCard: card })
+        ) {
+          return false;
+        }
+        return true;
+      });
+    }),
+  );
+  if (fromField) {
+    return true;
+  }
+  // ソウル内カードの soulContinuous grantFinalPhaseAttack（host==target=武器 も許容。soulContinuousGrantsOp が
+  // controller/filter/能力無効化を判定）。
+  return soulContinuousGrantsOp(card, "grantFinalPhaseAttack");
 }
 
 function toggleLinkAttacker() {
