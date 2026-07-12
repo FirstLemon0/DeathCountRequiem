@@ -662,6 +662,14 @@ function scriptCardMatches(card, owner, zone, step, context) {
       return false;
     }
   }
+  // E3(D-EB02/0052 ライドチェンジ！): filter.differentNameFromVar — 先に選んだ別の選択(var)の
+  // カードと「カード名が違う」もののみ（sameNameAsVar の逆）。var 未選択時は制約なし（候補を残す）。
+  if (step.filter?.differentNameFromVar) {
+    const refName = scriptSelection({ var: step.filter.differentNameFromVar }, context)[0]?.card?.name;
+    if (refName && card.name === refName) {
+      return false;
+    }
+  }
   // filter.sizeNotEqualVar: 先に選んだ別の選択(var)のカードとサイズが異なるもののみ（H-BT04/0039）。
   if (step.filter?.sizeNotEqualVar) {
     const refCard = scriptSelection({ var: step.filter.sizeNotEqualVar }, context)[0]?.card;

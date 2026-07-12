@@ -869,14 +869,21 @@ async function executeAbilityEffect(effect, context) {
   }
   if (effect.op === "moveTargetToDrop" && target?.card) {
     const ownerPlayer = state.players[target.owner];
-    const moved = dropFieldCardByRule(ownerPlayer, target.zone);
-    if (moved) {
-      addLog(`${context.card.name}の効果で${moved.name}をドロップゾーンに置きました。`);
+    // E2(D-EB02/0031): 相手効果で場を離れる際、対象側の離場置換（バリア発動！等）が庇えば場に残す。
+    if (!(fieldHasLeaveFieldReplacer(target.owner) && (await applyAllyLeaveFieldReplacement(target.card, target.owner, makeEffectCause(context, target.owner))))) {
+      const moved = dropFieldCardByRule(ownerPlayer, target.zone);
+      if (moved) {
+        addLog(`${context.card.name}の効果で${moved.name}をドロップゾーンに置きました。`);
+      }
     }
   }
   if (effect.op === "returnToHand" && target) {
     // Z14(b)(S-UB-C03/0017): 「君のカードの効果で」判定用の returnCause を伝播する。
-    returnFieldTargetToHand(target, context.card.name, { returnCause: makeEffectCause(context, target.owner) });
+    // E2(D-EB02/0031): 相手効果による手札戻しも離場置換の対象。庇えたら戻さず場に残す。
+    const returnTargetCard = target.card || state.players[target.owner]?.field?.[target.zone];
+    if (!(fieldHasLeaveFieldReplacer(target.owner) && (await applyAllyLeaveFieldReplacement(returnTargetCard, target.owner, makeEffectCause(context, target.owner))))) {
+      returnFieldTargetToHand(target, context.card.name, { returnCause: makeEffectCause(context, target.owner) });
+    }
   }
   if (effect.op === "dischargeSelfFromHostSoul" && context.card && context.hostCard) {
     // ソウルに入っているこのカード自身を、ホスト（武器等）のソウルからドロップへ置く。
@@ -912,19 +919,36 @@ async function executeAbilityEffect(effect, context) {
     // 使用中のこのカード自身を手札に戻す（対抗呪文等は解決時点で既にドロップにある）。
     const selfPlayer = context.player || state.players[context.owner];
     if (selfPlayer) {
-      const dropIndex = selfPlayer.drop.findIndex((c) => c.instanceId === context.card.instanceId);
-      if (dropIndex >= 0) {
-        selfPlayer.drop.splice(dropIndex, 1);
+      const selfOwnerIndex = state.players.indexOf(selfPlayer);
+      const selfSlot = findFieldCardSlot(context.card);
+      if (selfSlot && selfSlot.owner === selfOwnerIndex) {
+        // F5: 場にあるこのカード自身の手札戻し（battleEnd自己戻し bf-h-eb04-0008/0011/0059・
+        // bf-h-pp01-0036/0063、【対抗】自己戻し bf-s-ub-c03-0020/0071/0084 等）。従来はドロップ回収
+        // しか処理せず field[zone] に参照が残り「場と手札に同一カードが複製」される実バグだった。
+        // 正規の単体手札戻し経路（ソウルのドロップ送り・ゾーンクリア・ライフリンク・戻り誘発・
+        // cannotReturnToHand/離場置換ゲート込み）へ委譲する。
+        const returned = returnFieldTargetToHand(
+          { owner: selfSlot.owner, zone: selfSlot.zone },
+          context.card.name,
+        );
+        if (returned) {
+          context.cardMoved = true;
+        }
+      } else {
+        const dropIndex = selfPlayer.drop.findIndex((c) => c.instanceId === context.card.instanceId);
+        if (dropIndex >= 0) {
+          selfPlayer.drop.splice(dropIndex, 1);
+        }
+        if (!selfPlayer.hand.some((c) => c.instanceId === context.card.instanceId)) {
+          resetLeftFieldCardState(context.card);
+          selfPlayer.hand.push(context.card);
+        }
+        // レビュー修正(D-BT01/0027): メインフェイズ魔法/必殺技は解決時点でカードが action.card に保持されて
+        // いる（ドロップに無い）。cardMoved を立てないと resolvePendingSpell が同一インスタンスをドロップにも
+        // 積んで二重存在（カード複製）になる。既存の同型カード（H-EB02/0052等）の潜在バグも同時に解消。
+        context.cardMoved = true;
+        addLog(`${context.card.name}を手札に戻しました。`);
       }
-      if (!selfPlayer.hand.some((c) => c.instanceId === context.card.instanceId)) {
-        resetLeftFieldCardState(context.card);
-        selfPlayer.hand.push(context.card);
-      }
-      // レビュー修正(D-BT01/0027): メインフェイズ魔法/必殺技は解決時点でカードが action.card に保持されて
-      // いる（ドロップに無い）。cardMoved を立てないと resolvePendingSpell が同一インスタンスをドロップにも
-      // 積んで二重存在（カード複製）になる。既存の同型カード（H-EB02/0052等）の潜在バグも同時に解消。
-      context.cardMoved = true;
-      addLog(`${context.card.name}を手札に戻しました。`);
     }
   }
   if (effect.op === "moveSelfToBuddyZoneFaceDown" && context.card) {
@@ -1375,9 +1399,12 @@ async function executeAbilityEffect(effect, context) {
   }
   if (effect.op === "putTargetToGauge" && target?.card) {
     const ownerPlayer = state.players[target.owner];
-    const moved = putFieldCardToGauge(ownerPlayer, target.zone);
-    if (moved) {
-      addLog(`${context.card.name}の効果で${moved.name}をゲージに置きました。`);
+    // E2(D-EB02/0031): 相手効果によるゲージ送りも離場置換の対象。庇えたら送らず場に残す。
+    if (!(fieldHasLeaveFieldReplacer(target.owner) && (await applyAllyLeaveFieldReplacement(target.card, target.owner, makeEffectCause(context, target.owner))))) {
+      const moved = putFieldCardToGauge(ownerPlayer, target.zone);
+      if (moved) {
+        addLog(`${context.card.name}の効果で${moved.name}をゲージに置きました。`);
+      }
     }
   }
   if (effect.op === "attachDestroyReaction" && target?.card) {

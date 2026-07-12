@@ -30,6 +30,7 @@ DECK_FILES = [
     "recommend-201508-w-hero-wars.json",
     "recommend-201604-hanate-hissatsuryu.json",
     "recommend-201605-buddy-collection.json",
+    "recommend-201606-super-hero-wars-z.json",
 ]
 
 

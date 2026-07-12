@@ -19,7 +19,11 @@ PARSED = ROOT / "_scratch" / "recommend-parsed.json"
 CARDS_DIR = ROOT / "data" / "cards"
 FLAGS = ROOT / "data" / "flags.json"
 
-KEYS = [f"201604_{i}" for i in range(1, 6)] + [f"201605_{i}" for i in range(1, 26)]
+KEYS = (
+    [f"201604_{i}" for i in range(1, 6)]
+    + [f"201605_{i}" for i in range(1, 26)]
+    + [f"201606_{i}" for i in range(1, 8)]  # 超ヒーロー大戦Z（D-EB02実装後に追加・旧解析なし）
+)
 
 
 def norm_name(s):
@@ -127,24 +131,39 @@ def main():
         page = parse_page(RECIPES / f"{key}.html")
         old = by_key.get(key)
         if old is None:
-            errors.append(f"{key}: not in recommend-parsed.json")
-            continue
-
-        # --- cross-check fresh parse vs stored parse (by name+count; stored 201605 lacks no) ---
-        if page["flagName"] != old["flagName"]:
-            errors.append(f"{key}: flagName mismatch {page['flagName']!r} vs {old['flagName']!r}")
-        if norm_name(page["buddyName"]) != norm_name(old["buddyName"]):
-            errors.append(f"{key}: buddyName mismatch {page['buddyName']!r} vs {old['buddyName']!r}")
-        fresh = {norm_name(c["name"]): c["count"] for c in page["cards"]}
-        stored = {norm_name(c["name"]): c["count"] for c in old["cards"]}
-        if fresh != stored:
-            only_f = {k: v for k, v in fresh.items() if stored.get(k) != v}
-            only_s = {k: v for k, v in stored.items() if fresh.get(k) != v}
-            errors.append(f"{key}: card list mismatch fresh-only={only_f} stored-only={only_s}")
+            # 旧解析に無い新規キー（201606〜）: フレッシュ解析からエントリを新設。
+            # 2重解析の突合はできないが、total=50・全ID解決・buddy在中・validate_recommend で担保する。
+            old = {
+                "key": key,
+                "title": page["title"],
+                "url": f"https://fc-buddyfight.com/recipe/recommend/{key}",
+                "flagName": page["flagName"],
+                "flagId": None,
+                "buddyName": page["buddyName"],
+                "buddyId": None,
+                "cards": [],
+                "total": page["total"],
+                "missing": [],
+                "buildable": False,
+            }
+            parsed.append(old)
+            by_key[key] = old
+        else:
+            # --- cross-check fresh parse vs stored parse (by name+count; stored 201605 lacks no) ---
+            if page["flagName"] != old["flagName"]:
+                errors.append(f"{key}: flagName mismatch {page['flagName']!r} vs {old['flagName']!r}")
+            if norm_name(page["buddyName"]) != norm_name(old["buddyName"]):
+                errors.append(f"{key}: buddyName mismatch {page['buddyName']!r} vs {old['buddyName']!r}")
+            fresh = {norm_name(c["name"]): c["count"] for c in page["cards"]}
+            stored = {norm_name(c["name"]): c["count"] for c in old["cards"]}
+            if fresh != stored:
+                only_f = {k: v for k, v in fresh.items() if stored.get(k) != v}
+                only_s = {k: v for k, v in stored.items() if fresh.get(k) != v}
+                errors.append(f"{key}: card list mismatch fresh-only={only_f} stored-only={only_s}")
+            if page["total"] != old.get("total"):
+                errors.append(f"{key}: total mismatch fresh={page['total']} stored={old.get('total')}")
         if page["total"] != 50:
             errors.append(f"{key}: total {page['total']} != 50")
-        if page["total"] != old.get("total"):
-            errors.append(f"{key}: total mismatch fresh={page['total']} stored={old.get('total')}")
 
         # fresh parse carries the more complete `no` (img-derived); make it canonical
         old["cards"] = page["cards"]
@@ -191,7 +210,9 @@ def main():
         if flag_id is None:
             errors.append(f"{key}: unknown flag {page['flagName']!r}")
             continue
-        if old.get("flagId") != flag_id:
+        if old.get("flagId") is None:
+            old["flagId"] = flag_id
+        elif old.get("flagId") != flag_id:
             errors.append(f"{key}: flagId mismatch stored={old.get('flagId')} derived={flag_id}")
 
         old["missing"] = []

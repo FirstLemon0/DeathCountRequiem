@@ -4,6 +4,14 @@
 // HTML で番号順に <script> 読み込みする（連結すると旧 app.js とバイト等価）。
 // ==========================================================================
 function findUsableHandAbility(card, options = {}) {
+  // F1(D-EB02): カードレベルの useConditions（「〜なら使える」）を通常の手札キャスト経路でも評価する。
+  // 従来は castSetSpell（設置・src/08）でのみ評価され、通常の魔法/必殺技/対抗では無視されていた
+  //（bf-s-ub-c03-0052/0053/0054/0093 のゲートが不発だった）。全手札キャスト経路
+  //（useCardAction/castSpell/castImpact/useCounterCard/useCounterPlayCard/render/AI）はここを通る。
+  const useOwner = state.selected?.owner ?? state.active;
+  if (!checkCardConditions(card.useConditions || [], useOwner, { card, owner: useOwner })) {
+    return undefined;
+  }
   return (card.abilities || []).find((ability) => {
     if (!canUseAbilityFromHand(ability)) {
       return false;
@@ -741,7 +749,9 @@ function checkCondition(condition, owner, context = {}) {
     const n = condition.distinct === "distinctByName"
       ? new Set(matched.map((c) => c.name)).size
       : matched.length;
-    const amount = condition.amount || 1;
+    // amount:0 は「ちょうど0枚 / 0枚以下」= 有意な閾値（0049「自場モンスター0体なら」等）。
+    // || 1 だと 0 が 1 に潰れて eq/lte が壊れるため ?? で 0 を保持する。
+    const amount = condition.amount ?? 1;
     return cmp === "lte" ? n <= amount : cmp === "eq" ? n === amount : n >= amount;
   }
   if (condition.op === "attackingAlone") {

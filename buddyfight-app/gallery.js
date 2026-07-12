@@ -1,5 +1,5 @@
 // ===== gallery.js — カードギャラリー（閲覧専用）=====
-// 40製品2,353枚を検索・絞り込み・ページングして眺めるだけの画面。デッキ編集機能は持たない。
+// 41製品2,418枚を検索・絞り込み・ページングして眺めるだけの画面。デッキ編集機能は持たない。
 //
 // 【builder.js の流用について】builder.js の検索/フィルタ/サムネ読込は流用したいが、builder.js は
 // 1,500行超の単一グローバルスコープでデッキ編集の状態（currentDeck・保存/ネット連携・user-api 依存）と
@@ -56,7 +56,7 @@ async function initializeGallery() {
   }
 }
 
-// ---- データ読込（DOM非依存。全カードセットの全エントリ＝2,353枚をそのまま列挙する。builder と違い
+// ---- データ読込（DOM非依存。全カードセットの全エントリ＝2,418枚をそのまま列挙する。builder と違い
 //      閲覧専用なので type:flag のカードも除外しない）----
 async function galleryLoadData() {
   const cardsetsData = await galleryLoadJson(galleryDataFiles.cardsets);

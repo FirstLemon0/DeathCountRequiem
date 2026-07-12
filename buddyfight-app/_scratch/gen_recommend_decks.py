@@ -54,6 +54,14 @@ GROUPS = [
         "series": "DDD",
         "name_prefix_flag": True,
     },
+    {
+        "file": "recommend-201606-super-hero-wars-z.json",
+        "keys": [f"201606_{i}" for i in range(1, 8)],
+        "set_id": "recommend-201606-super-hero-wars-z",
+        "set_name": "開発チームおすすめ「超ヒーロー大戦Z」",
+        "releaseOrder": 560,
+        "series": "DDD",
+    },
 ]
 
 CATEGORY = "developer"

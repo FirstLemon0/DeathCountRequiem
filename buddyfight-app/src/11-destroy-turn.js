@@ -331,6 +331,10 @@ async function destroyFieldCard(owner, zone, options = {}) {
     // 味方を庇う置換（別カードを犠牲にして card を場に残す）が成立した。
     return null;
   }
+  // E2(D-EB02/0031): 味方を庇う離場置換（破壊も離場の一種。相手効果=byEffect のみ庇う。戦闘破壊は byBattle のため不発）。
+  if (!options.ignoreDestroyReplacement && fieldHasLeaveFieldReplacer(owner) && (await applyAllyLeaveFieldReplacement(card, owner, options.cause))) {
+    return null;
+  }
   if (!options.ignoreDestroyReplacement && card.preventNextDestroyCount > 0) {
     card.preventNextDestroyCount -= 1;
     const replacement = card.preventNextDestroyEffects?.shift();
@@ -547,6 +551,65 @@ async function applyAllyDestroyReplacement(card, owner, options = {}) {
     }
     addLog(`${replacer.name}を置いて${card.name}は場に残りました。`);
     return true;
+  }
+  return false;
+}
+
+// E2 高速ゲート: owner の場に allyLeaveFieldReplacement を持つカードが1枚でもあるか(同期・軽量)。
+// これを満たす時だけ async の applyAllyLeaveFieldReplacement を await する。持たない場合(既存の全カード)は
+// await を挿さず従来のマイクロタスク順序を厳密に保つ(手札戻し等の誘発タイミングを崩さない)。
+function fieldHasLeaveFieldReplacer(owner) {
+  const player = state.players[owner];
+  if (!player) {
+    return false;
+  }
+  return zones.some((zone) => player.field[zone]?.allyLeaveFieldReplacement);
+}
+
+// E2(D-EB02/0031「バリア発動！」): 味方を庇う離場置換。場の別カード(replacer, 設置魔法等)が
+// allyLeaveFieldReplacement を持ち、相手の効果で場を離れようとする card がその filter/from に一致するなら、
+// replacer のコスト(既定 dropSource=自身をドロップ)を払って card を場に残す(移動をキャンセル)。
+// allyDestroyReplacement が「破壊」だけを庇うのに対し、こちらは手札戻し/ドロップ/ゲージ送り等の
+// 「効果による離場」全般を庇う。戦闘破壊は cause.byBattle のみ(byEffect 無し)のため from.byEffect で対象外。
+// 相手効果の離場は全て executeAbilityEffect / destroyFieldCard の async 経路を通るため async 版のみでよい。
+// rule は単体オブジェクトでも配列でも可（DSL は {allyLeaveFieldReplacement:[{...}]} を想定）。
+async function applyAllyLeaveFieldReplacement(card, owner, cause) {
+  if (!card) {
+    return false;
+  }
+  const player = state.players[owner];
+  for (const zone of zones) {
+    const replacer = player.field[zone];
+    if (!replacer || replacer.instanceId === card.instanceId || isAbilitiesNullified(replacer)) {
+      continue;
+    }
+    const rules = replacer.allyLeaveFieldReplacement;
+    if (!rules) {
+      continue;
+    }
+    for (const rule of Array.isArray(rules) ? rules : [rules]) {
+      if (rule.filter && !matchesCardFilter(card, rule.filter)) {
+        continue;
+      }
+      if (rule.from) {
+        if (rule.from.byBattle && !cause?.byBattle) continue;
+        if (rule.from.byEffect && !cause?.byEffect) continue;
+        if (rule.from.byOpponent && !cause?.byOpponent) continue;
+      }
+      const cost = adjustedCostSteps(player, replacer, "leaveFieldReplacement", rule.cost || [{ op: "dropSource" }]);
+      if (!canPayStructuredCost(player, cost, { sourceCard: replacer, selectedCard: replacer }).ok) {
+        continue;
+      }
+      if (rule.optional && !(await confirmChoiceAsync(owner, `${replacer.name}を置いて${card.name}を場に残しますか？`, { purpose: "leavefield-replacement" }))) {
+        continue;
+      }
+      const payment = payStructuredCost(player, cost, { sourceCard: replacer, selectedCard: replacer });
+      if (!payment.ok) {
+        continue;
+      }
+      addLog(`${replacer.name}を置いて${card.name}は場に残りました。`);
+      return true;
+    }
   }
   return false;
 }

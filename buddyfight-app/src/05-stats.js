@@ -493,7 +493,9 @@ function continuousStatBonus(card, statKey) {
   zones.forEach((zone) => {
     const sourceCard = crossField[zone];
     [...(sourceCard?.continuous || []), ...(sourceCard?.turnContinuous || [])].forEach((effect) => {
-      if (!(effect.opposingFront || effect.controller === "opponent")) {
+      // F4(bt05-0060 ワン・トゥ・ワン): controller:"both"（「君と相手の場の〜」）も越境適用する。
+      // 従来は "opponent"/opposingFront のみ越境し、"both" は自陣側にしか効いていなかった。
+      if (!(effect.opposingFront || effect.controller === "opponent" || effect.controller === "both")) {
         return;
       }
       if (!continuousEffectApplies(effect, card, sourceCard)) {
@@ -511,6 +513,10 @@ function continuousStatBonus(card, statKey) {
     });
   });
   soulContinuousEffects(card, slot.owner).forEach(({ effect, sourceCard }) => {
+    // F2(D-EB02/0033): fieldWide:true の stat 効果は下の「場全体スキャン」で評価する（二重加算防止）。
+    if (effect.fieldWide) {
+      return;
+    }
     if (!continuousEffectAppliesFromSoul(effect, card, sourceCard, slot.owner)) {
       return;
     }
@@ -518,6 +524,30 @@ function continuousStatBonus(card, statKey) {
       bonus += effect[statKey] || 0;
     }
   });
+  // F2(D-EB02/0033 リリックオーバー): soulContinuous の modifyStats{fieldWide:true} は、ホスト自身
+  // だけでなく「ホストのコントローラーの場全体」（filter適用）に乗る（「君の場の〜全て」型）。
+  // 既定（fieldWide 無し）は従来どおりホスト自身のみ＝既存16枚（一竜当千・竜装機系 等）の挙動は不変。
+  // FIX6(r3-軽微3): E2 の fieldHasLeaveFieldReplacer と同型の軽量事前ゲート。fieldWide のソウル
+  // modifyStats が盤面に1枚も無ければ、場全体スキャン（soulContinuousEffects の割当＋
+  // continuousEffectAppliesFromSoul の評価）を丸ごとスキップする。ゲート条件はループ内ガードと
+  // 同値（fieldWide かつ modifyStats）＝スキップ時の寄与は必ず0のため挙動不変・定数倍削減のみ。
+  if (fieldHasFieldWideSoulBonus(player)) {
+    zones.forEach((hostZone) => {
+      const host = player.field[hostZone];
+      if (!host?.soul?.length) {
+        return;
+      }
+      soulContinuousEffects(host, slot.owner).forEach(({ effect, sourceCard }) => {
+        if (!effect.fieldWide || effect.op !== "modifyStats") {
+          return;
+        }
+        if (!continuousEffectAppliesFromSoul(effect, card, sourceCard, slot.owner)) {
+          return;
+        }
+        bonus += effect[statKey] || 0;
+      });
+    });
+  }
   return bonus;
   } finally {
     statMemoEnd();
@@ -543,6 +573,27 @@ function soulContinuousEffects(card, owner) {
   return card.soul.flatMap((sourceCard) =>
     (sourceCard.soulContinuous || []).map((effect) => ({ sourceCard, effect, owner })),
   );
+}
+
+// FIX6(r3-軽微3): continuousStatBonus の F2 場全体スキャン用の軽量事前ゲート。
+// player の場のいずれかのホストのソウルに「fieldWide:true の modifyStats」soulContinuous が
+// あるときだけ true。割当・フィルタ評価を伴わない純粋な構造走査＋早期 return（.some）で、
+// fieldWide を使うカード（現状 D-EB02/0033 リリックオーバー1枚のみ）が場に無い大多数の盤面では
+// F2 ループを丸ごと省ける。E2 の fieldHasLeaveFieldReplacer と同じ発想。
+function fieldHasFieldWideSoulBonus(player) {
+  if (!player) {
+    return false;
+  }
+  return zones.some((zone) => {
+    const host = player.field[zone];
+    return Boolean(
+      host?.soul?.some((sourceCard) =>
+        (sourceCard.soulContinuous || []).some(
+          (effect) => effect.fieldWide && effect.op === "modifyStats",
+        ),
+      ),
+    );
+  });
 }
 
 function continuousEffectAppliesFromSoul(effect, targetCard, sourceCard, owner) {
@@ -586,6 +637,11 @@ function soulContinuousGrantsOp(card, op, causeCheck) {
       const host = player.field[zone];
       return soulContinuousEffects(host, hostOwner).some(({ effect, sourceCard }) => {
         if (effect.op !== op) {
+          return false;
+        }
+        // R2(D-EB02/0033 リリックオーバー): hostOnly=このソウルが乗っているカード(host)自身だけを対象にする
+        //（公式「そのカードは破壊されない」＝ホスト限定。pp01-0012 のような場全体付与にしない）。
+        if (effect.hostOnly && host?.instanceId !== card.instanceId) {
           return false;
         }
         if (effect.controller === "opponent" && targetSlot.owner === hostOwner) {
@@ -647,6 +703,10 @@ function continuousEffectApplies(effect, targetCard, sourceCard) {
     }
     if (!checkCardConditions(effect.conditions, sourceSlot.owner, {
       card: sourceCard,
+      // C7(D-EB02/0007・0018・0037): 発生源の owner/zone を明示する。sourceZoneIn 等の
+      // 「発生源の在ゾーン」条件は context.owner/zone を見るため、継続評価(state.selected 非依存)でも
+      // 正しく自己ゲートできるようにする（zone は従前どおり・owner を補完）。
+      owner: sourceSlot.owner,
       zone: sourceSlot.zone,
       targetCard,
     })) {

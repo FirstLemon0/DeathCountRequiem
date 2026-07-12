@@ -272,6 +272,10 @@ function handAbilityUnavailableReason(card, owner, options = {}) {
   if (abilities.length === 0) {
     return "このカードの使用処理はまだ実装されていません。";
   }
+  // F1: カードレベルの useConditions 不成立（findUsableHandAbility と同じゲート）を先に報告する。
+  if (!checkCardConditions(card.useConditions || [], owner, { card, owner })) {
+    return `${card.name}の使用条件を満たしていません。`;
+  }
   const ability = abilities[0];
   if (!handAbilityTimingMatches(ability, options)) {
     if (isCounterAbility(ability)) {
