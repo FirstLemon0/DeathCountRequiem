@@ -362,6 +362,14 @@ async function destroyFieldCard(owner, zone, options = {}) {
     addLog(`${card.name}はソウルガードで場に残りました。`);
     return null;
   }
+  // TOCTOU再検証: 上の離場置換/破壊置換/ソウルガード等のawait中に、並行する別の除去がこのカードを
+  // 既に場から動かしていることがある（例: 起動能力のコスト捨てで誘発した破壊(ロータ0049)と能力本体の
+  // 破壊(ブラッディ・キング0014)が同一カードへ同時進行）。entry時のnullチェックだけでは両方が通過し、
+  // 両方が drop.push(card) して同一instanceの複製（card-conservation違反）になる。ここで除去の直前に
+  // 「対象がまだこの場所に居る同一カードか」を再確認し、離れて/差し替わっていたらこの破壊は不発とする。
+  if (player.field[zone] !== card) {
+    return null;
+  }
   const moveSoulTo = card.onDestroy?.moveSoulTo || (card.returnSoulToHandOnDestroy ? "hand" : null);
   if (moveSoulTo === "hand" && (card.soul || []).length > 0) {
     // 「破壊される場合、ソウル全てを手札に加える」。ソウルがドロップへ移る前に回収。

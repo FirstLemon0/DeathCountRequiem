@@ -1,0 +1,868 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-d-td01-goukai-ryuoh",
+    "name": "DDD トライアルデッキ第１弾「豪海竜王」",
+    "kind": "トライアルデッキ",
+    "generation": "DDD",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=47"
+  },
+  "cards": [
+    {
+      "id": "bf-d-td01-0001",
+      "no": "D-TD01/0001",
+      "name": "大海神 デュエルイェーガー “シーザリオン”",
+      "type": "monster",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "竜王番長"
+      ],
+      "size": 3,
+      "power": 10000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、このカードを君の場のソウルのないサイズ３の《竜王番長》のモンスター１枚の上に重ね、君のデッキの上から１枚をこのカードのソウルに入れる。",
+        "■このカードが登場した時、相手の場のモンスター１枚を破壊する！",
+        "『２回攻撃』『ソウルガード』『ライフリンク２』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          }
+        ]
+      },
+      "callStack": {
+        "attribute": "竜王番長",
+        "filter": {
+          "sizeIn": [
+            3
+          ],
+          "soulCountLte": 0
+        }
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard",
+        "lifeLink2"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-td01-0001-enter-destroy",
+          "kind": "triggered",
+          "event": "enter",
+          "allowMissingTarget": true,
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-td01-0002",
+      "no": "D-TD01/0002",
+      "name": "豪海番長 デュエルイェーガー",
+      "type": "monster",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "竜王番長"
+      ],
+      "size": 3,
+      "power": 8000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、君のドロップゾーンの《竜王番長》１枚までをこのカードのソウルに入れる。",
+        "『貫通』（このカードの攻撃で相手センターのモンスターを破壊したら、相手にも打撃力分ダメージを与える）",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putCardToSoul",
+            "sources": [
+              "drop"
+            ],
+            "min": 0,
+            "max": 1,
+            "amount": 1,
+            "filter": {
+              "attribute": "竜王番長"
+            }
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate",
+        "soulguard"
+      ]
+    },
+    {
+      "id": "bf-d-td01-0003",
+      "no": "D-TD01/0003",
+      "name": "鉄拳番長 ストロング・豪",
+      "type": "monster",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "竜王番長"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 3,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、君のデッキの上から１枚をこのカードのソウルに入れる。",
+        "『ソウルガード』（このカードが場から離れる場合、ソウル１枚を捨てて場に残せる）"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ]
+    },
+    {
+      "id": "bf-d-td01-0004",
+      "no": "D-TD01/0004",
+      "name": "鎧の番長 アンダー・ザ・堅",
+      "type": "monster",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "竜王番長"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【対抗】【起動】手札のこのカードを君の場のサイズ３の《竜王番長》のモンスタ－１枚のソウルに入れる。",
+        "『ライフリンク１』（このカードが場から離れた時、君はライフリンクの数値分のダメージを受ける）"
+      ],
+      "keywords": [
+        "lifeLink1"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-td01-0004-tosoul-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "竜王番長",
+              "sizeIn": [
+                3
+              ]
+            }
+          },
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-td01-0005",
+      "no": "D-TD01/0005",
+      "name": "氷竜王 グラキエス",
+      "type": "monster",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード",
+        "水"
+      ],
+      "size": 2,
+      "power": 3000,
+      "critical": 3,
+      "defense": 4000,
+      "rules": [
+        "■【対抗】【起動】“氷結弾”相手のターンの攻撃中、君の場にサイズ３のモンスターがいるなら、手札のこのカードを捨て、ライフ１を払ってよい。そうしたら、その攻撃を無効化する。",
+        "『ライフリンク１』"
+      ],
+      "keywords": [
+        "lifeLink1"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-td01-0005-hand-nullify",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "fromHandOnly": true,
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ],
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-td01-0006",
+      "no": "D-TD01/0006",
+      "name": "風の番長 メッセンジャー・迅",
+      "type": "monster",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "竜王番長",
+        "風"
+      ],
+      "size": 2,
+      "power": 3000,
+      "critical": 3,
+      "defense": 3000,
+      "rules": [
+        "■このカードが登場した時、君のドロップゾーンのサイズ３の《竜王番長》１枚までを手札に加える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-td01-0006-enter-search-drop",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "moveMatchingDropToHand",
+              "filter": {
+                "attribute": "竜王番長",
+                "sizeIn": [
+                  3
+                ]
+              },
+              "amount": 1,
+              "optional": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-td01-0007",
+      "no": "D-TD01/0007",
+      "name": "舎弟 ナックラー・弾",
+      "type": "monster",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "竜王番長"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■君の場に元々のサイズが３の《竜王番長》がいるなら、このカードのサイズを１減らす。",
+        "『ライフリンク１』（このカードが場から離れた時、君はライフリンクの数値分のダメージを受ける）"
+      ],
+      "keywords": [
+        "lifeLink1"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "size": -1,
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "attribute": "竜王番長",
+                "baseSize": 3
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-td01-0008",
+      "no": "D-TD01/0008",
+      "name": "舎弟見習い ルーキー・壱",
+      "type": "monster",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "竜王番長"
+      ],
+      "size": 0,
+      "power": 4000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": []
+    },
+    {
+      "id": "bf-d-td01-0009",
+      "no": "D-TD01/0009",
+      "name": "海内之竜",
+      "type": "spell",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン",
+        "ゲット"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ１を払い、ライフ１を払う。",
+        "■君のデッキからサイズ３の《竜王番長》１枚までを手札に加え、デッキをシャッフルする。「海内之竜」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-td01-0009-search",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "searchDeckToHand",
+              "filter": {
+                "attribute": "竜王番長",
+                "sizeIn": [
+                  3
+                ]
+              },
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "dtd01-kainoshiryu"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-d-td01-0010",
+      "no": "D-TD01/0010",
+      "name": "竜王伝",
+      "type": "spell",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rules": [
+        "■君のデッキの上から１枚をゲージに置き、君のライフを＋１し、カード１枚を引く。「竜王伝」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-td01-0010-gauge-life-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "ryuoden"
+          }
+        }
+      ],
+      "_note": "design.md指示通りlimit.key『ryuoden』を温存（カード名『竜王伝』を本文が引用する名称1ターン1回＝既存eb01-0016/bf-h-ss01-0038と同名共有）。"
+    },
+    {
+      "id": "bf-d-td01-0011",
+      "no": "D-TD01/0011",
+      "name": "同床竜夢",
+      "type": "spell",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン",
+        "回復"
+      ],
+      "rules": [
+        "■君のライフを＋３する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-td01-0011-life3",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-td01-0012",
+      "no": "D-TD01/0012",
+      "name": "竜の豪雷",
+      "type": "spell",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン",
+        "火力"
+      ],
+      "rules": [
+        "■【対抗】場の攻撃力か防御力が2000以下のモンスター１枚を破壊する！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-td01-0012-destroy-small",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "any",
+            "filter": {
+              "cardType": "monster",
+              "anyOf": [
+                {
+                  "powerLte": 2000
+                },
+                {
+                  "defenseLte": 2000
+                }
+              ]
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-td01-0013",
+      "no": "D-TD01/0013",
+      "name": "竜枯盛衰",
+      "type": "spell",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rules": [
+        "■【使用コスト】ライフ２を払う。",
+        "■【対抗】君のデッキの上から４枚をゲージに置く。「竜枯盛衰」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payLife",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-td01-0013-gauge4",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 4
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "ryuko-seisui"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-d-td01-0014",
+      "no": "D-TD01/0014",
+      "name": "海王流 渦緘",
+      "type": "spell",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "竜王番長"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ１を払い、ライフ１を払う。",
+        "■【対抗】相手の場のモンスター１枚をレストする。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-td01-0014-rest",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "restTarget",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-td01-0015",
+      "no": "D-TD01/0015",
+      "name": "千竜力",
+      "type": "spell",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "竜王番長",
+        "強化"
+      ],
+      "rules": [
+        "■【対抗】バトルしている《竜王番長》のモンスター１枚を選び、このバトル中、攻撃力＋3000、防御力＋3000し、さらに『反撃』を与える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-td01-0015-buff-counterattack",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "battleCard",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "竜王番長"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 3000,
+              "defense": 3000,
+              "duration": "battle"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "counterattack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-td01-0016",
+      "no": "D-TD01/0016",
+      "name": "竜骨砕身",
+      "type": "spell",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中、君のライフが５以上なら使える。",
+        "■【使用コスト】ライフ１を払う。",
+        "■【対抗】その攻撃を無効化し、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-td01-0016-nullify-gauge",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "not",
+              "condition": {
+                "op": "lifeLte",
+                "amount": 4
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-td01-0017",
+      "no": "D-TD01/0017",
+      "name": "海男児の錨 さざ波",
+      "type": "item",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "武器"
+      ],
+      "power": 3000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払い、ライフ１を払う。",
+        "■このカードは君のセンターにモンスターがいても攻撃できる。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "canAttackWithCenter"
+      ]
+    },
+    {
+      "id": "bf-d-td01-0018",
+      "no": "D-TD01/0018",
+      "name": "大漁鬼岩 海割双竜波！",
+      "type": "impact",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "竜王番長",
+        "火力"
+      ],
+      "rules": [
+        "■相手のライフが３以下で、君のセンターにサイズ３のモンスターがいるなら使える。",
+        "■【使用コスト】ゲージ２を払う。",
+        "■相手にダメージ３！！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-td01-0018-damage3",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "conditions": [
+            {
+              "op": "opponentLifeLte",
+              "amount": 3
+            },
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "center"
+              ],
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-td01-0019",
+      "no": "D-TD01/0019",
+      "name": "エンシェントワールド",
+      "type": "flag",
+      "rarity": "",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "このファイターはエンシェントWのカードを使う。"
+      ]
+    }
+  ]
+}

@@ -468,9 +468,19 @@ function queueBattleEndTriggers(attackerSlots) {
     if (!card || !(card.abilities || []).some((ability) => ability.kind === "triggered" && ability.event === "battleEnd")) {
       return;
     }
+    const attackerInstanceId = card.instanceId;
     Promise.resolve()
       .then(async () => {
         await runTriggeredAbilities(card, "battleEnd", { card, player: state.players[slot.owner], owner: slot.owner, zone: slot.zone });
+        // 「このカードが攻撃したバトルの終了時、…このカードは『２回攻撃』を得る」型(フォーマルフリル 0008 等)は、
+        // 上の battleEnd 誘発でキーワードが後付けされる。runAfterAttackTriggers(同期)はこの付与より前に走るため
+        // スタンド判定に間に合わない。付与後のこの時点で、まだ場に残り(instanceId一致)レスト中(used)の攻撃カードを
+        // 再判定してスタンドさせる。既存の doubleAttackUsed/tripleAttackStandCount ガードで二重スタンドは防がれる。
+        // battleEnd 中に場を離れたカード(0012 の自己戻し等)は現在の場札と instanceId が不一致でスキップされる。
+        const attackerNow = state.players[slot.owner]?.field?.[slot.zone];
+        if (attackerNow && attackerNow.instanceId === attackerInstanceId && attackerNow.used) {
+          standAttackerForMultiAttack(attackerNow);
+        }
         render();
       })
       .catch((error) => {
@@ -645,41 +655,48 @@ async function runDamageDealtTriggers(attackers, pending, damage) {
   }
 }
 
+// 攻撃解決後の多重攻撃（『４回攻撃』/『３回攻撃』/『２回攻撃』）のスタンド判定を1枚ぶん実行する。
+// runAfterAttackTriggers（攻撃解決直後・同期）と queueBattleEndTriggers（battleEnd 誘発で多重攻撃
+// キーワードが後付けされたカードの再判定）の両方から呼ぶ。quadruple/triple は tripleAttackStandCount、
+// double は doubleAttackUsed の既存ガードで、同一カードが同一ターンに規定回数を超えてスタンドしない。
+function standAttackerForMultiAttack(card) {
+  if (!card) {
+    return;
+  }
+  // Z14(c)(S-UB-C03/0021): quadrupleAttack（『４回攻撃』）。tripleAttackと同じ
+  // tripleAttackStandCountカウンタを流用（閾値のみ3に。standPlayerの既存ターン開始リセットに乗る）。
+  if (hasKeyword(card, "quadrupleAttack")) {
+    card.tripleAttackStandCount = card.tripleAttackStandCount || 0;
+    if (card.tripleAttackStandCount < 3) {
+      card.used = false;
+      card.tripleAttackStandCount += 1;
+      addLog(`${card.name}は４回攻撃でスタンドしました。`);
+    }
+    return;
+  }
+  if (hasKeyword(card, "tripleAttack")) {
+    card.tripleAttackStandCount = card.tripleAttackStandCount || 0;
+    if (card.tripleAttackStandCount < 2) {
+      card.used = false;
+      card.tripleAttackStandCount += 1;
+      addLog(`${card.name}は３回攻撃でスタンドしました。`);
+    }
+    return;
+  }
+  if (!hasKeyword(card, "doubleAttack") || card.doubleAttackUsed) {
+    return;
+  }
+  card.used = false;
+  card.doubleAttackUsed = true;
+  addLog(`${card.name}は2回攻撃でスタンドしました。`);
+}
+
 function runAfterAttackTriggers(outcome) {
   if (outcome.nullified) {
     return;
   }
   (outcome.attackers || []).forEach((slot) => {
-    const card = state.players[slot.owner]?.field[slot.zone];
-    if (!card) {
-      return;
-    }
-    // Z14(c)(S-UB-C03/0021): quadrupleAttack（『４回攻撃』）。tripleAttackと同じ
-    // tripleAttackStandCountカウンタを流用（閾値のみ3に。standPlayerの既存ターン開始リセットに乗る）。
-    if (hasKeyword(card, "quadrupleAttack")) {
-      card.tripleAttackStandCount = card.tripleAttackStandCount || 0;
-      if (card.tripleAttackStandCount < 3) {
-        card.used = false;
-        card.tripleAttackStandCount += 1;
-        addLog(`${card.name}は４回攻撃でスタンドしました。`);
-      }
-      return;
-    }
-    if (hasKeyword(card, "tripleAttack")) {
-      card.tripleAttackStandCount = card.tripleAttackStandCount || 0;
-      if (card.tripleAttackStandCount < 2) {
-        card.used = false;
-        card.tripleAttackStandCount += 1;
-        addLog(`${card.name}は３回攻撃でスタンドしました。`);
-      }
-      return;
-    }
-    if (!hasKeyword(card, "doubleAttack") || card.doubleAttackUsed) {
-      return;
-    }
-    card.used = false;
-    card.doubleAttackUsed = true;
-    addLog(`${card.name}は2回攻撃でスタンドしました。`);
+    standAttackerForMultiAttack(state.players[slot.owner]?.field[slot.zone]);
   });
 }
 

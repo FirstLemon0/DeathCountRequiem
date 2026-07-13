@@ -405,6 +405,12 @@ function matchesCardFilter(card, filter = {}, options = {}) {
   }
   // 追加のカード名(gainNameAsSelected 等)も名前判定に含める。
   const cardNames = card.additionalNames?.length ? [card.name, ...card.additionalNames] : [card.name];
+  // E1(D-SS01/0024・0044「このカードは『○○』としても扱う」): カード級 alsoNames を、下の名称述語
+  // (name/nameIn/nameIncludes とその否定形 nameNot/nameNotIncludes)の照合にだけ加えるエイリアス。
+  // 公式裁定「カード名は〜としても扱う」の filter 照合限定実装で、他の名前参照
+  // (buddy 判定・デッキ構築の同名4枚制限・displayName・instanceId・script の sameNameAsVar 等)には
+  // 一切波及させない。alsoNames 未指定なら matchNames === cardNames なので既存挙動は完全に不変。
+  const matchNames = card.alsoNames?.length ? [...cardNames, ...card.alsoNames] : cardNames;
   // Z1(S-UB-C03): filter.buddy — 対象がその所有者の登録バディ(同名)であるか。継続の requireBuddy と
   // 同じ判定(turnTreatAsBuddyも許容)だが、matchesCardFilter は owner を引数に取らないため
   // findFieldCardSlot で対象自身の所有者を特定する（場外のカードは buddy 判定不能=false）。
@@ -417,21 +423,22 @@ function matchesCardFilter(card, filter = {}, options = {}) {
       return false;
     }
   }
-  if (filter.name && !cardNames.includes(filter.name)) {
+  if (filter.name && !matchNames.includes(filter.name)) {
     return false;
   }
-  if (filter.nameIn && !filter.nameIn.some((n) => cardNames.includes(n))) {
+  if (filter.nameIn && !filter.nameIn.some((n) => matchNames.includes(n))) {
     return false;
   }
-  if (filter.nameIncludes && !cardNames.some((n) => n.includes(filter.nameIncludes))) {
+  if (filter.nameIncludes && !matchNames.some((n) => n.includes(filter.nameIncludes))) {
     return false;
   }
-  if (filter.nameNot && cardNames.includes(filter.nameNot)) {
+  if (filter.nameNot && matchNames.includes(filter.nameNot)) {
     return false;
   }
   // nameNotIncludes（S-UB-C03/0008/0037/0039「[キャラ名]以外」）: 部分一致の否定。本弾のカード名は
   // 「肩書き＋キャラ名」形式のため、キャラ名を含むカード(＝当人)を除外するには部分一致でなければならない。
-  if (filter.nameNotIncludes && cardNames.some((n) => n.includes(filter.nameNotIncludes))) {
+  // E1: 否定形も matchNames（別名含む）で判定＝「X以外」が別名Xのカードを正しく除外する。
+  if (filter.nameNotIncludes && matchNames.some((n) => n.includes(filter.nameNotIncludes))) {
     return false;
   }
   if (filter.keyword && !hasKeyword(card, filter.keyword)) {

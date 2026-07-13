@@ -1,0 +1,2738 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-d-ss01-neo-dragonic-force",
+    "name": "DDD スペシャルシリーズ第１弾「ネオドラゴニック・フォース」＆「終焉の翼」",
+    "kind": "スペシャルシリーズ",
+    "generation": "DDD",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=43"
+  },
+  "cards": [
+    {
+      "id": "bf-d-ss01-0001",
+      "no": "D-SS01/0001",
+      "name": "ジャックナイフ “ネオ・ゴルドリッター”",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、このカードを君の場のカード名に「ジャックナイフ」を含むモンスター１枚の上に重ねる。",
+        "■【起動】このカードのソウルが３枚以上あるなら、ゲージ２を払い、このカードをドロップゾーンに置いてよい。そうしたら、君の手札の「ジャックナイフ “ゴルドリッター”」１枚を、【装備コスト】を払わずに、装備する。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callStack": {
+        "nameIncludes": "ジャックナイフ"
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0001-neo-goldritter-equip",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceSoulCountGte",
+              "amount": 3
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "script": [
+            {
+              "op": "dropSelf"
+            },
+            {
+              "op": "selectCards",
+              "var": "it",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "name": "ジャックナイフ “ゴルドリッター”"
+              },
+              "min": 1,
+              "max": 1,
+              "amount": 1,
+              "title": "ジャックナイフ “ゴルドリッター”を装備",
+              "lead": "手札の「ジャックナイフ “ゴルドリッター”」を選んでください。"
+            },
+            {
+              "op": "equipSelectedAsItem",
+              "var": "it",
+              "payCost": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0002",
+      "no": "D-SS01/0002",
+      "name": "ジャックナイフ・ドラゴン・ストラグライトX世",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 3,
+      "power": 8000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■君が攻撃力6000以上のアイテムを装備しているなら、場のこのカードのサイズを３減らす。",
+        "『２回攻撃』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "size": -3,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "filter": {
+                "powerGte": 6000
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0003",
+      "no": "D-SS01/0003",
+      "name": "ジャックナイフ “ゲヴァルト”",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 2,
+      "power": 8000,
+      "critical": 4,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、このカードを君の場のカード名に「ジャックナイフ」を含むモンスター１枚の上に重ねる。",
+        "■場のこのカードは相手のカードの効果で破壊されない。",
+        "『貫通』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callStack": {
+        "nameIncludes": "ジャックナイフ"
+      },
+      "keywords": [
+        "penetrate",
+        "soulguard"
+      ],
+      "destroyImmunity": [
+        {
+          "from": {
+            "byEffect": true,
+            "byOpponent": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0004",
+      "no": "D-SS01/0004",
+      "name": "ブッシュナイフ・ドラゴン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■君がカード名に「ジャックナイフ」を含むモンスターを手札からコールする場合、【コールコスト】に書かれているゲージを払わなくてよい。"
+      ],
+      "costReduction": [
+        {
+          "purpose": "call",
+          "filter": {
+            "nameIncludes": "ジャックナイフ",
+            "cardType": "monster"
+          },
+          "payOp": "payGauge",
+          "amount": 99
+        }
+      ],
+      "_note": "自身のコールコストは印字テキスト上に記載なし=無償（callCost/costs.call未設定）。costReductionはコール元ゾーンを見ないが、通常コールは常に手札発のため『手札からコールする場合』は事実上常に真＝実害なし近似（C3・design.md §3-C参照）。"
+    },
+    {
+      "id": "bf-d-ss01-0005",
+      "no": "D-SS01/0005",
+      "name": "ジャックナイフ・ドラゴン “ベビー”",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■君のバディがカード名に「ジャックナイフ」を含むカードなら、場のこのカードのサイズを1減らす。"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "size": -1,
+          "conditions": [
+            {
+              "op": "buddyMatches",
+              "filter": {
+                "nameIncludes": "ジャックナイフ"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0006",
+      "no": "D-SS01/0006",
+      "name": "サークルナイフ・ドラゴン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■【起動】手札のこのカードを捨て、ゲージ１を払ってよい。そうしたら、君のドロップゾーンのカード名に「ジャックナイフ」を含む、モンスターかアイテム１枚を手札に加える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0006-circle-knife-search",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "fromHandOnly": true,
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "jk",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "nameIncludes": "ジャックナイフ",
+                "cardTypeIn": [
+                  "monster",
+                  "item"
+                ]
+              },
+              "min": 1,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "サークルナイフ・ドラゴン",
+              "lead": "手札に加える、カード名に「ジャックナイフ」を含むモンスターかアイテムを選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "jk",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を手札に加えました。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0007",
+      "no": "D-SS01/0007",
+      "name": "ジャックナイフ “１００００”",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 3,
+      "power": 10000,
+      "critical": 3,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "『貫通』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate"
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0008",
+      "no": "D-SS01/0008",
+      "name": "ジャックナイフ “サンダーストーム”",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、このカードを君の場のカード名に「ジャックナイフ」を含むモンスター１枚の上に重ねる。",
+        "■【起動】“サンダーレイド”このカードがレフトかライトにいるなら、ライフ２を払ってよい。払ったら、相手の場のモンスター１枚を破壊する！",
+        "『ソウルガード』"
+      ],
+      "callCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callStack": {
+        "nameIncludes": "ジャックナイフ"
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0008-cp01-jackknife-thunderstorm-thunder-raid",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 2
+            }
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "right"
+              ]
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ],
+          "label": "サンダーレイド"
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0009",
+      "no": "D-SS01/0009",
+      "name": "ジャックナイフ “セイヴァー”",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、このカードを君の場のカード名に「ジャックナイフ」を含むモンスター１枚の上に重ねる。",
+        "『移動』『ソウルガード』"
+      ],
+      "callStack": {
+        "nameIncludes": "ジャックナイフ"
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "move",
+        "soulguard"
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0010",
+      "no": "D-SS01/0010",
+      "name": "ジャックナイフ “バイシュタント”",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、このカードを君の場のカード名に「ジャックナイフ」を含むモンスター１枚の上に重ねる。",
+        "■このカードが登場した時、君のドロップゾーンのカード名に「ドラゴンシールド」を含むカード１枚を手札に加える。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "callStack": {
+        "nameIncludes": "ジャックナイフ"
+      },
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0010-enter-shield",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "shield",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "nameIncludes": "ドラゴンシールド"
+              },
+              "min": 1,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "ドラゴンシールドを手札に加える"
+            },
+            {
+              "op": "moveSelected",
+              "var": "shield",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を手札に加えました。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0011",
+      "no": "D-SS01/0011",
+      "name": "ジャックナイフ “バーンエナジー”",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■このカードはセンターにコールできない。",
+        "■【コールコスト】このカードを君の場のカード名に「ジャックナイフ」を含むモンスター１枚の上に重ねる。",
+        "■このカードが登場した時、君のデッキの上から２枚をゲージに置く。",
+        "『ソウルガード』"
+      ],
+      "callCost": {},
+      "callStack": {
+        "nameIncludes": "ジャックナイフ"
+      },
+      "cannotCallZones": [
+        "center"
+      ],
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0011-enter-gauge",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0012",
+      "no": "D-SS01/0012",
+      "name": "ジャックナイフ・ドラム",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが登場した時、相手の場のサイズ２以下のモンスター１枚を破壊する。さらに、君のライフが４以下なら、相手にダメージ１！！"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0012-enter",
+          "kind": "triggered",
+          "event": "enter",
+          "allowMissingTarget": true,
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster",
+              "sizeLte": 2
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "lifeLte",
+                  "amount": 4
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0013",
+      "no": "D-SS01/0013",
+      "name": "ジャックナイフ・ドラゴン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■【起動】ゲージ２を払ってよい。払ったら、君のデッキからカード名に「ジャックナイフ」を含むモンスター１枚を【コールコスト】を払わずにこのカードの上に重ねてコールし、デッキをシャッフルする。"
+      ],
+      "callCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0013-cp01-jackknife-dragon-evolution",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "stackCall",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "ジャックナイフ"
+              },
+              "callable": true,
+              "amount": 1,
+              "title": "ジャックナイフ・ドラゴンで重ねてコールするカード",
+              "lead": "デッキからカード名に「ジャックナイフ」を含むモンスター1枚を選んでください。",
+              "emptyMessage": "デッキに重ねてコールできる「ジャックナイフ」のモンスターがありません。"
+            },
+            {
+              "op": "stackCallSelected",
+              "var": "stackCall",
+              "resolveOnEnter": true
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0014",
+      "no": "D-SS01/0014",
+      "name": "ジャックナイフ・ジョイント",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "緑竜",
+        "ドロー"
+      ],
+      "rules": [
+        "■【使用コスト】ライフ１を払い、手札のカード名に「ジャックナイフ」を含むモンスター１枚を捨てる。",
+        "■カード２枚を引く。「ジャックナイフ・ジョイント」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payLife",
+            "amount": 1
+          },
+          {
+            "op": "discardHand",
+            "amount": 1,
+            "filter": {
+              "nameIncludes": "ジャックナイフ",
+              "cardType": "monster"
+            }
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0014-draw2",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            },
+            {
+              "op": "discardHand",
+              "amount": 1,
+              "filter": {
+                "nameIncludes": "ジャックナイフ",
+                "cardType": "monster"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "dss01-jackknife-joint"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0015",
+      "no": "D-SS01/0015",
+      "name": "ジャックナイフ・チャージ",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "緑竜",
+        "チャージ"
+      ],
+      "rules": [
+        "■君のデッキの上から２枚をゲージに置く。さらに、君の場にカード名に「ジャックナイフ」を含むカードがあるなら、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0015-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "cardCount",
+                  "pile": "field",
+                  "filter": {
+                    "nameIncludes": "ジャックナイフ"
+                  },
+                  "cmp": "gte",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0016",
+      "no": "D-SS01/0016",
+      "name": "ジャックナイフ・ブレイブハート",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ２を払う。",
+        "■君のデッキからカード名に「ジャックナイフ」を含むカード１枚を手札に加え、デッキをシャッフルする。"
+      ],
+      "castCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0016-td03-braveheart-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "search": {
+            "nameIncludes": "ジャックナイフ"
+          },
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "searchedCard",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "nameIncludes": "ジャックナイフ"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "ジャックナイフ・ブレイブハートで手札に加えるカード",
+              "lead": "デッキからカード名に「ジャックナイフ」を含むカード1枚を選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "searchedCard",
+              "to": "hand",
+              "log": "ジャックナイフ・ブレイブハートで{cards}をデッキから手札に加えました。"
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0017",
+      "no": "D-SS01/0017",
+      "name": "ジャックナイフ・ギフト",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "緑竜",
+        "ドロー"
+      ],
+      "rules": [
+        "■ゲージ１を払う。払ったら、次の２つから１つを選んで使う。",
+        "・君のドロップゾーンのカード名に「ジャックナイフ」を含むモンスター１枚を、君の場のカード名に「ジャックナイフ」を含むモンスターのソウルに入れる。入れたら、君のデッキから「ジャックナイフ “ゴルドリッター”」１枚を選び、手札に加える。",
+        "・君の場に「ジャックナイフ “ゴルドリッター”」があるなら、カード１枚を引き、君のライフを＋３する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0017-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "ジャックナイフ・ギフト",
+              "options": [
+                {
+                  "key": "recover",
+                  "description": "ドロップの「ジャックナイフ」を含むモンスター1枚を、場の「ジャックナイフ」を含むモンスターのソウルに入れ、デッキから「ジャックナイフ “ゴルドリッター”」1枚を手札に加える",
+                  "condition": {
+                    "op": "all",
+                    "conditions": [
+                      {
+                        "op": "ownDropCardCountGte",
+                        "filter": {
+                          "nameIncludes": "ジャックナイフ",
+                          "cardType": "monster"
+                        },
+                        "amount": 1
+                      },
+                      {
+                        "op": "ownFieldCardExists",
+                        "filter": {
+                          "nameIncludes": "ジャックナイフ",
+                          "cardType": "monster"
+                        }
+                      }
+                    ]
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "jkDrop",
+                      "from": "drop",
+                      "controller": "self",
+                      "filter": {
+                        "nameIncludes": "ジャックナイフ",
+                        "cardType": "monster"
+                      },
+                      "amount": 1,
+                      "require": true
+                    },
+                    {
+                      "op": "selectCards",
+                      "var": "jkHost",
+                      "from": "field",
+                      "controller": "self",
+                      "filter": {
+                        "nameIncludes": "ジャックナイフ",
+                        "cardType": "monster"
+                      },
+                      "amount": 1,
+                      "require": true
+                    },
+                    {
+                      "op": "moveSelectedToSelectedSoul",
+                      "var": "jkDrop",
+                      "soulOfVar": "jkHost"
+                    },
+                    {
+                      "op": "selectCards",
+                      "var": "gold",
+                      "from": "deck",
+                      "controller": "self",
+                      "filter": {
+                        "name": "ジャックナイフ “ゴルドリッター”"
+                      },
+                      "amount": 1,
+                      "require": false
+                    },
+                    {
+                      "op": "moveSelected",
+                      "var": "gold",
+                      "to": "hand",
+                      "log": "デッキから{cards}を手札に加えました。"
+                    },
+                    {
+                      "op": "shuffleDeck"
+                    }
+                  ]
+                },
+                {
+                  "key": "draw",
+                  "description": "カード1枚を引き、ライフ+3する",
+                  "condition": {
+                    "op": "ownFieldCardExists",
+                    "filter": {
+                      "name": "ジャックナイフ “ゴルドリッター”"
+                    }
+                  },
+                  "script": [
+                    {
+                      "op": "draw",
+                      "amount": 1
+                    },
+                    {
+                      "op": "gainLife",
+                      "amount": 3
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0018",
+      "no": "D-SS01/0018",
+      "name": "ドラゴンシールド 緑竜の盾",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "緑竜",
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】その攻撃を無効化し、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0018-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0019",
+      "no": "D-SS01/0019",
+      "name": "ドラゴンシールド 青竜の盾",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "青竜",
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】その攻撃を無効化し、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0019-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0020",
+      "no": "D-SS01/0020",
+      "name": "ジャックナイフ “ゴルドリッター”",
+      "type": "item",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "竜騎士",
+        "武器"
+      ],
+      "power": 10000,
+      "critical": 5,
+      "defense": 10000,
+      "rules": [
+        "■【装備コスト】君のライフが５以下の時、君の場のソウル３枚以上がある、カード名に「ジャックナイフ」を含むカードをドロップゾーンに置き、ゲージ２を払う。",
+        "■このカードは破壊されず、手札に戻せず、君の場にサイズ３の《武装騎竜》のモンスターがいるとして扱う。",
+        "■君が連携攻撃によって受けるダメージは２になる。",
+        "『貫通』"
+      ],
+      "equipConditions": [
+        {
+          "op": "lifeLte",
+          "amount": 5
+        },
+        {
+          "op": "ownFieldCardExists",
+          "filter": {
+            "nameIncludes": "ジャックナイフ",
+            "cardType": "monster",
+            "soulCountGte": 3
+          }
+        }
+      ],
+      "linkAttackDamageReceivedTo": 2,
+      "countsAsFieldMonster": {
+        "attributes": [
+          "武装騎竜"
+        ],
+        "size": 3
+      },
+      "equipCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "equip": [
+          {
+            "op": "dropOwnMonster",
+            "amount": 1,
+            "filter": {
+              "nameIncludes": "ジャックナイフ",
+              "soulCountGte": 3
+            }
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate"
+      ],
+      "cannotReturnToHand": true,
+      "destroyImmunity": {
+        "fromEffect": true
+      }
+    },
+    {
+      "id": "bf-d-ss01-0021",
+      "no": "D-SS01/0021",
+      "name": "ガルガンチュア・パニッシャー!!",
+      "type": "impact",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rules": [
+        "■相手のライフが４以下で、君のセンターと相手のセンターにモンスターがいないなら使える。",
+        "■【使用コスト】ゲージ４を払う。",
+        "■相手にダメージ４！！このカードは無効化されず、このカードのダメージは減らない。"
+      ],
+      "castCost": {
+        "gauge": 4
+      },
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 4
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0021-gargantua-punisher-cast",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 4
+            }
+          ],
+          "conditions": [
+            {
+              "op": "opponentLifeLte",
+              "amount": 4
+            },
+            {
+              "op": "bothCentersEmpty"
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 4,
+              "ignorePrevention": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0022",
+      "no": "D-SS01/0022",
+      "name": "ドラゴニック・パニッシャー",
+      "type": "impact",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ４を払い、ライフ２を払う。",
+        "■相手のライフが４以下で、君の場にサイズ２以上の《武装騎竜》がいるなら使える。",
+        "■相手にダメージ４！"
+      ],
+      "castCost": {
+        "gauge": 4
+      },
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 4
+          },
+          {
+            "op": "payLife",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0022-cast",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 4
+            },
+            {
+              "op": "payLife",
+              "amount": 2
+            }
+          ],
+          "conditions": [
+            {
+              "op": "opponentLifeLte",
+              "amount": 4
+            },
+            {
+              "op": "ownFieldMonsterAttributeSizeGte",
+              "attribute": "武装騎竜",
+              "size": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0023",
+      "no": "D-SS01/0023",
+      "name": "ドラゴンワールド",
+      "type": "flag",
+      "rarity": "",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "このファイターはドラゴンWのカードを使う。"
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0024",
+      "no": "D-SS01/0024",
+      "name": "滅亡を望む者 アジ・ダハーカ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "神"
+      ],
+      "size": 4,
+      "power": 10000,
+      "critical": 2,
+      "defense": 10000,
+      "rules": [
+        "■このカードは「終焉魔竜 アジ・ダハーカ」としても扱う。",
+        "■【コールコスト】君の場のカード１枚をドロップゾーンに置き、ゲージ３を払う。",
+        "■このカードが破壊された時、君の手札かデッキから「終焉魔剣 アクワルタ・グワルナフ」１枚を装備する。デッキを見たら、デッキをシャッフルする。",
+        "『貫通』『２回攻撃』"
+      ],
+      "alsoNames": [
+        "終焉魔竜 アジ・ダハーカ"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "dropOwnMonster",
+            "amount": 1,
+            "filter": {}
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      },
+      "keywords": [
+        "penetrate",
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0024-destroyed-equip",
+          "kind": "triggered",
+          "event": "destroyed",
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "滅亡を望む者 アジ・ダハーカ",
+              "lead": "「終焉魔剣 アクワルタ・グワルナフ」をどこから装備しますか？",
+              "options": [
+                {
+                  "key": "hand",
+                  "label": "手札から装備",
+                  "condition": {
+                    "op": "cardCount",
+                    "controller": "self",
+                    "pile": "hand",
+                    "filter": {
+                      "name": "終焉魔剣 アクワルタ・グワルナフ"
+                    },
+                    "cmp": "gte",
+                    "amount": 1
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "aqua",
+                      "from": "hand",
+                      "controller": "self",
+                      "filter": {
+                        "name": "終焉魔剣 アクワルタ・グワルナフ"
+                      },
+                      "amount": 1,
+                      "require": true,
+                      "title": "滅亡を望む者 アジ・ダハーカ",
+                      "lead": "装備する「終焉魔剣 アクワルタ・グワルナフ」を選んでください。"
+                    },
+                    {
+                      "op": "useSelectedCard",
+                      "var": "aqua",
+                      "payCost": false
+                    }
+                  ]
+                },
+                {
+                  "key": "deck",
+                  "label": "デッキから装備",
+                  "condition": {
+                    "op": "cardCount",
+                    "controller": "self",
+                    "pile": "deck",
+                    "filter": {
+                      "name": "終焉魔剣 アクワルタ・グワルナフ"
+                    },
+                    "cmp": "gte",
+                    "amount": 1
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "aqua",
+                      "from": "deck",
+                      "controller": "self",
+                      "filter": {
+                        "name": "終焉魔剣 アクワルタ・グワルナフ"
+                      },
+                      "amount": 1,
+                      "require": true,
+                      "title": "滅亡を望む者 アジ・ダハーカ",
+                      "lead": "装備する「終焉魔剣 アクワルタ・グワルナフ」を選んでください。"
+                    },
+                    {
+                      "op": "useSelectedCard",
+                      "var": "aqua",
+                      "payCost": false
+                    },
+                    {
+                      "op": "shuffleDeck"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "コールコスト「君の場のカード１枚をドロップゾーンに置き」は、再録元0033(bf-h-bt01-0101)がdropOwnMonster(monster限定)採用のため一貫性優先で同じくdropOwnMonsterを採用（設計R5/C4の軽微近似を継承。忠実にするなら任意ゾーンのdropOwnFieldCardだが0033側も是正が要り越権のため据え置き）。destroyed→装備filterはname完全一致のまま(E1 alsoNames採用済のため0044も別名で装備候補に入る)。"
+    },
+    {
+      "id": "bf-d-ss01-0025",
+      "no": "D-SS01/0025",
+      "name": "竜騎士 カリオストロ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士"
+      ],
+      "size": 1,
+      "power": 1000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■“アインス・アルケミー”このカードが登場した時、君のフラッグが「ドラゴン・アイン」なら、カード１枚を引く。「アインス・アルケミー」は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0025-eins-alchemy",
+          "label": "アインス・アルケミー",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "flagNameIs",
+              "name": "ドラゴン・アイン"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "shared": true,
+            "key": "dss01-cagliostro-eins-alchemy"
+          },
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0026",
+      "no": "D-SS01/0026",
+      "name": "切断竜 シザーギロス",
+      "type": "monster",
+      "rarity": "",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "『移動』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "move"
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0027",
+      "no": "D-SS01/0027",
+      "name": "カースドラゴン トラゴス",
+      "type": "monster",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "ネイキッドドラゴン"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが登場した時、次の２つから１つを選んで使ってよい。",
+        "・君のドロップゾーンのサイズ４のモンスター１枚を手札に加える。",
+        "・君のドロップゾーンの『設置』を持つ魔法１枚を、【使用コスト】を払って使う。",
+        "『ライフリンク１』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "lifeLink1"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0027-enter-choice",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "カースドラゴン トラゴス",
+              "lead": "次の２つから使う効果を選んでください。",
+              "options": [
+                {
+                  "key": "size4-to-hand",
+                  "label": "君のドロップゾーンのサイズ４のモンスター１枚を手札に加える",
+                  "condition": {
+                    "op": "cardCount",
+                    "controller": "self",
+                    "pile": "drop",
+                    "filter": {
+                      "cardType": "monster",
+                      "sizeIn": [
+                        4
+                      ]
+                    },
+                    "cmp": "gte",
+                    "amount": 1
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "big",
+                      "from": "drop",
+                      "controller": "self",
+                      "filter": {
+                        "cardType": "monster",
+                        "sizeIn": [
+                          4
+                        ]
+                      },
+                      "min": 1,
+                      "max": 1,
+                      "amount": 1,
+                      "require": true,
+                      "title": "カースドラゴン トラゴス",
+                      "lead": "手札に加えるドロップゾーンのサイズ４のモンスター１枚を選んでください。"
+                    },
+                    {
+                      "op": "moveSelected",
+                      "var": "big",
+                      "to": "hand",
+                      "require": true,
+                      "log": "{cards}を手札に加えました。"
+                    }
+                  ]
+                },
+                {
+                  "key": "cast-set-spell",
+                  "label": "君のドロップゾーンの『設置』を持つ魔法１枚を、【使用コスト】を払って使う",
+                  "condition": {
+                    "op": "cardCount",
+                    "controller": "self",
+                    "pile": "drop",
+                    "filter": {
+                      "cardType": "spell",
+                      "keyword": "set"
+                    },
+                    "cmp": "gte",
+                    "amount": 1
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "setSpell",
+                      "from": "drop",
+                      "controller": "self",
+                      "filter": {
+                        "cardType": "spell",
+                        "keyword": "set"
+                      },
+                      "min": 1,
+                      "max": 1,
+                      "amount": 1,
+                      "require": true,
+                      "title": "カースドラゴン トラゴス",
+                      "lead": "使用する『設置』を持つ魔法１枚を選んでください（【使用コスト】を払います）。"
+                    },
+                    {
+                      "op": "useSelectedCard",
+                      "var": "setSpell"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "D-SS01本収録へ移設済み(2026-07-13)（idはbf-d-ss01-0027・元はPRカード先行収録 bf-hd-pr.json にあった）。『設置』魔法の使用は useSelectedCard（set keyword分岐→cast コスト支払い→placeSetSpellDirect）。両分岐は chooseBranch の option.condition で実行可能な選択肢のみ提示（アーロン bf-d-eb01-0043 と同型）。"
+    },
+    {
+      "id": "bf-d-ss01-0028",
+      "no": "D-SS01/0028",
+      "name": "永遠の虜囚 ザムシード",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜",
+        "深淵"
+      ],
+      "size": 3,
+      "power": 8000,
+      "critical": 2,
+      "defense": 8000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■君のフラッグが「ダークネスドラゴンワールド」以外なら、このカードは『２回攻撃』を得て、君のフラッグが「ダークネスドラゴンワールド」なら、このカードの打撃力を＋１し、『貫通』を得る。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "doubleAttack",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "not",
+              "condition": {
+                "op": "flagNameIs",
+                "name": "ダークネスドラゴンワールド"
+              }
+            }
+          ]
+        },
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "flagNameIs",
+              "name": "ダークネスドラゴンワールド"
+            }
+          ]
+        },
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "flagNameIs",
+              "name": "ダークネスドラゴンワールド"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0029",
+      "no": "D-SS01/0029",
+      "name": "竜騎士 ピサロ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士",
+        "英雄",
+        "百鬼"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【起動】“ブラッディヒストリー”このカードをレストしてよい。レストしたら、カード１枚を引く。「ブラッディヒストリー」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0029-bloody-history",
+          "label": "ブラッディヒストリー",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceStanding"
+            }
+          ],
+          "effects": [
+            {
+              "op": "restSelf"
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "shared": true,
+            "key": "bloody-history"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0030",
+      "no": "D-SS01/0030",
+      "name": "竜騎士 トモエ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■「竜騎士 トモエ」は１ターンに１枚だけコールできる。",
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが登場した時、君のドロップゾーンに《竜騎士》があるなら、カード１枚を引く。"
+      ],
+      "callLimitPerTurn": 1,
+      "callCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0030-enter-draw",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "attribute": "竜騎士"
+              },
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0031",
+      "no": "D-SS01/0031",
+      "name": "激突竜 ガエルゴルガ",
+      "type": "monster",
+      "rarity": "",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 3,
+      "defense": 1000,
+      "rules": []
+    },
+    {
+      "id": "bf-d-ss01-0032",
+      "no": "D-SS01/0032",
+      "name": "氷獄王 コキュートスグリード",
+      "type": "monster",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード",
+        "百鬼"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■このカードが登場した時、相手のゲージ１枚をドロップゾーンに置き、君のデッキの上から１枚をゲージに置く。",
+        "■【起動】ゲージ３を払う。払ったら、相手の場のカード１枚を破壊する。",
+        "『ライフリンク１』"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "keywords": [
+        "lifeLink1"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0032-enter",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "moveGaugeToDrop",
+              "player": "opponent",
+              "amount": 1
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-d-ss01-0032-destroy",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 3
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {}
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0033",
+      "no": "D-SS01/0033",
+      "name": "終焉魔竜 アジ・ダハーカ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "神"
+      ],
+      "size": 4,
+      "power": 10000,
+      "critical": 3,
+      "defense": 10000,
+      "rules": [
+        "■【コールコスト】君の場のカード１枚をドロップゾーンに置き、ゲージ３を払う。",
+        "■“イラージュオブヒストリー”このカードが攻撃する時、かわりに相手のモンスター全てと相手に攻撃する。このカードが相手にダメージを与えた時、相手の場のアイテムを破壊する！",
+        "■このカードが破壊された時、君の手札かデッキから「終焉魔剣 アクワルタ・グワルナフ」１枚を装備する。デッキを見たら、デッキをシャッフルする。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "dropOwnMonster",
+            "amount": 1,
+            "filter": {}
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      },
+      "attackAllMonstersOnMonsterAttack": true,
+      "attackAllIncludesFighter": true,
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0033-damage-destroy-item",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "item"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        },
+        {
+          "id": "bf-d-ss01-0033-destroyed-equip",
+          "kind": "triggered",
+          "event": "destroyed",
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "終焉魔竜 アジ・ダハーカ",
+              "lead": "「終焉魔剣 アクワルタ・グワルナフ」をどこから装備しますか？",
+              "options": [
+                {
+                  "key": "hand",
+                  "label": "手札から装備",
+                  "condition": {
+                    "op": "cardCount",
+                    "controller": "self",
+                    "pile": "hand",
+                    "filter": {
+                      "name": "終焉魔剣 アクワルタ・グワルナフ"
+                    },
+                    "cmp": "gte",
+                    "amount": 1
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "aqua",
+                      "from": "hand",
+                      "controller": "self",
+                      "filter": {
+                        "name": "終焉魔剣 アクワルタ・グワルナフ"
+                      },
+                      "amount": 1,
+                      "require": true,
+                      "title": "終焉魔竜 アジ・ダハーカ",
+                      "lead": "装備する「終焉魔剣 アクワルタ・グワルナフ」を選んでください。"
+                    },
+                    {
+                      "op": "useSelectedCard",
+                      "var": "aqua",
+                      "payCost": false
+                    }
+                  ]
+                },
+                {
+                  "key": "deck",
+                  "label": "デッキから装備",
+                  "condition": {
+                    "op": "cardCount",
+                    "controller": "self",
+                    "pile": "deck",
+                    "filter": {
+                      "name": "終焉魔剣 アクワルタ・グワルナフ"
+                    },
+                    "cmp": "gte",
+                    "amount": 1
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "aqua",
+                      "from": "deck",
+                      "controller": "self",
+                      "filter": {
+                        "name": "終焉魔剣 アクワルタ・グワルナフ"
+                      },
+                      "amount": 1,
+                      "require": true,
+                      "title": "終焉魔竜 アジ・ダハーカ",
+                      "lead": "装備する「終焉魔剣 アクワルタ・グワルナフ」を選んでください。"
+                    },
+                    {
+                      "op": "useSelectedCard",
+                      "var": "aqua",
+                      "payCost": false
+                    },
+                    {
+                      "op": "shuffleDeck"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0034",
+      "no": "D-SS01/0034",
+      "name": "双竜魔神 ザッハーク",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■このカードが登場した時、ライフ２を払ってよい。払ったら、君のデッキから「終焉魔竜 アジ・ダハーカ」か「ドラゴンスローン 竜の玉座」１枚までを手札に加え、君のデッキをシャッフルする。"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0034-enter-search",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 2
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "tutor",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "nameIn": [
+                  "終焉魔竜 アジ・ダハーカ",
+                  "ドラゴンスローン 竜の玉座"
+                ]
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "双竜魔神 ザッハーク",
+              "lead": "手札に加えるカードを選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "tutor",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を手札に加えました。"
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0035",
+      "no": "D-SS01/0035",
+      "name": "土豪竜神",
+      "type": "spell",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rules": [
+        "■相手にダメージ１！君のフラッグが「ドラゴン・アイン」なら、ゲージ１を払い、ライフ１を払ってよい。そうしたら、相手の場のモンスター１枚を破壊する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0035-dogou-ryuujin",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "flagNameIs",
+                "name": "ドラゴン・アイン"
+              },
+              "then": [
+                {
+                  "op": "chooseBranch",
+                  "title": "土豪竜神",
+                  "lead": "ゲージ１とライフ１を払って、相手の場のモンスター１枚を破壊しますか？",
+                  "options": [
+                    {
+                      "key": "pay",
+                      "label": "ゲージ１とライフ１を払って破壊する",
+                      "condition": {
+                        "op": "cardCount",
+                        "controller": "opponent",
+                        "pile": "field",
+                        "filter": {
+                          "cardType": "monster"
+                        },
+                        "cmp": "gte",
+                        "amount": 1
+                      },
+                      "script": [
+                        {
+                          "op": "payCost",
+                          "cost": [
+                            {
+                              "op": "payGauge",
+                              "amount": 1
+                            },
+                            {
+                              "op": "payLife",
+                              "amount": 1
+                            }
+                          ]
+                        },
+                        {
+                          "op": "selectCards",
+                          "var": "t",
+                          "from": "field",
+                          "controller": "opponent",
+                          "filter": {
+                            "cardType": "monster"
+                          },
+                          "amount": 1,
+                          "require": true,
+                          "title": "土豪竜神",
+                          "lead": "破壊する相手の場のモンスターを選んでください。"
+                        },
+                        {
+                          "op": "destroySelected",
+                          "var": "t"
+                        }
+                      ]
+                    },
+                    {
+                      "key": "skip",
+                      "label": "何もしない",
+                      "script": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0036",
+      "no": "D-SS01/0036",
+      "name": "アビス・オーラ",
+      "type": "spell",
+      "rarity": "",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rules": [
+        "■【対抗】バトルしている君の場の属性に「竜」か「ドラゴン」を含むモンスター１枚を選び、そのバトル中、攻撃力＋6000、防御力＋6000する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0036-abyss-aura",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "t",
+              "from": "field",
+              "controller": "self",
+              "onlyBattling": true,
+              "filter": {
+                "attributeIncludesAny": [
+                  "竜",
+                  "ドラゴン"
+                ]
+              },
+              "amount": 1,
+              "require": true,
+              "title": "アビス・オーラ",
+              "lead": "強化するバトル中の自分の場のモンスターを選んでください。"
+            },
+            {
+              "op": "modifySelectedStats",
+              "var": "t",
+              "power": 6000,
+              "defense": 6000,
+              "duration": "battle"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0037",
+      "no": "D-SS01/0037",
+      "name": "ドラゴンシールド 緑竜の盾",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "緑竜",
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】その攻撃を無効化し、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0037-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0038",
+      "no": "D-SS01/0038",
+      "name": "ドラゴンシールド 青竜の盾",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "青竜",
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】その攻撃を無効化し、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0038-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0039",
+      "no": "D-SS01/0039",
+      "name": "天竜開闢",
+      "type": "spell",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rules": [
+        "■【使用コスト】ライフ２を払う。",
+        "■カード２枚を引く。「天竜開闢」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payLife",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0039-draw2",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "tenryu-kaibyaku"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0040",
+      "no": "D-SS01/0040",
+      "name": "竜王伝",
+      "type": "spell",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rules": [
+        "■君のデッキの上から１枚をゲージに置き、君のライフを＋１し、カード１枚を引く。「竜王伝」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0040-gauge-life-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "ryuoden"
+          }
+        }
+      ],
+      "_note": "design.md指示通りlimit.key『ryuoden』を温存（カード名『竜王伝』を本文が引用する名称1ターン1回＝既存eb01-0016/bf-h-ss01-0038と同名共有）。"
+    },
+    {
+      "id": "bf-d-ss01-0041",
+      "no": "D-SS01/0041",
+      "name": "竜雲月露",
+      "type": "spell",
+      "rarity": "",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン",
+        "ドロー"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ２を払う。",
+        "■カード３枚を引き、手札２枚を捨てる。「竜雲月露」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0041-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 3
+            },
+            {
+              "op": "discardHand",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "ryuun-getsuro"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0042",
+      "no": "D-SS01/0042",
+      "name": "ドラゴンシールド 黒竜の盾",
+      "type": "spell",
+      "rarity": "",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜",
+        "防御"
+      ],
+      "rules": [
+        "■君がダメージを受ける時、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】そのダメージを０に減らし、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0042-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "pendingAttackDefenderIsSelf"
+                },
+                {
+                  "op": "pendingActionResponderIsSelf"
+                }
+              ]
+            }
+          ],
+          "effects": [
+            {
+              "op": "preventNextDamage"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0043",
+      "no": "D-SS01/0043",
+      "name": "ドラゴンスローン 竜の玉座",
+      "type": "spell",
+      "rarity": "",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rules": [
+        "■君のフラッグが「ドラゴン・アイン」なら使える。",
+        "■『設置』（このカードは場に置いて使う）",
+        "■君の場にサイズの合計が４になるまでモンスターを置ける。",
+        "■君の場のアイテムとこのカードは、場から手札に戻せず、破壊されない。",
+        "■このカードの能力は無効化されない。"
+      ],
+      "useConditions": [
+        {
+          "op": "flagNameIs",
+          "name": "ドラゴン・アイン"
+        }
+      ],
+      "keywords": [
+        "set"
+      ],
+      "uniqueSet": true,
+      "cannotReturnToHand": true,
+      "nullifyImmune": true,
+      "destroyImmunity": {
+        "fromEffect": true
+      },
+      "continuous": [
+        {
+          "op": "preventReturnToHand",
+          "controller": "self",
+          "filter": {
+            "cardType": "item"
+          }
+        },
+        {
+          "op": "grantFieldSizeLimit",
+          "amount": 1
+        },
+        {
+          "op": "grantDestroyImmunity",
+          "controller": "self",
+          "filter": {
+            "cardType": "item"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0044",
+      "no": "D-SS01/0044",
+      "name": "邪王竜剣 アクワルタ・グワルナフ",
+      "type": "item",
+      "rarity": "",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "武器"
+      ],
+      "power": 15000,
+      "critical": 2,
+      "rules": [
+        "■このカードは「終焉魔剣 アクワルタ・グワルナフ」としても扱う。",
+        "■このカードは、「終焉魔竜 アジ・ダハーカ」の能力以外で装備できない。",
+        "■このカードが１枚で攻撃しているなら、このカードの攻撃は無効化されない。",
+        "『２回攻撃』"
+      ],
+      "alsoNames": [
+        "終焉魔剣 アクワルタ・グワルナフ"
+      ],
+      "equipOnlyByAbility": true,
+      "keywords": [
+        "singleAttackCannotBeNullified",
+        "doubleAttack"
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0045",
+      "no": "D-SS01/0045",
+      "name": "終焉魔剣 アクワルタ・グワルナフ",
+      "type": "item",
+      "rarity": "",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "武器"
+      ],
+      "power": 12000,
+      "critical": 6,
+      "rules": [
+        "■このカードは、「終焉魔竜 アジ・ダハーカ」の能力以外で装備できない。",
+        "■このカードに攻撃されているモンスターの『ソウルガード』を、そのターン中、無効化する。",
+        "■【対抗】【起動】相手のカードが１枚で君を攻撃しているなら、その攻撃を無効化する。"
+      ],
+      "equipOnlyByAbility": true,
+      "abilities": [
+        {
+          "id": "bf-d-ss01-0045-soulguard-off",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "suppressAttackTargetKeyword",
+              "keyword": "soulguard"
+            }
+          ]
+        },
+        {
+          "id": "bf-d-ss01-0045-counter-nullify",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "attackingAlone"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-d-ss01-0046",
+      "no": "D-SS01/0046",
+      "name": "ドラゴン・アイン",
+      "type": "flag",
+      "rarity": "",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "君は属性に「竜」か「ドラゴン」を含むカードと〈ドラゴンW〉のカードを使える。",
+        "君の最初の手札は４枚、ゲージは２枚、ライフは12になる！"
+      ]
+    }
+  ]
+}
