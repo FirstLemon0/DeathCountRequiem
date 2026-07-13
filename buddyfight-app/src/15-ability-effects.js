@@ -803,14 +803,42 @@ async function executeAbilityEffect(effect, context) {
     player.lifeZeroSafeguard = { life: effect.life || 1, effects: effect.effects || null, owner: state.players.indexOf(player) };
     addLog(`${player.name}は次にライフが0になっても${effect.life || 1}で耐える構えをとった。`);
   }
+  if (effect.op === "addTurnFlagNameAlias") {
+    // E12(D-SS02/0005 未来占星術): 「そのターン中、君のフラッグは「X」と「Y」としても扱う」。
+    // owner のターン限定フラッグ名エイリアス集合へ追加する。state 常駐（クロージャ禁止）＝
+    // room復元/リプレイの規約どおり JSON 往復で保持。クリアは clearTurnModifiers（ターン終了）。
+    // 参照するのは flagNameIs 条件のみで、カード使用可否(canUseCardForFlag)には効かせない
+    //（公式注記「使えるワールドは変わらないぞ！！」）。names はフル表記（「レジェンドワールド」等）で
+    // 登録する＝既存 flagNameIs 値は全数フル表記（Ｗ略記の機械値は0件・grep済）なので直接比較で一致する。
+    state.turnFlagNameAliases ||= [[], []];
+    const aliasSet = state.turnFlagNameAliases[context.owner];
+    (effect.names || []).forEach((name) => {
+      if (name && !aliasSet.includes(name)) {
+        aliasSet.push(name);
+      }
+    });
+    addLog(`${player.name}のフラッグはそのターン中、${(effect.names || []).map((n) => `「${n}」`).join("と")}としても扱います。`);
+  }
   if (effect.op === "destroy") {
     // 統合形: target(単体) / scope(全体) / target:"$self"(自己) を1opに。
     // options(cause/ignoreSoulguard 等)で破壊耐性の挙動差を明示的に再現する。
     if (effect.scope) {
-      const scopeTargets = collectFieldTargets(
+      let scopeCandidates = collectFieldTargets(
         { scope: effect.scope, filter: effect.filter, zones: effect.zones, excludeSource: effect.excludeSource },
         context,
-      ).map((entry) => ({ owner: entry.owner, zone: entry.zone }));
+      );
+      // E11(D-BT03/0093 斬魔滅葬陣): targetStatLte={stat, amountFrom} で「<amountFrom の値>以下の
+      // <stat> を持つカードのみ」に動的絞り込み（「《武器》の攻撃力以下の防御力を持つモンスター全て」）。
+      // 閾値は破壊開始前に1回だけ resolveAmountFrom で確定し、比較は visible stat
+      // （destroyOpponentMonsterWithPowerLteOwnWeapon＝斬魔烈斬と同じ視点）。未指定は従来どおり。
+      if (effect.targetStatLte) {
+        const lteSpec = effect.targetStatLte;
+        const threshold = lteSpec.amountFrom ? resolveAmountFrom(lteSpec.amountFrom, context) : lteSpec.amount || 0;
+        scopeCandidates = scopeCandidates.filter(
+          (entry) => visibleFieldStat(entry.card, lteSpec.stat || "defense") <= threshold,
+        );
+      }
+      const scopeTargets = scopeCandidates.map((entry) => ({ owner: entry.owner, zone: entry.zone }));
       // 逐次破壊（順序・破壊時誘発キューの保持。並列化禁止）。
       let anyDestroyed = false;
       context.lastDestroyedCards = []; // 破壊できた実カード（amountFrom lastDestroyedStatSum 用。H-BT04/0068）
@@ -853,8 +881,11 @@ async function executeAbilityEffect(effect, context) {
       return matchesTargetFilter(card, owner, zone, effect.filter);
     }).map((candidate) => ({ owner: candidate.owner, zone: candidate.zone }));
     // 逐次破壊（順序・破壊時誘発キューの保持。並列化禁止）。
+    // E6(D-BT03/0026): destroy(scope) と同じく実破壊カードを記録（amountFrom lastDestroyedCount /
+    // lastDestroyedStatSum 用）。destroyAll+lastDestroyed* 同居の既存カードは0件（全数grep）＝挙動不変。
+    context.lastDestroyedCards = [];
     for (const candidate of destroyAllTargets) {
-      await destroyFieldCard(candidate.owner, candidate.zone, {
+      const destroyed = await destroyFieldCard(candidate.owner, candidate.zone, {
         cause: makeEffectCause(context, candidate.owner),
         // nullifyAbilities: 「場のモンスターの能力全てを無効化し…破壊する」(大魔法 ラグナロク 0030)。
         // 能力由来の防御(ソウルガード/破壊耐性/破壊置換)と破壊時誘発を一括で無効化してから破壊する。
@@ -865,6 +896,9 @@ async function executeAbilityEffect(effect, context) {
         // ライフリンクもキーワード能力なので「能力全て無効化してから破壊」では発動しない（ラグナロク）。
         suppressLifeLink: Boolean(effect.nullifyAbilities),
       });
+      if (destroyed) {
+        context.lastDestroyedCards.push(destroyed);
+      }
     }
   }
   if (effect.op === "moveTargetToDrop" && target?.card) {
@@ -2183,6 +2217,13 @@ function resolveAmountFrom(spec, context) {
     return 0;
   }
   const ownerOf = (controller) => (controller === "opponent" ? 1 - context.owner : context.owner);
+  if (spec.source === "scriptVar") {
+    // E2(D-BT03/0063 闘気暴走・0030 オウガ斬魔): payLifeChoose 等が context.vars[var] に格納した
+    // スカラー数値を参照する（「払ったライフの数値分」）。per 乗数対応（既定1）。
+    // 未設定/非数値は0（安全側・payLifeChoose が0払い時に必ず0を格納するため通常は数値）。
+    const value = context.vars?.[spec.var];
+    return (typeof value === "number" ? value : 0) * (spec.per ?? 1);
+  }
   if (spec.source === "selectedCardStat") {
     // script で選択した var のカードの visible stat（破壊直後のカードの打撃力参照などに使う）。
     const selected = scriptSelection({ var: spec.var }, context)[0]?.card;
@@ -2203,6 +2244,15 @@ function resolveAmountFrom(spec, context) {
     // 直前の destroy(scope) で破壊できたカード群の印字 stat 合計（「破壊した打撃力合計分ダメージ」H-BT04/0068）。
     // 破壊済み＝場を離れているため visible ではなく印字値を使う。
     return (context.lastDestroyedCards || []).reduce((sum, card) => sum + (card?.[spec.stat || "critical"] || 0), 0);
+  }
+  if (spec.source === "lastDestroyedCount") {
+    // E6(D-BT03/0026 ゼルホルス): 直前の destroy(scope)/destroyAll で「実際に破壊できた」枚数
+    //（「破壊した枚数分、相手にダメージ」）。破壊耐性・離場置換で破壊を免れた分は数えない
+    //（lastDestroyedCards に積まれない＝事前カウント近似との差分そのもの）。filter/per 対応（既定は全数×1）。
+    return (
+      (context.lastDestroyedCards || []).filter((card) => matchesCardFilter(card, spec.filter || {})).length *
+      (spec.per ?? 1)
+    );
   }
   if (spec.source === "fieldSoulCountSum") {
     // 自分（controller指定可）の場の全カードのソウル枚数合計（filter でソウル側を絞れる）。
@@ -2268,6 +2318,11 @@ function resolveAmountFrom(spec, context) {
     let count = 0;
     zones.forEach((zone) => {
       const card = state.players[owner]?.field?.[zone];
+      // E10(D-BT03/0091): excludeSource=発生源自身を数えない（「このカード以外の…1枚につき」。
+      // 条件op cardCount / 継続側 continuousFieldCardStatAmount と同型。未指定は従来どおり＝後方互換）。
+      if (spec.excludeSource && card && card.instanceId === context.card?.instanceId) {
+        return;
+      }
       if (card && matchesTargetFilter(card, owner, zone, spec.filter || {})) {
         count += 1;
       }

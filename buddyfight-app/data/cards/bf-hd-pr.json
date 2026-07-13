@@ -1074,6 +1074,631 @@
       ],
       "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/pr_0269.png",
       "generation": "DDD"
+    },
+    {
+      "id": "bf-d-ss02-0001",
+      "no": "D-SS02/0001",
+      "name": "空虚なる器 ゾディアック",
+      "type": "monster",
+      "world": "レジェンドW",
+      "worlds": [
+        "レジェンドW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "星",
+        "ネオドラゴン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、君のデッキの上から１枚をこのカードのソウルに入れる。",
+        "■このカードが攻撃した時、ライフ１を払ってよい。払ったら、君のフラッグが「レジェンドＷ」なら、場のモンスター１枚を手札に戻し、「スタードラゴンＷ」なら、場のモンスター１枚を破壊する。この能力は１ターンに１回だけ発動する。",
+        "■“グラビティレスト”相手の場にモンスターが登場した時、ゲージ１を払い、手札１枚を捨ててよい。そうしたら、そのモンスターをレストにする。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss02-0001-attack-flag-branch",
+          "kind": "triggered",
+          "event": "attack",
+          "optional": true,
+          "allowMissingTarget": true,
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-d-ss02-0001-attack-flag-branch"
+          },
+          "target": {
+            "type": "fieldCard",
+            "filter": {
+              "cardType": "monster"
+            },
+            "allowMissingTarget": true
+          },
+          "effects": [
+            {
+              "op": "returnToHand",
+              "target": "$target",
+              "conditions": [
+                {
+                  "op": "flagNameIs",
+                  "name": "レジェンドワールド"
+                }
+              ]
+            },
+            {
+              "op": "destroy",
+              "target": "$target",
+              "conditions": [
+                {
+                  "op": "flagNameIs",
+                  "name": "スタードラゴンワールド"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "bf-d-ss02-0001-gravity-rest",
+          "label": "グラビティレスト",
+          "kind": "triggered",
+          "event": "opponentEnter",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "enteredCardMatches",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "restTarget",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/dss_02_0001.png",
+      "generation": "DDD",
+      "_note": "D-SS02「創星の道標」フル実装時にエントリごと移設予定（公式レシピ201610先行単品収録・トラゴス方式=bf-d-ss01-0027 と同流儀）。フラッグ分岐の flagNameIs 値はフル表記「レジェンドワールド」「スタードラゴンワールド」（D-BT03 C4 翻訳規約）。グラビティレストは bf-d-bt03-0007 星神竜ゾディアックと同一能力（1ターン回数制限なし=原文通り）。"
+    },
+    {
+      "id": "bf-d-ss02-0009",
+      "no": "D-SS02/0009",
+      "name": "双子の星守り ジェミオス",
+      "type": "monster",
+      "world": "レジェンドW",
+      "attributes": [
+        "星"
+      ],
+      "rarity": "デッキ商品",
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "『２回攻撃』（このカードは１ターンに１回、攻撃した後スタンドできる）"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/dss_02_0009.png",
+      "generation": "DDD",
+      "_note": "D-SS02「創星の道標」フル実装時にエントリごと移設予定（公式レシピ201610先行単品収録）。"
+    },
+    {
+      "id": "bf-d-ss02-0003",
+      "no": "D-SS02/0003",
+      "name": "流星機 ネブローサ",
+      "type": "monster",
+      "world": "レジェンドW",
+      "worlds": [
+        "レジェンドW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "星",
+        "竜装機"
+      ],
+      "rarity": "デッキ商品",
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードがソウルにあるカード名に「ゾディアック」を含むモンスターが攻撃したバトルの終了時、そのターン中、そのカードは『２回攻撃』を得る。",
+        "『星合体』（場のこのカードを、君の場の《ネオドラゴン》のソウルに入れる）"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "soulAbilities": [
+        {
+          "id": "bf-d-ss02-0003-zodiac-host-double-attack",
+          "label": "流星機 ネブローサ(ソウル)",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "conditions": [
+            {
+              "op": "targetMatches",
+              "ref": "$self",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "ゾディアック"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "doubleAttack",
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss02-0003-star-merge",
+          "label": "星合体",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "星合体する《ネオドラゴン》",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ],
+      "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/dss_02_0003.png",
+      "generation": "DDD",
+      "_note": "D-SS02「創星の道標」フル実装時にエントリごと移設予定（公式レシピ201610先行単品収録）。「このカードがソウルにあるカード名に『ゾディアック』を含むモンスターが攻撃したバトルの終了時、そのターン中そのカードは『2回攻撃』を得る」は「ネブローサがゾディアック名モンスターのソウルにあるなら、そのホストが2回攻撃を得る」の意訳で、soulAbilities(event:battleEnd)＋targetMatches(ref:$self)＋grantKeyword($self)で表現（bf-h-ss01-0027 の event:attack+targetMatches ref:$self 前例と同型。hostMatches は使わない=このtriggered-from-soul経路はcontext.hostCardを設定しないため、hostMatches条件は常に偽になる）。実装に伴いエンジンを1件拡張: src/10-battle-resolve.js の queueBattleEndTriggers が card.abilities のみを見てソウル札の soulAbilities(event:battleEnd) を無視していたため、cardHasTriggeredListener(card,\"battleEnd\") に統一（queueDrewTriggers 等と同型の既存ヘルパー）。既存カードに soulAbilities+event:battleEnd の使用は0件のため後方互換（挙動不変）。"
+    },
+    {
+      "id": "bf-d-ss02-0004",
+      "no": "D-SS02/0004",
+      "name": "流星機 ピスカ・ピスカ",
+      "type": "monster",
+      "world": "レジェンドW",
+      "worlds": [
+        "レジェンドW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "星",
+        "竜装機"
+      ],
+      "rarity": "デッキ商品",
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■このカードが場かデッキかドロップゾーンからサイズ３の《ネオドラゴン》のソウルに入った時、君のデッキの上から１枚をゲージに置く。",
+        "『星合体』（場のこのカードを、君の場の《ネオドラゴン》のソウルに入れる）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss02-0004-entered-soul-gauge",
+          "kind": "triggered",
+          "event": "enteredSoul",
+          "fromZones": [
+            "field",
+            "deck",
+            "drop"
+          ],
+          "conditions": [
+            {
+              "op": "hostMatches",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン",
+                "sizeIn": [
+                  3
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-d-ss02-0004-star-merge",
+          "label": "星合体",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "星合体する《ネオドラゴン》",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ],
+      "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/dss_02_0004.png",
+      "generation": "DDD",
+      "_note": "D-SS02「創星の道標」フル実装時にエントリごと移設予定（公式レシピ201610先行単品収録）。enteredSoul の fromZones に \"deck\" を含める（putCardsToSoulWithTrigger は既に fromZone:\"deck\" 呼び出しの実例あり=src/15-ability-effects.js:366。星合体等で場/ドロップ経由のソウルインは既存 bf-pr-0186 竜装機タルナーダと同型、デッキ経由のみ本カードで追加確認）。hostMatches は enteredSoul 経路(queueEnteredSoulTriggers)が context.hostCard を明示的に渡すため素直に成立（0003ネブローサの soulAbilities/battleEnd 経路とは異なる）。"
+    },
+    {
+      "id": "bf-d-ss02-0006",
+      "no": "D-SS02/0006",
+      "name": "ディヴァイン・ガイダンス",
+      "type": "spell",
+      "world": "レジェンドW",
+      "worlds": [
+        "レジェンドW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "星",
+        "防御"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■相手のターンの攻撃中、君の場にカード名に「ゾディアック」を含むモンスターがいるなら使える。",
+        "■【対抗】その攻撃を無効化し、君のデッキの上から１枚をゲージに置き、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss02-0006-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "ゾディアック"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/dss_02_0006.png",
+      "generation": "DDD",
+      "_note": "D-SS02「創星の道標」フル実装時にエントリごと移設予定（公式レシピ201610先行単品収録）。「相手のターンの攻撃中…使える」は pendingAttackDefenderIsSelf 条件で表現（bf-d-ss01-0018/0019/0037/0038 ドラゴンシールド系と同型の防御魔法パターン）。"
+    },
+    {
+      "id": "bf-d-ss02-0005",
+      "no": "D-SS02/0005",
+      "name": "未来占星術",
+      "type": "spell",
+      "world": "レジェンドW",
+      "worlds": [
+        "レジェンドW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "星",
+        "ドロー"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■次の２つから１つを選んで使う。「未来占星術」は１ターンに１回だけ使える。",
+        "・ゲージ１を払う。払ったら、君の場に《星》があるなら、カード１枚を引き、君の場に《ネオドラゴン》があるなら、カード１枚を引く。",
+        "・【対抗】そのターン中、君のフラッグは「レジェンドワールド」と「スタードラゴンワールド」としても扱う。（使えるワールドは変わらないぞ！！）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-d-ss02-0005-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "dss02-mirai-senseijutsu"
+          },
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "ownFieldHasAttribute",
+                "attribute": "星"
+              },
+              "then": [
+                {
+                  "op": "draw",
+                  "amount": 1
+                }
+              ]
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "ownFieldHasAttribute",
+                "attribute": "ネオドラゴン"
+              },
+              "then": [
+                {
+                  "op": "draw",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "bf-d-ss02-0005-flag-alias",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "dss02-mirai-senseijutsu"
+          },
+          "effects": [
+            {
+              "op": "addTurnFlagNameAlias",
+              "names": [
+                "レジェンドワールド",
+                "スタードラゴンワールド"
+              ]
+            }
+          ]
+        }
+      ],
+      "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/dss_02_0005_2.png",
+      "generation": "DDD",
+      "_note": "D-SS02「創星の道標」フル実装時にエントリごと移設予定（公式レシピ201610先行単品収録・E12 addTurnFlagNameAlias の想定カード=_scratch/dbt03-engine-notes.md §E12）。imageUrl は別絵確認済みの dss_02_0005_2.png（0005.png ではない）。「次の2つから1つを選んで使う」は timing違い(main/counter)の2 abilities分割（D-BT03/0108 ジャックナイフ・ヒストリーと同型）。1ターン1回は limit.key 共有（kind:spell の手札発動はisHandCastLimitAbilityによりインスタンス分離をスキップするため shared:true 明記は不要=abilityLimitKey の仕様通り）。発見: 対抗のみ(timing:[\"counter\"])のabilityにconditionsが無いと、canUseCounterPlayCard（isCounterPlayTimingはmain等の通常フェイズでも真＝ドラゴエナジー等『いつでも対抗として使える』reversal系カード向けの先取り経路）がmain分岐より先にuseCardAction内で評価され、pendingAttack/pendingAction皆無のメインフェイズでも対抗分岐(alias)がヒットしてmain分岐(draw)を覆い隠すバグを実機テストで検出。D-BT03/0108のcounter能力はtarget:battleCard自体がpendingAttack必須(候補0で自動除外)のため無自覚に免れていたが、対象を取らない本カードのalias分岐は素通りしていた。conditions:[{op:\"pendingAttackDefenderIsSelf\"}]を追加してゲート（自分が防御側の対抗窓のみ）。engine自体は無改造（既存condition opの組み合わせのみ）。"
+    },
+    {
+      "id": "bf-d-ss02-0017",
+      "no": "D-SS02/0017",
+      "name": "星針剣 エストレーラ",
+      "type": "item",
+      "world": "レジェンドW",
+      "attributes": [
+        "星",
+        "武器"
+      ],
+      "rarity": "デッキ商品",
+      "power": 1000,
+      "critical": 1,
+      "rules": [
+        "■【装備コスト】ゲージ１を払い、ライフ１を払う。",
+        "■君の場にカード名に「ゾディアック」を含むモンスターがいるなら、君の場の元々のサイズが２以下の《星》のモンスター全てはサイズ０になる。",
+        "■このカードは君のセンターにモンスターがいても攻撃できる。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "星",
+            "baseSizeLte": 2
+          },
+          "size": -2,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "ゾディアック"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "canAttackWithCenter"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/dss_02_0017.png",
+      "generation": "DDD",
+      "_note": "D-SS02「創星の道標」フル実装時にエントリごと移設予定（公式レシピ201610先行単品収録）。「元々のサイズが2以下の《星》はサイズ0になる」は継続 modifyStats の size 負デルタ（baseSizeLte:2 filter・size:-2＝effectiveSizeがMath.max(0,...)で0クリップされるため元サイズ0/1/2いずれも0になる。bf-d-bt03-0109 初代騎士団長の剣と同型のcardCount条件ゲート）。"
+    },
+    {
+      "id": "bf-d-ss02-0028",
+      "no": "D-SS02/0028",
+      "name": "レッグブレード リジェクター",
+      "type": "item",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "星",
+        "武器"
+      ],
+      "rarity": "デッキ商品",
+      "power": 5000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■このカードが攻撃した時、君の場にサイズ３の《ネオドラゴン》がいるなら、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-ss02-0028-attack-gauge",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            },
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン",
+                "sizeIn": [
+                  3
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/dss_02_0028.png",
+      "generation": "DDD",
+      "_note": "D-SS02「創星の道標」フル実装時にエントリごと移設予定（公式レシピ201610先行単品収録）。"
     }
   ]
 }

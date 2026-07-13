@@ -389,7 +389,7 @@ function continuousFieldSoulStatAmount(effect, statKey, player) {
 // には既に実在するが、継続側にはこのヘルパーで配線する。controller は「発生源カードの所有者(sourceOwner)」
 // を基準に self/opponent を解決する（0028「お互いの場の《眼鏡》枚数分、打撃力+1」＝self枠とopponent枠の
 // 2本の継続を並べて表現）。属性は grantAttribute 付与込みの effectiveAttributes を見る matchesCardFilter。
-function continuousFieldCardStatAmount(effect, statKey, sourceOwner) {
+function continuousFieldCardStatAmount(effect, statKey, sourceOwner, sourceCard) {
   if (effect.op !== "modifyStats" || effect.amountFrom?.source !== "fieldCardCount") {
     return 0;
   }
@@ -402,6 +402,11 @@ function continuousFieldCardStatAmount(effect, statKey, sourceOwner) {
   let count = 0;
   zones.forEach((zone) => {
     const c = state.players[countOwner]?.field?.[zone];
+    // E10(D-BT03/0091 ビッグマミー): excludeSource=発生源自身を数えない（「このカード以外の…1枚につき」。
+    // 条件op cardCount の excludeSource と同型。未指定は従来どおり全数＝後方互換）。
+    if (af.excludeSource && c && c.instanceId === sourceCard?.instanceId) {
+      return;
+    }
     if (c && matchesCardFilter(c, af.filter || {})) {
       count += 1;
     }
@@ -410,6 +415,32 @@ function continuousFieldCardStatAmount(effect, statKey, sourceOwner) {
     count = Math.min(count, af.max);
   }
   return count * per;
+}
+
+// E8(D-BT03/0031 ケルベロス): 継続 modifyStats の amountFrom:{source:"fieldCardStat"} 分
+// （指定controllerの場の指定zone[既定item]の filter 一致カード1枚の visible stat × per[statKey]）。
+// 効果op側(resolveAmountFrom src/15)と同意味論で、継続なのでライブ参照（武器の打撃力変動に追随）。
+// 再帰安全性: 参照先カード(武器)の visible stat 評価が発生源の継続を再走査しても、
+// continuousEffectApplies の filter（sameInstanceAsSource 等）が武器自身に一致しなければこの
+// helper は呼ばれない（0031 は自己限定 filter＝安全）。参照先自身へ per を配る自己参照形
+// （武器が自分の stat 分自分を強化する等）は書かないこと（無限再帰）。メモ化は continuousStatBonus
+// の statMemoBegin/End スコープを共有（visibleFieldStat 内の effectiveSize/attributes 評価が同居可）。
+function continuousFieldCardStatValueAmount(effect, statKey, sourceOwner) {
+  if (effect.op !== "modifyStats" || effect.amountFrom?.source !== "fieldCardStat") {
+    return 0;
+  }
+  const af = effect.amountFrom;
+  const per = af.per?.[statKey] ?? 0;
+  if (!per) {
+    return 0;
+  }
+  const owner = af.controller === "opponent" ? 1 - sourceOwner : sourceOwner;
+  const zone = af.zone || "item";
+  const fieldCard = state.players[owner]?.field?.[zone];
+  if (!fieldCard || !matchesTargetFilter(fieldCard, owner, zone, af.sourceFilter || af.filter || {})) {
+    return 0;
+  }
+  return visibleFieldStat(fieldCard, af.stat || "power") * per;
 }
 
 // Z1(S-UB-C03/0095): 継続 modifyStats の amountFrom:{source:"buddyZoneCount"} 分
@@ -468,7 +499,8 @@ function continuousStatBonus(card, statKey) {
       bonus += continuousSoulStatAmount(effect, statKey, sourceCard);
       bonus += continuousSelfSizeAmount(effect, statKey, sourceCard); // X11a(D-BT01/0059)
       bonus += continuousFieldSoulStatAmount(effect, statKey, player);
-      bonus += continuousFieldCardStatAmount(effect, statKey, slot.owner);
+      bonus += continuousFieldCardStatAmount(effect, statKey, slot.owner, sourceCard);
+      bonus += continuousFieldCardStatValueAmount(effect, statKey, slot.owner); // E8(D-BT03/0031)
     });
   });
   // Z1(S-UB-C03/0095): フラッグの継続効果。フラッグは zones 走査に乗らない（player.field ではなく

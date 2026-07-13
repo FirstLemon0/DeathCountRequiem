@@ -803,6 +803,12 @@ function checkCondition(condition, owner, context = {}) {
   if (condition.op === "opponentLifeLte") {
     return opponent.life <= condition.amount;
   }
+  if (condition.op === "lifeDifferenceGte") {
+    // E9(D-BT03/0013 餓狼深気功): 「相手のライフが君のライフより amount 以上多いなら」＝
+    // (相手ライフ − 自ライフ) >= amount の相対差分条件（owner基準。既存 lifeLte/opponentLifeLte は
+    // 固定値比較のみで差分は表現不可だった）。効果列の途中で評価される場合は直前の増減を反映した現在値。
+    return opponent.life - player.life >= (condition.amount ?? 1);
+  }
   if (condition.op === "ownCenterEmpty") {
     return !player.field.center;
   }
@@ -908,7 +914,12 @@ function checkCondition(condition, owner, context = {}) {
     return count >= (condition.amount || 1);
   }
   if (condition.op === "flagNameIs") {
-    return state.players[owner]?.flag?.name === condition.name;
+    // E12(D-SS02/0005 未来占星術): ターン限定エイリアス（addTurnFlagNameAlias「フラッグは「X」としても扱う」）
+    // も真とする。エイリアスは flagNameIs 専用で、カード使用可否(canUseCardForFlag)には効かない。
+    return (
+      state.players[owner]?.flag?.name === condition.name ||
+      (state.turnFlagNameAliases?.[owner] || []).includes(condition.name)
+    );
   }
   if (condition.op === "ownHandCountGte") {
     return player.hand.length >= condition.amount;
@@ -1048,6 +1059,13 @@ function checkCondition(condition, owner, context = {}) {
     // G1(D-EB01/0050): 直前のミル(context.milled)に filter 一致カードが含まれるか
     //（「その中にモンスターがあるなら」）。context.movedToDrop（累積）ではなく最新ミルのみを見る。
     return (context.milled || []).some((card) => matchesCardFilter(card, condition.filter || {}));
+  }
+  if (condition.op === "milledMatchCountGte") {
+    // E7(D-BT03/0011/0051): 直前のミル(context.milled)に filter 一致カードが amount 枚以上あるか
+    //（「その中に…モンスター２枚以上があるなら」）。milledContains(1枚以上)の閾値一般形で、
+    // 文脈規約も同じ（movedToDrop 累積ではなく最新ミルのみ）。amount 省略時は1＝milledContains と同義。
+    const milledMatched = (context.milled || []).filter((card) => matchesCardFilter(card, condition.filter || {})).length;
+    return milledMatched >= (condition.amount ?? 1);
   }
   if (condition.op === "milledDistinctAttributeCountGte") {
     // G1(D-EB01/0029): 直前のミル(context.milled)に含まれるカードの「属性」の異なり数が amount 以上か

@@ -1564,6 +1564,7 @@ async function runEndTurnEffects(endingOwner) {
 function clearTurnModifiers() {
   state.spiritStrikeDamageBonus = [0, 0]; // 霊撃ブースト（ターンスコープ）をリセット
   state.callRestrictionsThisTurn = []; // X6(D-BT01/0064): ターン限定コール制限をリセット
+  state.turnFlagNameAliases = [[], []]; // E12(D-SS02/0005): ターン限定フラッグ名エイリアスをリセット
   // X11b(D-BT01/0131): ターンスコープのサイズ上書き(setConditionalSizeScope turnScoped)と
   // X19 ターン限定継続(turnContinuous)を解除。
   state.players.forEach((player) => {

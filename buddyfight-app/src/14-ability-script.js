@@ -314,6 +314,9 @@ async function executeAbilityScriptStep(step, context) {
   if (step.op === "payCost") {
     return payCostForScript(step, context);
   }
+  if (step.op === "payLifeChoose") {
+    return payLifeChooseForScript(step, context);
+  }
   if (step.op === "destroySelected") {
     return await destroySelectedForScript(step, context);
   }
@@ -1197,6 +1200,46 @@ async function payCostForScript(step, context) {
   return true;
 }
 
+// E2(D-BT03/0063 闘気暴走・0030 牙槍斧 オウガ斬魔): 「ライフを好きなだけ／N まで払う」→
+// 払った数値を後続効果（putTopDeckToGauge / modifyStats 等）が amountFrom:{source:"scriptVar", var}
+// で参照する汎用op。max: 数値（例 5）or "life"（現ライフ＝「好きなだけ」）。実効上限は「ライフを0以下には
+// できない」規則で life-1 に丸める（既存 payLife コストの canPay 判定 src/04「life>amount」＝0063 の
+// 「君のライフ以上は払えないぞ！」と同義）。0 払い可（「好きなだけ」「払ってよい」は0を含む・両カードとも任意）。
+// 支払額を context.vars[step.var] にスカラーで格納。選択は既存コスト選択と同じ chooseCardEntries 往復
+// （promptSeat＝能力主体席・リプレイ決定的）。
+async function payLifeChooseForScript(step, context) {
+  const owner = context.owner;
+  const player = state.players[owner];
+  const varName = step.var || "paidLife";
+  context.vars = context.vars || {};
+  const rawMax = step.max === "life" ? player.life : Math.max(0, Math.floor(Number(step.max) || 0));
+  const cap = Math.max(0, Math.min(rawMax, player.life - 1)); // ライフ0にはできない（払える上限＝life-1）
+  if (cap <= 0) {
+    context.vars[varName] = 0; // 払える額が無い＝0払い（後続の amountFrom は0＝no-op）
+    return true;
+  }
+  const options = [];
+  for (let n = 0; n <= cap; n += 1) {
+    options.push({ amount: n, card: { name: `${n}`, rules: [], type: "choice" }, note: "" });
+  }
+  const selected = await chooseCardEntries(options, {
+    title: step.title || `${context.card?.name || "効果"}：支払うライフ`,
+    lead: step.lead || `払うライフの数値を選んでください（0〜${cap}）。`,
+    min: 1,
+    max: 1,
+    forceDialog: true,
+    promptSeat: owner, // 能力主体の席へ（権威サーバ/CPU の誤配送防止）
+    purpose: "cost", // CPU対戦(src/22): コスト選択（最小価値方針）
+  });
+  const paid = Math.max(0, Math.min(cap, selected?.[0]?.amount ?? 0));
+  player.life -= paid;
+  context.vars[varName] = paid;
+  if (paid > 0) {
+    addLog(`${player.name}は${context.card?.name || "効果"}でライフを${paid}払いました。`);
+  }
+  return true;
+}
+
 async function moveSelectedToDeckBottomOrderedForScript(step, context) {
   const selected = Array.isArray(step.vars)
     ? step.vars.flatMap((varName) => scriptSelection({ var: varName }, context))
@@ -1992,8 +2035,14 @@ async function selectZoneForScript(step, context) {
 
 // preventCallFromZone 継続（ゲート・オブ・ドラゴン 0033「君と相手はドロップからサイズ1以下のモンスターをコールできない」）。
 // 場札(設置含む)の継続に op:preventCallFromZone があり、fromZone(既定drop)一致・filter一致なら true。
+// E5(D-BT03/0072 竜装機デブリスィーパー): 場札の continuous に加えて、ホストのソウル内カードの
+// soulContinuous も畳む（星合体「このカードがソウルにあるなら、相手はドロップからコールできない」。
+// ソウルから出れば host.soul から外れて自然に解ける）。走査は soulContinuousGrantsOp と同型で、
+// 能力無効化・filter・conditions は continuousEffectAppliesFromSoul（filter は「コールされるカード」
+// に適用）。controller は "opponent"=ホスト持ち主の相手のコールのみ封じる／"self"=自分のみ／
+// 未指定=両者（場側 consumer の既定と同じ）。hostOnly は本 op では非該当（場の対象カードが無い）。
 function isCallFromZoneRestricted(owner, card, fromZone) {
-  return state.players.some((player) =>
+  const fieldRestricted = state.players.some((player) =>
     zones.some((zone) => {
       const source = player.field[zone];
       return (activeContinuousEffects(source) || []).some((effect) => {
@@ -2005,6 +2054,33 @@ function isCallFromZoneRestricted(owner, card, fromZone) {
           return false;
         }
         return matchesCardFilter(card, effect.filter || {});
+      });
+    }),
+  );
+  if (fieldRestricted) {
+    return true;
+  }
+  return state.players.some((player, hostOwner) =>
+    zones.some((zone) => {
+      const host = player.field[zone];
+      return soulContinuousEffects(host, hostOwner).some(({ effect, sourceCard }) => {
+        if (effect.op !== "preventCallFromZone") {
+          return false;
+        }
+        if ((effect.fromZone || "drop") !== fromZone) {
+          return false;
+        }
+        // hostFilter: 「《ネオドラゴン》のソウルにあるなら」等、乗っているホスト側の限定（0072）。
+        if (effect.hostFilter && !matchesCardFilter(host, effect.hostFilter)) {
+          return false;
+        }
+        if (effect.controller === "opponent" && owner === hostOwner) {
+          return false;
+        }
+        if (effect.controller === "self" && owner !== hostOwner) {
+          return false;
+        }
+        return continuousEffectAppliesFromSoul(effect, card, sourceCard, hostOwner);
       });
     }),
   );

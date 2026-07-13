@@ -298,6 +298,39 @@ function applicableAttackResistances(attackers = []) {
         });
       });
     });
+    // E5(D-BT03/0038 剣星機 J・ギャラクシオン): ホストのソウル内カードの soulContinuous
+    // grantAttackResistance も収集する（星合体「ソウルにこのカードがあるモンスターが1枚で攻撃している
+    // 攻撃は無効化されない」）。走査は soulContinuousGrantsOp と同型: 能力無効化・filter（attacker に
+    // 適用）・conditions は continuousEffectAppliesFromSoul、hostOnly=ホスト自身が攻撃者の時のみ、
+    // controller 既定は self（ホスト持ち主側の攻撃者のみ・soulContinuousGrantsOp の既定と同じ）。
+    state.players.forEach((player, hostOwner) => {
+      zones.forEach((zone) => {
+        const host = player.field[zone];
+        soulContinuousEffects(host, hostOwner).forEach(({ effect, sourceCard }) => {
+          if (effect.op !== "grantAttackResistance") {
+            return;
+          }
+          if (effect.hostOnly && host?.instanceId !== card.instanceId) {
+            return;
+          }
+          // hostFilter: 乗っているホスト側の限定（「「ジャックナイフ」を含む必殺モンスターのソウルにある…」0038。
+          // hostOnly と併用すると「ホスト自身が攻撃者かつホストが filter 一致」の二重ゲート）。
+          if (effect.hostFilter && !matchesCardFilter(host, effect.hostFilter)) {
+            return;
+          }
+          if (effect.controller === "opponent" && atk.owner === hostOwner) {
+            return;
+          }
+          if ((!effect.controller || effect.controller === "self") && atk.owner !== hostOwner) {
+            return;
+          }
+          if (!continuousEffectAppliesFromSoul(effect, card, sourceCard, hostOwner)) {
+            return;
+          }
+          entries.push({ effects: effect.effects || ["nullify"], filter: effect.sourceFilter || {} });
+        });
+      });
+    });
   });
   return entries;
 }
@@ -462,10 +495,14 @@ function finishPendingAttack(outcome = {}) {
 }
 
 // このカードのバトル終了時(攻撃が無効化されず解決した後)の triggered 能力を発火する。
+// listener 検出は cardHasTriggeredListener に統一（自身の abilities に加え、ソウル札の soulAbilities も見る。
+// D-SS02/0003 流星機ネブローサ「ホストが攻撃したバトル終了時、ホストは２回攻撃を得る」等・queueDrewTriggers と同型）。
+// 旧実装は card.abilities のみを見ていたため、ソウル札発の battleEnd 誘発が queue 前に取りこぼされていた
+// （既存カードに soulAbilities+event:battleEnd の使用は0件＝この拡張で挙動が変わる既存カードは無い）。
 function queueBattleEndTriggers(attackerSlots) {
   attackerSlots.forEach((slot) => {
     const card = state.players[slot.owner]?.field?.[slot.zone];
-    if (!card || !(card.abilities || []).some((ability) => ability.kind === "triggered" && ability.event === "battleEnd")) {
+    if (!card || !cardHasTriggeredListener(card, "battleEnd")) {
       return;
     }
     const attackerInstanceId = card.instanceId;
