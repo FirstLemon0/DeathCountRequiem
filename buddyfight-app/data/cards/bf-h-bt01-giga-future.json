@@ -3825,9 +3825,9 @@
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
-            "zone": "center",
             "filter": {
-              "cardType": "monster"
+              "cardType": "monster",
+              "zone": "center"
             }
           },
           "effects": [
@@ -5417,6 +5417,266 @@
           "effects": [
             {
               "op": "nullifyAttack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-bt01-s001",
+      "no": "H-BT01/S001",
+      "name": "五角竜王 天武",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/hbt_01_s001.png",
+      "altArtOf": "bf-h-bt01-0002",
+      "_note": "究極レア別絵再録（基カード=bf-h-bt01-0002・能力同一）",
+      "rules": [
+        "『角王』(このカードは全てのフラッグで使える。君のフラッグがドラゴンＷ以外なら、「五角竜王 天武」はデッキに１枚しか入れることができない)",
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが登場した時、相手の場のモンスター全てを破壊する！"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "ドラゴンW",
+        "awayMaxCopies": 1
+      },
+      "size": 3,
+      "power": 6000,
+      "critical": 3,
+      "defense": 6000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-h-bt01-0002-enter",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "destroyAll",
+              "controller": "opponent",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-bt01-s002",
+      "no": "H-BT01/S002",
+      "name": "紅蓮闘士 ドラムバンカー・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/hbt_01_s002.png",
+      "altArtOf": "bf-h-bt01-0021",
+      "_note": "究極レア別絵再録（基カード=bf-h-bt01-0021・能力同一）",
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、君のデッキの上から１枚をこのカードのソウルに入れる。",
+        "■君がカード名に「拳」を含むカードを装備しているなら、このカードは『貫通』を得る。",
+        "『ソウルガード』"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 3,
+      "defense": 2000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "filter": {
+                "nameIncludes": "拳"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-bt01-s003",
+      "no": "H-BT01/S003",
+      "name": "BP デッカー・ドラム",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/hbt_01_s003.png",
+      "altArtOf": "bf-h-bt01-0034",
+      "_note": "究極レア別絵再録（基カード=bf-h-bt01-0034・能力同一）",
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■【起動】ゲージ２を払う。払ったら、相手の場のモンスター１枚を破壊する。この能力は１ターンに１回だけ使える。"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 3,
+      "defense": 5000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-bt01-0034-destroy",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-bt01-0034-destroy"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-bt01-s004",
+      "no": "H-BT01/S004",
+      "name": "爆逮 ランペイジソニック",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/hbt_01_s004.png",
+      "altArtOf": "bf-h-bt01-0035",
+      "_note": "究極レア別絵再録（基カード=bf-h-bt01-0035・能力同一）",
+      "rules": [
+        "『変身』〔ゲージ１を払う〕（そうしたら、手札かモンスタースペースのこのカードを装備し、装備されたこのカードはモンスターではなくアイテムとして扱う）"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 3,
+      "defense": 3000,
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-h-bt01-0035-ride-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-bt01-0035-ride-field",
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
             }
           ]
         }

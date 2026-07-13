@@ -153,7 +153,16 @@ function isAbilitiesNullified(card) {
       });
     }),
   );
-  return fieldNullified || isNullifiedByBattlingHostSoul(card);
+  return fieldNullified || isNullifiedByBattlingHostSoul(card) || isNullifiedByTurnEffect(card);
+}
+
+// E2(D-SS03/0010 ドラゴンフォース・キャンセル): nullifyFieldAbilities 効果op が積んだ
+// ターン限定の全体能力無効化。発動時点で記録した対象カードの instanceId 集合（state.turnNullifies）に
+// card が含まれれば無効化。集合走査のみで matchesCardFilter/継続走査を再入しない（無限再帰リスク無し）。
+// 既存カードは nullifyFieldAbilities 未使用＝turnNullifies 常時空＝挙動完全不変。
+function isNullifiedByTurnEffect(card) {
+  if (!card || !state?.turnNullifies?.length) return false;
+  return state.turnNullifies.some((entry) => (entry.instanceIds || []).includes(card.instanceId));
 }
 
 // Z10: card(cardOwner側) が、nullifierOwner側のカードとバトル中（pendingAttackの攻撃側/防御側の対応関係）にあるか。

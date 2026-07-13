@@ -3671,6 +3671,263 @@
       "inheritSoulAbilities": {
         "label": "爆雷"
       }
+    },
+    {
+      "id": "bf-h-eb03-s001",
+      "no": "H-EB03/S001",
+      "name": "百鬼将 イヨノラセツリュウ",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "百鬼"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_03_s001.png",
+      "altArtOf": "bf-h-eb03-0001",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb03-0001・能力同一）",
+      "size": 3,
+      "power": 7000,
+      "critical": 1,
+      "defense": 7000,
+      "rules": [
+        "■君のドロップゾーンに《武装騎竜》か《百鬼》が合計10枚以上があるなら、場のこのカードの『ライフリンク』を無効化する。",
+        "■【対抗】【起動】君のターン中、君の場の《武装騎竜》か《百鬼》１枚をドロップゾーンに置く。置いたら、このカードを【スタンド】する。この能力は１ターンに１回だけ使える。",
+        "『３回攻撃』『ライフリンク３』"
+      ],
+      "keywords": [
+        "tripleAttack",
+        "lifeLink3"
+      ],
+      "continuous": [
+        {
+          "op": "nullifyLifeLink",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "ownDropAttributeSumCountGte",
+              "attributes": [
+                "武装騎竜",
+                "百鬼"
+              ],
+              "amount": 10
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0001-stand",
+          "kind": "activated",
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "cost": [
+            {
+              "op": "dropOwnFieldCard",
+              "amount": 1,
+              "filter": {
+                "attributeIncludesAny": [
+                  "武装騎竜",
+                  "百鬼"
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0001-stand"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-s002",
+      "no": "H-EB03/S002",
+      "name": "百鬼将 ギシンギュウキ",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "髑髏武者",
+        "百鬼"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_03_s002.png",
+      "altArtOf": "bf-h-eb03-0002",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb03-0002・能力同一）",
+      "size": 3,
+      "power": 10000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■【起動】このカードが君のドロップゾーンにあるなら、ライフ１を払い、君の場の《髑髏武者》か《百鬼》１枚をドロップゾーンに置く。そうしたら、ドロップゾーンのこのカードを【コールコスト】を払ってコールする。",
+        "『２回攻撃』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0002-revive",
+          "kind": "activated",
+          "fromDropZone": true,
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "drop"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            },
+            {
+              "op": "dropOwnFieldCard",
+              "amount": 1,
+              "filter": {
+                "attributeIncludesAny": [
+                  "髑髏武者",
+                  "百鬼"
+                ]
+              }
+            }
+          ],
+          "script": [
+            {
+              "op": "selectZone",
+              "var": "z",
+              "emptyOnly": true
+            },
+            {
+              "op": "callSelfFromHand",
+              "zoneVar": "z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb03-s003",
+      "no": "H-EB03/S003",
+      "name": "百鬼将 ブライデン",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー",
+        "百鬼"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_03_s003.png",
+      "altArtOf": "bf-h-eb03-0003",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb03-0003・能力同一）",
+      "size": 3,
+      "power": 8000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■【対抗】【起動】“我、参上！”君のターン中、君の場の《ダークヒーロー》か《百鬼》１枚をドロップゾーンに置いてよい。置いたら、手札のこのカードを【コールコスト】を払って、コールする。「我、参上！」は１ターンに１回だけ使える。",
+        "■このカードが攻撃したバトルの終了時、このカードを君の手札に戻す。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb03-0003-sanjo",
+          "label": "我、参上！",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "optional": true,
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "cost": [
+            {
+              "op": "dropOwnFieldCard",
+              "amount": 1,
+              "filter": {
+                "attributeIncludesAny": [
+                  "ダークヒーロー",
+                  "百鬼"
+                ]
+              }
+            }
+          ],
+          "script": [
+            {
+              "op": "selectZone",
+              "var": "z",
+              "emptyOnly": true
+            },
+            {
+              "op": "callSelfFromHand",
+              "zoneVar": "z"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb03-0003-sanjo"
+          }
+        },
+        {
+          "id": "bf-h-eb03-0003-battleend-return",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "effects": [
+            {
+              "op": "returnToHand",
+              "target": "$self"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

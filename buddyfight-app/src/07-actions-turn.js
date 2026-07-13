@@ -167,11 +167,45 @@ function recordCardCalledThisTurn(owner, card) {
 // 必殺モンスター(DDD)のコール可否（共通ゲート）。「必殺モンスターは1ターンに1枚、君の
 // ファイナルフェイズにのみコールできる」（カード注記）は、通常コール・バディコール・特殊コール・
 // 効果によるコール（src/14 の callSelected 系）の全てに掛かる。非 impactMonster は常に許可（既存挙動不変）。
+// E3(D-SS03/0020 革命者 ゼータ・0028/0029 ジェムクローン): 必殺モンスターの「1ターンに1枚」コール上限を
+// データ駆動で引き上げる。既定 cap=1（＝従来の `< 1` と完全に等価＝挙動不変）。場札/装備アイテムの継続
+// raiseImpactCallCap（controller/conditions 走査＝restrictOwnCall と同流儀）を反映する。
+//  - unlimited:true → Infinity（ゼータは equipSelf でアイテム化し、装備中の継続 raiseImpactCallCap{unlimited:true}
+//    で自席の必殺コールが無制限になる。ジェムクローンの手札必殺 重ねコール連鎖も同ゲート解放で通る）。
+//  - それ以外 → amount(既定1) を加算。
+// raiseImpactCallCap を持つ既存カードは0件（新op）＝常に cap=1＝後方互換。
+// F1(D-SS03/0028・0029 ジェムクローン): stackOnly:true の cap 解放は「重ねコール(stackCallSelected)判定のみ」に
+// 効かせる。通常/バディ/効果コールの必殺 cap には効かない（原文に「1ターンに何回でもコール」文は無く、ゼータ0020
+// だけが無制限＝stackOnly 無しで全コールに効く）。呼び出し側が options.stackCall=true を渡した時のみ stackOnly を算入。
+function impactCallCap(owner, options = {}) {
+  let cap = 1;
+  state.players.forEach((player, pIdx) => {
+    zones.forEach((zone) => {
+      const source = player.field[zone];
+      activeContinuousEffects(source).forEach((effect) => {
+        if (effect.op !== "raiseImpactCallCap") return;
+        if (effect.controller === "self" && pIdx !== owner) return;
+        if (effect.controller === "opponent" && pIdx === owner) return;
+        // stackOnly は重ねコール判定(options.stackCall)でのみ算入する。通常コール経路では無視＝cap 据え置き。
+        if (effect.stackOnly && !options.stackCall) return;
+        // context に owner/zone を渡し、発生源基準の条件（sourceZoneIn:["item"] 等＝ゼータ「変身中のみ」）を正しく評価する。
+        if (effect.conditions?.length && !checkCardConditions(effect.conditions, pIdx, { card: source, zone, owner: pIdx })) return;
+        if (effect.unlimited) {
+          cap = Infinity;
+        } else if (cap !== Infinity) {
+          cap += effect.amount ?? 1;
+        }
+      });
+    });
+  });
+  return cap;
+}
+
 function impactMonsterCallAllowed(owner, card, options = {}) {
   if (card?.type !== "impactMonster") {
     return true;
   }
-  const underPerTurnLimit = (state.impactMonsterCallsThisTurn?.[owner] || 0) < 1;
+  const underPerTurnLimit = (state.impactMonsterCallsThisTurn?.[owner] || 0) < impactCallCap(owner, options);
   // 0008 デュエルズィーガー等: カード自身の特殊コール文（「〜が破壊された時…コールしてよい」）が成立している
   // 場合は、必殺モンスター一般注記の「自分のファイナルフェイズのみ」ゲートを免除する（カードテキスト優先原則。
   // ライフリンク相殺の逆転コールは相手ターンの破壊で窓が開くため）。1ターン1枚の上限カウンタは維持する。

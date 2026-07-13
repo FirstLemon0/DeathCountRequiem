@@ -6381,6 +6381,315 @@
       "rules": [
         "このファイターはスタードラゴンWのカードを使う。"
       ]
+    },
+    {
+      "id": "bf-h-bt04-s001",
+      "no": "H-BT04/S001",
+      "name": "五角超竜王 カイザー・ドラム",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/hbt_04_s001.png",
+      "altArtOf": "bf-h-bt04-0001",
+      "_note": "究極レア別絵再録（基カード=bf-h-bt04-0001・能力同一）",
+      "size": 2,
+      "power": 10000,
+      "critical": 3,
+      "defense": 5000,
+      "rules": [
+        "『角王』",
+        "■【コールコスト】ゲージ２を払い、このカードを君の場のカード名に「ドラム」を含むモンスター１枚の上に重ねる。",
+        "■“固い絆”君のライフが０になるなら、このカードのソウル１枚を捨ててよい。捨てたら、君のライフは１になる。",
+        "■君のアタックフェイズ開始時、相手の場のカード１枚を破壊する。",
+        "『ソウルガード』"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "ドラゴンW",
+        "awayMaxCopies": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callStack": {
+        "nameIncludes": "ドラム"
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "lifeZeroReplacement": {
+        "soulCost": {
+          "amount": 1
+        },
+        "life": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-bt04-0001-attack-start-destroy",
+          "kind": "triggered",
+          "event": "attackStart",
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {}
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-bt04-s002",
+      "no": "H-BT04/S002",
+      "name": "八角神王 グランガデス",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン",
+        "神"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/hbt_04_s002.png",
+      "altArtOf": "bf-h-bt04-0003",
+      "_note": "究極レア別絵再録（基カード=bf-h-bt04-0003・能力同一）",
+      "size": 3,
+      "power": 10000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "『角王』（このカードは全てのフラッグで使える。君のフラッグが以外なら、「八角神王 グランガデス」はデッキに１枚しか入れることができない）",
+        "■【コールコスト】ゲージ４を払う。",
+        "■このカードが登場した時、君のデッキの上から３枚をこのカードのソウルに入れる。",
+        "『移動』『２回攻撃』『ソウルガード』『ライフリンク３』"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "デンジャーW",
+        "awayMaxCopies": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 4
+          }
+        ]
+      },
+      "keywords": [
+        "move",
+        "doubleAttack",
+        "soulguard",
+        "lifeLink3"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-bt04-0003-enter-soul",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "putTopDeckToSoul",
+              "amount": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-bt04-s003",
+      "no": "H-BT04/S003",
+      "name": "黙示録の第一騎士 グラトス",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒騎士",
+        "深淵",
+        "百鬼"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/hbt_04_s003.png",
+      "altArtOf": "bf-h-bt04-0006",
+      "_note": "究極レア別絵再録（基カード=bf-h-bt04-0006・能力同一）",
+      "size": 2,
+      "power": 7000,
+      "critical": 3,
+      "defense": 2000,
+      "rules": [
+        "■【コールコスト】ゲージ３を払い、君のドロップゾーンの《黒騎士》３枚までをこのカードのソウルに入れる。このカードがバディモンスターなら、さらに２枚までをソウルに入れる。",
+        "■【対抗】【起動】相手の場のモンスター１枚を選び、このカードのソウルを、選んだモンスターのサイズの数値分以上、デッキの下に好きな順番で置いてよい。そうしたら、そのモンスターを破壊する。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          },
+          {
+            "op": "putDropToSoul",
+            "filter": {
+              "attribute": "黒騎士"
+            },
+            "amount": 3,
+            "min": 0
+          },
+          {
+            "op": "putDropToSoul",
+            "filter": {
+              "attribute": "黒騎士"
+            },
+            "amount": 2,
+            "min": 0,
+            "conditions": [
+              {
+                "op": "sourceIsBuddy"
+              }
+            ]
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-bt04-0006-soul-release-destroy",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "s",
+              "from": "soul",
+              "amount": 1,
+              "minFrom": {
+                "source": "targetStat",
+                "stat": "size"
+              },
+              "max": 99,
+              "require": false,
+              "title": "黙示録の第一騎士 グラトス",
+              "lead": "このカードのソウルを、選んだモンスターのサイズの数値分以上、好きな順番でデッキの下に置きます。",
+              "emptyMessage": "このカードのソウルを置きませんでした。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "s",
+              "then": [
+                {
+                  "op": "moveSelectedToDeckBottomOrdered",
+                  "var": "s",
+                  "log": "{cards}を好きな順番でデッキの下に置きました。"
+                },
+                {
+                  "op": "destroy",
+                  "target": "$target"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-bt04-s004",
+      "no": "H-BT04/S004",
+      "name": "闇荒御魂 オオヤミゲドウ",
+      "type": "monster",
+      "world": "-",
+      "attributes": [
+        "百鬼"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/hbt_04_s004.png",
+      "altArtOf": "bf-h-bt04-0008",
+      "_note": "究極レア別絵再録（基カード=bf-h-bt04-0008・能力同一）",
+      "size": 3,
+      "power": 8000,
+      "critical": 2,
+      "defense": 8000,
+      "rules": [
+        "■【コールコスト】ゲージ３を払い、君の場の《百鬼》のモンスター１枚以上をこのカードのソウルに入れる。",
+        "■“爆雷”相手がカードを引いた時、君のライフが６以下なら、相手にダメージ１！",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "callConditions": [
+        {
+          "op": "ownFieldCardExists",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "百鬼"
+          }
+        }
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          },
+          {
+            "op": "putSelectedOwnFieldCardsToSoul",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "百鬼"
+            },
+            "min": 1,
+            "max": 99
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-bt04-0008-bakurai",
+          "label": "爆雷",
+          "kind": "triggered",
+          "event": "opponentDrew",
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 6
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        }
+      ]
     }
   ]
 }

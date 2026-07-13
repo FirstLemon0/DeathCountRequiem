@@ -4342,6 +4342,289 @@
           ]
         }
       ]
+    },
+    {
+      "id": "bf-h-eb04-s001",
+      "no": "H-EB04/S001",
+      "name": "ドラムバンカー・ドラゴン “SD”",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_04_s001.png",
+      "altArtOf": "bf-h-eb04-0005",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb04-0005・能力同一）",
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■“明日に向かってGO！”君の場にカード名に「ドラム」を含むモンスターが登場した時、このカードが君のドロップゾーンにあるなら、ゲージ１を払ってよい。払ったら、ドロップゾーンにあるこのカードを、そのカードのソウルに入れるか、コールする。「明日に向かってGO！」は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0005-ashita-ni-mukatte-go",
+          "label": "明日に向かってGO！",
+          "kind": "triggered",
+          "event": "allyEnter",
+          "triggerZones": [
+            "drop"
+          ],
+          "fromDropZone": true,
+          "optional": true,
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "drop"
+              ]
+            },
+            {
+              "op": "enteredCardMatches",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "ドラム"
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0005-ashita-ni-mukatte-go"
+          },
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "ドラムバンカー・ドラゴン “SD”",
+              "lead": "ドロップゾーンにあるこのカードを、そのカードのソウルに入れるか、コールするか選んでください。",
+              "options": [
+                {
+                  "key": "soul",
+                  "label": "そのカードのソウルに入れる",
+                  "script": [
+                    {
+                      "op": "moveSelfToTargetSoul",
+                      "target": "$target"
+                    }
+                  ]
+                },
+                {
+                  "key": "call",
+                  "label": "コールする",
+                  "script": [
+                    {
+                      "op": "selectZone",
+                      "var": "z",
+                      "emptyOnly": true
+                    },
+                    {
+                      "op": "callSelfFromHand",
+                      "zoneVar": "z"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-s002",
+      "no": "H-EB04/S002",
+      "name": "オレ分身の術！アスモダイ",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_04_s002.png",
+      "altArtOf": "bf-h-eb04-0002",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb04-0002・能力同一）",
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【対抗】【起動】“オレ分身の術！”君のターン中、場のこのカードをドロップゾーンに置いてよい。置いたら、君のドロップゾーンのカード名に「アスモダイ」を含むモンスター１枚を【コールコスト】を払ってコールする。「オレ分身の術！」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0002-bunshin",
+          "label": "オレ分身の術！",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "optional": true,
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "cost": [
+            {
+              "op": "dropSource"
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "アスモダイ"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "オレ分身の術！",
+              "lead": "コールする、ドロップゾーンのカード名に「アスモダイ」を含むモンスターを選んでください。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "call",
+              "payCost": "call",
+              "resolveOnEnter": true
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-s003",
+      "no": "H-EB04/S003",
+      "name": "進化の胎動 ヤミゲドウ",
+      "type": "monster",
+      "world": "-",
+      "attributes": [
+        "百鬼"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_04_s003.png",
+      "altArtOf": "bf-h-eb04-0012",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb04-0012・能力同一）",
+      "size": 0,
+      "power": 1000,
+      "critical": 0,
+      "defense": 1000,
+      "rules": [
+        "■【対抗】【起動】君のファイナルフェイズ中、君のデッキからサイズ３のカード名に「ヤミゲドウ」を含むモンスター１枚までを、【コールコスト】を払ってコールし、デッキをシャッフルする。この能力は１ターンに１回だけ使える。",
+        "■“爆雷”相手の場のアイテムが攻撃した時、このカードがモンスターのソウルにあるなら、相手にダメージ１！この能力は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0012-final-call",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "phaseIs",
+              "phase": "final"
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ],
+                "nameIncludes": "ヤミゲドウ"
+              },
+              "amount": 1,
+              "min": 0,
+              "max": 1,
+              "require": false,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "進化の胎動 ヤミゲドウ",
+              "lead": "デッキからコールするサイズ３の「ヤミゲドウ」を１枚まで選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "call",
+              "then": [
+                {
+                  "op": "selectZone",
+                  "var": "z",
+                  "cardVar": "call",
+                  "emptyOnly": true
+                },
+                {
+                  "op": "payCardCostForSelection",
+                  "var": "call",
+                  "purpose": "call"
+                },
+                {
+                  "op": "callSelected",
+                  "var": "call",
+                  "zoneVar": "z",
+                  "resolveOnEnter": true
+                }
+              ]
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0012-final-call"
+          }
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "bf-h-eb04-0012-bakurai",
+          "label": "爆雷",
+          "kind": "triggered",
+          "event": "opponentAttack",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "item"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0012-bakurai"
+          }
+        }
+      ]
     }
   ]
 }

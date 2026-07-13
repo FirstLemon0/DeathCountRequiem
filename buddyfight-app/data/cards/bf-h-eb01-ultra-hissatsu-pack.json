@@ -3656,6 +3656,212 @@
           ]
         }
       ]
+    },
+    {
+      "id": "bf-h-eb01-s001",
+      "no": "H-EB01/S001",
+      "name": "アーマナイト・イブリース",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_01_s001.png",
+      "altArtOf": "bf-h-eb01-0006",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb01-0006・能力同一）",
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、君のデッキの上から１枚をこのカードのソウルに入れる。",
+        "■君の《武器》のソウルが３枚以上なら、このカードは『貫通』を得る。５枚以上なら、さらにこのカードの打撃力を＋１！",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 5000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "ownItemSoulCountGte",
+              "attribute": "武器",
+              "amount": 3
+            }
+          ]
+        },
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "ownItemSoulCountGte",
+              "attribute": "武器",
+              "amount": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb01-s002",
+      "no": "H-EB01/S002",
+      "name": "伝説の救世主 タスク",
+      "type": "monster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者",
+        "勇者",
+        "ドラゴン"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_01_s002.png",
+      "altArtOf": "bf-h-eb01-0003",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb01-0003・能力同一）",
+      "rules": [
+        "■このカードが登場した時、君のデッキの上から１枚をゲージに置き、君のライフを＋１する。",
+        "■このカードのバトル終了時、このカードをドロップゾーンに置く。"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000,
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb01-0003-enter",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb01-0003-battle-end",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "effects": [
+            {
+              "op": "dropSelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb01-s003",
+      "no": "H-EB01/S003",
+      "name": "フェニックス・ラジエーション！",
+      "type": "impact",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者",
+        "Dエネミー"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_01_s003_w.png",
+      "altArtOf": "bf-h-eb01-0028",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb01-0028・能力同一）",
+      "rules": [
+        "■君のライフが５以下で、君の場に《Dエネミー》のモンスターがいて、君が《冒険者》のアイテムを装備しているなら使える。",
+        "■【使用コスト】ゲージ３を払う。",
+        "■相手の場のモンスター全てを破壊し、相手にダメージ３！！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 3
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb01-0028-impact",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 5
+            },
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "Dエネミー"
+              }
+            },
+            {
+              "op": "ownItemHasAttribute",
+              "attribute": "冒険者"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 3
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroyAll",
+              "controller": "opponent",
+              "filter": {
+                "cardType": "monster"
+              }
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 3
+            }
+          ]
+        }
+      ]
     }
   ]
 }

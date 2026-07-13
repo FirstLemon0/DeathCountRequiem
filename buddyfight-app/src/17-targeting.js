@@ -311,6 +311,12 @@ function matchesCardFilter(card, filter = {}, options = {}) {
   if (filter.cardType && !cardTypeMatches(card, filter.cardType)) {
     return false;
   }
+  // F2(D-SS03/0011): cardTypeNot — 印字(raw)の card.type と一致するカードを除外する。effectiveCardType の
+  // 正規化(impactMonster→monster)を通さないため「必殺モンスター以外」を cardTypeNot:"impactMonster" で表現できる
+  // （cardType:"monster" では impactMonster も monster に正規化されて含まれてしまう）。
+  if (filter.cardTypeNot && card.type === filter.cardTypeNot) {
+    return false;
+  }
   // X18(D-BT01/0027): 『角王』を持つカード = deckAnyFlag:true（角王アイコンの内部表現。builder と同じ判定）。
   if (filter.deckAnyFlag !== undefined && Boolean(card.deckAnyFlag) !== Boolean(filter.deckAnyFlag)) {
     return false;

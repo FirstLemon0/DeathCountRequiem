@@ -4399,6 +4399,291 @@
           ]
         }
       ]
+    },
+    {
+      "id": "bf-h-eb02-s001",
+      "no": "H-EB02/S001",
+      "name": "RDリーダー イモータルスピリット",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー",
+        "ドラゴン"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_02_s001.png",
+      "altArtOf": "bf-h-eb02-0005",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb02-0005・能力同一）",
+      "size": 3,
+      "power": 8000,
+      "critical": 1,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードの攻撃で相手のモンスターを破壊した時、カード１枚を引く。",
+        "『２回攻撃』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0005-draw",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-s002",
+      "no": "H-EB02/S002",
+      "name": "影雄 シュヴァルツ",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_02_s002.png",
+      "altArtOf": "bf-h-eb02-0003",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb02-0003・能力同一）",
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、手札の《ダークヒーロー》１枚を捨てる。",
+        "■“ダム・ストライク”このカードが登場した時、相手の場のモンスター１枚を破壊する。",
+        "■このカードのバトル終了時、このカードを君の手札に戻す！"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "discardHand",
+            "amount": 1,
+            "filter": {
+              "attribute": "ダークヒーロー"
+            }
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0003-dam-strike",
+          "kind": "triggered",
+          "event": "enter",
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0003-battle-end-return",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "effects": [
+            {
+              "op": "returnToHand",
+              "target": "$self"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-s003",
+      "no": "H-EB02/S003",
+      "name": "RD ジャスティス・ドラム",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー",
+        "ドラゴン"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_02_s003.png",
+      "altArtOf": "bf-h-eb02-0004",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb02-0004・能力同一）",
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードの攻撃で相手のモンスターを破壊した時、君が『変身』しているなら、このカードを【スタンド】する。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0004-stand",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "filter": {
+                "keyword": "henshin"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-s004",
+      "no": "H-EB02/S004",
+      "name": "激炎特捜 プロミネンスバースト",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_02_s004.png",
+      "altArtOf": "bf-h-eb02-0008",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb02-0008・能力同一）",
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■君の場の《ヒーロー》のモンスターの攻撃で相手のモンスターを破壊した時、そのターン中、このカードの打撃力を＋１！！（何回でも発動するぜ！！）",
+        "『変身』〔ゲージ１を払う〕"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "keywords": [
+        "henshin"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0008-hero-crit",
+          "kind": "triggered",
+          "event": "allyAttackDestroyed",
+          "conditions": [
+            {
+              "op": "eventAttackersMatch",
+              "filter": {
+                "attribute": "ヒーロー",
+                "cardType": "monster"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "critical": 1,
+              "duration": "turn"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0008-henshin-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0008-henshin-field",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

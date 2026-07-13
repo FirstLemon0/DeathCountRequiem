@@ -845,25 +845,7 @@
         "■カード２枚を引く。「スンベル・ガルド」は１ターンに１回だけ使える。"
       ],
       "flavor": "飲み、踊り、語り合おう。生きている事は素晴らしい。",
-      "costs": {
-        "cast": [
-          {
-            "op": "payGauge",
-            "amount": 1,
-            "conditions": [
-              {
-                "op": "not",
-                "condition": {
-                  "op": "ownDropHasCard",
-                  "filter": {
-                    "nameIncludes": "ブレッフェン・ガルド"
-                  }
-                }
-              }
-            ]
-          }
-        ]
-      },
+      "_note": "F8: dead costs.cast(payGauge1条件付き)を除去。エンジンは abilityCostSteps=ability.cost||card.costs[purpose] で ability.cost 側のみ課金するため costs.cast は未消費の重複掲載だった（挙動不変の清掃）。【使用コスト】の課金は ability.cost が担う。F7: named-once『スンベル・ガルド』は版間合算のため limit.key を『bt04-0016-draw』（原初印字の本キー）に統一し、再録 bf-d-ss02-0015 も同キーを共有（そろそろ本気0032の版間共有と同方式）。",
       "abilities": [
         {
           "id": "bt04-0016-draw",

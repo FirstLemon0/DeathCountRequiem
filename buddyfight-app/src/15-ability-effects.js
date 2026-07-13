@@ -483,6 +483,22 @@ async function executeAbilityEffect(effect, context) {
       rest.forEach((c) => player.deck.unshift(c));
     }
     addLog(`${context.card.name}の効果でデッキの上${revealed.length}枚を見て${picked.length}枚を手札に加えました。`);
+    // F4(D-SS03/0001): discardOnPick:N — 手札に加えた枚数が1以上のときのみ、解決後に手札N枚を選んで捨てる。
+    // 「加えたら、君の手札1枚を捨てる」の再出パターン（0枚しか加えなかった/あえて0枚選んだ場合は捨てない）。
+    if (effect.discardOnPick && picked.length > 0) {
+      const discardCount = Math.min(effect.discardOnPick, player.hand.length);
+      if (discardCount > 0) {
+        const discarded = await chooseAndTakeMatchingCards(player.hand, {}, discardCount, context.card, {
+          title: `${context.card.name}で捨てる手札`,
+          lead: `手札から捨てるカードを${discardCount}枚選んでください。`,
+          promptSeat: context.owner,
+        });
+        discardHandCardsToDrop(player, discarded);
+        if (discarded.length > 0) {
+          addLog(`${player.name}は${discarded.map((c) => c.name).join("、")}を捨てました。`);
+        }
+      }
+    }
   }
   if (effect.op === "revealTopDamagePerMatchRestToBottom") {
     const count = effect.count || 5;
@@ -793,6 +809,12 @@ async function executeAbilityEffect(effect, context) {
         }
       }
       await equipCardDirect(player, source, { byEffect: true });
+      // E3(D-SS03/0020 ゼータ『必殺変身』): 「装備したら『変身』しているアイテムとして扱い、ファイナル
+      // フェイズ中にも攻撃できる」。装備先に grantedFinalPhaseAttack を立てる（src/09 canDeclareAttackInFinal が参照。
+      // 場を離れると resetLeftFieldCardState でクリア）。既定（オプション無し）は従来どおり非設定＝挙動不変。
+      if (effect.grantFinalPhaseAttack) {
+        source.grantedFinalPhaseAttack = true;
+      }
       context.cardMoved = true;
     }
   }
@@ -818,6 +840,33 @@ async function executeAbilityEffect(effect, context) {
       }
     });
     addLog(`${player.name}のフラッグはそのターン中、${(effect.names || []).map((n) => `「${n}」`).join("と")}としても扱います。`);
+  }
+  if (effect.op === "nullifyFieldAbilities") {
+    // E2(D-SS03/0010 ドラゴンフォース・キャンセル): 「そのターン中、相手の場のモンスター全ての能力を無効化する」。
+    // 魔法発＝場にホストが残らないため、発動時点で filter/controller に一致するカードの instanceId 集合を記録し、
+    // state.turnNullifies へ積む。isAbilitiesNullified がこの集合も走査して能力を無効化する。
+    //  - 「発動時点の場のモンスター全て」＝以後に登場したモンスターは対象外（instanceId 集合を固定するため自動的に非対象）。
+    //  - 対象カードが場を離れて別カードに置換されても、instanceId で固定するので別カードを誤って無効化しない。
+    //  - state 常駐（クロージャ禁止）＝room-store 復元/リプレイの JSON 往復で維持。クリアは clearTurnModifiers（ターン終了）。
+    // 既存カードで使用0件（新op）＝turnNullifies は常に空＝挙動完全不変。
+    const sides = effect.controller === "opponent" ? [opponent]
+      : effect.controller === "self" ? [player]
+      : [player, opponent];
+    const ids = [];
+    sides.forEach((pl) => {
+      if (!pl) return;
+      zones.forEach((zone) => {
+        const c = pl.field[zone];
+        if (c && matchesCardFilter(c, effect.filter || {})) {
+          ids.push(c.instanceId);
+        }
+      });
+    });
+    if (ids.length) {
+      state.turnNullifies ||= [];
+      state.turnNullifies.push({ instanceIds: ids });
+      addLog(`${context.card?.name || player.name}の効果で、そのターン中${ids.length}体のモンスターの能力を無効化しました。`);
+    }
   }
   if (effect.op === "destroy") {
     // 統合形: target(単体) / scope(全体) / target:"$self"(自己) を1opに。
@@ -903,8 +952,13 @@ async function executeAbilityEffect(effect, context) {
   }
   if (effect.op === "moveTargetToDrop" && target?.card) {
     const ownerPlayer = state.players[target.owner];
+    const leaveCause = makeEffectCause(context, target.owner);
     // E2(D-EB02/0031): 相手効果で場を離れる際、対象側の離場置換（バリア発動！等）が庇えば場に残す。
-    if (!(fieldHasLeaveFieldReplacer(target.owner) && (await applyAllyLeaveFieldReplacement(target.card, target.owner, makeEffectCause(context, target.owner))))) {
+    // E4(D-SS03/0029): 対象のソウル内カードによる離場置換（バリアブル・ビット）も同様に庇える。
+    if (!(
+      (fieldHasLeaveFieldReplacer(target.owner) && (await applyAllyLeaveFieldReplacement(target.card, target.owner, leaveCause))) ||
+      (soulHasLeaveFieldReplacer(target.card) && (await applySoulLeaveFieldReplacement(target.card, target.owner, leaveCause)))
+    )) {
       const moved = dropFieldCardByRule(ownerPlayer, target.zone);
       if (moved) {
         addLog(`${context.card.name}の効果で${moved.name}をドロップゾーンに置きました。`);
@@ -914,9 +968,14 @@ async function executeAbilityEffect(effect, context) {
   if (effect.op === "returnToHand" && target) {
     // Z14(b)(S-UB-C03/0017): 「君のカードの効果で」判定用の returnCause を伝播する。
     // E2(D-EB02/0031): 相手効果による手札戻しも離場置換の対象。庇えたら戻さず場に残す。
+    // E4(D-SS03/0029): 対象のソウル内カードによる離場置換（バリアブル・ビット）も庇える。
     const returnTargetCard = target.card || state.players[target.owner]?.field?.[target.zone];
-    if (!(fieldHasLeaveFieldReplacer(target.owner) && (await applyAllyLeaveFieldReplacement(returnTargetCard, target.owner, makeEffectCause(context, target.owner))))) {
-      returnFieldTargetToHand(target, context.card.name, { returnCause: makeEffectCause(context, target.owner) });
+    const leaveCause = makeEffectCause(context, target.owner);
+    if (!(
+      (fieldHasLeaveFieldReplacer(target.owner) && (await applyAllyLeaveFieldReplacement(returnTargetCard, target.owner, leaveCause))) ||
+      (soulHasLeaveFieldReplacer(returnTargetCard) && (await applySoulLeaveFieldReplacement(returnTargetCard, target.owner, leaveCause)))
+    )) {
+      returnFieldTargetToHand(target, context.card.name, { returnCause: leaveCause });
     }
   }
   if (effect.op === "dischargeSelfFromHostSoul" && context.card && context.hostCard) {
@@ -1441,8 +1500,13 @@ async function executeAbilityEffect(effect, context) {
   }
   if (effect.op === "putTargetToGauge" && target?.card) {
     const ownerPlayer = state.players[target.owner];
+    const leaveCause = makeEffectCause(context, target.owner);
     // E2(D-EB02/0031): 相手効果によるゲージ送りも離場置換の対象。庇えたら送らず場に残す。
-    if (!(fieldHasLeaveFieldReplacer(target.owner) && (await applyAllyLeaveFieldReplacement(target.card, target.owner, makeEffectCause(context, target.owner))))) {
+    // E4(D-SS03/0029): 対象のソウル内カードによる離場置換（バリアブル・ビット）も庇える。
+    if (!(
+      (fieldHasLeaveFieldReplacer(target.owner) && (await applyAllyLeaveFieldReplacement(target.card, target.owner, leaveCause))) ||
+      (soulHasLeaveFieldReplacer(target.card) && (await applySoulLeaveFieldReplacement(target.card, target.owner, leaveCause)))
+    )) {
       const moved = putFieldCardToGauge(ownerPlayer, target.zone);
       if (moved) {
         addLog(`${context.card.name}の効果で${moved.name}をゲージに置きました。`);

@@ -335,6 +335,10 @@ async function destroyFieldCard(owner, zone, options = {}) {
   if (!options.ignoreDestroyReplacement && fieldHasLeaveFieldReplacer(owner) && (await applyAllyLeaveFieldReplacement(card, owner, options.cause))) {
     return null;
   }
+  // E4(D-SS03/0029 バリアブル・ビット): ソウル内カードによる離場置換（破壊=戦闘/効果をカバー。from 無しで全離場）。
+  if (!options.ignoreDestroyReplacement && soulHasLeaveFieldReplacer(card) && (await applySoulLeaveFieldReplacement(card, owner, options.cause))) {
+    return null;
+  }
   if (!options.ignoreDestroyReplacement && card.preventNextDestroyCount > 0) {
     card.preventNextDestroyCount -= 1;
     const replacement = card.preventNextDestroyEffects?.shift();
@@ -632,6 +636,94 @@ async function applyAllyLeaveFieldReplacement(card, owner, cause) {
     }
   }
   return false;
+}
+
+// E4 高速ゲート: 場を離れようとする card 自身のソウルに soulLeaveFieldReplacement を持つカードが
+// 1枚でもあるか(同期・軽量)。これを満たす時だけ async の applySoulLeaveFieldReplacement を await する。
+// 持たない場合(既存の全カード=使用0件)は await を挿さず従来のマイクロタスク順序を厳密に保つ。
+function soulHasLeaveFieldReplacer(card) {
+  return Array.isArray(card?.soul) && card.soul.some((soulCard) => soulCard?.soulLeaveFieldReplacement);
+}
+
+// E4(D-SS03/0029「ジェムクローン "バリアブル・ビット"」): ソウル内カードによる離場置換。
+// 「このカードがソウルにある必殺モンスターが場から離れる場合、ソウルのこのカードをドロップに置いてよい。
+// 置いたら、そのカードを場に残す」。場を離れようとする card(ホスト) のソウルに soulLeaveFieldReplacement を持つ
+// カード(replacer)があれば、その replacer(ソウルの当該1枚) を身代わりにドロップへ置き、ホストを場に残す。
+// ally 版(applyAllyLeaveFieldReplacement)が「場の別カードが庇う」のに対し、こちらは「ホスト自身のソウルに
+// 埋まった別カードが身代わりになる」。破壊(戦闘/効果)・バウンス・ゲージ送り・ドロップ送り全ての離場をカバー
+// (既定 from フィルタ無し)。1離場につきソウル1枚消費(成立で即帰り)、別々の離場イベントなら残る replacer で連続置換可。
+// rule は単体でも配列でも可。任意(既定 optional)。
+async function applySoulLeaveFieldReplacement(card, owner, cause) {
+  if (!card || !Array.isArray(card.soul) || card.soul.length === 0 || card.__soulLeaveReplacementResolving) {
+    return false;
+  }
+  const player = state.players[owner];
+  if (!player) {
+    return false;
+  }
+  // 二重プロンプト/二重消費防止(X9 tryLeaveFieldReplacement 同様): 同一ホストへの並行離場で再入させない。
+  card.__soulLeaveReplacementResolving = true;
+  try {
+    for (const replacer of [...card.soul]) {
+      const rules = replacer?.soulLeaveFieldReplacement;
+      if (!rules || isAbilitiesNullified(replacer)) {
+        continue;
+      }
+      for (const rule of Array.isArray(rules) ? rules : [rules]) {
+        // hostFilter: 庇う対象ホストの絞り。0029 は「ソウルにある“必殺モンスター”が離れる場合」なので
+        // {cardType:"impactMonster"}（稀に非必殺モンスターのソウルへ入った場合は発動しない=原文どおり）。
+        if (rule.hostFilter && !matchesCardFilter(card, rule.hostFilter)) {
+          continue;
+        }
+        if (rule.from) {
+          if (rule.from.byBattle && !cause?.byBattle) continue;
+          if (rule.from.byEffect && !cause?.byEffect) continue;
+          if (rule.from.byOpponent && !cause?.byOpponent) continue;
+        }
+        // 追加コスト(既定=無し。replacer 自身のドロップ送りがコスト本体)。
+        const cost = adjustedCostSteps(player, replacer, "leaveFieldReplacement", rule.cost || []);
+        if (cost.length && !canPayStructuredCost(player, cost, { sourceCard: replacer, selectedCard: replacer }).ok) {
+          continue;
+        }
+        if (rule.optional !== false) {
+          const answer = await confirmChoiceAsync(
+            owner,
+            `${replacer.name}をドロップに置いて${card.name}を場に残しますか？`,
+            { purpose: "soul-leavefield-replacement", yesLabel: "ソウルを置いて場に残す", noLabel: "場を離れる" },
+          );
+          if (!answer) {
+            continue;
+          }
+        }
+        // TOCTOU 再検証: await(確認)中にホストが既に場を離れ/別カードに差し替わっていないか、replacer が
+        // まだこのソウルに居るかを再確認する。差し替わっていたら誤発動しない(過去 destroyFieldCard の
+        // player.field[zone] !== card ガードと同趣旨)。
+        const slot = findFieldCardSlot(card);
+        if (!slot || slot.owner !== owner) {
+          return false; // ホストが場に居ない=既に離場済み。庇う対象が無い。
+        }
+        const idx = card.soul.indexOf(replacer);
+        if (idx < 0) {
+          continue; // replacer が既に消費/移動済み。
+        }
+        if (cost.length) {
+          const paid = payStructuredCost(player, cost, { sourceCard: replacer, selectedCard: replacer });
+          if (!paid.ok) {
+            continue;
+          }
+        }
+        card.soul.splice(idx, 1);
+        putCardsToDropWithTrigger(player, owner, [replacer], "soul");
+        // ホスト存命のままソウル1枚がドロップへ → soulCardDropped 誘発(整合)。
+        queueSoulCardDroppedTriggers(card, owner, 1);
+        addLog(`${replacer.name}をドロップに置いて${card.name}は場に残りました。`);
+        return true;
+      }
+    }
+    return false;
+  } finally {
+    card.__soulLeaveReplacementResolving = false;
+  }
 }
 
 async function applyDestroyReplacement(card, owner, options = {}) {
@@ -1565,6 +1657,7 @@ function clearTurnModifiers() {
   state.spiritStrikeDamageBonus = [0, 0]; // 霊撃ブースト（ターンスコープ）をリセット
   state.callRestrictionsThisTurn = []; // X6(D-BT01/0064): ターン限定コール制限をリセット
   state.turnFlagNameAliases = [[], []]; // E12(D-SS02/0005): ターン限定フラッグ名エイリアスをリセット
+  state.turnNullifies = []; // E2(D-SS03/0010): ターン限定の全体能力無効化(nullifyFieldAbilities)をリセット
   // X11b(D-BT01/0131): ターンスコープのサイズ上書き(setConditionalSizeScope turnScoped)と
   // X19 ターン限定継続(turnContinuous)を解除。
   state.players.forEach((player) => {

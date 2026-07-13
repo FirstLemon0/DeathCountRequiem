@@ -5761,10 +5761,10 @@
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
-            "zone": "center",
             "allowMissingTarget": true,
             "filter": {
-              "cardType": "monster"
+              "cardType": "monster",
+              "zone": "center"
             }
           },
           "effects": [
@@ -5976,9 +5976,9 @@
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
-            "zone": "center",
             "filter": {
-              "cardType": "monster"
+              "cardType": "monster",
+              "zone": "center"
             }
           },
           "effects": [
@@ -6074,9 +6074,9 @@
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
-            "zone": "center",
             "filter": {
-              "cardType": "monster"
+              "cardType": "monster",
+              "zone": "center"
             },
             "allowMissingTarget": true
           },
@@ -7966,6 +7966,299 @@
       "rules": [
         "■君は属性に「竜」か「ドラゴン」を含むモンスターを使える。",
         "■君の最初の手札は４枚、ゲージは２枚、ライフは20になる！"
+      ]
+    },
+    {
+      "id": "bf-d-bt03-s001",
+      "no": "D-BT03/S001",
+      "name": "ドラゴンフォース(ドラゴンワールド)",
+      "type": "item",
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/dbt_03_s001.png",
+      "altArtOf": "bf-d-bt03-0001",
+      "_note": "究極レア別絵再録（基カード=bf-d-bt03-0001・能力同一）",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜",
+        "武器"
+      ],
+      "power": 5000,
+      "critical": 2,
+      "rules": [
+        "■『解放条件！』〔君のライフが６以下で、君の場にカード名に「バルドラゴン」を含むモンスターがいる〕",
+        "■【装備コスト】ゲージ２を払う。",
+        "■このカードが他の《太陽竜》と連携攻撃した時、このカードをスタンドする。",
+        "■場のこのカードは破壊されず、手札に戻せず、能力は無効化されず、このカードはファイナルフェイズ中にも攻撃できる。"
+      ],
+      "equipConditions": [
+        {
+          "op": "lifeLte",
+          "amount": 6
+        },
+        {
+          "op": "ownFieldCardExists",
+          "filter": {
+            "nameIncludes": "バルドラゴン",
+            "cardType": "monster"
+          }
+        }
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-bt03-0001-link-stand",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            },
+            {
+              "op": "pendingAttackIncludesOtherMatching",
+              "filter": {
+                "attribute": "太陽竜"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ]
+        }
+      ],
+      "cannotBeNullified": true,
+      "cannotReturnToHand": true,
+      "destroyImmunity": [
+        {
+          "from": {
+            "byBattle": true
+          }
+        },
+        {
+          "from": {
+            "byEffect": true
+          }
+        }
+      ],
+      "canAttackInFinalPhase": true
+    },
+    {
+      "id": "bf-d-bt03-s002",
+      "no": "D-BT03/S002",
+      "name": "バルドラゴン “バルソーサー・オーバーラッシュ！”",
+      "type": "impactMonster",
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/dbt_03_s002.png",
+      "altArtOf": "bf-d-bt03-0002",
+      "_note": "究極レア別絵再録（基カード=bf-d-bt03-0002・能力同一）",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "size": 2,
+      "power": 11000,
+      "critical": 1,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】君の場の《太陽竜》のモンスター１枚をドロップゾーンに置き、ゲージ２を払う。",
+        "■【対抗】【起動】君が《太陽竜》のアイテムを装備しているなら、ゲージ１を払ってよい。払ったら、このカードをスタンドする。",
+        "『貫通』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "dropOwnFieldCard",
+            "filter": {
+              "attribute": "太陽竜",
+              "cardType": "monster"
+            },
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-d-bt03-0002-counter-stand",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownItemHasAttribute",
+              "attribute": "太陽竜"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "penetrate"
+      ]
+    },
+    {
+      "id": "bf-d-bt03-s003",
+      "no": "D-BT03/S003",
+      "name": "ドラゴンフォース(スタードラゴンワールド)",
+      "type": "item",
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/dbt_03_s003.png",
+      "altArtOf": "bf-d-bt03-0005",
+      "_note": "究極レア別絵再録（基カード=bf-d-bt03-0005・能力同一）",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "武器"
+      ],
+      "power": 6000,
+      "critical": 1,
+      "rules": [
+        "■『解放条件！』〔君のライフが６以下で、君の場にカード名に「ジャックナイフ」を含むモンスターがいる〕",
+        "■【装備コスト】ゲージ２を払う。",
+        "■場のこのカードは破壊されず、手札に戻せず、能力は無効化されない。",
+        "『４回攻撃』"
+      ],
+      "equipConditions": [
+        {
+          "op": "lifeLte",
+          "amount": 6
+        },
+        {
+          "op": "ownFieldCardExists",
+          "filter": {
+            "nameIncludes": "ジャックナイフ",
+            "cardType": "monster"
+          }
+        }
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "cannotBeNullified": true,
+      "cannotReturnToHand": true,
+      "destroyImmunity": [
+        {
+          "from": {
+            "byBattle": true
+          }
+        },
+        {
+          "from": {
+            "byEffect": true
+          }
+        }
+      ],
+      "keywords": [
+        "quadrupleAttack"
+      ]
+    },
+    {
+      "id": "bf-d-bt03-s004",
+      "no": "D-BT03/S004",
+      "name": "ジャックナイフ “ギャラクティカル・パニッシャー！”",
+      "type": "impactMonster",
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/dbt_03_s004.png",
+      "altArtOf": "bf-d-bt03-0006",
+      "_note": "究極レア別絵再録（基カード=bf-d-bt03-0006・能力同一）",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "size": 2,
+      "power": 10000,
+      "critical": 3,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ３を払い、このカードを君の場の《ネオドラゴン》のモンスター１枚の上に重ねる。",
+        "■このカードが登場した時、君のドロップゾーンのカード１枚までを、このカードのソウルに入れる。",
+        "■このカードが１枚で攻撃しているなら、このカードが相手に与えるダメージは減らない。",
+        "『貫通』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callStack": {
+        "attribute": "ネオドラゴン"
+      },
+      "abilities": [
+        {
+          "id": "bf-d-bt03-0006-enter-soul",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "soul",
+              "from": "drop",
+              "controller": "self",
+              "filter": {},
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "ジャックナイフ “ギャラクティカル・パニッシャー！”",
+              "lead": "このカードのソウルに入れるドロップゾーンのカード１枚を選んでください（入れなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "soul",
+              "to": "soul",
+              "require": false,
+              "log": "{cards}をこのカードのソウルに入れました。"
+            }
+          ]
+        }
+      ],
+      "attackResistances": [
+        {
+          "conditions": [
+            {
+              "op": "attackingAlone"
+            }
+          ],
+          "filter": {},
+          "effects": [
+            "reduce"
+          ]
+        }
+      ],
+      "keywords": [
+        "penetrate",
+        "soulguard"
       ]
     }
   ]

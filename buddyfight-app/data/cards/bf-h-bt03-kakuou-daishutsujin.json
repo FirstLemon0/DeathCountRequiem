@@ -7482,6 +7482,216 @@
       "rules": [
         "■君はとのカードを使える。"
       ]
+    },
+    {
+      "id": "bf-h-bt03-s001",
+      "no": "H-BT03/S001",
+      "name": "二角魔王 アスモダイ",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "72柱",
+        "魔王"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/hbt_03_s001.png",
+      "altArtOf": "bf-h-bt03-0003",
+      "_note": "究極レア別絵再録（基カード=bf-h-bt03-0003・能力同一）",
+      "size": 3,
+      "power": 50000,
+      "critical": 3,
+      "defense": 10000,
+      "rules": [
+        "『角王』",
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが場から離れる場合、君の手札２枚を捨て、ゲージ１を払ってよい。そうしたら、このカードを場に残す。",
+        "『貫通』『反撃』『ライフリンク２』"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "マジックW",
+        "awayMaxCopies": 1
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate",
+        "counterattack",
+        "lifeLink2"
+      ],
+      "destroyReplacement": {
+        "optional": true,
+        "cost": [
+          {
+            "op": "discardHand",
+            "amount": 2
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "bf-h-bt03-s002",
+      "no": "H-BT03/S002",
+      "name": "四角炎王 バーンノヴァ",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭",
+        "火"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/hbt_03_s002.png",
+      "altArtOf": "bf-h-bt03-0006",
+      "_note": "究極レア別絵再録（基カード=bf-h-bt03-0006・能力同一）",
+      "size": 3,
+      "power": 9000,
+      "critical": 2,
+      "defense": 8000,
+      "rules": [
+        "『角王』",
+        "■【コールコスト】相手のターン中、君のライフが０になるなら、ゲージ３を払い、君のライフを１にし、そのターン中、君はダメージを受けない。",
+        "■このカードが登場した時、君の手札全てを捨て、このカード以外の君の場のカード全てをドロップゾーンに置き、そのターン中、このカードは破壊されない。",
+        "『３回攻撃』"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "エンシェントW",
+        "awayMaxCopies": 1
+      },
+      "callCost": {
+        "gauge": 3
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "keywords": [
+        "tripleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-bt03-0006-rescue-call",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            }
+          ],
+          "cost": [],
+          "script": [
+            {
+              "op": "selectZone",
+              "var": "zone",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            },
+            {
+              "op": "callSelfFromHand",
+              "zoneVar": "zone"
+            },
+            {
+              "op": "setLifeZeroSafeguard",
+              "life": 1
+            },
+            {
+              "op": "preventAllDamageThisTurn"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-bt03-0006-enter-purge",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "discardAllHand"
+            },
+            {
+              "op": "moveAllOwnFieldToDrop",
+              "excludeSource": true
+            },
+            {
+              "op": "setPreventNextDestroy",
+              "target": "$self"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-bt03-s003",
+      "no": "H-BT03/S003",
+      "name": "三角水王 ミセリア",
+      "type": "monster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "水"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/hbt_03_s003.png",
+      "altArtOf": "bf-h-bt03-0007",
+      "_note": "究極レア別絵再録（基カード=bf-h-bt03-0007・能力同一）",
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "『角王』(このカードは全てのフラッグで使える。君のフラッグが以外なら、「三角水王 ミセリア」はデッキに１枚しか入れることができない)",
+        "■【コールコスト】君のドロップゾーンの魔法２枚までをこのカードのソウルに入れ、ゲージ２を払う。",
+        "『２回攻撃』『ソウルガード』『ライフリンク２』"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "ダンジョンW",
+        "awayMaxCopies": 1
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "putDropToSoul",
+            "amount": 2,
+            "min": 0,
+            "filter": {
+              "cardType": "spell"
+            }
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard",
+        "lifeLink2"
+      ]
     }
   ]
 }

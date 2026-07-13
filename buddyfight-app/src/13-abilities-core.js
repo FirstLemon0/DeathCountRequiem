@@ -749,9 +749,15 @@ function checkCondition(condition, owner, context = {}) {
         cards = cards.filter((c) => c.instanceId !== context.card.instanceId);
       }
       const matched = cards.filter((c) => matchesCardFilter(c, condition.filter || {}));
-      return condition.distinct === "distinctByName"
-        ? new Set(matched.map((c) => c.name)).size
-        : matched.length;
+      if (condition.distinct === "distinctByName") {
+        return new Set(matched.map((c) => c.name)).size;
+      }
+      // E1(D-SS03/0039 旧世界の破壊神 アジ・ダハーカ): ワールドの種類数。2ワールド持ちカードは
+      // cardWorlds() で両ワールドを算入（union）。既存 distinctByName / 未指定（枚数）は完全に不変。
+      if (condition.distinct === "distinctByWorld") {
+        return new Set(matched.flatMap((c) => cardWorlds(c))).size;
+      }
+      return matched.length;
     };
     const meets = (n) => (cmp === "lte" ? n <= amount : cmp === "eq" ? n === amount : n >= amount);
     // E2(D-EB03): controller:"either" は各側を個別集計し、いずれか一方でも cmp を満たせば真
@@ -1176,6 +1182,19 @@ function checkCondition(condition, owner, context = {}) {
         getPendingAttackers().some((attacker) => sameSlot(attacker, sourceSlot)),
     );
   }
+  if (condition.op === "selfIsNullifiedAttacker") {
+    // D-SS03/0022 複製黒竜 アビゲール「このカードの攻撃が無効化された時」の自己限定用。
+    // allyAttackNullified は「君の場のカードの攻撃が無効化された時」を場全体へ配送する（発火時点では
+    // nullifyPendingAttack が既に clearPendingAttack 済み＝pendingAttack は null なので pendingAttackBySource は使えない）。
+    // 直前の無効化された攻撃の攻撃側スロットを state.lastAttackOutcome.attackers に凍結してあるので、
+    // それに context.card（=この listener）のスロットが含まれるかで「自分の攻撃が無効化された時」だけに絞る。
+    const outcome = state.lastAttackOutcome;
+    if (!outcome?.nullified) {
+      return false;
+    }
+    const sourceSlot = findFieldCardSlot(context.card || getSelectedCard());
+    return Boolean(sourceSlot && (outcome.attackers || []).some((slot) => sameSlot(slot, sourceSlot)));
+  }
   if (condition.op === "pendingAttackIncludesOtherMatching") {
     const sourceSlot = findFieldCardSlot(context.card || getSelectedCard());
     return getPendingAttackers().some(
@@ -1238,6 +1257,13 @@ function checkCondition(condition, owner, context = {}) {
   }
   if (condition.op === "pendingAttackDefenderIsSelf") {
     return state.pendingAttack?.defender === owner;
+  }
+  if (condition.op === "pendingAttackExists") {
+    // F3(D-SS02/0005): 進行中の攻撃(state.pendingAttack)が有れば真（陣営不問）。手札対抗呪文を『自分の攻撃中』
+    // にも使えるようにするゲート。pendingAttackDefenderIsSelf は防御側限定＝自ターンの攻撃コンボを封じてしまうため、
+    // 「攻撃が進行中か」だけを見る。攻撃の無いメインフェイズでは偽になり、isCounterPlayTiming の先取り経路が
+    // 対抗分岐を main で覆い隠す（draw 分岐を潰す）のを防ぐ。
+    return Boolean(state.pendingAttack);
   }
   if (condition.op === "pendingActionResponderIsSelf") {
     // 相手が宣言したカード/効果(呪文・必殺技・起動能力等)の解決前の対抗窓で、自分が応答側(responder)か。

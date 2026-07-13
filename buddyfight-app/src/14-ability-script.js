@@ -2538,7 +2538,8 @@ async function stackCallSelectedForScript(step, context) {
     return { ok: false, reason: "missing_stack_call_card" };
   }
   // 必殺モンスターの共通ゲート: 効果による重ねコールも「1ターンに1枚・自分のファイナルフェイズのみ」に服する。
-  if (!impactMonsterCallAllowed(entry.owner ?? context.owner, entry.card)) {
+  // F1: 重ねコール判定なので stackCall:true を渡し、raiseImpactCallCap{stackOnly:true}（ジェムクローン）の cap 解放を算入する。
+  if (!impactMonsterCallAllowed(entry.owner ?? context.owner, entry.card, { stackCall: true })) {
     addLog(`${entry.card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
     return { ok: false, reason: "impact_monster_call_restricted" };
   }

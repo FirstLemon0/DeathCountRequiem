@@ -1206,9 +1206,9 @@
           "target": {
             "type": "fieldCard",
             "controller": "self",
-            "zone": "center",
             "filter": {
-              "cardType": "monster"
+              "cardType": "monster",
+              "zone": "center"
             }
           },
           "effects": [
@@ -6087,9 +6087,9 @@
           "target": {
             "type": "fieldCard",
             "controller": "self",
-            "zone": "center",
             "filter": {
-              "cardType": "monster"
+              "cardType": "monster",
+              "zone": "center"
             }
           },
           "effects": [
@@ -6122,6 +6122,191 @@
       "rules": [
         "■君は属性に「百鬼」を含むカードとのカードを使える。"
       ]
+    },
+    {
+      "id": "bf-h-bt02-s001",
+      "no": "H-BT02/S001",
+      "name": "一角獣王 ジウン",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "髑髏武者"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/hbt_02_s001.png",
+      "altArtOf": "bf-h-bt02-0002",
+      "_note": "究極レア別絵再録（基カード=bf-h-bt02-0002・能力同一）",
+      "size": 3,
+      "power": 8000,
+      "critical": 3,
+      "defense": 1000,
+      "rules": [
+        "『角王』",
+        "■【コールコスト】ゲージ２を払う。",
+        "■【対抗】【起動】ゲージ１を払ってよい。払ったら、そのターン中、このカードが１枚で攻撃している攻撃は無効化されない。",
+        "『貫通』"
+      ],
+      "callCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-bt02-0002-solo-unstoppable",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "optional": true,
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            },
+            {
+              "op": "attackingAlone"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "markPendingAttackUnstoppable",
+              "onlyNullify": true
+            }
+          ]
+        }
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "カタナW",
+        "awayMaxCopies": 1
+      }
+    },
+    {
+      "id": "bf-h-bt02-s002",
+      "no": "H-BT02/S002",
+      "name": "七角地王 ドーン伯爵",
+      "type": "monster",
+      "world": "レジェンドW",
+      "attributes": [
+        "ワイダーサカー"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/hbt_02_s002.png",
+      "altArtOf": "bf-h-bt02-0005",
+      "_note": "究極レア別絵再録（基カード=bf-h-bt02-0005・能力同一）",
+      "size": 0,
+      "power": 4000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "『角王』（このカードは全てのフラッグで使える。君のフラッグが以外なら、「七角地王 ドーン伯爵」はデッキに１枚しか入れることができない）",
+        "■君のターン開始時、このカードが君のドロップゾーンにあるなら、ライフ１を払ってよい。払ったら、ドロップゾーンにあるこのカードをコールする。"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-h-bt02-0005-revive",
+          "kind": "triggered",
+          "event": "turnStart",
+          "triggerZones": [
+            "drop"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "optional": true,
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectZone",
+              "var": "z",
+              "emptyOnly": true
+            },
+            {
+              "op": "callSelfFromHand",
+              "zoneVar": "z"
+            }
+          ]
+        }
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "レジェンドW",
+        "awayMaxCopies": 1
+      }
+    },
+    {
+      "id": "bf-h-bt02-s003",
+      "no": "H-BT02/S003",
+      "name": "六角嵐王 ヴァリアブルコード",
+      "type": "monster",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/hbt_02_s003.png",
+      "altArtOf": "bf-h-bt02-0007",
+      "_note": "究極レア別絵再録（基カード=bf-h-bt02-0007・能力同一）",
+      "size": 2,
+      "power": 7000,
+      "critical": 3,
+      "defense": 2000,
+      "rules": [
+        "『角王』（このカードは全てのフラッグで使える。君のフラッグが以外なら、「六角嵐王 ヴァリアブルコード」はデッキに１枚しか入れることができない）",
+        "■【コールコスト】君の手札を好きな枚数このカードのソウルに入れ、ゲージ２を払う。",
+        "『貫通』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putHandToSoul",
+            "amount": 20,
+            "min": 0,
+            "max": 20
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "penetrate",
+        "soulguard"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "スタードラゴンW",
+        "awayMaxCopies": 1
+      }
     }
   ]
 }
