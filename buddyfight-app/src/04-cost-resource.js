@@ -54,6 +54,10 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
   }
   // 継続 preventOpponentEffectDamage: 「君は相手のカードの効果でダメージを受けない」恒常（H-BT04/0109）。
   // 攻撃ダメージ(byAttack)と自分発のダメージ（コストの damageSelf 等 sourceOwner===owner）には効かない。
+  // F1(D-BT02/0123): エントリの conditions を評価する（「このカードがセンターにいるなら」＝sourceZoneIn 等）。
+  // プレイヤー単位のガードで対象カードが無いため continuousEffectApplies ではなく、同等の条件評価
+  // ＝C7(D-EB02)と同じ context(card/owner/zone)供給で checkCardConditions を直接通す。
+  // conditions 無しの既存エントリ（bf-h-bt04-0109/0110 の2枚のみ・全数監査済み）は従来どおり常時作動＝挙動不変。
   if (
     !options.ignorePrevention &&
     !options.byAttack &&
@@ -61,8 +65,17 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
     options.sourceOwner !== owner
   ) {
     const guardCard = zones
-      .map((zone) => player.field[zone])
-      .find((fieldCard) => fieldCard && activeContinuousEffects(fieldCard).some((e) => e.op === "preventOpponentEffectDamage"));
+      .map((zone) => ({ zone, fieldCard: player.field[zone] }))
+      .find(
+        ({ zone, fieldCard }) =>
+          fieldCard &&
+          activeContinuousEffects(fieldCard).some(
+            (e) =>
+              e.op === "preventOpponentEffectDamage" &&
+              (!e.conditions?.length ||
+                checkCardConditions(e.conditions, owner, { card: fieldCard, owner, zone, player })),
+          ),
+      )?.fieldCard;
     if (guardCard) {
       addLog(`${guardCard.name}の効果で${player.name}は相手の効果によるダメージを受けません。`);
       return 0;
@@ -731,6 +744,8 @@ function payDropOwnFieldOrSoulTarget(player, target) {
     if (index >= 0) {
       player.drop.push(target.hostCard.soul.splice(index, 1)[0]);
       addLog(`${target.card.name}をコストでドロップゾーンに置きました。`);
+      // E1/F2: ホスト存命のままソウル1枚がドロップへ → soulCardDropped（リスナー不在なら即帰り）。
+      queueSoulCardDroppedTriggers(target.hostCard, state.players.indexOf(player), 1);
     }
     return;
   }
@@ -905,12 +920,16 @@ function payStructuredCost(player, costSteps = [], context = {}) {
       moveFieldCardsToSoul(player, sourceCard, step.filter);
     }
     if (step.op === "discardSoul") {
+      let soulDropped = 0;
       for (let index = 0; index < amount; index += 1) {
         const soulCard = sourceCard?.soul?.pop();
         if (soulCard) {
           player.drop.push(soulCard);
+          soulDropped += 1;
         }
       }
+      // E1/F2(D-BT02/0062等): 自ソウルをコストでドロップ → soulCardDropped（設置の自壊で離場したら発火時再検証で不発）。
+      queueSoulCardDroppedTriggers(sourceCard, state.players.indexOf(player), soulDropped);
       maybeDropSetWhenSoulEmpty(sourceCard, state.players.indexOf(player)); // 設置のソウル切れ自壊（H-BT04/0025）
     }
     if (step.op === "discardSoulToDeckBottom") {
@@ -1032,6 +1051,8 @@ function payStructuredCost(player, costSteps = [], context = {}) {
           if (soulCard) player.drop.push(soulCard);
         }
         addLog(`${host.card.name}のソウル${amount}枚をコストでドロップゾーンに置きました。`);
+        // E1/F2: ホスト存命のままソウルがドロップへ → soulCardDropped。
+        queueSoulCardDroppedTriggers(host.card, state.players.indexOf(player), amount);
       }
     }
     if (step.op === "chooseCost") {
@@ -1572,12 +1593,16 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       moveFieldCardsToSoul(player, sourceCard, step.filter);
     }
     if (step.op === "discardSoul") {
+      let soulDropped = 0;
       for (let index = 0; index < amount; index += 1) {
         const soulCard = sourceCard?.soul?.pop();
         if (soulCard) {
           player.drop.push(soulCard);
+          soulDropped += 1;
         }
       }
+      // E1/F2(D-BT02/0062等): 自ソウルをコストでドロップ → soulCardDropped（設置の自壊で離場したら発火時再検証で不発）。
+      queueSoulCardDroppedTriggers(sourceCard, state.players.indexOf(player), soulDropped);
       maybeDropSetWhenSoulEmpty(sourceCard, state.players.indexOf(player)); // 設置のソウル切れ自壊（H-BT04/0025）
     }
     if (step.op === "discardSoulToDeckBottom") {
@@ -1662,6 +1687,8 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
           }
         });
         addLog(`${selection.host.card.name}のソウル${selection.souls.length}枚をコストでドロップゾーンに置きました。`);
+        // E1/F2: ホスト存命のままソウルがドロップへ → soulCardDropped。
+        queueSoulCardDroppedTriggers(selection.host.card, state.players.indexOf(player), selection.souls.length);
       }
     }
     if (step.op === "chooseCost") {

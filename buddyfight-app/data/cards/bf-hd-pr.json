@@ -937,6 +937,143 @@
       ],
       "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/pr_0045.png",
       "generation": "無印"
+    },
+    {
+      "id": "bf-pr-0276",
+      "no": "PR/0276",
+      "name": "大海の覇者 デュエルイェーガー",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "竜王番長"
+      ],
+      "rarity": "PR",
+      "size": 3,
+      "power": 8000,
+      "critical": 3,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、君のドロップゾーンのカード１枚までをこのカードのソウルに入れる。",
+        "■このカードが登場した時、手札１枚を捨ててよい。そうしたら、君のドロップゾーンの《竜王番長》１枚を手札に加える。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putCardToSoul",
+            "sources": [
+              "drop"
+            ],
+            "min": 0,
+            "max": 1,
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-pr-0276-enter-discard-recruit",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "moveMatchingDropToHand",
+              "filter": {
+                "attribute": "竜王番長"
+              },
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/pr_0276.png",
+      "generation": "DDD"
+    },
+    {
+      "id": "bf-pr-0269",
+      "no": "PR/0269",
+      "name": "超激突！デュエルイェーガー",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "竜王番長"
+      ],
+      "rarity": "PR",
+      "size": 3,
+      "power": 10000,
+      "critical": 3,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】ゲージ３を払い、君のドロップゾーンの《竜王番長》２枚をこのカードのソウルにいれる。",
+        "■【対抗】【起動】このカードのソウル１枚をドロップゾーンに置いてよい。置いたら、そのターン中、このカードの攻撃力＋10000、打撃力＋１！",
+        "『貫通』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          },
+          {
+            "op": "putDropToSoul",
+            "amount": 2,
+            "filter": {
+              "attribute": "竜王番長"
+            }
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      },
+      "keywords": [
+        "penetrate",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-pr-0269-counter-soul-buff",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "discardSoul",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "power": 10000,
+              "critical": 1,
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/pr_0269.png",
+      "generation": "DDD"
     }
   ]
 }

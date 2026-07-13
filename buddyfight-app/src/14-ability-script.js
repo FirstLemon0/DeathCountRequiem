@@ -1457,6 +1457,8 @@ function dropSelectedSoulForScript(step, context) {
     if (movedCards.length > 0 && step.log !== false) {
       addLog(`${entry.card.name}のソウルから${movedCards.map((card) => card.name).join("、")}をドロップゾーンに置きました。`);
     }
+    // E1/F2(D-BT02/0097等): ホスト存命のままソウルがドロップへ → soulCardDropped。
+    queueSoulCardDroppedTriggers(entry.card, entry.owner ?? context.owner, movedCards.length);
   });
   return true;
 }
@@ -1491,6 +1493,8 @@ async function discardSelfSoulForScript(step, context) {
   if (step.log !== false) {
     addLog(`${context.card.name}のソウルから${movedCards.map((card) => card.name).join("、")}をドロップゾーンに置きました。`);
   }
+  // E1/F2: 自ソウルをドロップ（自身は場に残る）→ soulCardDropped。
+  queueSoulCardDroppedTriggers(context.card, context.owner, movedCards.length);
   return true;
 }
 
@@ -1502,6 +1506,8 @@ function moveSoulToDropForScript(step, context) {
   if (movedCards.length > 0 && step.log !== false) {
     addLog(`${context.card.name}のソウルを全てドロップゾーンに置きました。`);
   }
+  // E1/F2: ソウル全落とし（自身は場に残る）→ soulCardDropped（下の自壊で離場したら発火時再検証で不発）。
+  queueSoulCardDroppedTriggers(context.card, context.owner, movedCards.length);
   maybeDropSetWhenSoulEmpty(context.card, context.owner); // 設置のソウル切れ自壊（H-BT04/0025）
   return true;
 }

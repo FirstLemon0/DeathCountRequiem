@@ -1178,6 +1178,8 @@ async function executeAbilityEffect(effect, context) {
         : soulEntries.slice(0, amount);
     const movedCards = removePileEntries(target.card.soul || [], selected || []);
     state.players[target.owner].drop.push(...movedCards);
+    // E1/F2: ホスト存命のままソウルがドロップへ → soulCardDropped（下の自壊で離場したら発火時再検証で不発）。
+    queueSoulCardDroppedTriggers(target.card, target.owner, movedCards.length);
     maybeDropSetWhenSoulEmpty(target.card, target.owner); // 設置のソウル切れ自壊（相手発の dropTargetSoul でも）
     if (movedCards.length > 0) {
       addLog(
@@ -1211,9 +1213,12 @@ async function executeAbilityEffect(effect, context) {
     for (const soulOwner of soulOwners) {
       const fieldCard = state.players[soulOwner]?.field?.[effect.zone];
       if (fieldCard?.soul?.length) {
-        addLog(`${context.card.name}の効果で${fieldCard.name}のソウル${fieldCard.soul.length}枚をドロップゾーンに置きました。`);
+        const droppedCount = fieldCard.soul.length;
+        addLog(`${context.card.name}の効果で${fieldCard.name}のソウル${droppedCount}枚をドロップゾーンに置きました。`);
         state.players[soulOwner].drop.push(...fieldCard.soul);
         fieldCard.soul = [];
+        // E1/F2: ホスト存命のままソウル全てがドロップへ → soulCardDropped。
+        queueSoulCardDroppedTriggers(fieldCard, soulOwner, droppedCount);
       }
     }
   }
@@ -1864,7 +1869,10 @@ async function executeAbilityEffect(effect, context) {
   }
   if (effect.op === "setPreventNextDestroy" && target?.card) {
     target.card.preventNextDestroyCount = (target.card.preventNextDestroyCount || 0) + (effect.amount || 1);
-    if (effect.gainLife || effect.log || effect.countsAsDestroyed || effect.grantKeyword || effect.effects) {
+    // E2(D-BT02/0110): mode:"returnToHand" で破壊置換の着地先を「場に残す」→「手札へ戻す」に変える。
+    // 既定(mode 未指定)は従来どおり場に残す＝完全後方互換。消費側(src/11)が returnToHand を見て委譲先を切替。
+    const returnToHand = effect.mode === "returnToHand";
+    if (effect.gainLife || effect.log || effect.countsAsDestroyed || effect.grantKeyword || effect.effects || returnToHand) {
       target.card.preventNextDestroyEffects ||= [];
       target.card.preventNextDestroyEffects.push({
         owner: context.owner,
@@ -1873,12 +1881,17 @@ async function executeAbilityEffect(effect, context) {
         log: effect.log || "",
         countsAsDestroyed: Boolean(effect.countsAsDestroyed),
         grantKeyword: effect.grantKeyword || null,
-        // effects: 場に残った時に追加で解決する効果群（H-EB04/0052 等）。破壊解決の消費側(src/11)で
-        // destroyReactionと同形のmicrotaskで実行する（破壊解決中の再入を避けるため）。
+        // effects: 場に残った/手札へ戻った時に追加で解決する効果群（H-EB04/0052・D-BT02/0110 等）。
+        // 破壊解決の消費側(src/11)で destroyReaction と同形の microtask で実行する（再入を避けるため）。
         effects: Array.isArray(effect.effects) ? effect.effects : null,
+        returnToHand,
       });
     }
-    addLog(`${context.card.name}の効果で、次に${target.card.name}が破壊される場合、場に残せるようにしました。`);
+    addLog(
+      returnToHand
+        ? `${context.card.name}の効果で、次に${target.card.name}が破壊される場合、手札に戻せるようにしました。`
+        : `${context.card.name}の効果で、次に${target.card.name}が破壊される場合、場に残せるようにしました。`,
+    );
   }
   if (effect.op === "grantTurnDestroyImmunity") {
     // 【対抗】このターン中、指定ゾーンのモンスターは破壊されない（ドラゴニック・フォースフィールド）。

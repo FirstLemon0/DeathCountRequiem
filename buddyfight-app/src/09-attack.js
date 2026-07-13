@@ -475,6 +475,8 @@ async function runAttackDeclarationTriggers(attackers) {
     const soulCard = current.soul.pop();
     state.players[target.owner].drop.push(soulCard);
     addLog(`${attacker.card.name}の効果で${current.name}のソウルから${soulCard.name}をドロップゾーンに置きました。`);
+    // E1/F2: ホスト存命のままソウル1枚がドロップへ → soulCardDropped。
+    queueSoulCardDroppedTriggers(current, target.owner, 1);
   }
   // destroyAttackedMonsterWithSoulDrop（0039 付与）: 攻撃対象の相手モンスターのソウル1枚をドロップし、そのモンスターを破壊。
   for (const attacker of attackers) {
@@ -494,6 +496,9 @@ async function runAttackDeclarationTriggers(attackers) {
       const soulCard = attacked.soul.pop();
       state.players[defenderOwner].drop.push(soulCard);
       addLog(`${attacker.card.name}の効果で${attacked.name}のソウルから${soulCard.name}をドロップゾーンに置きました。`);
+      // E1/F2: この時点でホスト存命 → soulCardDropped。直後の destroyFieldCard で離場したら
+      // queueSoulCardDroppedTriggers の発火時再検証が不発化する（破壊が置換等で防がれた時のみ発火）。
+      queueSoulCardDroppedTriggers(attacked, defenderOwner, 1);
     }
     await destroyFieldCard(defenderOwner, pa.targetZone, {
       cause: { byEffect: true, byOpponent: true, sourceOwner: attacker.owner, sourceName: attacker.card.name, sourceCard: attacker.card },

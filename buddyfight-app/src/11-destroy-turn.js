@@ -343,6 +343,15 @@ async function destroyFieldCard(owner, zone, options = {}) {
       state.players[replacement.owner ?? owner].life += replacement.gainLife;
       addLog(`${replacement.source || card.name}の効果で${state.players[replacement.owner ?? owner].name}のライフを${replacement.gainLife}回復しました。`);
     }
+    // E2(D-BT02/0110 我らは不死なり): mode:"returnToHand" は破壊を「場に残す」ではなく「手札へ戻す」に
+    // 置換する。正規の単体手札戻し経路(returnFieldTargetToHand)へ委譲し、F5 の複製バグを再発させない
+    // （ソウルのドロップ送り・ゾーンクリア・ライフリンク・「手札に戻った時」誘発込み）。effects(デッキ上→
+    // ゲージ等)は手札戻しの後に microtask で解決する。破壊としては数えない（countsAsDestroyed は無視）。
+    if (replacement?.returnToHand) {
+      queuePreventNextDestroyReplacementEffects(card, owner, replacement);
+      returnFieldTargetToHand({ owner, zone }, replacement.source || card.name);
+      return null;
+    }
     if (replacement?.grantKeyword) {
       card.turnKeywords ||= [];
       card.turnKeywords.push(replacement.grantKeyword);
@@ -360,6 +369,9 @@ async function destroyFieldCard(owner, zone, options = {}) {
     const soulCard = card.soul.pop();
     player.drop.push(soulCard);
     addLog(`${card.name}はソウルガードで場に残りました。`);
+    // E1(D-BT02/0065): ソウルガードでソウル1枚がドロップへ移り、card は場に残る。
+    // 「（サイズ3の《竜王番長》の）ソウルがドロップゾーンに置かれた時」の soulCardDropped を発火する。
+    queueSoulCardDroppedTriggers(card, owner, 1);
     return null;
   }
   // TOCTOU再検証: 上の離場置換/破壊置換/ソウルガード等のawait中に、並行する別の除去がこのカードを
@@ -909,6 +921,58 @@ function queueEnteredSoulTriggers(card, owner, fromZone, hostCard) {
         __abilityFilter: matches,
       }),
     { errorLabel: `${card.name}のソウル投入時能力の処理中にエラーが発生しました。` },
+  );
+}
+
+// E1(D-BT02/0065 舎弟見習い ヘルパー・成): 「君の場のサイズ3の《竜王番長》のソウルがドロップゾーンに
+// 置かれた時」の fieldEvent。「ホスト(hostCard)が場に残ったまま、そのソウルがドロップへ移った」経路から
+// 呼ぶ。「そのモンスターのソウルに入れる」対象が要るため、ホストが場に残っている時だけ発火する
+// （破壊等でホスト自身が場を離れる soul→drop 経路からは呼ばない）。
+// runFieldEventTriggers が ally/opponentSoulCardDropped を場全体へ配送し、リスナー(0065)は
+// eventCardMatches で発生源ホスト(size3・竜王番長)を絞り、moveSelfToTargetSoul($target)で自身を注ぐ。
+// 配線済み経路（F2: 同パック0062の【起動】discardSoul等が判明し全経路へ拡張）:
+//   ソウルガード(src/11)／soulCost破壊置換(src/11)／discardSoul コスト×2(src/04)／
+//   dropOwnFieldCardSoul コスト×2(src/04)／dropOwnFieldOrSoulCard のソウル枝(src/04)／
+//   dropSelectedSoul・discardSelfSoul・moveSoulToDrop script(src/14)／dropTargetSoul・dropAllSoulAtZone(src/15)／
+//   攻撃キーワードのソウルドロップ×2(src/09)。
+//   ホスト自身が同時に離場する経路（destroyFieldCard のソウル一括ドロップ・dropFieldCardByRule・
+//   手札/デッキ/ゲージ戻し・detachFieldCardForMove・soulFilter置換等）と、宛先がドロップでない
+//   discardSoulToDeckBottom/moveSoulToGauge は意図的に対象外。
+// 二重ガード: (1)呼出時=ホスト在場チェック（無ければ即不発）、(2)発火時=再検証（queue後の同期処理で
+//   ホストが自壊/破壊/差し替えされたら不発。destroyAttackedMonsterWithSoulDrop の直後破壊や
+//   設置のソウル切れ自壊 maybeDropSetWhenSoulEmpty との競合を安全化）。
+function queueSoulCardDroppedTriggers(hostCard, hostOwner, count = 1) {
+  if (!hostCard || count <= 0 || !Array.isArray(state?.players)) {
+    return;
+  }
+  const slot = findFieldCardSlot(hostCard);
+  if (!slot) {
+    return; // ホストが場を離れていれば発火しない（対象「そのモンスター」が存在しない）。
+  }
+  // listener 検出は cardHasTriggeredListener に統一（自身/ソウル札/継承爆雷まで見る。queueDrewTriggers と同型）。
+  const hasListener = state.players.some((player) =>
+    zones.some((zone) => {
+      const listener = player?.field?.[zone];
+      return (
+        cardHasTriggeredListener(listener, "allySoulCardDropped") ||
+        cardHasTriggeredListener(listener, "opponentSoulCardDropped")
+      );
+    }),
+  );
+  if (!hasListener) {
+    return;
+  }
+  queueTriggerMicrotask(
+    () => {
+      // 発火時再検証(TOCTOU): queue後の同期処理でホストが離場/差し替わっていたら不発
+      // （例: destroyAttackedMonsterWithSoulDrop のソウルドロップ→直後破壊、設置のソウル切れ自壊）。
+      const current = state.players[hostOwner]?.field?.[slot.zone];
+      if (!current || current.instanceId !== hostCard.instanceId) {
+        return;
+      }
+      return runFieldEventTriggers("soulCardDropped", hostOwner, hostCard, slot.zone, { count });
+    },
+    { errorLabel: `${hostCard.name}のソウルがドロップに置かれた時の能力の処理中にエラーが発生しました。` },
   );
 }
 
@@ -1676,14 +1740,18 @@ function resolveLifeZeroReplacements() {
       // 「このカードのソウルN枚を捨ててよい。捨てたら、君のライフはlifeになる」型
       // （カード自身は場に残る。H-BT04/0001 カイザー・ドラム“固い絆”）。任意だが有利な置換のため自動使用（既存置換と同仕様）。
       const soulAmount = replacement.soulCost.amount || 1;
+      let soulDropped = 0;
       for (let index = 0; index < soulAmount; index += 1) {
         const soulCard = card.soul.pop();
         if (soulCard) {
           player.drop.push(soulCard);
+          soulDropped += 1;
         }
       }
       player.life = replacement.life || 1;
       addLog(`${card.name}の効果でソウル${soulAmount}枚を捨て、${player.name}のライフは${player.life}になりました。`);
+      // E1/F2: ソウルがドロップへ移り card は場に残る（置換成立）→ soulCardDropped を発火。
+      queueSoulCardDroppedTriggers(card, state.players.indexOf(player), soulDropped);
       return;
     }
     let hasRequiredSoul = true;
