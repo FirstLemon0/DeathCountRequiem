@@ -1377,6 +1377,12 @@ function lifeLinkEventMatches(event, owner, spec = {}) {
   if (!event || event.canceled) {
     return false;
   }
+  // E5'(D-EB03/0043): matchInstanceIds があれば、そのインスタンスのイベントに限定する
+  // （空配列は「一致なし」＝取消 no-op。直前に戻したカード以外の同ターンイベントの誤取消を防ぐ）。
+  // 無指定（従来のカード全て）は従来挙動＝後方互換。
+  if (Array.isArray(spec.matchInstanceIds) && !spec.matchInstanceIds.includes(event.cardInstanceId)) {
+    return false;
+  }
   if (spec.sameTurn !== false && event.turnCount !== state.turnCount) {
     return false;
   }

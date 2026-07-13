@@ -1021,7 +1021,10 @@ async function executeAbilityEffect(effect, context) {
         returnedForTriggers.push({ card: returned, owner: candidate.owner, zone: candidate.zone });
       }
     }
-    context.returnedCount = returnedForTriggers.length; // X2: 後続 amountFrom {source:"returnedCount"} 用
+    // E4'(D-EB03/0002): 「戻した枚数」＝この呼び出しで実際に手札へ戻した全カード（アイテム/設置含む）。
+    // 従来はモンスターのみ計数で、0002「相手の場のカード全てを手札に戻し、戻した枚数分ダメージ」が過少だった。
+    // 既存の参照元 bf-d-bt01-0013 は filter:{cardType:"monster"} でモンスターしか戻さないため挙動不変（全数監査済み）。
+    context.returnedCount = allReturnedForTriggers.length; // X2: 後続 amountFrom {source:"returnedCount"} 用
     // 「場のモンスターが手札に戻った時」誘発を逐次 await で発火する。
     // マイクロタスク並列だと消費側の「1ターン1回」が markAbilityLimit 前に複数回パスするため、直列化する。
     // Z14(b)(S-UB-C03/0017): 「君のカードの効果で」判定用の returnCause を伝播する。
@@ -1821,7 +1824,18 @@ async function executeAbilityEffect(effect, context) {
     state.monsterAttackForbiddenSources[context.owner].push(effect.source || context.card?.name || "不明");
   }
   if (["cancelRecentLifeLink", "cancelLifeLink"].includes(effect.op)) {
-    cancelRecentLifeLink(context.owner, effect, context.card?.name);
+    // E5'(D-EB03/0043): matchVar（script var）/matchInstanceId で「直前に手札へ戻した/離場したそのカード」の
+    // イベントに限定して取消せる（一致イベントが無ければ no-op＝LL非持ちを戻した時に無関係な同ターン
+    // イベントを誤取消しない）。無指定は従来どおり直近イベント＝後方互換。
+    let spec = effect;
+    if (effect.matchVar || effect.matchInstanceId) {
+      const matchIds = [
+        ...(effect.matchVar ? scriptSelection({ var: effect.matchVar }, context).map((entry) => entry.card?.instanceId) : []),
+        ...(effect.matchInstanceId ? [effect.matchInstanceId] : []),
+      ].filter(Boolean);
+      spec = { ...effect, matchInstanceIds: matchIds };
+    }
+    cancelRecentLifeLink(context.owner, spec, context.card?.name);
   }
   if (effect.op === "cancelCallOpportunityLifeLink") {
     cancelCallOpportunityLifeLink(context.owner, effect, context.card?.name);

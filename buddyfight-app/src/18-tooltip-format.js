@@ -179,6 +179,7 @@ function costStepLabel(step) {
     destroySource: "このカードを破壊",
     putHandToSoul: `手札${amount}枚をソウル`,
     putOwnFieldCardsToGauge: `自分の場のカード${amount}枚をゲージ`,
+    putOwnFieldCardsToDeckBottom: `自分の場のカード${amount}枚をデッキの下`, // E3'(D-EB03/0002)
   }[step.op] || step.op;
 }
 

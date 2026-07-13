@@ -108,6 +108,16 @@ function createCard(templateId) {
   };
 }
 
+// D-EB03/E1: カードの全ワールドを返す。2ワールド持ちカード（DB初・D-EB03 の6枚）は
+// primary の world 文字列に加えて worlds:[w1,w2] を持つ。従来の単一ワールドカード（worlds 無し）は
+// [world] にフォールバックするので、既存2,000枚超は完全に挙動不変（完全後方互換）。
+function cardWorlds(card) {
+  if (card && Array.isArray(card.worlds) && card.worlds.length) {
+    return card.worlds;
+  }
+  return card && card.world ? [card.world] : [];
+}
+
 function canUseCardForFlag(player, card) {
   if (!player || !card || effectiveCardType(card) === "flag") {
     return true;
@@ -129,7 +139,8 @@ function canUseCardForFlag(player, card) {
   if (flag.allowGeneric !== false && isGenericWorld(card.world)) {
     return true;
   }
-  if ((flag.allowedWorlds || []).includes(card.world)) {
+  // E1: 2ワールド持ちカードは「いずれかのワールドが allowedWorlds に含まれれば」合法。
+  if ((flag.allowedWorlds || []).some((w) => cardWorlds(card).includes(w))) {
     return true;
   }
   const attributes = card.attributes || [];

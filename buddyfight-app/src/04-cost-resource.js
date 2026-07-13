@@ -568,6 +568,13 @@ function canPayStructuredCost(player, costSteps = [], context = {}) {
         return { ok: false, reason: "コストでゲージに置く自分の場のカードが足りません。" };
       }
     }
+    if (step.op === "putOwnFieldCardsToDeckBottom") {
+      // E3'(D-EB03/0002): 場→デッキ下のコスト（putOwnFieldCardsToGauge と同型・宛先のみデッキ下）。
+      const candidates = ownFieldCostCandidates(player, step.filter);
+      if (candidates.length < amount) {
+        return { ok: false, reason: "コストでデッキの下に置く自分の場のカードが足りません。" };
+      }
+    }
     if (step.op === "dropOwnFieldCard") {
       const candidates = ownFieldCostCandidates(player, step.filter);
       if (candidates.length < amount) {
@@ -968,6 +975,12 @@ function payStructuredCost(player, costSteps = [], context = {}) {
         .slice(0, amount)
         .forEach((target) => putFieldCardToGauge(player, target.zone));
     }
+    if (step.op === "putOwnFieldCardsToDeckBottom") {
+      // E3': 非対話経路では先頭 amount 枚を自動選択（putOwnFieldCardsToGauge と同ポリシー）。
+      ownFieldCostCandidates(player, step.filter)
+        .slice(0, amount)
+        .forEach((target) => putFieldCardToDeckBottom(player, target.zone));
+    }
     if (step.op === "dropOwnFieldCard") {
       ownFieldCostCandidates(player, step.filter)
         .slice(0, amount)
@@ -1085,6 +1098,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
   const reservedCostZones = new Set();
   const dropOwnMonsterSelections = [];
   const fieldToGaugeSelections = [];
+  const fieldToDeckBottomSelections = []; // E3'(D-EB03/0002): 場→デッキ下コストの対話選択
   const dropOwnFieldSelections = [];
   const dropOwnFieldOrSoulSelections = [];
   const putSelectedFieldSoulSelections = [];
@@ -1206,6 +1220,31 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     }
     selected.forEach((candidate) => reservedCostZones.add(`${candidate.owner}:${candidate.zone}`));
     fieldToGaugeSelections.push(selected);
+  }
+  // E3'(D-EB03/0002): putOwnFieldCardsToDeckBottom の対話選択（putOwnFieldCardsToGauge と同型・宛先のみデッキ下）。
+  for (const step of applicableCostSteps) {
+    if (step.op !== "putOwnFieldCardsToDeckBottom") {
+      continue;
+    }
+    const amount = step.amount || 1;
+    const candidates = ownFieldCostCandidates(player, step.filter).filter(
+      (candidate) => !reservedCostZones.has(`${candidate.owner}:${candidate.zone}`),
+    );
+    const selected = await chooseCardEntries(candidates, {
+      title: `${context.sourceCard?.name || "コスト"}でデッキの下に置くカード`,
+      lead: `自分の場からデッキの下に置くカードを${amount}枚選んでください。`,
+      min: amount,
+      max: amount,
+      forceDialog: true,
+      // 権威サーバ: コスト選択は支払い本人の席へ往復（未指定だと能動側へ誤配送＝相手手札候補が漏れる）。
+      promptSeat: state.players.indexOf(player),
+      purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
+    });
+    if (!selected || selected.length < amount) {
+      return { ok: false, reason: "コストでデッキの下に置く自分の場のカードを選んでください。" };
+    }
+    selected.forEach((candidate) => reservedCostZones.add(`${candidate.owner}:${candidate.zone}`));
+    fieldToDeckBottomSelections.push(selected);
   }
   for (const step of applicableCostSteps) {
     if (step.op !== "dropOwnFieldCard") {
@@ -1517,6 +1556,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
   let cardToSoulStepIndex = 0;
   let dropOwnMonsterStepIndex = 0;
   let fieldToGaugeStepIndex = 0;
+  let fieldToDeckBottomStepIndex = 0; // E3'
   let dropOwnFieldStepIndex = 0;
   let dropOwnFieldOrSoulStepIndex = 0;
   let putSelectedFieldSoulStepIndex = 0;
@@ -1726,6 +1766,12 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       fieldToGaugeStepIndex += 1;
       selectedTargets.forEach((target) => putFieldCardToGauge(player, target.zone));
     }
+    if (step.op === "putOwnFieldCardsToDeckBottom") {
+      // E3': 選択済みの場カードをデッキ下へ（離場の正規処理は putFieldCardToDeckBottom が担う）。
+      const selectedTargets = fieldToDeckBottomSelections[fieldToDeckBottomStepIndex] || [];
+      fieldToDeckBottomStepIndex += 1;
+      selectedTargets.forEach((target) => putFieldCardToDeckBottom(player, target.zone));
+    }
     if (step.op === "dropOwnFieldCard") {
       const selectedTargets = dropOwnFieldSelections[dropOwnFieldStepIndex] || [];
       dropOwnFieldStepIndex += 1;
@@ -1860,6 +1906,27 @@ function putFieldCardToGauge(player, zone) {
   applyLifeLink(card, state.players.indexOf(player));
   player.gauge.push(card);
   addLog(`${card.name}をコストでゲージに置きました。`);
+  return card;
+}
+
+// E3'(D-EB03/0002 アヴァロン“ベネディクト・レイ”): 場のカードをコストでデッキの下に置く。
+// putFieldCardToGauge と同型＝離場の正規処理（ソウルのドロップ送り・ゾーンクリア・着任解除・ライフリンク）を
+// 通し、本体の宛先だけデッキ下。デッキ配列は先頭=下・末尾=上（putDropToDeckBottom と同じ向き）なので unshift。
+// ホスト離場のためソウル→ドロップは soulCardDropped を発火させない（dbt02 被覆表 #16 と同ポリシー）。
+function putFieldCardToDeckBottom(player, zone) {
+  const card = player.field[zone];
+  if (!card) {
+    return null;
+  }
+  player.drop.push(...(card.soul || []));
+  card.soul = [];
+  player.field[zone] = null;
+  if (zone === "item" && player.arrivalCardId === card.instanceId) {
+    player.arrivalCardId = null;
+  }
+  applyLifeLink(card, state.players.indexOf(player));
+  player.deck.unshift(card);
+  addLog(`${card.name}をコストでデッキの下に置きました。`);
   return card;
 }
 

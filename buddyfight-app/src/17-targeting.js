@@ -318,7 +318,8 @@ function matchesCardFilter(card, filter = {}, options = {}) {
   if (filter.cardTypeIn && !filter.cardTypeIn.some((wanted) => cardTypeMatches(card, wanted))) {
     return false;
   }
-  if (filter.world && card.world !== filter.world) {
+  // E1: 2ワールド持ちカードは、いずれかのワールドが filter.world に一致すれば通す（cardWorlds）。
+  if (filter.world && !cardWorlds(card).includes(filter.world)) {
     return false;
   }
   if (filter.powerLte !== undefined && visiblePower(card) > filter.powerLte) {

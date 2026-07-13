@@ -728,31 +728,40 @@ function checkCondition(condition, owner, context = {}) {
     return answer;
   }
   if (condition.op === "cardCount" || condition.op === "cardCountGte" || condition.op === "cardCountLte") {
-    // 汎用枚数条件: controller(self/opponent/both) × pile(field/center/item/drop/hand/deck/gauge/soul) × filter × distinct × cmp
+    // 汎用枚数条件: controller(self/opponent/both/either) × pile(field/center/item/drop/hand/deck/gauge/soul) × filter × distinct × cmp
     const cmp = condition.cmp || (condition.op === "cardCountLte" ? "lte" : "gte");
-    const sides = condition.controller === "opponent" ? [opponent]
-      : condition.controller === "both" ? [player, opponent] : [player];
     const pile = condition.pile || "field";
-    let cards = [];
-    sides.forEach((pl) => {
-      if (!pl) return;
-      if (pile === "field") cards.push(...zones.map((z) => pl.field[z]).filter(Boolean), ...phantomFieldMonsters(pl));
-      else if (pile === "item") cards.push(...equippedItems(pl)); // 複数装備を全てカウント（「アイテム2枚装備なら」0042等）
-      else if (pile === "center") { if (pl.field[pile]) cards.push(pl.field[pile]); }
-      else if (pile === "soul") cards.push(...zones.flatMap((z) => pl.field[z]?.soul || []));
-      else cards.push(...(pl[pile] || []));
-    });
-    if (condition.excludeSource && context.card) {
-      cards = cards.filter((c) => c.instanceId !== context.card.instanceId);
-    }
-    const matched = cards.filter((c) => matchesCardFilter(c, condition.filter || {}));
-    const n = condition.distinct === "distinctByName"
-      ? new Set(matched.map((c) => c.name)).size
-      : matched.length;
     // amount:0 は「ちょうど0枚 / 0枚以下」= 有意な閾値（0049「自場モンスター0体なら」等）。
     // || 1 だと 0 が 1 に潰れて eq/lte が壊れるため ?? で 0 を保持する。
     const amount = condition.amount ?? 1;
-    return cmp === "lte" ? n <= amount : cmp === "eq" ? n === amount : n >= amount;
+    // 指定プレイヤー群のカードを1配列に集めフィルタ後の枚数を返す（複数側渡すと合算＝both 意味論）。
+    const countForSides = (sideList) => {
+      let cards = [];
+      sideList.forEach((pl) => {
+        if (!pl) return;
+        if (pile === "field") cards.push(...zones.map((z) => pl.field[z]).filter(Boolean), ...phantomFieldMonsters(pl));
+        else if (pile === "item") cards.push(...equippedItems(pl)); // 複数装備を全てカウント（「アイテム2枚装備なら」0042等）
+        else if (pile === "center") { if (pl.field[pile]) cards.push(pl.field[pile]); }
+        else if (pile === "soul") cards.push(...zones.flatMap((z) => pl.field[z]?.soul || []));
+        else cards.push(...(pl[pile] || []));
+      });
+      if (condition.excludeSource && context.card) {
+        cards = cards.filter((c) => c.instanceId !== context.card.instanceId);
+      }
+      const matched = cards.filter((c) => matchesCardFilter(c, condition.filter || {}));
+      return condition.distinct === "distinctByName"
+        ? new Set(matched.map((c) => c.name)).size
+        : matched.length;
+    };
+    const meets = (n) => (cmp === "lte" ? n <= amount : cmp === "eq" ? n === amount : n >= amount);
+    // E2(D-EB03): controller:"either" は各側を個別集計し、いずれか一方でも cmp を満たせば真
+    // （max/OR 意味論。「君か相手のドロップが N枚以上」0004。both＝合算 とは別値）。
+    if (condition.controller === "either") {
+      return [player, opponent].some((pl) => pl && meets(countForSides([pl])));
+    }
+    const sides = condition.controller === "opponent" ? [opponent]
+      : condition.controller === "both" ? [player, opponent] : [player];
+    return meets(countForSides(sides));
   }
   if (condition.op === "attackingAlone") {
     return getPendingAttackers().length === 1;

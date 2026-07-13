@@ -301,7 +301,7 @@ function populateFilters() {
   ]);
   setOptions(elements.worldFilter, [
     ["", "すべてのワールド"],
-    ...unique(cards.map((card) => card.world).filter(Boolean)).map((world) => [world, world]),
+    ...unique(cards.flatMap((card) => cardWorlds(card)).filter(Boolean)).map((world) => [world, world]),
   ]);
   populateProductFilter();
 }
@@ -587,7 +587,9 @@ function isCardNativelyAllowedByFlag(flag, card) {
   if (flag.allowGeneric !== false && isGenericWorld(card.world)) {
     return true;
   }
-  if ((flag.allowedWorlds || []).includes(card.world)) {
+  // E1: 2ワールド持ちカードは、いずれかのワールドが allowedWorlds に含まれれば合法
+  // （engine の canUseCardForFlag と一致させる。単一ワールドカードは cardWorlds=[world] で不変）。
+  if ((flag.allowedWorlds || []).some((w) => cardWorlds(card).includes(w))) {
     return true;
   }
   const attributes = card.attributes || [];
@@ -612,6 +614,15 @@ function isCardNativelyAllowedByFlag(flag, card) {
 
 function isGenericWorld(world) {
   return world === "ジェネリック" || world === "Generic";
+}
+
+// D-EB03/E1: 2ワールド持ちカード（worlds:[w1,w2]）の全ワールド。engine の cardWorlds と同義
+// （builder は src/ 非搭載＝独立に同定義）。worlds 無しの既存カードは [world] フォールバック＝不変。
+function cardWorlds(card) {
+  if (card && Array.isArray(card.worlds) && card.worlds.length) {
+    return card.worlds;
+  }
+  return card && card.world ? [card.world] : [];
 }
 
 // フラッグが指定ワールドの「正規フラッグ」か（allowedWorlds に明示しているか）。
@@ -690,7 +701,7 @@ function filteredCards() {
     // 世代で絞る（フラッグは全世代共通なので常に通す）
     .filter((card) => !activeGeneration || card.generation === activeGeneration || card.type === "flag")
     .filter((card) => !type || card.type === type)
-    .filter((card) => !world || card.world === world)
+    .filter((card) => !world || cardWorlds(card).includes(world))
     .filter((card) => !productId || card.productId === productId)
     .filter((card) => {
       if (!text) {

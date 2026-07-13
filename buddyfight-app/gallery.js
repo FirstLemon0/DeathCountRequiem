@@ -1,5 +1,5 @@
 // ===== gallery.js — カードギャラリー（閲覧専用）=====
-// 44製品2,611枚を検索・絞り込み・ページングして眺めるだけの画面。デッキ編集機能は持たない。
+// 45製品2,675枚を検索・絞り込み・ページングして眺めるだけの画面。デッキ編集機能は持たない。
 //
 // 【builder.js の流用について】builder.js の検索/フィルタ/サムネ読込は流用したいが、builder.js は
 // 1,500行超の単一グローバルスコープでデッキ編集の状態（currentDeck・保存/ネット連携・user-api 依存）と
@@ -56,7 +56,7 @@ async function initializeGallery() {
   }
 }
 
-// ---- データ読込（DOM非依存。全カードセットの全エントリ＝2,611枚をそのまま列挙する。builder と違い
+// ---- データ読込（DOM非依存。全カードセットの全エントリ＝2,675枚をそのまま列挙する。builder と違い
 //      閲覧専用なので type:flag のカードも除外しない）----
 async function galleryLoadData() {
   const cardsetsData = await galleryLoadJson(galleryDataFiles.cardsets);
@@ -95,6 +95,15 @@ function galleryNormalizeCard(card, set = {}, packName = "") {
   };
 }
 
+// D-EB03/E1: 2ワールド持ちカード（worlds:[w1,w2]）の全ワールド。engine/builder の cardWorlds と同義
+// （gallery は src/ 非搭載＝独立に同定義）。worlds 無しの既存カードは [world] フォールバック＝表示・絞込とも不変。
+function cardWorlds(card) {
+  if (card && Array.isArray(card.worlds) && card.worlds.length) {
+    return card.worlds;
+  }
+  return card && card.world ? [card.world] : [];
+}
+
 // ---- フィルタ（純粋関数: criteria から絞り込み＋整列。DOM非依存でテストしやすい）----
 function galleryComputeFiltered(criteria) {
   const c = criteria || {};
@@ -107,7 +116,7 @@ function galleryComputeFiltered(criteria) {
   return galleryCards
     .filter((card) => !generation || card.generation === generation)
     .filter((card) => !type || card.type === type)
-    .filter((card) => !world || card.world === world)
+    .filter((card) => !world || cardWorlds(card).includes(world))
     .filter((card) => !productId || card.productId === productId)
     .filter((card) => !rarity || (card.rarity || "") === rarity)
     .filter((card) => {
@@ -259,7 +268,7 @@ function galleryPopulateFilters() {
   ]);
   gallerySetOptions(gEl.worldFilter, [
     ["", "すべてのワールド"],
-    ...uniqueG(galleryCards.map((c) => c.world).filter(Boolean)).map((w) => [w, w]),
+    ...uniqueG(galleryCards.flatMap((c) => cardWorlds(c)).filter(Boolean)).map((w) => [w, w]),
   ]);
   gallerySetOptions(gEl.rarityFilter, [
     ["", "すべてのレアリティ"],
