@@ -1211,13 +1211,17 @@ function queueMonsterReturnedTriggers(card, owner, zone, details = {}) {
     });
 }
 
-function queueDiscardedFromHandTriggers(card, owner) {
+// E6(D-BT04/0104 戦闘詩人 レポーティング): cause = 捨ての起因（効果op は makeEffectCause／コストstep は
+// {byCost,...}。未指定＝ルール由来等は cause 無し）。context.discardCause として誘発へ伝播し、リスナー側は
+// 条件op eventDiscardCauseMatches（src/13）で「〜カードの効果で捨てられた時」を照合する。
+// cause を照合しない既存の discardedFromHand リスナーは context キーが増えるだけ＝挙動不変。
+function queueDiscardedFromHandTriggers(card, owner, cause = null) {
   if (!(card.abilities || []).some((ability) => ability.kind === "triggered" && ability.event === "discardedFromHand")) {
     return;
   }
   Promise.resolve()
     .then(async () => {
-      await runTriggeredAbilities(card, "discardedFromHand", { card, player: state.players[owner], owner });
+      await runTriggeredAbilities(card, "discardedFromHand", { card, player: state.players[owner], owner, discardCause: cause });
       render();
     })
     .catch((error) => {
@@ -1228,11 +1232,11 @@ function queueDiscardedFromHandTriggers(card, owner) {
 }
 
 // 手札のカードをドロップへ送り、「手札から捨てられた時」誘発を発火させる共通経路。
-function discardHandCardsToDrop(player, cards) {
+function discardHandCardsToDrop(player, cards, cause = null) {
   const owner = state.players.indexOf(player);
   cards.forEach((card) => {
     player.drop.push(card);
-    queueDiscardedFromHandTriggers(card, owner);
+    queueDiscardedFromHandTriggers(card, owner, cause);
   });
 }
 
@@ -1867,6 +1871,13 @@ function resolveLifeZeroReplacements() {
       topDeckCard = player.deck.pop() || null;
       if (topDeckCard) {
         player.drop.push(topDeckCard);
+        // E5: 置換効果によるデッキ→ドロップも deckMilled ブロードキャスト対象（起因=置換を持つカード自身）。
+        queueDeckMilledTriggers(state.players.indexOf(player), [topDeckCard], {
+          byEffect: true,
+          byOpponent: false,
+          sourceOwner: state.players.indexOf(player),
+          sourceCard: card || null,
+        });
       } else {
         declareDeckLoss(player);
       }

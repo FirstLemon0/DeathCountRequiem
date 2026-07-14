@@ -1074,6 +1074,74 @@
       ],
       "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/pr_0269.png",
       "generation": "DDD"
+    },
+    {
+      "id": "bf-pr-0304",
+      "no": "PR/0304",
+      "name": "火神の騎竜 アメノカグヅチ",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "rarity": "PR",
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが他の《太陽竜》と連携攻撃した時、君のライフを＋１し、カード１枚を引く。この能力は１ターンに１回だけ発動する。",
+        "『２回攻撃』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-pr-0304-link-life-draw",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            },
+            {
+              "op": "pendingAttackIncludesOtherMatching",
+              "filter": {
+                "attribute": "太陽竜"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/pr_0304.png",
+      "generation": "DDD",
+      "_note": "公式レシピ201612_1用の単品収録（R9(A)裁定・D-SS02単品8枚/トラゴス前例と同様）。連携攻撃トリガはbf-d-ss03-0006/エスカーマ(bf-d-bt04-0031)型のpendingAttackIncludesOtherMatching{attribute:太陽竜}。無名once{scope:turn}（shared無し・カード固有能力のためper-instance）。『２回攻撃』は常時keyword。"
     }
   ]
 }

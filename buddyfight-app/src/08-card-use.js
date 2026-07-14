@@ -45,6 +45,21 @@ async function useCardAction() {
     return;
   }
   if (state.phase !== "main" && selectedCard.type !== "impact") {
+    // F8(D-SS03/0020 革命者ゼータ『必殺変身』): timing が現在フェイズを明示する手札起動能力
+    // （timing:["final"] 等）はメイン外でも使える。timing 省略＝メイン扱いの通常魔法/起動は
+    // 従来どおりこのゲートで止める。非カウンター能力は自分の手番のみ（メイン経路の active 検査と同等）。
+    if (state.selected.owner === state.active) {
+      const phaseAbility = findUsableHandAbility(selectedCard, { explicitPhase: state.phase });
+      if (phaseAbility) {
+        await useHandAbilityAction(selectedCard, phaseAbility);
+        return;
+      }
+      if (hasExplicitPhaseHandAbility(selectedCard, state.phase)) {
+        // 該当フェイズ明示の能力はあるが今は使えない（回数制限/条件/コスト等）→ 具体的な理由を出す。
+        addLog(handAbilityUnavailableReason(selectedCard, state.selected.owner, { explicitPhase: state.phase }));
+        return;
+      }
+    }
     addLog("コール、装備、通常魔法の使用はメインフェイズでのみ行えます。");
     return;
   }
@@ -265,6 +280,13 @@ async function castSpell(selectedCard) {
 
 function hasKnownHandAbility(card) {
   return (card?.abilities || []).some((ability) => canUseAbilityFromHand(ability));
+}
+
+// F8: timing が指定フェイズを明示する手札起動能力を持つか（非メインフェイズの useCardAction ゲート用）。
+function hasExplicitPhaseHandAbility(card, phase) {
+  return (card?.abilities || []).some(
+    (ability) => canUseAbilityFromHand(ability) && (ability.timing || []).includes(phase),
+  );
 }
 
 function handAbilityUnavailableReason(card, owner, options = {}) {

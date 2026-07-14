@@ -463,6 +463,19 @@ function hasFieldKeyword(player, keyword) {
   });
 }
 
+// E3(D-BT04/0033 グラトス): discardSoulToDeckBottom コストの最小支払い枚数。
+// amountFrom（例 {source:"targetStat", stat:"critical"}＝選んだ対象の打撃力）指定時はその値を最小量とする
+// （allowMore:true なら支払い時にソウル残数まで追加で払える＝「以上」）。amountFrom 未指定は従来の固定量
+// （step.amount || 1）＝既存の固定呼び出しは完全に不変。resolveAmountFrom は context.target?.card を読むため、
+// 効果対象は effectTargetForCost 専用キー（src/13 が渡す）から供給し、既存の context.target 経路には触れない。
+function discardSoulToDeckBottomFloor(step, context = {}) {
+  if (step.amountFrom) {
+    const amountContext = { target: context.effectTargetForCost || context.target, owner: context.owner };
+    return Math.max(0, Math.round(resolveAmountFrom(step.amountFrom, amountContext)));
+  }
+  return step.amount || 1;
+}
+
 function canPayStructuredCost(player, costSteps = [], context = {}) {
   const selectedCard = context.selectedCard;
   const includeOpponentGauge = Boolean(context.includeOpponentGauge);
@@ -536,7 +549,7 @@ function canPayStructuredCost(player, costSteps = [], context = {}) {
     if (step.op === "discardSoul" && (context.sourceCard?.soul?.length || 0) < amount) {
       return { ok: false, reason: "ソウルが足りません。" };
     }
-    if (step.op === "discardSoulToDeckBottom" && (context.sourceCard?.soul?.length || 0) < amount) {
+    if (step.op === "discardSoulToDeckBottom" && (context.sourceCard?.soul?.length || 0) < discardSoulToDeckBottomFloor(step, context)) {
       return { ok: false, reason: "ソウルが足りません。" };
     }
     if (step.op === "dropSource" && !findFieldCardSlot(context.sourceCard)) {
@@ -860,7 +873,7 @@ function payStructuredCost(player, costSteps = [], context = {}) {
     if (step.op === "discardAllHand") {
       // 使用中のカードを除く手札を全て捨てるコスト（オールド・ラング・サイン 0029）。手札0でも支払い可。
       const removed = removeInUseHandExcept(player, selectedCard);
-      discardHandCardsToDrop(player, removed);
+      discardHandCardsToDrop(player, removed, { byCost: true, sourceOwner: state.players.indexOf(player), sourceCard: context.sourceCard || null }); // E6: コスト起因
       if (removed.length > 0) {
         addLog(`${player.name}はコストで手札を全て捨てました。`);
       }
@@ -878,7 +891,7 @@ function payStructuredCost(player, costSteps = [], context = {}) {
         max: amount,
         title: `${sourceCard?.name || "コスト"}で捨てる手札`,
       });
-      discardHandCardsToDrop(player, removePileEntries(player.hand, selected || []));
+      discardHandCardsToDrop(player, removePileEntries(player.hand, selected || []), { byCost: true, sourceOwner: state.players.indexOf(player), sourceCard: context.sourceCard || null }); // E6: コスト起因
     }
     if (step.op === "putHandToSoul") {
       const availableHand = player.hand.filter(
@@ -940,7 +953,10 @@ function payStructuredCost(player, costSteps = [], context = {}) {
       maybeDropSetWhenSoulEmpty(sourceCard, state.players.indexOf(player)); // 設置のソウル切れ自壊（H-BT04/0025）
     }
     if (step.op === "discardSoulToDeckBottom") {
-      for (let index = 0; index < amount; index += 1) {
+      // E3: 同期経路は対話不可のため allowMore の追加払いはせず最小量（amountFrom or 固定量）だけ払う近似
+      //（末尾から pop＝好きな順の残差は非同期側と同じ）。固定量呼び出しは need===amount で完全に不変。
+      const need = discardSoulToDeckBottomFloor(step, context);
+      for (let index = 0; index < need; index += 1) {
         const soulCard = sourceCard?.soul?.pop();
         if (soulCard) {
           player.deck.unshift(soulCard);
@@ -1046,10 +1062,14 @@ function payStructuredCost(player, costSteps = [], context = {}) {
       if (moved > 0) addLog(`${player.name}はコストでドロップの${moved}枚をデッキの下に置きました。`);
     }
     if (step.op === "putTopDeckToDrop") {
+      // E5: deckMilled ブロードキャストはバッチ1回（per-card だと microtask 交錯で named-once が
+      // 二重計上し得る＝moveTopDeckToDrop と同じレース対策）。起因はコスト（byEffect ではない）。
+      const milledCards = [];
       for (let index = 0; index < amount; index += 1) {
         const milled = player.deck.pop();
-        if (milled) putCardsToDropWithTrigger(player, state.players.indexOf(player), [milled], "deck");
+        if (milled) milledCards.push(milled);
       }
+      putCardsToDropWithTrigger(player, state.players.indexOf(player), milledCards, "deck", { cause: { byCost: true, sourceOwner: state.players.indexOf(player), sourceCard: context.sourceCard || null } });
       if (player.deck.length === 0) declareDeckLoss(player);
       addLog(`${player.name}はコストでデッキの上から${amount}枚をドロップゾーンに置きました。`);
     }
@@ -1479,6 +1499,32 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     }
     dropToBottomSelections.push(selected);
   }
+  // E3(D-BT04/0033 グラトス): amountFrom/allowMore 付き discardSoulToDeckBottom は、置くソウルを対話選択する
+  //（最小=対象の打撃力、allowMore なら残数まで＝「以上」・選んだ順に下から積む）。固定量（amountFrom/allowMore
+  // 無し）はこのループを素通りし exec の従来 soul.pop() 経路のまま＝既存挙動不変。
+  const soulToBottomSelections = [];
+  for (const step of applicableCostSteps) {
+    if (step.op !== "discardSoulToDeckBottom" || !(step.amountFrom || step.allowMore)) {
+      continue;
+    }
+    const soul = sourceCard?.soul || [];
+    const floor = Math.min(discardSoulToDeckBottomFloor(step, context), soul.length);
+    const max = step.allowMore ? soul.length : floor;
+    const candidates = soul.map((soulCard) => ({ card: soulCard, owner: state.players.indexOf(player) }));
+    const selected = await chooseCardEntries(candidates, {
+      title: `${context.sourceCard?.name || "コスト"}でデッキの下に置くソウル`,
+      lead: `このカードのソウルを${floor}枚以上デッキの下に置きます（選んだ順に下から積む）。置くソウルを選んでください。`,
+      min: floor,
+      max,
+      forceDialog: true,
+      promptSeat: state.players.indexOf(player),
+      purpose: "cost",
+    });
+    if (!selected || selected.length < floor) {
+      return { ok: false, reason: "コストでデッキの下に置くソウルを選んでください。" };
+    }
+    soulToBottomSelections.push(selected);
+  }
   const fieldSoulDropSelections = [];
   for (const step of applicableCostSteps) {
     if (step.op !== "dropOwnFieldCardSoul") {
@@ -1565,6 +1611,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
   let returnFieldToHandStepIndex = 0;
   let restOwnMonsterStepIndex = 0;
   let dropToBottomStepIndex = 0;
+  let soulToBottomStepIndex = 0;
   let chooseCostStepIndex = 0;
   let fieldSoulDropStepIndex = 0;
   const discarded = [];
@@ -1575,7 +1622,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     }
     if (step.op === "discardAllHand") {
       const removed = removeInUseHandExcept(player, selectedCard);
-      discardHandCardsToDrop(player, removed);
+      discardHandCardsToDrop(player, removed, { byCost: true, sourceOwner: state.players.indexOf(player), sourceCard: context.sourceCard || null }); // E6: コスト起因
       if (removed.length > 0) {
         addLog(`${player.name}はコストで手札を全て捨てました。`);
       }
@@ -1583,7 +1630,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     if (step.op === "discardHand") {
       const movedCards = removePileEntries(player.hand, handDiscards[discardStepIndex] || []);
       discardStepIndex += 1;
-      discardHandCardsToDrop(player, movedCards);
+      discardHandCardsToDrop(player, movedCards, { byCost: true, sourceOwner: state.players.indexOf(player), sourceCard: context.sourceCard || null }); // E6: コスト起因
       discarded.push(...movedCards);
       if (movedCards.length > 0) {
         addLog(`${player.name}はコストで${movedCards.map((card) => card.name).join("、")}を捨てました。`);
@@ -1646,10 +1693,24 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       maybeDropSetWhenSoulEmpty(sourceCard, state.players.indexOf(player)); // 設置のソウル切れ自壊（H-BT04/0025）
     }
     if (step.op === "discardSoulToDeckBottom") {
-      for (let index = 0; index < amount; index += 1) {
-        const soulCard = sourceCard?.soul?.pop();
-        if (soulCard) {
-          player.deck.unshift(soulCard);
+      if (step.amountFrom || step.allowMore) {
+        // E3: 対話選択した具体的なソウル札を、選んだ順にデッキ下へ積む（allowMore の追加払い込み）。
+        const selected = soulToBottomSelections[soulToBottomStepIndex] || [];
+        soulToBottomStepIndex += 1;
+        const soul = sourceCard?.soul || [];
+        selected.forEach(({ card }) => {
+          const idx = soul.findIndex((s) => s.instanceId === card.instanceId);
+          if (idx >= 0) {
+            const [moved] = soul.splice(idx, 1);
+            player.deck.unshift(moved);
+          }
+        });
+      } else {
+        for (let index = 0; index < amount; index += 1) {
+          const soulCard = sourceCard?.soul?.pop();
+          if (soulCard) {
+            player.deck.unshift(soulCard);
+          }
         }
       }
     }
@@ -1709,10 +1770,14 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       if (targets.length > 0) addLog(`${player.name}はコストでドロップの${targets.length}枚をデッキの下に置きました。`);
     }
     if (step.op === "putTopDeckToDrop") {
+      // E5: deckMilled ブロードキャストはバッチ1回（per-card だと microtask 交錯で named-once が
+      // 二重計上し得る＝moveTopDeckToDrop と同じレース対策）。起因はコスト（byEffect ではない）。
+      const milledCards = [];
       for (let index = 0; index < amount; index += 1) {
         const milled = player.deck.pop();
-        if (milled) putCardsToDropWithTrigger(player, state.players.indexOf(player), [milled], "deck");
+        if (milled) milledCards.push(milled);
       }
+      putCardsToDropWithTrigger(player, state.players.indexOf(player), milledCards, "deck", { cause: { byCost: true, sourceOwner: state.players.indexOf(player), sourceCard: context.sourceCard || null } });
       if (player.deck.length === 0) declareDeckLoss(player);
       addLog(`${player.name}はコストでデッキの上から${amount}枚をドロップゾーンに置きました。`);
     }
@@ -1881,6 +1946,8 @@ function lookTopSelectToSoulRestToDrop(player, sourceCard, count = 1, amount = 1
   const toDrop = cards.filter((card) => !soulSet.has(card.instanceId));
   sourceCard.soul.push(...toSoul);
   player.drop.push(...toDrop);
+  // E5: デッキ→ドロップ（コスト起因の残りドロップ）も deckMilled ブロードキャスト対象（byEffect ではない）。
+  queueDeckMilledTriggers(state.players.indexOf(player), toDrop, { byCost: true, sourceOwner: state.players.indexOf(player), sourceCard: sourceCard || null });
   if (toSoul.length > 0) {
     addLog(`${toSoul.map((card) => card.name).join("、")}を${sourceCard.name}のソウルに入れました。`);
   }

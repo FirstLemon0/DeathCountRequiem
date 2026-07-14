@@ -15,8 +15,9 @@ async function runTriggeredAbilities(card, event, baseContext = {}) {
         .filter((ability) => ability.kind === "triggered" && ability.event === event)
         .map((ability) => ({ ...ability, __fromSoul: soulCard })),
     ),
-    // inheritSoulAbilities: ホストが「ソウルにあるカードが持つ全ての“<label>”を得る」（EB03 爆雷継承 0004/0012/0013/0017/0061）。
-    // ソウル札の通常 abilities(kind:triggered, label一致) を、このイベントでホストの誘発として合流させる。
+    // inheritSoulAbilities: ホストが「ソウルにあるカードの能力を得る」。{label}=EB03 爆雷継承（label一致 triggered）／
+    // {filter}=D-BT04 ジェムクローン E1（filter一致ソウル札の triggered 全event）。ソウル札の通常 abilities(kind:triggered)
+    // を、このイベントでホストの誘発として合流させる。
     ...inheritedSoulAbilitiesFor(card, event),
   ];
   // ドロップゾーン走査などで、opt-in した能力だけに絞る（runPhaseStartTriggers から指定）。
@@ -85,19 +86,44 @@ async function runTriggeredAbilities(card, event, baseContext = {}) {
     }
 }
 
-// inheritSoulAbilities:{label} を持つホスト card について、ソウル札の通常 abilities のうち
-// kind:triggered・label一致・event一致のものを、ホスト誘発として合流する配列で返す（爆雷継承）。
-// limit はソウル札インスタンス単位で管理（__fromSoul により markAbilityLimit/isAbilityLimitUsed が識別）。
-function inheritedSoulAbilitiesFor(card, event) {
-  const label = card?.inheritSoulAbilities?.label;
-  if (!label || !(card.soul || []).length || isAbilitiesNullified(card)) {
+// E1(D-BT04/0006 フェイク・ヒーラー・0115 オリジン・ブレイカー): inheritSoulAbilities:{filter} モード。
+// ソウル札のうち filter 一致カード（ジェムクローンなら {cardType:"impactMonster", nameNotIncludes:"ジェムクローン"}）を返す。
+// host が能力無効化されていれば空＝継承停止（label モードと同じゲート）。filter モード共通のソウル札選別で、
+// triggered(src/14)・continuous(src/05 stats 集計)・keywords(src/18 hasKeyword) の3面から呼ぶ。
+// label モード（EB03 爆雷継承）とは独立の新分岐＝既存 label 挙動は1ビットも変えない。
+function inheritedFilterSoulCards(card) {
+  const filter = card?.inheritSoulAbilities?.filter;
+  if (!filter || !(card.soul || []).length || isAbilitiesNullified(card)) {
     return [];
   }
-  return (card.soul || []).flatMap((soulCard) =>
-    (soulCard.abilities || [])
-      .filter((a) => a.kind === "triggered" && a.event === event && a.label === label)
-      .map((a) => ({ ...a, __fromSoul: soulCard })),
-  );
+  return (card.soul || []).filter((soulCard) => matchesCardFilter(soulCard, filter));
+}
+
+// inheritSoulAbilities を持つホスト card について、ソウル札の通常 abilities のうち kind:triggered・event一致で
+// ホスト誘発として合流する配列を返す。2モード:
+//   - {label}（EB03 爆雷継承 0004/0012/0013/0017/0061）: label 一致の triggered のみ。
+//   - {filter}（D-BT04 ジェムクローン E1）: filter 一致ソウル札の triggered 全 event（label 無視）。
+// limit はソウル札インスタンス単位で管理（__fromSoul により markAbilityLimit/isAbilityLimitUsed が識別）。
+function inheritedSoulAbilitiesFor(card, event) {
+  const inherit = card?.inheritSoulAbilities;
+  if (!inherit || !(card.soul || []).length || isAbilitiesNullified(card)) {
+    return [];
+  }
+  if (inherit.label) {
+    return (card.soul || []).flatMap((soulCard) =>
+      (soulCard.abilities || [])
+        .filter((a) => a.kind === "triggered" && a.event === event && a.label === inherit.label)
+        .map((a) => ({ ...a, __fromSoul: soulCard })),
+    );
+  }
+  if (inherit.filter) {
+    return inheritedFilterSoulCards(card).flatMap((soulCard) =>
+      (soulCard.abilities || [])
+        .filter((a) => a.kind === "triggered" && a.event === event)
+        .map((a) => ({ ...a, __fromSoul: soulCard })),
+    );
+  }
+  return [];
 }
 
 // card（場札）が event に反応する誘発リスナーを持つか。card自身/ソウルのsoulAbilities/爆雷継承を考慮。
@@ -967,7 +993,8 @@ function moveSelectedForScript(step, context) {
     // 移動自体は moveScriptCardToDestination 済みのため alreadyPlaced で誘発の queue のみ行う。
     const destKind = step.to || "drop";
     if (destKind === "drop") {
-      putCardsToDropWithTrigger(state.players[destinationOwner], destinationOwner, [entry.card], entry.source, { alreadyPlaced: true });
+      // E5: entry.source==="deck" のときは deckMilled ブロードキャストも飛ぶ（cause=この効果の起因）。
+      putCardsToDropWithTrigger(state.players[destinationOwner], destinationOwner, [entry.card], entry.source, { alreadyPlaced: true, cause: makeEffectCause(context, destinationOwner) });
     } else if (destKind === "soul" && context.card) {
       // 「ソウルに入った時」誘発（enteredSoul）。soul 宛先は発生源カード(context.card)のソウルへ入る。
       putCardsToSoulWithTrigger(context.card, destinationOwner, [entry.card], entry.source, { alreadyPlaced: true });
@@ -1018,7 +1045,8 @@ async function moveSelectedGroupForScript(step, context) {
     // 移動自体は moveScriptCardToDestination 済みのため alreadyPlaced で誘発の queue のみ行う。
     const destKind = step.to || "drop";
     if (destKind === "drop") {
-      putCardsToDropWithTrigger(state.players[destinationOwner], destinationOwner, [entry.card], entry.source, { alreadyPlaced: true });
+      // E5: entry.source==="deck" のときは deckMilled ブロードキャストも飛ぶ（cause=この効果の起因）。
+      putCardsToDropWithTrigger(state.players[destinationOwner], destinationOwner, [entry.card], entry.source, { alreadyPlaced: true, cause: makeEffectCause(context, destinationOwner) });
     } else if (destKind === "soul" && context.card) {
       // 「ソウルに入った時」誘発（enteredSoul）。soul 宛先は発生源カード(context.card)のソウルへ入る。
       putCardsToSoulWithTrigger(context.card, destinationOwner, [entry.card], entry.source, { alreadyPlaced: true });

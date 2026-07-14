@@ -460,6 +460,16 @@ function matchesCardFilter(card, filter = {}, options = {}) {
   if (filter.soulCountGte !== undefined && (card.soul?.length || 0) < filter.soulCountGte) {
     return false;
   }
+  // FE3/A7(D-BT04/0115 オリジン・ブレイカー): soulHasMatching — 候補カードのソウルに、指定 filter に
+  //   一致する札が1枚以上あるか（「ソウルに『ジェムクローン』を含む必殺モンスター」等を厳密表現）。
+  //   soul は raw 走査で足りる（有限）。既存カードは未使用キー＝後方互換。outer options（effectiveSizeOverride 等）は
+  //   ソウル札に持ち込まない（別カードの実効値なので誤判定を避ける）。
+  if (filter.soulHasMatching) {
+    const soulFilter = filter.soulHasMatching.filter || filter.soulHasMatching;
+    if (!(card.soul || []).some((s) => matchesCardFilter(s, soulFilter))) {
+      return false;
+    }
+  }
   return true;
 }
 

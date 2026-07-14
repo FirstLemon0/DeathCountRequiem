@@ -273,6 +273,14 @@ function hasKeyword(card, keyword) {
     (!ownNullified &&
       (card.abilities || []).some(
         (ability) => hasAbilityKeyword(ability, keyword) && passiveAbilityConditionsMet(card, ability),
+      )) ||
+    // E1(D-BT04/0006・0115 ジェムクローン): inheritSoulAbilities:{filter} で得た、filter一致ソウル札の
+    // キーワード（貫通/ソウルガード/反撃 等）も host が持つ。host 無効化中は inheritedFilterSoulCards が空＝停止
+    // （ownNullified ガードと二重で止まる）。filter モード未使用の既存カードは常に空＝挙動不変。
+    (!ownNullified &&
+      Boolean(card.inheritSoulAbilities?.filter) &&
+      inheritedFilterSoulCards(card).some((soulCard) =>
+        (soulCard.keywords || []).some((candidate) => aliases.includes(candidate)),
       ))
   );
 }

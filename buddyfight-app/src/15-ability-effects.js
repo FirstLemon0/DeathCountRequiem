@@ -39,6 +39,9 @@ function putCardsToSoulWithTrigger(hostCard, owner, cards, fromZone, options = {
 // cards を player のドロップ末尾に積み、「場かデッキからドロップに置かれた時」（movedToDrop）誘発を queue する。
 // 誘発は fromZone が "field" | "deck" の時のみ（queueMovedToDropTriggers の対応範囲。手札/ソウル由来は発火しない）。
 // owner: カードの持ち主（seat index）。options.alreadyPlaced: true なら push 済みで誘発の queue のみ行う。
+// E5(D-BT04): fromZone==="deck"（ミル）は場ブロードキャスト deckMilled も queue する（src/07）。
+// options.cause = 起因（効果op は makeEffectCause／コストstep は {byCost,...}。未指定は cause 無し＝
+// eventMillCauseMatches は不成立）。deckMilled リスナーを持つ既存カードは無い＝既存挙動不変。
 function putCardsToDropWithTrigger(player, owner, cards, fromZone, options = {}) {
   if (!player || !cards || cards.length === 0) {
     return;
@@ -48,6 +51,9 @@ function putCardsToDropWithTrigger(player, owner, cards, fromZone, options = {})
   }
   if (["field", "deck"].includes(fromZone)) {
     cards.forEach((dropCard) => queueMovedToDropTriggers(dropCard, owner, fromZone));
+  }
+  if (fromZone === "deck") {
+    queueDeckMilledTriggers(owner, cards, options.cause || null);
   }
 }
 
@@ -267,10 +273,16 @@ async function executeAbilityEffect(effect, context) {
     for (let index = 0; index < millAmount; index += 1) {
       const movedCard = receiver.deck.pop();
       if (movedCard) {
-        putCardsToDropWithTrigger(receiver, state.players.indexOf(receiver), [movedCard], "deck"); // mill でデッキからドロップへ
         movedCards.push(movedCard);
       }
     }
+    // E5: ミルの起因（誰のカードの効果か）を deckMilled ブロードキャストへ伝播（0039/0098 が照合）。
+    // ★ブロードキャストは「op 1回＝1バッチ」で発火する（per-card にすると microtask チェーンが
+    // 複数本立ち、await 点の交錯で limit マーク前に2本目が走る＝named-once の二重計上レースになる。
+    // プローブ E5(g) で実測）。movedToDrop 誘発は従来どおり funnel 内で per-card に queue される。
+    putCardsToDropWithTrigger(receiver, state.players.indexOf(receiver), movedCards, "deck", {
+      cause: makeEffectCause(context, state.players.indexOf(receiver)),
+    }); // mill でデッキからドロップへ
     if (receiver.deck.length === 0) {
       declareDeckLoss(receiver);
     }
@@ -367,7 +379,7 @@ async function executeAbilityEffect(effect, context) {
         addLog(`デッキの上から${toSoul.length}枚を${context.card?.name || ""}のソウルに入れました。`);
       }
       if (rest.length > 0) {
-        putCardsToDropWithTrigger(player, soulOwner, rest, "deck");
+        putCardsToDropWithTrigger(player, soulOwner, rest, "deck", { cause: makeEffectCause(context, soulOwner) }); // E5
         addLog(`残りの${rest.length}枚をドロップゾーンに置きました。`);
       }
     }
@@ -477,6 +489,7 @@ async function executeAbilityEffect(effect, context) {
     const rest = revealed.filter((c) => !picked.includes(c));
     if (effect.altTo === "drop") {
       rest.forEach((c) => player.drop.push(c));
+      queueDeckMilledTriggers(state.players.indexOf(player), rest, makeEffectCause(context, state.players.indexOf(player))); // E5
     } else if (effect.altTo === "gauge") {
       rest.forEach((c) => player.gauge.push(c));
     } else {
@@ -493,11 +506,59 @@ async function executeAbilityEffect(effect, context) {
           lead: `手札から捨てるカードを${discardCount}枚選んでください。`,
           promptSeat: context.owner,
         });
-        discardHandCardsToDrop(player, discarded);
+        discardHandCardsToDrop(player, discarded, makeEffectCause(context, state.players.indexOf(player))); // E6
         if (discarded.length > 0) {
           addLog(`${player.name}は${discarded.map((c) => c.name).join("、")}を捨てました。`);
         }
       }
+    }
+  }
+  if (effect.op === "lookTopSelectToBottomRestToTop") {
+    // FE2/A8(D-BT04/0070 メガドロイド ヒュージー): デッキの上から count 枚を見て、選んだ任意枚数を
+    //   選んだ順でデッキの下へ、残りを選んだ順でデッキの上へ。lookTopSelectToHandRestToBottom の
+    //   「選択分→行き先／残り→別の行き先」の形を踏襲した新規op（既存カードは未使用＝後方互換）。
+    //   デッキ向き規約: top=末尾(pop/push)・bottom=先頭(unshift)。順序は index0 が「先に引く側」で統一
+    //   （上: index0=最上段=最初に引く／下: index0=下バッチ内で先に引く側）。
+    const count = effect.count || 2;
+    const revealed = [];
+    for (let i = 0; i < count && player.deck.length > 0; i += 1) revealed.push(player.deck.pop());
+    if (revealed.length === 0) {
+      addLog(`${context.card.name}の効果で見るカードがありません。`);
+    } else {
+      // (1) デッキの下へ送るカードを選ぶ（0枚可＝全て上へ）。選択順が下での積み順。
+      const sel = await chooseCardEntries(revealed.map((c) => ({ card: c })), {
+        title: effect.title || context.card.name,
+        lead: effect.lead || "デッキの下に置くカードを選んでください（選ばなければ全て上に戻ります）。",
+        min: 0, max: revealed.length, forceDialog: true,
+        promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
+        purpose: "scry",
+      });
+      const toBottom = (sel || []).map((e) => e.card);
+      // (2) 残りをデッキの上へ。2枚以上なら上での順序（1番目=最上段）を1枚ずつ選ばせる。
+      let toTop = revealed.filter((c) => !toBottom.includes(c));
+      if (toTop.length >= 2) {
+        const ordered = [];
+        let remaining = toTop.map((c) => ({ card: c }));
+        while (remaining.length > 1) {
+          const pick = await chooseCardEntries(remaining, {
+            title: effect.title || context.card.name,
+            lead: `デッキの上から${ordered.length + 1}番目に置くカードを選んでください。`,
+            min: 1, max: 1, forceDialog: true,
+            promptSeat: context.owner,
+            purpose: "scry",
+          });
+          const entry = pick?.[0] || remaining[0];
+          ordered.push(entry.card);
+          remaining = remaining.filter((r) => r.card.instanceId !== entry.card.instanceId);
+        }
+        if (remaining.length) ordered.push(remaining[0].card);
+        toTop = ordered;
+      }
+      // 下バッチ: 前から unshift（toBottom[0] が先に引く側・toBottom[末尾] が最下段）。
+      toBottom.forEach((c) => player.deck.unshift(c));
+      // 上バッチ: ordered[0] を最上段(末尾)にするため逆順 push（reorderTopOrdered と同規約）。
+      for (let i = toTop.length - 1; i >= 0; i -= 1) player.deck.push(toTop[i]);
+      addLog(`${context.card.name}の効果でデッキの上${revealed.length}枚を見て、${toBottom.length}枚をデッキの下に置きました。`);
     }
   }
   if (effect.op === "revealTopDamagePerMatchRestToBottom") {
@@ -505,7 +566,22 @@ async function executeAbilityEffect(effect, context) {
     const revealed = [];
     for (let i = 0; i < count && player.deck.length > 0; i += 1) revealed.push(player.deck.pop());
     const matched = revealed.filter((c) => matchesCardFilter(c, effect.filter || {})).length;
-    const dmg = matched * (effect.perDamage || 1);
+    // E2(D-BT04/0016 ギガドロイド ジガンテス): tiers 指定時は「N枚以上ならダメージD」の閾値表
+    // （降順評価・最初に満たした段のダメージ。例: [{atLeast:5,damage:5},{atLeast:3,damage:2}] ＝ 5枚→5/3〜4枚→2/2枚以下→0）。
+    // tiers 未指定は従来の perDamage×matched（枚数比例）＝既存カード挙動不変。
+    // 「デッキ下へ好きな順」は現状 unshift（順不同）＝残差（_note）。
+    let dmg;
+    if (Array.isArray(effect.tiers)) {
+      dmg = 0;
+      for (const tier of [...effect.tiers].sort((a, b) => (b.atLeast || 0) - (a.atLeast || 0))) {
+        if (matched >= (tier.atLeast || 0)) {
+          dmg = tier.damage || 0;
+          break;
+        }
+      }
+    } else {
+      dmg = matched * (effect.perDamage || 1);
+    }
     addLog(`${context.card.name}の効果で${revealed.length}枚を公開し、${matched}枚一致。`);
     if (dmg > 0) applyDamageToPlayer(1 - context.owner, dmg, { sourceName: context.card?.name, sourceCard: context.card, sourceOwner: context.owner });
     revealed.forEach((c) => player.deck.unshift(c));
@@ -529,6 +605,7 @@ async function executeAbilityEffect(effect, context) {
         addLog(`${context.card?.name || "効果"}でデッキの1番上を見て、1番上に置きました。`);
       } else if (toDrop) {
         player.drop.push(top);
+        queueDeckMilledTriggers(state.players.indexOf(player), [top], makeEffectCause(context, state.players.indexOf(player))); // E5
         addLog(`${context.card?.name || "効果"}でデッキの1番上を見て、ドロップに置きました。`);
       } else {
         player.deck.unshift(top);
@@ -624,7 +701,7 @@ async function executeAbilityEffect(effect, context) {
     ) {
       return;
     }
-    discardHandCardsToDrop(discardTarget, discardTarget.hand.splice(0));
+    discardHandCardsToDrop(discardTarget, discardTarget.hand.splice(0), makeEffectCause(context, state.players.indexOf(discardTarget))); // E6
   }
   if (effect.op === "discardHand") {
     const receiver = effect.player === "opponent" ? opponent : player;
@@ -639,7 +716,7 @@ async function executeAbilityEffect(effect, context) {
       // 権威サーバ: 捨てる本人(receiver=自分 or 相手)の席へ往復（相手手札候補が能動側へ漏れない）。
       promptSeat: state.players.indexOf(receiver),
     });
-    discardHandCardsToDrop(receiver, movedCards);
+    discardHandCardsToDrop(receiver, movedCards, makeEffectCause(context, state.players.indexOf(receiver))); // E6
     if (movedCards.length > 0) {
       addLog(`${receiver.name}は${movedCards.map((card) => card.name).join("、")}を捨てました。`);
     }
@@ -707,6 +784,7 @@ async function executeAbilityEffect(effect, context) {
         continue;
       }
       receiver.drop.push(movedCard);
+      queueDeckMilledTriggers(owner, [movedCard], makeEffectCause(context, owner)); // E5: 両者のデッキ→ドロップもミル
       if (effectiveCardType(movedCard) === "monster") {
         applyDamageToPlayer(owner, effect.damage || 1, { sourceName: context.card?.name, sourceCard: context.card, sourceOwner: context.owner });
       } else if (!isLifeGainByEffectPrevented(state.players.indexOf(receiver))) {
@@ -891,8 +969,20 @@ async function executeAbilityEffect(effect, context) {
       // 逐次破壊（順序・破壊時誘発キューの保持。並列化禁止）。
       let anyDestroyed = false;
       context.lastDestroyedCards = []; // 破壊できた実カード（amountFrom lastDestroyedStatSum 用。H-BT04/0068）
+      // FE1: destroyAll{nullifyAbilities} は desugar で destroy{scope, nullifyAbilities} に化ける
+      //   （src/02:140-143）。「能力を無効化して破壊」= ソウルガード/破壊耐性/破壊置換/破壊時誘発/ライフリンクを
+      //   一括で貫通する。この翻訳が無いと 0004/UR s003・無印 bt04-0032/ss01-0030 の final 全体無効化破壊が
+      //   耐性持ちを貫通しない（レガシー destroyAll ハンドラ 971-976 と同等。そちらは desugar 後は到達不能な
+      //   デッドコードだが後方互換のため温存）。ignore*/suppress* は !options.X 判定なので false 明示は無害。
+      const nullifyDestroyOptions = {
+        ignoreSoulguard: Boolean(effect.ignoreSoulguard || effect.nullifyAbilities),
+        ignoreDestroyImmunity: Boolean(effect.ignoreDestroyImmunity || effect.nullifyAbilities),
+        ignoreDestroyReplacement: Boolean(effect.ignoreDestroyReplacement || effect.nullifyAbilities),
+        suppressDestroyedTriggers: Boolean(effect.suppressDestroyedTriggers || effect.nullifyAbilities),
+        suppressLifeLink: Boolean(effect.suppressLifeLink || effect.nullifyAbilities),
+      };
       for (const entry of scopeTargets) {
-        const d = await destroyFieldCard(entry.owner, entry.zone, { cause: makeEffectCause(context, entry.owner), ...(effect.options || {}) });
+        const d = await destroyFieldCard(entry.owner, entry.zone, { cause: makeEffectCause(context, entry.owner), ...nullifyDestroyOptions, ...(effect.options || {}) });
         if (d) {
           anyDestroyed = true;
           context.lastDestroyedCards.push(d);
@@ -914,6 +1004,10 @@ async function executeAbilityEffect(effect, context) {
     }
   }
   if (effect.op === "destroyAll") {
+    // FE1 注記: destroyAll は normalizeCardDefinition の desugarStatDestroyEffectOps で
+    //   destroy{scope} へ書き換えられるため、この分岐は正規化済みカードからは到達しない
+    //   デッドコード（生 op を直接投げる内部呼び出しの後方互換のため温存・削除不可）。
+    //   nullifyAbilities の実挙動は上の destroy{scope} 経路（nullifyDestroyOptions）が担う。
     const destroyAllTargets = allFieldTargets((card, owner, zone) => {
       if (Array.isArray(effect.zones) && !effect.zones.includes(zone)) {
         return false;
@@ -1573,7 +1667,7 @@ async function executeAbilityEffect(effect, context) {
         });
         const toDrop = chosen && chosen.length >= n ? chosen : handEntries.slice(0, n);
         const removed = removePileEntries(p.hand, toDrop);
-        discardHandCardsToDrop(p, removed);
+        discardHandCardsToDrop(p, removed, makeEffectCause(context, seat)); // E6
         addLog(`${p.name}は手札${removed.length}枚を捨てました。`);
         discarded = true;
       }

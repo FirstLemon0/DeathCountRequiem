@@ -497,7 +497,13 @@ function continuousStatBonus(card, statKey) {
     const sourceCard = player.field[zone];
     // X19(D-BT01/0131): turnContinuous も合流（activeContinuousEffects と同等。無効化判定は
     // continuousEffectApplies 側の isAbilitiesNullified が担う）。
-    [...(sourceCard?.continuous || []), ...(sourceCard?.turnContinuous || [])].forEach((effect) => {
+    // E1(D-BT04): ジェムクローンが inheritSoulAbilities:{filter} で得た、ソウル札の continuous も合流。
+    // sourceCard=host のまま continuousEffectApplies に通すので、自己バフ/条件付き継続が host に乗る。
+    [
+      ...(sourceCard?.continuous || []),
+      ...(sourceCard?.turnContinuous || []),
+      ...inheritedFilterSoulContinuous(sourceCard),
+    ].forEach((effect) => {
       if (!continuousEffectApplies(effect, card, sourceCard)) {
         return;
       }
@@ -614,6 +620,19 @@ function soulContinuousEffects(card, owner) {
   return card.soul.flatMap((sourceCard) =>
     (sourceCard.soulContinuous || []).map((effect) => ({ sourceCard, effect, owner })),
   );
+}
+
+// E1(D-BT04/0006・0115 ジェムクローン): inheritSoulAbilities:{filter} モードの continuous 面。
+// filter 一致ソウル札の（soulContinuous ではなく）通常 continuous を、ホスト自身の継続として返す。
+// continuousStatBonus の own-side ループが sourceCard=host として continuousEffectApplies に通すため、
+// ソウル札の自己バフ（filter:{sameInstanceAsSource:true} で「このカード」＝host）や条件付き継続が
+// 正しく host に乗る。inheritedFilterSoulCards が host 無効化時に空を返す＝継承は host 無効化で止まる。
+// filter モード未使用の既存カードは常に空配列＝挙動不変。
+function inheritedFilterSoulContinuous(host) {
+  if (!host?.inheritSoulAbilities?.filter) {
+    return [];
+  }
+  return inheritedFilterSoulCards(host).flatMap((soulCard) => soulCard.continuous || []);
 }
 
 // FIX6(r3-軽微3): continuousStatBonus の F2 場全体スキャン用の軽量事前ゲート。

@@ -579,6 +579,39 @@ function queueGaugePlacedTriggers(chargingOwner, cards = []) {
     });
 }
 
+// E5(D-BT04/0039 サクシヲン・0098 ノルド): 「デッキのカードがドロップゾーンに置かれた時」の場ブロードキャスト。
+// eventOwner=デッキ所有者（listener から見て ally=自分のデッキ／opponent=相手のデッキ）。details.millCause に
+// 起因（byEffect/byCost・sourceOwner=どちらの席のカードか・sourceCard）を運び、リスナー側は条件op
+// eventMillCauseMatches（src/13）で「君のカードの効果で」を照合する。同期のミル経路（コスト等）からも
+// 安全に呼べるよう microtask で発火（queueGaugePlacedTriggers と同型）。
+// 既存カードに ally/opponentDeckMilled リスナーは無い＝hasListener が常に偽＝既存挙動完全不変。
+function queueDeckMilledTriggers(deckOwner, cards = [], cause = null) {
+  const list = Array.isArray(cards) ? cards.filter(Boolean) : [cards].filter(Boolean);
+  if (list.length === 0) {
+    return;
+  }
+  const hasListener = [0, 1].some((playerIndex) =>
+    zones.some((zone) => {
+      const c = state.players[playerIndex]?.field?.[zone];
+      return (
+        cardHasTriggeredListener(c, "allyDeckMilled") || cardHasTriggeredListener(c, "opponentDeckMilled")
+      );
+    }),
+  );
+  if (!hasListener) {
+    return;
+  }
+  Promise.resolve()
+    .then(async () => {
+      await runFieldEventTriggers("deckMilled", deckOwner, list[0], null, { count: list.length, millCause: cause });
+      render();
+    })
+    .catch((error) => {
+      console.error(error);
+      render();
+    });
+}
+
 async function restFieldCard(owner, zone, card = state.players[owner]?.field?.[zone], details = {}) {
   if (!card || card.used) {
     return false;

@@ -58,6 +58,12 @@ function handAbilityTimingMatches(ability, options = {}) {
   if (state.pendingAttack) {
     return isCounterAbility(ability);
   }
+  // F8(D-SS03/0020 『必殺変身』): explicitPhase 指定時は「timing がそのフェイズを明示する」能力のみ真。
+  // 非メインフェイズの useCardAction 経路が使う——timing 省略（＝メイン扱い）の魔法/起動能力を
+  // メイン外で誤って通さないための限定モード。対抗系は上の pending 分岐と通常経路が従来どおり担う。
+  if (options.explicitPhase) {
+    return (ability.timing || []).includes(options.explicitPhase);
+  }
   return abilityTimingIncludes(ability, state.phase) || (isCounterAbility(ability) && isCounterPlayTiming());
 }
 
@@ -274,6 +280,11 @@ async function useFieldAbilityAction(card, loc = null) {
     selectedCard: sourceCard,
     ability,
     includeOpponentGauge,
+    // E3(D-BT04/0033 グラトス): discardSoulToDeckBottom{amountFrom:{source:"targetStat"}} が、
+    // 先に選んだ効果対象の打撃力を最小支払い量として読めるよう渡す（専用キー＝dropOwnMonster 等の
+    // 既存 context.target 解決経路には触れない）。owner は controller 解決の整合用。
+    effectTargetForCost: target,
+    owner,
   });
   if (!payment.ok) {
     addLog(payment.reason);
@@ -1028,6 +1039,34 @@ function checkCondition(condition, owner, context = {}) {
     // context.returnCause は returnToHand/returnAllToHand(15)・returnFieldTargetToHand(08)が伝播する。
     const cause = context.returnCause;
     if (!cause?.byEffect) return false;
+    if (condition.sourceController === "self" && cause.sourceOwner !== owner) return false;
+    if (condition.sourceController === "opponent" && cause.sourceOwner === owner) return false;
+    if (condition.filter && !matchesCardFilter(cause.sourceCard, condition.filter || {})) return false;
+    return true;
+  }
+  if (condition.op === "eventMillCauseMatches") {
+    // E5(D-BT04/0039 サクシヲン・0098 ノルド): ally/opponentDeckMilled 誘発時、ミルの起因を照合する。
+    // context.millCause は queueDeckMilledTriggers（デッキ→ドロップの各ミル経路）が伝播する。
+    // 既定は「効果によるミル」（byEffect）のみ。allowCost:true でコスト起因（byCost）も許容。
+    // sourceController:"self"=「君のカードの効果で」（起因席が listener 自身）。filter は起因カード照合。
+    const cause = context.millCause;
+    if (!cause) return false;
+    if (!(cause.byEffect || (condition.allowCost && cause.byCost))) return false;
+    if (condition.sourceController === "self" && cause.sourceOwner !== owner) return false;
+    if (condition.sourceController === "opponent" && cause.sourceOwner === owner) return false;
+    if (condition.filter && !matchesCardFilter(cause.sourceCard, condition.filter || {})) return false;
+    return true;
+  }
+  if (condition.op === "eventDiscardCauseMatches") {
+    // E6(D-BT04/0104 戦闘詩人 レポーティング): discardedFromHand 誘発時、捨ての起因を照合する。
+    // context.discardCause は discardHandCardsToDrop（src/11）へ各経路が渡す（効果op=makeEffectCause／
+    // コストstep=byCost。ターン終了時などルール由来の捨ては cause 無し＝不成立）。
+    // ★DB では「捨ててよい。捨てたら」型（公式には効果）を cost step でエンコードしている（D-EB02 戦闘詩人
+    // トーキング等）ため、この型を拾うリスナーは allowCost:true を併用する（残差: 純粋な【使用コスト】の
+    // 手札捨てとの弁別は不可＝過発火し得るが、該当 filter を持つ実カードでは実害なし）。
+    const cause = context.discardCause;
+    if (!cause) return false;
+    if (!(cause.byEffect || (condition.allowCost && cause.byCost))) return false;
     if (condition.sourceController === "self" && cause.sourceOwner !== owner) return false;
     if (condition.sourceController === "opponent" && cause.sourceOwner === owner) return false;
     if (condition.filter && !matchesCardFilter(cause.sourceCard, condition.filter || {})) return false;
