@@ -1,0 +1,658 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-h-sd01-guren-no-ken",
+    "name": "ハンドレッド ５００円スタートデッキ第１弾「紅蓮の拳」",
+    "kind": "スタートデッキ",
+    "generation": "100",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=24"
+  },
+  "cards": [
+    {
+      "id": "bf-h-sd01-0001",
+      "no": "H-SD01/0001",
+      "name": "初代紅蓮闘王 グレイテスト・ジェネラル",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、君のドロップゾーンのカード名に「紅蓮」を含むカード２枚をこのカードのソウルに入れる。",
+        "『貫通』（このカードの攻撃で相手センターのモンスターを破壊したら、相手にも打撃力分ダメージを与える）",
+        "『ソウルガード』（このカードが場から離れる場合、ソウル１枚を捨てて場に残せる）"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 3,
+      "defense": 4000,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putDropToSoul",
+            "amount": 2,
+            "filter": {
+              "nameIncludes": "紅蓮"
+            },
+            "min": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "penetrate",
+        "soulguard"
+      ]
+    },
+    {
+      "id": "bf-h-sd01-0002",
+      "no": "H-SD01/0002",
+      "name": "紅蓮闘士 エクストリームブロウ・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [],
+      "size": 2,
+      "power": 7000,
+      "critical": 3,
+      "defense": 2000,
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      }
+    },
+    {
+      "id": "bf-h-sd01-0003",
+      "no": "H-SD01/0003",
+      "name": "紅蓮闘士 ブーステッド・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君がカード名に「拳」を含むカードを装備しているなら、このカードは『移動』を得る。（移動：お互いのアタックフェイズ開始時に、場のこのカードを空いている別のエリアに置いてよい）"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 6000,
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "move",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "filter": {
+                "nameIncludes": "拳"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-sd01-0004",
+      "no": "H-SD01/0004",
+      "name": "紅蓮闘士 グランドキック・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君がアイテムを装備しているなら、このカードの攻撃力＋3000、防御力＋3000！"
+      ],
+      "size": 2,
+      "power": 3000,
+      "critical": 3,
+      "defense": 3000,
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "power": 3000,
+          "defense": 3000,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "filter": {
+                "cardType": "item"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-sd01-0005",
+      "no": "H-SD01/0005",
+      "name": "紅蓮闘士 スピンネイル・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■このカードはセンターにコールできない。"
+      ],
+      "size": 1,
+      "power": 6000,
+      "critical": 2,
+      "defense": 2000,
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "cannotCallZones": [
+        "center"
+      ]
+    },
+    {
+      "id": "bf-h-sd01-0006",
+      "no": "H-SD01/0006",
+      "name": "紅蓮闘士 ハンマーボウル・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [],
+      "size": 1,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000,
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      }
+    },
+    {
+      "id": "bf-h-sd01-0007",
+      "no": "H-SD01/0007",
+      "name": "紅蓮闘士 スターティング・ドラゴン",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [],
+      "size": 1,
+      "power": 4000,
+      "critical": 1,
+      "defense": 5000,
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      }
+    },
+    {
+      "id": "bf-h-sd01-0008",
+      "no": "H-SD01/0008",
+      "name": "紅蓮闘士 メンテナンス・キッド",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■このカードが登場した時、君の場に他のカード名に「紅蓮」を含むカードがあるなら、君のライフを＋１！！"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 3000,
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-h-sd01-0008-enter",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "ownOtherFieldCardExists",
+              "filter": {
+                "nameIncludes": "紅蓮"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-sd01-0009",
+      "no": "H-SD01/0009",
+      "name": "ドラゴニック・ゲートブレイカー",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "破壊"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■相手のセンターのモンスターを破壊する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-sd01-0009-destroy",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster",
+              "zone": "center"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-sd01-0010",
+      "no": "H-SD01/0010",
+      "name": "ドラゴニック・ディレクティブ",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "ドロー"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君のライフが４以下なら使える。",
+        "■君の手札が２枚以下なら、３枚になるようにカードを引く。「ドラゴニック・ディレクティブ」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-sd01-0010-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 4
+            }
+          ],
+          "effects": [
+            {
+              "op": "drawUpToHand",
+              "amount": 3
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "dragonic-directive"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-sd01-0011",
+      "no": "H-SD01/0011",
+      "name": "ドラゴンシールド 古竜の盾",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "防御"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君が攻撃されている攻撃中に使える。",
+        "■【対抗】その攻撃を無効化し、君のライフが１ならカード１枚を引く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-sd01-0011-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "draw",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "lifeLte",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-sd01-0012",
+      "no": "H-SD01/0012",
+      "name": "ドラゴニック・オーラ",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "チャージ",
+        "回復"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君が《武器》を装備しているなら使える。",
+        "■君のデッキの上から２枚をゲージに置き、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-sd01-0012-charge",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "ownItemHasAttribute",
+              "attribute": "武器"
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-sd01-0013",
+      "no": "H-SD01/0013",
+      "name": "ドラゴンシールド 緑竜の盾",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "緑竜",
+        "防御"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】その攻撃を無効化し、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-sd01-0013-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-sd01-0014",
+      "no": "H-SD01/0014",
+      "name": "襲撃剣 ドラゴラプター",
+      "type": "item",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "武器"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【装備コスト】ゲージ２を払う。"
+      ],
+      "power": 4000,
+      "critical": 3,
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "equipCost": {
+        "gauge": 2
+      }
+    },
+    {
+      "id": "bf-h-sd01-0015",
+      "no": "H-SD01/0015",
+      "name": "闘魂拳 ドラゴソウル",
+      "type": "item",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "武器"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [],
+      "power": 3000,
+      "critical": 2,
+      "costs": {
+        "equip": []
+      },
+      "equipCost": {
+        "gauge": 0
+      }
+    },
+    {
+      "id": "bf-h-sd01-0016",
+      "no": "H-SD01/0016",
+      "name": "紅蓮ソウル・グレネード!!",
+      "type": "impact",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■相手のライフが４以下で、君がアイテムを装備していて、君のセンターにモンスターがいないなら使える。",
+        "■【使用コスト】ゲージ４を払う。",
+        "■相手にダメージ４！！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 4
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 4
+      },
+      "abilities": [
+        {
+          "id": "bf-h-sd01-0016-impact",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "opponentLifeLte",
+              "amount": 4
+            },
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "filter": {
+                "cardType": "item"
+              },
+              "cmp": "gte",
+              "amount": 1
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 4
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-sd01-0017",
+      "no": "H-SD01/0017",
+      "name": "ドラゴンワールド",
+      "type": "flag",
+      "rarity": "デッキ商品",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "このファイターはドラゴンWのカードを使う。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/hsd_01_0017.png",
+      "_note": "フラッグ表示専用カード（絵違い/箔違い再録・機構は data/flags.json が担う）"
+    }
+  ]
+}

@@ -1,0 +1,809 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "td01-braves-explosion",
+    "name": "トライアルデッキ第1弾「ザ・勇者爆誕!!」",
+    "kind": "トライアルデッキ",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=14"
+  },
+  "cards": [
+    {
+      "id": "td04-0001",
+      "no": "TD04/0001",
+      "name": "銀の戦士 クェンツヴァイ",
+      "type": "monster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者",
+        "戦士"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 3,
+      "defense": 2000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "■このカードが他の《冒険者》と連携攻撃した時、そのターン中、このカードは『貫通』を得る。"
+      ],
+      "abilities": [
+        {
+          "id": "td04-0001-link-penetrate",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            },
+            {
+              "op": "pendingAttackIncludesOtherMatching",
+              "filter": {
+                "attribute": "冒険者"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "penetrate",
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td04-0002",
+      "no": "TD04/0002",
+      "name": "伝説の闘士 牙王",
+      "type": "monster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 5000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、デッキの上から１枚をこのカードのソウルに入れる。",
+        "■このカードが攻撃された時、攻撃してきたカードの『貫通』を、そのターン中、無効化する。",
+        "『ソウルガード』"
+      ],
+      "keywords": [
+        "soulguard"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "td04-0002-nullify-penetrate",
+          "kind": "triggered",
+          "event": "attacked",
+          "effects": [
+            {
+              "op": "nullifyAttackersKeyword",
+              "keyword": "penetrate",
+              "label": "貫通"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td04-0003",
+      "no": "TD04/0003",
+      "name": "パンの神の僧侶 プリオス",
+      "type": "monster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者",
+        "僧侶",
+        "チームGM"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 5000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "『移動』"
+      ],
+      "keywords": [
+        "move"
+      ]
+    },
+    {
+      "id": "td04-0004",
+      "no": "TD04/0004",
+      "name": "クラフトマン 爆",
+      "type": "monster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 3000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "■このカードが他の《冒険者》と連携攻撃した時、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "td04-0004-link-gauge",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            },
+            {
+              "op": "pendingAttackIncludesOtherMatching",
+              "filter": {
+                "attribute": "冒険者"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td04-0005",
+      "no": "TD04/0005",
+      "name": "ダックス コボルト",
+      "type": "monster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "Dエネミー"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "能力なし。"
+      ]
+    },
+    {
+      "id": "td04-0006",
+      "no": "TD04/0006",
+      "name": "マスターシーフ ストロゥル・バード",
+      "type": "monster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者",
+        "盗賊"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 2000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "能力なし。"
+      ]
+    },
+    {
+      "id": "td04-0007",
+      "no": "TD04/0007",
+      "name": "駆け出し戦士 オッカー・グレイザー",
+      "type": "monster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者",
+        "戦士",
+        "チームGM"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 1,
+      "defense": 3000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "■このカードが他の《冒険者》と連携攻撃した時、そのターン中、このカードは『貫通』を得る。"
+      ],
+      "abilities": [
+        {
+          "id": "td04-0007-link-penetrate",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            },
+            {
+              "op": "pendingAttackIncludesOtherMatching",
+              "filter": {
+                "attribute": "冒険者"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "penetrate",
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td04-0008",
+      "no": "TD04/0008",
+      "name": "賢者 くぐる",
+      "type": "monster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者",
+        "僧侶"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君のセンターにモンスターがいなくて、このカードが他の《冒険者》と連携攻撃した時、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "td04-0008-link-life",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "pendingAttackBySource"
+            },
+            {
+              "op": "pendingAttackIncludesOtherMatching",
+              "filter": {
+                "attribute": "冒険者"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td04-0009",
+      "no": "TD04/0009",
+      "name": "豆柴 コボルト",
+      "type": "monster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "Dエネミー"
+      ],
+      "size": 0,
+      "power": 1000,
+      "critical": 2,
+      "defense": 2000,
+      "rarity": "デッキ商品",
+      "rules": [
+        "能力なし。"
+      ]
+    },
+    {
+      "id": "td04-0010",
+      "no": "TD04/0010",
+      "name": "ローリング・ストーン",
+      "type": "spell",
+      "world": "ダンジョンW",
+      "attributes": [
+        "罠",
+        "破壊"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【使用コスト】ゲージ２を払う。",
+        "■お互いのセンターのモンスターのソウル全てをドロップゾーンに置き、お互いのセンターのモンスターを破壊する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "td04-0010-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "dropAllSoulAtZone",
+              "zone": "center"
+            },
+            {
+              "op": "destroyAll",
+              "zones": [
+                "center"
+              ],
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td04-0011",
+      "no": "TD04/0011",
+      "name": "トゥバルの神託",
+      "type": "spell",
+      "world": "ダンジョンW",
+      "attributes": [
+        "ドロー"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君のライフが５以下なら使える。",
+        "■君の手札全てを捨て、カードを３枚引く。",
+        "■「トゥバルの神託」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "td04-0011-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "td04-0011"
+          },
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 5
+            }
+          ],
+          "effects": [
+            {
+              "op": "discardAllHand"
+            },
+            {
+              "op": "draw",
+              "amount": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td04-0012",
+      "no": "TD04/0012",
+      "name": "ピラー・オブ・ファイヤー",
+      "type": "spell",
+      "world": "ダンジョンW",
+      "attributes": [
+        "火力"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■君のセンターにモンスターがいないなら使える。",
+        "■【対抗】場の防御力6000以下のモンスター１枚を破壊する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "td04-0012-cast",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "any",
+            "filter": {
+              "cardType": "monster",
+              "defenseLte": 6000
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td04-0013",
+      "no": "TD04/0013",
+      "name": "ダンジョン・ピット",
+      "type": "spell",
+      "world": "ダンジョンW",
+      "attributes": [
+        "罠",
+        "破壊"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■相手のセンターにサイズ２以下のモンスターが登場した時に使える。",
+        "■【対抗】そのモンスターを【レスト】にする。"
+      ],
+      "abilities": [
+        {
+          "id": "td04-0013-cast",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "lastEnteredCardMatches",
+              "controller": "opponent",
+              "zone": "center",
+              "filter": {
+                "cardType": "monster",
+                "sizeLte": 2
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster",
+              "zone": "center"
+            }
+          },
+          "effects": [
+            {
+              "op": "restTarget"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td04-0014",
+      "no": "TD04/0014",
+      "name": "シャルサーナの加護",
+      "ruby": "シャルサーナのかご",
+      "type": "spell",
+      "world": "ダンジョンW",
+      "attributes": [
+        "防御"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■相手のターンの攻撃中に使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】その攻撃を無効化し、君のライフを＋１する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bt03-0068-shield",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td04-0015",
+      "no": "TD04/0015",
+      "name": "ミッションカード \"パーティ結成！\"",
+      "type": "spell",
+      "world": "ダンジョンW",
+      "attributes": [
+        "ドロー"
+      ],
+      "rarity": "デッキ商品",
+      "keywords": [
+        "set"
+      ],
+      "rules": [
+        "『設置』",
+        "■君の場にこのカード以外の、カード名に「ミッション」を含むカードが『設置』された時、君のライフを＋１し、君のデッキから《冒険者》１枚を選び、手札に加え、デッキをシャッフルし、このカードをドロップゾーンに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "td04-0015-mission",
+          "kind": "triggered",
+          "event": "allySet",
+          "conditions": [
+            {
+              "op": "enteredCardMatches",
+              "excludeSource": true,
+              "filter": {
+                "nameIncludes": "ミッション"
+              }
+            }
+          ],
+          "script": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "selectCards",
+              "var": "adventurer",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "attribute": "冒険者"
+              },
+              "amount": 1,
+              "allowEmpty": true,
+              "title": "パーティ結成！で手札に加える《冒険者》",
+              "lead": "デッキから《冒険者》１枚を選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "adventurer",
+              "to": "hand"
+            },
+            {
+              "op": "shuffleDeck"
+            },
+            {
+              "op": "moveTargetToDrop",
+              "target": "$self"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td04-0016",
+      "no": "TD04/0016",
+      "name": "ミッションカード \"モンスター討伐！\"",
+      "type": "spell",
+      "world": "ダンジョンW",
+      "attributes": [
+        "ドロー"
+      ],
+      "rarity": "デッキ商品",
+      "keywords": [
+        "set"
+      ],
+      "uniqueSet": true,
+      "rules": [
+        "『設置』",
+        "■【使用コスト】ゲージ１を払う。",
+        "■君の《冒険者》の攻撃で相手のモンスターを破壊した時、君のデッキの上から１枚をこのカードのソウルに入れる。",
+        "■このカードのソウルが２枚以上になった時、このカードのソウル全てを手札に加え、このカードをドロップゾーンに置く。",
+        "■「ミッションカード \"モンスター討伐！\"」は君の場に１枚だけ『設置』できる。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "td04-0016-mission",
+          "kind": "triggered",
+          "event": "allyAttackDestroyed",
+          "conditions": [
+            {
+              "op": "eventAttackersMatch",
+              "filter": {
+                "attribute": "冒険者"
+              }
+            }
+          ],
+          "script": [
+            {
+              "op": "putTopDeckToSoul",
+              "amount": 1
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "sourceSoulCountGte",
+                "amount": 2
+              },
+              "then": [
+                {
+                  "op": "moveSourceSoulToHand"
+                },
+                {
+                  "op": "moveTargetToDrop",
+                  "target": "$self"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "td04-0017",
+      "no": "TD04/0017",
+      "name": "踏破剣 ダンジョンダミネイション",
+      "type": "item",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者",
+        "武器"
+      ],
+      "power": 5000,
+      "critical": 2,
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "td04-0018",
+      "no": "TD04/0018",
+      "name": "始まりの剣 エネミーブレイカー",
+      "type": "item",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者",
+        "武器"
+      ],
+      "power": 3000,
+      "critical": 2,
+      "rarity": "デッキ商品",
+      "rules": [
+        "能力なし。"
+      ]
+    },
+    {
+      "id": "td04-0019",
+      "no": "TD04/0019",
+      "name": "デッドエンド・クラッシュ！",
+      "type": "impact",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者"
+      ],
+      "rarity": "デッキ商品",
+      "cannotBeNullified": true,
+      "rules": [
+        "■【使用コスト】ゲージ２を払う。",
+        "■相手のライフが３以下で、君の場に《冒険者》のモンスターがいて、君が《武器》を装備しているなら使える。",
+        "■相手にダメージ３！！このカードは無効化されず、このカードのダメージは減らない。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "td04-0019-cast",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "opponentLifeLte",
+              "amount": 3
+            },
+            {
+              "op": "ownFieldCardCountGte",
+              "amount": 1,
+              "filter": {
+                "cardType": "monster",
+                "attribute": "冒険者"
+              }
+            },
+            {
+              "op": "ownItemHasAttribute",
+              "attribute": "武器"
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 3,
+              "ignorePrevention": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dungeon-world",
+      "no": "TD04/0020",
+      "name": "ダンジョンワールド",
+      "type": "flag",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "このファイターはダンジョンWのカードを使う。"
+      ]
+    }
+  ]
+}

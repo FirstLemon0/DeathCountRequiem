@@ -1,0 +1,4769 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-h-eb02-w-hero-wars",
+    "name": "ハンドレッド エクストラブースター第２弾「Wヒーロー大戦」",
+    "kind": "エクストラブースター",
+    "generation": "100",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=31"
+  },
+  "cards": [
+    {
+      "id": "bf-h-eb02-0001",
+      "no": "H-EB02/0001",
+      "name": "大剣神 カイゼリオン",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ブレイブマシン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 3,
+      "power": 8000,
+      "critical": 3,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが登場か『搭乗』した時、君のドロップゾーンの《ブレイブマシン》１枚までをこのカードのソウルに入れる。",
+        "■このカードのソウルが３枚以上なら、このカードの打撃力＋１！",
+        "『ソウルガード』『搭乗』〔ゲージ２を払う〕"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "soulguard",
+        "ride"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "sourceSoulCountGte",
+              "amount": 3
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0001-enter-soul",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "soul",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "attribute": "ブレイブマシン"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "大剣神 カイゼリオン",
+              "lead": "このカードのソウルに入れるドロップゾーンの《ブレイブマシン》１枚を選んでください（入れなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "soul",
+              "to": "soul",
+              "require": false,
+              "log": "{cards}をこのカードのソウルに入れました。"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0001-ride-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0001-ride-field",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0002",
+      "no": "H-EB02/0002",
+      "name": "キャプテンアンサー・ファイナルモード",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー"
+      ],
+      "rarity": "デッキ商品",
+      "size": 3,
+      "power": 8000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ３を払う。",
+        "■【起動】君のドロップゾーンに《ヒーロー》２種類以上があるなら、ゲージ１を払う。払ったら、君はモンスターか魔法を宣言し、君のデッキの１番上のカードをドロップゾーンに置く。そのカードが宣言したカードの種類だった場合、相手の場のモンスター１枚を破壊し、そのターン中、このカードは『２回攻撃』を得る。この能力は１ターンに１回だけ使える。",
+        "『変身』〔ゲージ２を払う〕"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      },
+      "keywords": [
+        "henshin"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0002-final-answer",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "ownDropDistinctCardCountGte",
+              "filter": {
+                "attribute": "ヒーロー"
+              },
+              "amount": 2
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "ファイナルアンサー",
+              "lead": "モンスターか魔法を宣言してください。",
+              "options": [
+                {
+                  "key": "monster",
+                  "label": "モンスターを宣言",
+                  "script": [
+                    {
+                      "op": "moveTopDeckToDrop",
+                      "player": "self",
+                      "amount": 1
+                    },
+                    {
+                      "op": "stopUnlessMovedToDropMatches",
+                      "filter": {
+                        "cardType": "monster"
+                      },
+                      "message": "ドロップゾーンに置いたカードが宣言した種類(モンスター)と一致しませんでした。"
+                    },
+                    {
+                      "op": "selectCards",
+                      "var": "kill",
+                      "from": "field",
+                      "controller": "opponent",
+                      "filter": {
+                        "cardType": "monster"
+                      },
+                      "amount": 1,
+                      "allowEmpty": true,
+                      "emptyMessage": "相手の場にモンスターがないため、破壊は行いません。",
+                      "title": "破壊する相手のモンスター",
+                      "lead": "破壊する相手の場のモンスター１枚を選んでください。"
+                    },
+                    {
+                      "op": "destroySelected",
+                      "var": "kill",
+                      "require": false
+                    },
+                    {
+                      "op": "grantKeyword",
+                      "target": "$self",
+                      "keyword": "doubleAttack",
+                      "duration": "turn"
+                    }
+                  ]
+                },
+                {
+                  "key": "spell",
+                  "label": "魔法を宣言",
+                  "script": [
+                    {
+                      "op": "moveTopDeckToDrop",
+                      "player": "self",
+                      "amount": 1
+                    },
+                    {
+                      "op": "stopUnlessMovedToDropMatches",
+                      "filter": {
+                        "cardType": "spell"
+                      },
+                      "message": "ドロップゾーンに置いたカードが宣言した種類(魔法)と一致しませんでした。"
+                    },
+                    {
+                      "op": "selectCards",
+                      "var": "kill",
+                      "from": "field",
+                      "controller": "opponent",
+                      "filter": {
+                        "cardType": "monster"
+                      },
+                      "amount": 1,
+                      "allowEmpty": true,
+                      "emptyMessage": "相手の場にモンスターがないため、破壊は行いません。",
+                      "title": "破壊する相手のモンスター",
+                      "lead": "破壊する相手の場のモンスター１枚を選んでください。"
+                    },
+                    {
+                      "op": "destroySelected",
+                      "var": "kill",
+                      "require": false
+                    },
+                    {
+                      "op": "grantKeyword",
+                      "target": "$self",
+                      "keyword": "doubleAttack",
+                      "duration": "turn"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb02-0002-final-answer"
+          }
+        },
+        {
+          "id": "bf-h-eb02-0002-henshin-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0002-henshin-field",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0003",
+      "no": "H-EB02/0003",
+      "name": "影雄 シュヴァルツ",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー"
+      ],
+      "rarity": "デッキ商品",
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、手札の《ダークヒーロー》１枚を捨てる。",
+        "■“ダム・ストライク”このカードが登場した時、相手の場のモンスター１枚を破壊する。",
+        "■このカードのバトル終了時、このカードを君の手札に戻す！"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "discardHand",
+            "amount": 1,
+            "filter": {
+              "attribute": "ダークヒーロー"
+            }
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0003-dam-strike",
+          "kind": "triggered",
+          "event": "enter",
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0003-battle-end-return",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "effects": [
+            {
+              "op": "returnToHand",
+              "target": "$self"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0004",
+      "no": "H-EB02/0004",
+      "name": "RD ジャスティス・ドラム",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー",
+        "ドラゴン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードの攻撃で相手のモンスターを破壊した時、君が『変身』しているなら、このカードを【スタンド】する。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0004-stand",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "filter": {
+                "keyword": "henshin"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0005",
+      "no": "H-EB02/0005",
+      "name": "RDリーダー イモータルスピリット",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー",
+        "ドラゴン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 3,
+      "power": 8000,
+      "critical": 1,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードの攻撃で相手のモンスターを破壊した時、カード１枚を引く。",
+        "『２回攻撃』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0005-draw",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0006",
+      "no": "H-EB02/0006",
+      "name": "光速特急 エクスブレイザー",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ブレイブマシン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードの攻撃で相手にダメージを与えた時、ライフ１を払ってよい。払ったら、相手にダメージ２！！",
+        "『搭乗』〔ゲージ１を払う〕"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "ride"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0006-extra-damage",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "optional": true,
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 2
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0006-ride-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0006-ride-field",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0007",
+      "no": "H-EB02/0007",
+      "name": "ガイグレンダー２号",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー"
+      ],
+      "rarity": "デッキ商品",
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが登場した時、君のデッキからカード名に「ガイグレンダー」を含むカード１枚までを手札に加え、デッキをシャッフルする。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0007-search",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "search",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "nameIncludes": "ガイグレンダー"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "ガイグレンダー２号",
+              "lead": "デッキからカード名に「ガイグレンダー」を含むカード１枚を選んでください（加えなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "search",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を手札に加えました。"
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0008",
+      "no": "H-EB02/0008",
+      "name": "激炎特捜 プロミネンスバースト",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー"
+      ],
+      "rarity": "デッキ商品",
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■君の場の《ヒーロー》のモンスターの攻撃で相手のモンスターを破壊した時、そのターン中、このカードの打撃力を＋１！！（何回でも発動するぜ！！）",
+        "『変身』〔ゲージ１を払う〕"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "keywords": [
+        "henshin"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0008-hero-crit",
+          "kind": "triggered",
+          "event": "allyAttackDestroyed",
+          "conditions": [
+            {
+              "op": "eventAttackersMatch",
+              "filter": {
+                "attribute": "ヒーロー",
+                "cardType": "monster"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "critical": 1,
+              "duration": "turn"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0008-henshin-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0008-henshin-field",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0009",
+      "no": "H-EB02/0009",
+      "name": "ガイグレンダー１号",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー"
+      ],
+      "rarity": "デッキ商品",
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【起動】君がこのカードに『変身』しているなら、ゲージ２を払う。払ったら、君のデッキからカード名に「ガイグレンダー」を含むカード１枚までを手札に加え、デッキをシャッフルする。",
+        "『変身』〔ゲージ１を払い、君が『変身』しているカード名に「ガイグレンダー」を含むカード１枚までを手札に戻す〕"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "keywords": [
+        "henshin"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0009-search",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "item"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "search",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "nameIncludes": "ガイグレンダー"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "ガイグレンダー１号",
+              "lead": "デッキからカード名に「ガイグレンダー」を含むカード１枚を選んでください（加えなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "search",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を手札に加えました。"
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0009-henshin-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "returnOwnFieldCardToHand",
+              "zones": [
+                "item"
+              ],
+              "filter": {
+                "nameIncludes": "ガイグレンダー"
+              },
+              "amount": 1,
+              "min": 0
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0009-henshin-field",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "returnOwnFieldCardToHand",
+              "zones": [
+                "item"
+              ],
+              "filter": {
+                "nameIncludes": "ガイグレンダー"
+              },
+              "amount": 1,
+              "min": 0
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0010",
+      "no": "H-EB02/0010",
+      "name": "闇手拳のグエン",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー",
+        "闇"
+      ],
+      "rarity": "デッキ商品",
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■君の場に他の《ダークヒーロー》があるなら、このカードは相手のセンターにモンスターがいても、相手を攻撃できる。",
+        "■このカードが相手にダメージを与えた時、このカードを手札に戻す。"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "canAttackFighterThroughCenter",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "ownOtherFieldCardExists",
+              "filter": {
+                "attribute": "ダークヒーロー"
+              }
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0010-return",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "effects": [
+            {
+              "op": "returnToHand",
+              "target": "$self"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0011",
+      "no": "H-EB02/0011",
+      "name": "悪の美学",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "ゲット"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【使用コスト】ゲージ１を払い、ライフ１を払う。",
+        "■以下の２つから１つを選んで使う。",
+        "・君のドロップゾーンの同じサイズの《ダークヒーロー》のモンスター２枚までを手札に加える。",
+        "・君のドロップゾーンの《ダークヒーロー》のアイテム１枚までを手札に加える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1,
+        "life": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0011-choose",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "悪の美学",
+              "lead": "以下の２つから１つを選んで使ってください。",
+              "options": [
+                {
+                  "key": "monsters",
+                  "label": "同じサイズの《ダークヒーロー》のモンスター２枚までを手札に加える",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "grab",
+                      "from": "drop",
+                      "controller": "self",
+                      "filter": {
+                        "attribute": "ダークヒーロー",
+                        "cardType": "monster"
+                      },
+                      "groupBy": "size",
+                      "groupSizeGte": 1,
+                      "amount": 1,
+                      "require": false,
+                      "title": "悪の美学",
+                      "lead": "手札に加える同じサイズの《ダークヒーロー》のモンスターを選んでください（同じサイズを最大２枚）。"
+                    },
+                    {
+                      "op": "moveSelectedGroup",
+                      "var": "grab",
+                      "to": "hand",
+                      "amount": 2,
+                      "chooseWithinGroup": true,
+                      "require": false,
+                      "log": "{cards}を手札に加えました。"
+                    }
+                  ]
+                },
+                {
+                  "key": "item",
+                  "label": "《ダークヒーロー》のアイテム１枚までを手札に加える",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "grabItem",
+                      "from": "drop",
+                      "controller": "self",
+                      "filter": {
+                        "attribute": "ダークヒーロー",
+                        "cardType": "item"
+                      },
+                      "min": 0,
+                      "max": 1,
+                      "amount": 1,
+                      "require": false,
+                      "title": "悪の美学",
+                      "lead": "手札に加える《ダークヒーロー》のアイテム１枚を選んでください（加えなくてもよい）。"
+                    },
+                    {
+                      "op": "moveSelected",
+                      "var": "grabItem",
+                      "to": "hand",
+                      "require": false,
+                      "log": "{cards}を手札に加えました。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0012",
+      "no": "H-EB02/0012",
+      "name": "不可視の断罪銃",
+      "type": "item",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー",
+        "武器"
+      ],
+      "rarity": "デッキ商品",
+      "power": 4000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ２を払う。",
+        "■君の場に他の《ダークヒーロー》があるなら、このカードは相手のセンターにモンスターがいても、相手を攻撃できる。",
+        "■君のアタックフェイズ中に君の場のモンスターが場から離れた時、カード１枚を引く。この能力は１ターンに１回だけ発動する。"
+      ],
+      "equipCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "canAttackFighterThroughCenter",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "ownOtherFieldCardExists",
+              "filter": {
+                "attribute": "ダークヒーロー"
+              }
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0012-leave-draw",
+          "kind": "triggered",
+          "event": "allyLeaveField",
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "phaseIs",
+              "phase": "attack"
+            },
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb02-0012-leave-draw"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0013",
+      "no": "H-EB02/0013",
+      "name": "合体戦士 ディジエム",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー",
+        "カルテットファイブ"
+      ],
+      "rarity": "デッキ商品",
+      "size": 3,
+      "power": 9000,
+      "critical": 3,
+      "defense": 7000,
+      "rules": [
+        "■このカードはコールできない。",
+        "■君が攻撃によって受けるダメージが４以上なら、そのダメージを３に減らす。",
+        "■【起動】手札の《カルテットファイブ》１枚を捨ててよい。捨てたら、場のサイズ２以下のモンスター１枚を破壊する。",
+        "『貫通』『変身』〔ゲージ２を払い、君が『変身』している《カルテットファイブ》１枚を手札に戻す〕"
+      ],
+      "cannotCallNormally": true,
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "keywords": [
+        "penetrate",
+        "henshin"
+      ],
+      "attackDamageReceivedTo": 3,
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0013-destroy",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "optional": true,
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "item"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1,
+              "filter": {
+                "attribute": "カルテットファイブ"
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "any",
+            "filter": {
+              "cardType": "monster",
+              "sizeLte": 2
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0013-henshin-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            },
+            {
+              "op": "returnOwnFieldCardToHand",
+              "amount": 1,
+              "zones": [
+                "item"
+              ],
+              "filter": {
+                "mounted": true,
+                "keyword": "henshin",
+                "attribute": "カルテットファイブ"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0013-henshin-field",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            },
+            {
+              "op": "returnOwnFieldCardToHand",
+              "amount": 1,
+              "zones": [
+                "item"
+              ],
+              "filter": {
+                "mounted": true,
+                "keyword": "henshin",
+                "attribute": "カルテットファイブ"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0014",
+      "no": "H-EB02/0014",
+      "name": "GC ゼルドライン",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ブレイブマシン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 3,
+      "power": 6000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "『搭乗』〔ゲージ２を払う〕（そうしたら、手札かモンスタースペースのこのカードを装備し、装備されたこのカードはモンスターではなくアイテムとして扱う）"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "keywords": [
+        "ride"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0014-ride-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0014-ride-field",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0015",
+      "no": "H-EB02/0015",
+      "name": "紫紺の勇士 ロードクロウ",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー"
+      ],
+      "rarity": "デッキ商品",
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■このカードが登場した時、君のデッキの上から１枚をゲージに置く。",
+        "■このカードのバトル終了時、君の場に他の《ダークヒーロー》があるなら、このカードを破壊する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0015-enter-gauge",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0015-battleend-destroy",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "conditions": [
+            {
+              "op": "ownOtherFieldCardExists",
+              "filter": {
+                "attribute": "ダークヒーロー"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroySelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0016",
+      "no": "H-EB02/0016",
+      "name": "RD メタモルエフェクト",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー"
+      ],
+      "rarity": "デッキ商品",
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■【起動】ゲージ１を払う。払ったら、君のデッキからモンスター１枚までをドロップゾーンに置き、デッキをシャッフルする。そのターン中、場のこのカードはドロップゾーンに置いたカードと同じカード名としても扱う。この能力は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0016-metamorph",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "m",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "RD メタモルエフェクト",
+              "lead": "ドロップゾーンに置くモンスターを選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "m",
+              "to": "drop",
+              "require": false
+            },
+            {
+              "op": "shuffleDeck"
+            },
+            {
+              "op": "gainNameAsSelected",
+              "var": "m",
+              "duration": "turn"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb02-0016-metamorph"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0017",
+      "no": "H-EB02/0017",
+      "name": "RD トランスミッション",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー",
+        "ドラゴン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが登場した時、ライフ１を払ってよい。払ったら、君のドロップゾーンのカード名に「RD」を含むカード１枚までを手札に加える。"
+      ],
+      "callCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0017-enter-recover",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "moveMatchingDropToHand",
+              "filter": {
+                "nameIncludes": "RD"
+              },
+              "amount": 1,
+              "optional": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0018",
+      "no": "H-EB02/0018",
+      "name": "RD ノーザンバード",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー",
+        "ドラゴン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■このカードはセンターにコールできない。",
+        "■君の場にカード名に「RD」を含むモンスター２枚以上がいるなら、君の場のモンスター全ては『移動』を得る。"
+      ],
+      "cannotCallZones": [
+        "center"
+      ],
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "move",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster"
+          },
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "RD"
+              },
+              "cmp": "gte",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0019",
+      "no": "H-EB02/0019",
+      "name": "RD プロジェットガンナー",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー",
+        "ドラゴン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【起動】君が『変身』しているなら、手札のこのカードを捨てる。捨てたら、君のデッキの上から２枚をゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0019-hand-gauge",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "filter": {
+                "mounted": true,
+                "keyword": "henshin"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0020",
+      "no": "H-EB02/0020",
+      "name": "CP コマンダーゲイル",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー",
+        "ブレイブマシン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■君の場の他の《ヒーロー》全てを攻撃力＋1000！！",
+        "■君の場の《ヒーロー》の攻撃で相手のモンスターを破壊した時、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "attribute": "ヒーロー"
+          },
+          "power": 1000,
+          "excludeSource": true
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0020-destroy-gauge",
+          "kind": "triggered",
+          "event": "allyAttackDestroyed",
+          "conditions": [
+            {
+              "op": "eventAttackersMatch",
+              "filter": {
+                "attribute": "ヒーロー"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0021",
+      "no": "H-EB02/0021",
+      "name": "GL シルバリア",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー",
+        "ブレイブマシン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが登場した時、君が『変身』しているなら、カード１枚を引く。"
+      ],
+      "callCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0021-enter-draw",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "filter": {
+                "mounted": true,
+                "keyword": "henshin"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0022",
+      "no": "H-EB02/0022",
+      "name": "鳥神 セイバード",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ブレイブマシン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■【起動】手札か場のこのカードを、君の場の『搭乗』しているカード１枚のソウルに入れる。",
+        "■【起動】君のライフが６以下で、このカードが『搭乗』しているカードのソウルにあるなら、ゲージ１を払う。払ったら、そのターン中、そのカードは『２回攻撃』を得る。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0022-tosoul-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "zones": [
+              "item"
+            ],
+            "filter": {
+              "mounted": true,
+              "keyword": "ride"
+            }
+          },
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0022-tosoul-field",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "zones": [
+              "item"
+            ],
+            "filter": {
+              "mounted": true,
+              "keyword": "ride"
+            }
+          },
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "bf-h-eb02-0022-soul-double",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 6
+            },
+            {
+              "op": "hostMatches",
+              "filter": {
+                "mounted": true,
+                "keyword": "ride"
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$host",
+              "keyword": "doubleAttack",
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0023",
+      "no": "H-EB02/0023",
+      "name": "戦闘員 ネバッド",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー",
+        "百鬼"
+      ],
+      "rarity": "デッキ商品",
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■“悪の軍団参上！”君の場にサイズ２以上の《ダークヒーロー》が登場した時、このカードが君のドロップゾーンにあるなら、このカードをコールしてよい。「悪の軍団参上！」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0023-akuno-guntan",
+          "label": "悪の軍団参上！",
+          "kind": "triggered",
+          "event": "allyEnter",
+          "triggerZones": [
+            "drop"
+          ],
+          "fromDropZone": true,
+          "optional": true,
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "drop"
+              ]
+            },
+            {
+              "op": "enteredCardMatches",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ダークヒーロー",
+                "sizeGte": 2
+              }
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb02-0023-akuno-guntan"
+          },
+          "script": [
+            {
+              "op": "selectZone",
+              "var": "z",
+              "emptyOnly": true
+            },
+            {
+              "op": "callSelfFromHand",
+              "zoneVar": "z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0024",
+      "no": "H-EB02/0024",
+      "name": "刹那の一閃",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "破壊"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君のライフが６以下で、君が『搭乗』しているなら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■相手の場のカード１枚を破壊する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0024-destroy",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 6
+            },
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "item"
+              ],
+              "filter": {
+                "keyword": "ride"
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {}
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0025",
+      "no": "H-EB02/0025",
+      "name": "鋼のボディ",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "強化"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【対抗】バトルしている《ブレイブマシン》１枚を選び、このバトル中、防御力＋5000し、『反撃』を与える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0025-guard",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "battleCard",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "ブレイブマシン"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "defense": 5000,
+              "duration": "battle"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "counterattack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0026",
+      "no": "H-EB02/0026",
+      "name": "誰がために闘う",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "ドロー"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君のライフが５以下なら使える。",
+        "■君の手札全てを捨て、カード３枚を引く！「誰がために闘う」は１ターンに１回だけ使える。（捨てる手札が０枚でも使えるぞ！）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0026-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 5
+            }
+          ],
+          "effects": [
+            {
+              "op": "discardAllHand"
+            },
+            {
+              "op": "draw",
+              "amount": 3
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb02-0026-draw"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0027",
+      "no": "H-EB02/0027",
+      "name": "お前はもう用済みだ",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "ドロー",
+        "チャージ",
+        "百鬼"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【使用コスト】君の場の《ダークヒーロー》のモンスター１枚を破壊する！",
+        "■【対抗】君のデッキの上から１枚をゲージに置き、カード１枚を引く。「お前はもう用済みだ」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "destroyOwnMonster",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "ダークヒーロー"
+            }
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0027-gauge-draw",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "destroyOwnMonster",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ダークヒーロー"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb02-0027-gauge-draw"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0028",
+      "no": "H-EB02/0028",
+      "name": "ダークヒーロー第一基地",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "ドロー"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■君の場に《ダークヒーロー》のモンスターが登場した時、カード１枚を引く。この能力は１ターンに１回だけ発動する。",
+        "■「ダークヒーロー第一基地」は君の場に１枚だけ『設置』できる。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "uniqueSet": true,
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0028-draw",
+          "kind": "triggered",
+          "event": "allyEnter",
+          "conditions": [
+            {
+              "op": "enteredCardMatches",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ダークヒーロー"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb02-0028-draw"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0029",
+      "no": "H-EB02/0029",
+      "name": "超巨大基地 ブレイブフォート",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "チャージ"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■君の《ブレイブマシン》が登場か『搭乗』した時、君のデッキの上から１枚をゲージに置く。この能力は１ターンに１回だけ発動する。",
+        "■君のライフが０になるなら、君の場の『搭乗』しているカード１枚を破壊する。破壊したら、君のライフは１になり、このカードを破壊する。",
+        "■「超巨大基地 ブレイブフォート」は君の場に１枚だけ『設置』できる。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "uniqueSet": true,
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0029-charge",
+          "kind": "triggered",
+          "event": "allyEnter",
+          "conditions": [
+            {
+              "op": "enteredCardMatches",
+              "filter": {
+                "attribute": "ブレイブマシン"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb02-0029-charge"
+          }
+        }
+      ],
+      "lifeZeroReplacement": {
+        "sacrificeFilter": {
+          "keyword": "ride"
+        },
+        "life": 1
+      }
+    },
+    {
+      "id": "bf-h-eb02-0030",
+      "no": "H-EB02/0030",
+      "name": "お前を倒す為に帰ってきた！",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "ゲット"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。君が『変身』していないなら、さらにゲージ１を払う。",
+        "■君のドロップゾーンの《ヒーロー》のモンスター１枚を手札に加える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1,
+            "conditions": [
+              {
+                "op": "not",
+                "condition": {
+                  "op": "ownFieldCardExists",
+                  "zones": [
+                    "item"
+                  ],
+                  "filter": {
+                    "keyword": "henshin"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0030-recover",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "payGauge",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "not",
+                  "condition": {
+                    "op": "ownFieldCardExists",
+                    "zones": [
+                      "item"
+                    ],
+                    "filter": {
+                      "keyword": "henshin"
+                    }
+                  }
+                }
+              ]
+            }
+          ],
+          "effects": [
+            {
+              "op": "moveMatchingDropToHand",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ヒーロー"
+              },
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0031",
+      "no": "H-EB02/0031",
+      "name": "だが奴は一番の格下",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "ゲット",
+        "百鬼"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君の場のサイズ１以下の《ダークヒーロー》のモンスターが破壊された時に使える。",
+        "■【対抗】君のデッキから《ダークヒーロー》のモンスターかアイテム１枚までを手札に加え、デッキをシャッフルする。「だが奴は一番の格下」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0031-search",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "lastDestroyedCardMatches",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ダークヒーロー",
+                "sizeLte": 1
+              }
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "s",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "attribute": "ダークヒーロー",
+                "cardTypeIn": [
+                  "monster",
+                  "item"
+                ]
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "だが奴は一番の格下で手札に加えるカード",
+              "lead": "デッキから《ダークヒーロー》のモンスターかアイテム１枚までを選んでください（加えなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "s",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を手札に加えました。"
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb02-0031-search"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0032",
+      "no": "H-EB02/0032",
+      "name": "死ヶ峰無限剣！",
+      "type": "impact",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■相手のライフが４以下で、君の場にモンスターがいなくて、君が《ダークヒーロー》のアイテムを装備しているなら使える。",
+        "■【使用コスト】ゲージ２を払う。",
+        "■相手にダメージ４！！このカードのダメージは減らない！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0032-impact",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "opponentLifeLte",
+              "amount": 4
+            },
+            {
+              "op": "not",
+              "condition": {
+                "op": "ownFieldCardExists",
+                "filter": {
+                  "cardType": "monster"
+                }
+              }
+            },
+            {
+              "op": "ownItemHasAttribute",
+              "attribute": "ダークヒーロー"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 4,
+              "ignorePrevention": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0033",
+      "no": "H-EB02/0033",
+      "name": "ブレイブエナジー・フルドライブ！",
+      "type": "impact",
+      "world": "ヒーローW",
+      "attributes": [
+        "火力"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君が『搭乗』していて、相手のライフが５以下なら使える。",
+        "■【使用コスト】ゲージ２を払う。",
+        "■相手にダメージ２！！さらに、君が『搭乗』しているカードのソウルの枚数分、相手にダメージ！！このカードのダメージは減らない！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0033-impact",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "item"
+              ],
+              "filter": {
+                "keyword": "ride"
+              }
+            },
+            {
+              "op": "opponentLifeLte",
+              "amount": 5
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 2,
+              "ignorePrevention": true
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "ignorePrevention": true,
+              "amountFrom": {
+                "source": "fieldCardSoulCount",
+                "controller": "self",
+                "zone": "item",
+                "filter": {
+                  "keyword": "ride"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0034",
+      "no": "H-EB02/0034",
+      "name": "鋼獣戦機 ガイテンオウ",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ブレイブマシン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、君の場の《ブレイブマシン》のモンスター２枚をこのカードのソウルに入れる。",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "putSelectedOwnFieldCardsToSoul",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "ブレイブマシン"
+            },
+            "min": 2,
+            "max": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "callConditions": [
+        {
+          "op": "cardCount",
+          "controller": "self",
+          "pile": "field",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "ブレイブマシン"
+          },
+          "cmp": "gte",
+          "amount": 2
+        }
+      ],
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0035",
+      "no": "H-EB02/0035",
+      "name": "背徳者 イレイショナル",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー",
+        "百鬼"
+      ],
+      "rarity": "デッキ商品",
+      "size": 2,
+      "power": 10000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■このカードのバトル終了時、このカードを破壊する。"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0035-battle-end-destroy",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "effects": [
+            {
+              "op": "destroySelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0036",
+      "no": "H-EB02/0036",
+      "name": "バスター・ボーンアーマー",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー",
+        "百鬼"
+      ],
+      "rarity": "デッキ商品",
+      "size": 2,
+      "power": 8000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■このカードが攻撃した時、ゲージ１を払う。",
+        "『貫通』（このカードの攻撃で相手センターのモンスターを破壊したら、相手にも打撃力分ダメージを与える）"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "keywords": [
+        "penetrate"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0036-attack-pay",
+          "kind": "triggered",
+          "event": "attack",
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0037",
+      "no": "H-EB02/0037",
+      "name": "ガイグレンダー “フィニッシュフォーム”",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー"
+      ],
+      "rarity": "デッキ商品",
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 2000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■【対抗】【起動】“紅蓮転身！”君のアタックフェイズ中、手札のこのカードに『変身』コストを払い、『変身』する。「紅蓮転身！」は１ターンに１回だけ使える。",
+        "『貫通』『変身』〔ゲージ１を払い、君が『変身』しているカード名に「ガイグレンダー」を含むカード１枚を手札に戻す〕"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "penetrate",
+        "henshin"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0037-henshin-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "returnOwnFieldCardToHand",
+              "filter": {
+                "nameIncludes": "ガイグレンダー"
+              },
+              "amount": 1,
+              "min": 1,
+              "zones": [
+                "item"
+              ]
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0037-henshin-field",
+          "label": "『変身』で装備する",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "returnOwnFieldCardToHand",
+              "filter": {
+                "nameIncludes": "ガイグレンダー"
+              },
+              "amount": 1,
+              "min": 1,
+              "zones": [
+                "item"
+              ]
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0037-guren-tenshin",
+          "label": "紅蓮転身！",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "phaseIs",
+              "phase": "attack"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "returnOwnFieldCardToHand",
+              "filter": {
+                "nameIncludes": "ガイグレンダー"
+              },
+              "amount": 1,
+              "min": 1,
+              "zones": [
+                "item"
+              ]
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb02-0037-guren-tenshin"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0038",
+      "no": "H-EB02/0038",
+      "name": "ガイグレンダー “アナライズフォーム”",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー"
+      ],
+      "rarity": "デッキ商品",
+      "size": 2,
+      "power": 3000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■【対抗】【起動】相手のアタックフェイズ中、手札のこのカードに『変身』コストを払い、『変身』する。",
+        "『変身』〔ゲージ１を払い、君が『変身』しているカード名に「ガイグレンダー」を含むカード１枚を手札に戻す〕"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "henshin"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0038-henshin-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "returnOwnFieldCardToHand",
+              "filter": {
+                "nameIncludes": "ガイグレンダー"
+              },
+              "amount": 1,
+              "min": 1,
+              "zones": [
+                "item"
+              ]
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0038-henshin-field",
+          "label": "『変身』で装備する",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "returnOwnFieldCardToHand",
+              "filter": {
+                "nameIncludes": "ガイグレンダー"
+              },
+              "amount": 1,
+              "min": 1,
+              "zones": [
+                "item"
+              ]
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0038-counter-henshin",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "phaseIs",
+              "phase": "attack"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "returnOwnFieldCardToHand",
+              "filter": {
+                "nameIncludes": "ガイグレンダー"
+              },
+              "amount": 1,
+              "min": 1,
+              "zones": [
+                "item"
+              ]
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0039",
+      "no": "H-EB02/0039",
+      "name": "“サクリファイズ” 鐡 砕月",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー"
+      ],
+      "rarity": "デッキ商品",
+      "size": 1,
+      "power": 6000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■【起動】手札の《ダークヒーロー》１枚を捨ててよい。捨てたら、相手にダメージ１！この能力は１ターンに１回だけ使える。",
+        "■このカードのバトル終了時、このカードを破壊する。"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0039-discard-damage",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "optional": true,
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1,
+              "filter": {
+                "attribute": "ダークヒーロー"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb02-0039-discard-damage"
+          }
+        },
+        {
+          "id": "bf-h-eb02-0039-battle-end-destroy",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "effects": [
+            {
+              "op": "destroySelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0040",
+      "no": "H-EB02/0040",
+      "name": "CP ステルスハンター",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー",
+        "ブレイブマシン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 5000,
+      "rules": [
+        "-"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      }
+    },
+    {
+      "id": "bf-h-eb02-0041",
+      "no": "H-EB02/0041",
+      "name": "RCM ボーダムブレイカー",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ブレイブマシン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■このカードの攻撃で相手のモンスターを破壊した時、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0041-destroy-gauge",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0042",
+      "no": "H-EB02/0042",
+      "name": "ザ・スカー",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー"
+      ],
+      "rarity": "デッキ商品",
+      "size": 1,
+      "power": 4000,
+      "critical": 3,
+      "defense": 4000,
+      "rules": [
+        "■このカードのバトル終了時、このカードを破壊する。"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0042-battle-end-destroy",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "effects": [
+            {
+              "op": "destroySelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0043",
+      "no": "H-EB02/0043",
+      "name": "獣神 タイガトラス",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ブレイブマシン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【起動】手札か場のこのカードを、君の場の『搭乗』しているカード１枚のソウルに入れる。",
+        "■このカードが君の『搭乗』しているカードのソウルにあるなら、そのカードは『貫通』を得る。"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "soulContinuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "filter": {
+            "mounted": true,
+            "keyword": "ride"
+          }
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0043-to-soul-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "mounted": true,
+                "keyword": "ride"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "タイガトラスをソウルに入れる『搭乗』しているカード",
+              "lead": "このカードをソウルに入れる、君の場の『搭乗』しているカードを1枚選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0043-to-soul-field",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "mounted": true,
+                "keyword": "ride"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "タイガトラスをソウルに入れる『搭乗』しているカード",
+              "lead": "このカードをソウルに入れる、君の場の『搭乗』しているカードを1枚選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0044",
+      "no": "H-EB02/0044",
+      "name": "CP ヒロイックブレーダー",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー",
+        "ブレイブマシン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "『移動』（お互いのアタックフェイズ開始時に、場のこのカードを空いている別のエリアに置いてよい）"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "keywords": [
+        "move"
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0045",
+      "no": "H-EB02/0045",
+      "name": "RD イレイズフレア",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー",
+        "ドラゴン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■君の場の《ヒーロー》の攻撃で相手のモンスターを破壊した時、相手の場の魔法１枚を破壊する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0045-hero-destroy-spell",
+          "kind": "triggered",
+          "event": "allyAttackDestroyed",
+          "conditions": [
+            {
+              "op": "eventAttackersMatch",
+              "filter": {
+                "attribute": "ヒーロー"
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "spell"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0046",
+      "no": "H-EB02/0046",
+      "name": "断罪者 ホロウ・ストライダム",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー"
+      ],
+      "rarity": "デッキ商品",
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードの攻撃で相手にダメージを与えた時、相手のゲージ１枚をドロップゾーンに置く。",
+        "■このカードのバトル終了時、このカードを破壊する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0046-damage-gauge-drop",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "effects": [
+            {
+              "op": "moveGaugeToDrop",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0046-battle-end-destroy",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "effects": [
+            {
+              "op": "destroySelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0047",
+      "no": "H-EB02/0047",
+      "name": "RD ドクターエイド",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー",
+        "ドラゴン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■君の場の《ヒーロー》が相手のモンスターを破壊した時、君のライフを＋１！この能力は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0047-hero-destroy-heal",
+          "kind": "triggered",
+          "event": "opponentDestroyed",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "monster"
+              }
+            },
+            {
+              "op": "eventDestroyerMatches",
+              "controller": "self",
+              "filter": {
+                "attribute": "ヒーロー"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb02-0047-hero-destroy-heal"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0048",
+      "no": "H-EB02/0048",
+      "name": "RCM マキシライダー",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ブレイブマシン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 1,
+      "power": 1000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "-"
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0049",
+      "no": "H-EB02/0049",
+      "name": "シーフ・キャット",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー",
+        "ブレイブマシン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 0,
+      "power": 2000,
+      "critical": 3,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードのバトル終了時、このカードを君のデッキの下に置く。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0049-battle-end-deckbottom",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "effects": [
+            {
+              "op": "returnSelfToDeckBottom"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0050",
+      "no": "H-EB02/0050",
+      "name": "RD ナイトストーカー",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー",
+        "ドラゴン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 0,
+      "power": 2000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "-"
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0051",
+      "no": "H-EB02/0051",
+      "name": "海神 スラッシャーク",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ブレイブマシン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 0,
+      "power": 1000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■【起動】手札か場のこのカードを、君の場の『搭乗』しているカード１枚のソウルに入れる。",
+        "■このカードが『搭乗』しているカードのソウルにあるなら、そのカードの攻撃力＋1000、防御力＋1000！"
+      ],
+      "soulContinuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "cardType": "item",
+            "keyword": "ride"
+          },
+          "power": 1000,
+          "defense": 1000
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0051-soul-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "item",
+              "keyword": "ride"
+            }
+          },
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0051-soul-field",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "item",
+              "keyword": "ride"
+            }
+          },
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0052",
+      "no": "H-EB02/0052",
+      "name": "我の力になれる事を誇るがいい",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "破壊",
+        "回復"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【使用コスト】ゲージ２を払い、君のデッキの上から１枚をドロップゾーンに置く。",
+        "■ドロップゾーンに置いたカードが《ダークヒーロー》なら、相手の場のアイテム１枚を破壊し、君のライフを＋２する！《ダークヒーロー》でないなら、このカードを手札に戻す。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0052-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "script": [
+            {
+              "op": "moveTopDeckToDrop",
+              "amount": 1
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "movedToDropMatches",
+                "filter": {
+                  "attribute": "ダークヒーロー"
+                }
+              },
+              "then": [
+                {
+                  "op": "selectCards",
+                  "var": "item",
+                  "from": "field",
+                  "controller": "opponent",
+                  "filter": {
+                    "cardType": "item"
+                  },
+                  "amount": 1,
+                  "require": false,
+                  "title": "破壊する相手のアイテム",
+                  "lead": "破壊する相手の場のアイテムを1枚選んでください。",
+                  "allowEmpty": true
+                },
+                {
+                  "op": "destroySelected",
+                  "var": "item",
+                  "require": false
+                },
+                {
+                  "op": "gainLife",
+                  "amount": 2
+                }
+              ],
+              "else": [
+                {
+                  "op": "returnSelfToHand"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0053",
+      "no": "H-EB02/0053",
+      "name": "キサマらに用は無い！",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "破壊"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■相手のターンのメインフェイズ中に使える。",
+        "■【使用コスト】ゲージ４を払う。",
+        "■【対抗】場のモンスター全てを破壊する！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 4
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 4
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0053-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "phaseIs",
+              "phase": "main"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 4
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroyAll",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0054",
+      "no": "H-EB02/0054",
+      "name": "あとは…頼んだぞ",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "破壊"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君が『搭乗』しているなら使える。",
+        "■【使用コスト】ライフ１を払い、君の場の『搭乗』しているカード１枚をドロップゾーンに置く。",
+        "■【対抗】相手の場のカード１枚を破壊する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payLife",
+            "amount": 1
+          },
+          {
+            "op": "dropOwnFieldCard",
+            "amount": 1,
+            "filter": {
+              "zone": "item",
+              "keyword": "ride"
+            }
+          }
+        ]
+      },
+      "castCost": {
+        "life": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0054-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "item"
+              ],
+              "filter": {
+                "keyword": "ride"
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            },
+            {
+              "op": "dropOwnFieldCard",
+              "amount": 1,
+              "filter": {
+                "zone": "item",
+                "keyword": "ride"
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent"
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0055",
+      "no": "H-EB02/0055",
+      "name": "到着、NEW装備！",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "強化"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【対抗】バトルしている《ヒーロー》１枚を選び、このバトル中、攻撃力＋2000、防御力＋2000。さらに、そのカードが『変身』しているなら、このバトル中、攻撃力＋4000、防御力＋4000！"
+      ],
+      "costs": {
+        "cast": []
+      },
+      "castCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0055-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "battleCard",
+            "filter": {
+              "attribute": "ヒーロー"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 2000,
+              "defense": 2000,
+              "duration": "battle"
+            },
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 4000,
+              "defense": 4000,
+              "duration": "battle",
+              "conditions": [
+                {
+                  "op": "targetMatches",
+                  "filter": {
+                    "cardType": "item",
+                    "keyword": "henshin"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0056",
+      "no": "H-EB02/0056",
+      "name": "地獄の特訓",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "強化"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君が『変身』か『搭乗』しているなら使える。",
+        "■【使用コスト】ライフ１を払う。",
+        "■君の場のアイテム１枚を選び、そのターン中、攻撃力＋5000、打撃力＋１し、『貫通』を与える！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "life": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0056-buff",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "ownItemIsMonster"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "item",
+              "zone": "item"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 5000,
+              "critical": 1,
+              "duration": "turn"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "penetrate",
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0057",
+      "no": "H-EB02/0057",
+      "name": "ロングレンジ砲撃",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "強化"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君が『搭乗』しているなら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■そのターン中、君の場の『搭乗』しているカード１枚は相手のセンターにモンスターがいても、相手を攻撃できる。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0057-through-center",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "item"
+              ],
+              "filter": {
+                "keyword": "ride"
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "item",
+              "zone": "item",
+              "keyword": "ride"
+            }
+          },
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "canAttackFighterThroughCenter",
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0058",
+      "no": "H-EB02/0058",
+      "name": "そうは、させない！",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "防御"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君が攻撃されている攻撃中に使える。",
+        "■【対抗】君の場の《ヒーロー》のモンスター１枚をセンターに移動させ、その攻撃の対象をそのモンスターに変更する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0058-redirect",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "ヒーロー",
+              "zoneNot": "center"
+            }
+          },
+          "effects": [
+            {
+              "op": "moveTargetToZone",
+              "target": "$target",
+              "zone": "center",
+              "redirectPendingAttack": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0059",
+      "no": "H-EB02/0059",
+      "name": "そんな攻撃など",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "防御"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■相手の攻撃力4000以下のカードが１枚で攻撃している攻撃中に使える。",
+        "■【対抗】その攻撃を無効化する！！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0059-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "attackingAlone"
+            },
+            {
+              "op": "pendingAttackByOpponentCardMatches",
+              "filter": {
+                "powerLte": 4000
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0060",
+      "no": "H-EB02/0060",
+      "name": "効かぬわぁッ！！",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "防御",
+        "百鬼"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■【対抗】そのターン中、次に君に与えられるダメージを２減らす。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0060-reduce",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "effects": [
+            {
+              "op": "reduceNextDamage",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0061",
+      "no": "H-EB02/0061",
+      "name": "影葬りの刃",
+      "type": "item",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー",
+        "武器"
+      ],
+      "rarity": "デッキ商品",
+      "power": 6000,
+      "critical": 3,
+      "rules": [
+        "■【装備コスト】ゲージ１を払い、ライフ１を払う。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "equipCost": {
+        "gauge": 1,
+        "life": 1
+      }
+    },
+    {
+      "id": "bf-h-eb02-0062",
+      "no": "H-EB02/0062",
+      "name": "スペリオル・J・ドライバー！",
+      "type": "impact",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■このターン中、相手のモンスターが２枚以上破壊されているなら使える。",
+        "■【使用コスト】ゲージ２を払う。",
+        "■相手にダメージ３！！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0062-impact",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "monstersDestroyedThisTurnGte",
+              "controller": "opponent",
+              "amount": 2
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0063",
+      "no": "H-EB02/0063",
+      "name": "デッド・オア・アライブ！",
+      "type": "impact",
+      "world": "ヒーローW",
+      "attributes": [
+        "死"
+      ],
+      "rarity": "デッキ商品",
+      "rules": [
+        "■君のライフが３以下なら使える。",
+        "■相手とジャンケンする。ジャンケンに負けたファイターにダメージ３！！さらに、ゲージ２を払ってよい、払ったら、君のデッキから「デッド・オア・アライブ！」１枚までを手札に加え、デッキをシャッフルする。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0063-impact",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 3
+            }
+          ],
+          "script": [
+            {
+              "op": "rockPaperScissorsDamageLosers",
+              "amount": 3,
+              "noDrawDamage": true
+            },
+            {
+              "op": "chooseBranch",
+              "title": "デッド・オア・アライブ！ 追加効果",
+              "lead": "ゲージ２を払って「デッド・オア・アライブ！」を手札に加えますか？",
+              "options": [
+                {
+                  "key": "search",
+                  "label": "ゲージ２を払って手札に加える",
+                  "script": [
+                    {
+                      "op": "payCost",
+                      "cost": [
+                        {
+                          "op": "payGauge",
+                          "amount": 2
+                        }
+                      ]
+                    },
+                    {
+                      "op": "selectCards",
+                      "var": "s",
+                      "from": "deck",
+                      "controller": "self",
+                      "filter": {
+                        "name": "デッド・オア・アライブ！"
+                      },
+                      "min": 0,
+                      "max": 1,
+                      "amount": 1,
+                      "require": false,
+                      "title": "デッキから加える「デッド・オア・アライブ！」",
+                      "lead": "デッキから「デッド・オア・アライブ！」１枚までを選んでください（加えなくてもよい）。"
+                    },
+                    {
+                      "op": "moveSelected",
+                      "var": "s",
+                      "to": "hand",
+                      "require": false,
+                      "log": "{cards}を手札に加えました。"
+                    },
+                    {
+                      "op": "shuffleDeck"
+                    }
+                  ]
+                },
+                {
+                  "key": "skip",
+                  "label": "払わない",
+                  "script": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-0064",
+      "no": "H-EB02/0064",
+      "name": "RD ジャスティス・ドラム",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー",
+        "ドラゴン"
+      ],
+      "rarity": "デッキ商品",
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードの攻撃で相手のモンスターを破壊した時、君が『変身』しているなら、このカードを【スタンド】する。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0064-stand",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "item"
+              ],
+              "filter": {
+                "keyword": "henshin"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-s001",
+      "no": "H-EB02/S001",
+      "name": "RDリーダー イモータルスピリット",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー",
+        "ドラゴン"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_02_s001.png",
+      "altArtOf": "bf-h-eb02-0005",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb02-0005・能力同一）",
+      "size": 3,
+      "power": 8000,
+      "critical": 1,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードの攻撃で相手のモンスターを破壊した時、カード１枚を引く。",
+        "『２回攻撃』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0005-draw",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-s002",
+      "no": "H-EB02/S002",
+      "name": "影雄 シュヴァルツ",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_02_s002.png",
+      "altArtOf": "bf-h-eb02-0003",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb02-0003・能力同一）",
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、手札の《ダークヒーロー》１枚を捨てる。",
+        "■“ダム・ストライク”このカードが登場した時、相手の場のモンスター１枚を破壊する。",
+        "■このカードのバトル終了時、このカードを君の手札に戻す！"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "discardHand",
+            "amount": 1,
+            "filter": {
+              "attribute": "ダークヒーロー"
+            }
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0003-dam-strike",
+          "kind": "triggered",
+          "event": "enter",
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0003-battle-end-return",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "effects": [
+            {
+              "op": "returnToHand",
+              "target": "$self"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-s003",
+      "no": "H-EB02/S003",
+      "name": "RD ジャスティス・ドラム",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー",
+        "ドラゴン"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_02_s003.png",
+      "altArtOf": "bf-h-eb02-0004",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb02-0004・能力同一）",
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードの攻撃で相手のモンスターを破壊した時、君が『変身』しているなら、このカードを【スタンド】する。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0004-stand",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "filter": {
+                "keyword": "henshin"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-s004",
+      "no": "H-EB02/S004",
+      "name": "激炎特捜 プロミネンスバースト",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_02_s004.png",
+      "altArtOf": "bf-h-eb02-0008",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb02-0008・能力同一）",
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■君の場の《ヒーロー》のモンスターの攻撃で相手のモンスターを破壊した時、そのターン中、このカードの打撃力を＋１！！（何回でも発動するぜ！！）",
+        "『変身』〔ゲージ１を払う〕"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "keywords": [
+        "henshin"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb02-0008-hero-crit",
+          "kind": "triggered",
+          "event": "allyAttackDestroyed",
+          "conditions": [
+            {
+              "op": "eventAttackersMatch",
+              "filter": {
+                "attribute": "ヒーロー",
+                "cardType": "monster"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "critical": 1,
+              "duration": "turn"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0008-henshin-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb02-0008-henshin-field",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb02-fgs01",
+      "no": "H-EB02/★☆☆☆☆",
+      "name": "マジックワールド",
+      "type": "flag",
+      "rarity": "シークレット",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "このファイターはマジックWのカードを使う。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_02_se001.png",
+      "_note": "フラッグ表示専用カード（絵違い/箔違い再録・機構は data/flags.json が担う）"
+    },
+    {
+      "id": "bf-h-eb02-fgs02",
+      "no": "H-EB02/☆★☆☆☆",
+      "name": "エンシェントワールド",
+      "type": "flag",
+      "rarity": "シークレット",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "このファイターはエンシェントWのカードを使う。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_02_se002.png",
+      "_note": "フラッグ表示専用カード（絵違い/箔違い再録・機構は data/flags.json が担う）"
+    },
+    {
+      "id": "bf-h-eb02-fgs03",
+      "no": "H-EB02/☆☆★☆☆",
+      "name": "ヒーローワールド",
+      "type": "flag",
+      "rarity": "シークレット",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "このファイターはヒーローWのカードを使う。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_02_se003.png",
+      "_note": "フラッグ表示専用カード（絵違い/箔違い再録・機構は data/flags.json が担う）"
+    },
+    {
+      "id": "bf-h-eb02-fgs04",
+      "no": "H-EB02/☆☆☆★☆",
+      "name": "ヒーローワールド",
+      "type": "flag",
+      "rarity": "シークレット",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "このファイターはヒーローWのカードを使う。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_02_se004.png",
+      "_note": "フラッグ表示専用カード（絵違い/箔違い再録・機構は data/flags.json が担う）"
+    },
+    {
+      "id": "bf-h-eb02-fgs05",
+      "no": "H-EB02/☆☆☆☆★",
+      "name": "スタードラゴンワールド",
+      "type": "flag",
+      "rarity": "シークレット",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "このファイターはスタードラゴンWのカードを使う。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_02_se005.png",
+      "_note": "フラッグ表示専用カード（絵違い/箔違い再録・機構は data/flags.json が担う）"
+    }
+  ]
+}

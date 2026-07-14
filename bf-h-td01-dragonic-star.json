@@ -1,0 +1,4711 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-h-eb04-buddy-allstars",
+    "name": "ハンドレッド エクストラブースター第４弾「バディオールスターズ」",
+    "kind": "エクストラブースター",
+    "generation": "100",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=35"
+  },
+  "cards": [
+    {
+      "id": "bf-h-eb04-0001",
+      "no": "H-EB04/0001",
+      "name": "ジャックナイフ “ドラムバンカー”",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、このカードを君の場のカード名に「ジャックナイフ」か「ドラム」を含むモンスターの上に重ねる。",
+        "■このカードのソウルにカード名に「ジャックナイフ」を含むカードがあるなら、このカードは『移動』と『２回攻撃』を得る。このカードのソウルにカード名に「ドラム」を含むカードがあるなら、このカードの打撃力を＋１し、『貫通』を得る。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "callStack": {
+        "filter": {
+          "anyOf": [
+            {
+              "nameIncludes": "ジャックナイフ"
+            },
+            {
+              "nameIncludes": "ドラム"
+            }
+          ],
+          "cardType": "monster"
+        }
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "move",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "sourceSoulMatchingCountGte",
+              "filter": {
+                "nameIncludes": "ジャックナイフ"
+              },
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "op": "grantKeyword",
+          "keyword": "doubleAttack",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "sourceSoulMatchingCountGte",
+              "filter": {
+                "nameIncludes": "ジャックナイフ"
+              },
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "sourceSoulMatchingCountGte",
+              "filter": {
+                "nameIncludes": "ドラム"
+              },
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "sourceSoulMatchingCountGte",
+              "filter": {
+                "nameIncludes": "ドラム"
+              },
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0002",
+      "no": "H-EB04/0002",
+      "name": "オレ分身の術！アスモダイ",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【対抗】【起動】“オレ分身の術！”君のターン中、場のこのカードをドロップゾーンに置いてよい。置いたら、君のドロップゾーンのカード名に「アスモダイ」を含むモンスター１枚を【コールコスト】を払ってコールする。「オレ分身の術！」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0002-bunshin",
+          "label": "オレ分身の術！",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "optional": true,
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "cost": [
+            {
+              "op": "dropSource"
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "アスモダイ"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "オレ分身の術！",
+              "lead": "コールする、ドロップゾーンのカード名に「アスモダイ」を含むモンスターを選んでください。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "call",
+              "payCost": "call",
+              "resolveOnEnter": true
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0003",
+      "no": "H-EB04/0003",
+      "name": "魔物使い カザネ",
+      "type": "monster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが攻撃した時、君の場に《Dエネミー》があるなら、そのターン中、このカードは『２回攻撃』を得る。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0003-double-attack",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "attribute": "Dエネミー"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "doubleAttack",
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0004",
+      "no": "H-EB04/0004",
+      "name": "超星護 ジャックナイフ “SD”",
+      "type": "monster",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 2000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■【起動】君のドロップゾーンのサイズ２の《ネオドラゴン》１枚を【コールコスト】を払って、このモンスターの上に重ねてコールする。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0004-stack-call",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "stack",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン",
+                "sizeIn": [
+                  2
+                ]
+              },
+              "amount": 1,
+              "require": true,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "超星護 ジャックナイフ“SD”",
+              "lead": "重ねてコールするドロップゾーンのサイズ２の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "stackCallSelected",
+              "var": "stack",
+              "payCost": "call",
+              "resolveOnEnter": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0005",
+      "no": "H-EB04/0005",
+      "name": "ドラムバンカー・ドラゴン “SD”",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■“明日に向かってGO！”君の場にカード名に「ドラム」を含むモンスターが登場した時、このカードが君のドロップゾーンにあるなら、ゲージ１を払ってよい。払ったら、ドロップゾーンにあるこのカードを、そのカードのソウルに入れるか、コールする。「明日に向かってGO！」は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0005-ashita-ni-mukatte-go",
+          "label": "明日に向かってGO！",
+          "kind": "triggered",
+          "event": "allyEnter",
+          "triggerZones": [
+            "drop"
+          ],
+          "fromDropZone": true,
+          "optional": true,
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "drop"
+              ]
+            },
+            {
+              "op": "enteredCardMatches",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "ドラム"
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0005-ashita-ni-mukatte-go"
+          },
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "ドラムバンカー・ドラゴン “SD”",
+              "lead": "ドロップゾーンにあるこのカードを、そのカードのソウルに入れるか、コールするか選んでください。",
+              "options": [
+                {
+                  "key": "soul",
+                  "label": "そのカードのソウルに入れる",
+                  "script": [
+                    {
+                      "op": "moveSelfToTargetSoul",
+                      "target": "$target"
+                    }
+                  ]
+                },
+                {
+                  "key": "call",
+                  "label": "コールする",
+                  "script": [
+                    {
+                      "op": "selectZone",
+                      "var": "z",
+                      "emptyOnly": true
+                    },
+                    {
+                      "op": "callSelfFromHand",
+                      "zoneVar": "z"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0006",
+      "no": "H-EB04/0006",
+      "name": "五角竜王 天武 “SD”",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "『角王』(このカードは全てのフラッグで使える。君のフラッグが以外なら、「五角竜王 天武 “SD”」はデッキに１枚しか入れることができない)",
+        "■このカードが登場した時、相手の場のサイズ１以下のモンスター１枚を破壊するか、相手の場のカード１枚のソウル１枚をドロップゾーンに置く。"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "ドラゴンW",
+        "awayMaxCopies": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0006-enter",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "五角竜王 天武 “SD”",
+              "lead": "相手の場のサイズ１以下のモンスターを破壊するか、相手の場のカードのソウル１枚をドロップゾーンに置くか選んでください。",
+              "options": [
+                {
+                  "key": "destroy",
+                  "label": "相手のサイズ１以下のモンスターを破壊する",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "kill",
+                      "from": "field",
+                      "controller": "opponent",
+                      "filter": {
+                        "cardType": "monster",
+                        "sizeLte": 1
+                      },
+                      "amount": 1,
+                      "allowEmpty": true,
+                      "emptyMessage": "相手の場にサイズ１以下のモンスターがないため、破壊は行いません。",
+                      "title": "五角竜王 天武 “SD”",
+                      "lead": "破壊する相手の場のサイズ１以下のモンスターを１枚選んでください。"
+                    },
+                    {
+                      "op": "destroySelected",
+                      "var": "kill",
+                      "require": false
+                    }
+                  ]
+                },
+                {
+                  "key": "soulDrop",
+                  "label": "相手の場のカードのソウル１枚をドロップゾーンに置く",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "soulTarget",
+                      "from": "field",
+                      "controller": "opponent",
+                      "filter": {
+                        "soulCountGte": 1
+                      },
+                      "amount": 1,
+                      "allowEmpty": true,
+                      "emptyMessage": "相手の場にソウルを持つカードがないため、置き換えは行いません。",
+                      "title": "五角竜王 天武 “SD”",
+                      "lead": "ソウルをドロップゾーンに置く相手の場のカードを１枚選んでください。"
+                    },
+                    {
+                      "op": "dropSelectedSoul",
+                      "var": "soulTarget",
+                      "amount": 1
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0007",
+      "no": "H-EB04/0007",
+      "name": "ナノマシン忍者 月影 “SD”",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "忍者"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■このカードが登場した時、ゲージ１を払ってよい。払ったら、君のドロップゾーンのカード名に「白夜」を含むモンスター１枚を【コールコスト】を払って、コールする。",
+        "■このカードが《忍者》のモンスターのソウルにあるなら、そのモンスターの攻撃力＋1000、防御力＋1000！"
+      ],
+      "soulContinuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "忍者"
+          },
+          "power": 1000,
+          "defense": 1000
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0007-enter-byakuya-call",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "m",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "白夜"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "ナノマシン忍者 月影 “SD”",
+              "lead": "【コールコスト】を払ってコールする、ドロップゾーンのカード名に「白夜」を含むモンスター１枚を選んでください。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "m",
+              "payCost": "call",
+              "chooseZones": true,
+              "resolveOnEnter": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0008",
+      "no": "H-EB04/0008",
+      "name": "遠き日のドーン伯爵",
+      "type": "monster",
+      "world": "レジェンドW",
+      "attributes": [
+        "ワイダーサカー"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "『角王』(このカードは全てのフラッグで使える。君のフラッグが以外なら、「遠き日のドーン伯爵」はデッキに１枚しか入れることができない)",
+        "■このカードのバトル終了時、このカードを君の手札に戻してよい。"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "レジェンドW",
+        "awayMaxCopies": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0008-battle-end-return",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "optional": true,
+          "effects": [
+            {
+              "op": "returnSelfToHand"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0009",
+      "no": "H-EB04/0009",
+      "name": "破滅の使者 メギド・デスタリカ",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜",
+        "深淵"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 3,
+      "power": 12000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、このカードを君の場のサイズ３の《深淵》のモンスター１枚の上に重ね、君のデッキの上から３枚をこのカードのソウルに入れる。",
+        "■このカードが攻撃された時か場から離れる時、このカードのソウル２枚をデッキの下に置いたら、その攻撃を無効化するか、このカードを場に残す。",
+        "■このカードは『ソウルガード』を得られない。",
+        "『２回攻撃』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 3
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "callStack": {
+        "filter": {
+          "attribute": "深淵",
+          "sizeIn": [
+            3
+          ],
+          "cardType": "monster"
+        }
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0009-attacked-guard",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackTargetIsSource"
+            },
+            {
+              "op": "sourceSoulCountGte",
+              "amount": 2
+            }
+          ],
+          "cost": [
+            {
+              "op": "discardSoulToDeckBottom",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ],
+      "destroyReplacement": {
+        "optional": true,
+        "conditions": [
+          {
+            "op": "sourceSoulCountGte",
+            "amount": 2
+          }
+        ],
+        "cost": [
+          {
+            "op": "discardSoulToDeckBottom",
+            "amount": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "bf-h-eb04-0010",
+      "no": "H-EB04/0010",
+      "name": "煉獄騎士団団長 ディミオスソード “インフェルノ”",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "白竜"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】このカードを君の場の元々のサイズが２以上のカード名に「煉獄騎士団」を含むモンスター１枚の上に重ね、ゲージ２を払う。",
+        "■【対抗】【起動】君のターン中、相手の場のサイズ２以下のモンスター１枚を選び、君の場のカード名に「煉獄騎士団」を含むモンスター１枚を破壊する。破壊したら、このカードをスタンドし、選んだカードを破壊する。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "callStack": {
+        "filter": {
+          "nameIncludes": "煉獄騎士団",
+          "baseSizeGte": 2
+        }
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0010-erase",
+          "kind": "activated",
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "oppTarget",
+              "from": "field",
+              "controller": "opponent",
+              "filter": {
+                "cardType": "monster",
+                "sizeLte": 2
+              },
+              "amount": 1,
+              "title": "ディミオスソード“インフェルノ”",
+              "lead": "破壊する相手の場のサイズ２以下のモンスターを１枚選んでください。"
+            },
+            {
+              "op": "selectCards",
+              "var": "sac",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "nameIncludes": "煉獄騎士団",
+                "cardType": "monster"
+              },
+              "amount": 1,
+              "allowEmpty": true,
+              "require": false,
+              "title": "ディミオスソード“インフェルノ”",
+              "lead": "破壊する君の場のカード名に「煉獄騎士団」を含むモンスターを１枚選んでください。"
+            },
+            {
+              "op": "destroySelected",
+              "var": "sac",
+              "require": false
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "standTarget",
+                  "target": "$self"
+                },
+                {
+                  "op": "destroySelected",
+                  "var": "oppTarget",
+                  "require": false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0011",
+      "no": "H-EB04/0011",
+      "name": "シュヴァルツ “SD”",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードが登場した時、君の手札の《ダークヒーロー》１枚を捨ててよい。捨てたら、君のデッキの上から２枚をゲージに置く。",
+        "■このカードのバトル終了時、このカードを手札に戻す。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0011-enter-discard-gauge",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1,
+              "filter": {
+                "attribute": "ダークヒーロー"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb04-0011-battle-end-return",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "effects": [
+            {
+              "op": "returnSelfToHand"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0012",
+      "no": "H-EB04/0012",
+      "name": "進化の胎動 ヤミゲドウ",
+      "type": "monster",
+      "world": "-",
+      "attributes": [
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 0,
+      "power": 1000,
+      "critical": 0,
+      "defense": 1000,
+      "rules": [
+        "■【対抗】【起動】君のファイナルフェイズ中、君のデッキからサイズ３のカード名に「ヤミゲドウ」を含むモンスター１枚までを、【コールコスト】を払ってコールし、デッキをシャッフルする。この能力は１ターンに１回だけ使える。",
+        "■“爆雷”相手の場のアイテムが攻撃した時、このカードがモンスターのソウルにあるなら、相手にダメージ１！この能力は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0012-final-call",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "phaseIs",
+              "phase": "final"
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ],
+                "nameIncludes": "ヤミゲドウ"
+              },
+              "amount": 1,
+              "min": 0,
+              "max": 1,
+              "require": false,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "進化の胎動 ヤミゲドウ",
+              "lead": "デッキからコールするサイズ３の「ヤミゲドウ」を１枚まで選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "call",
+              "then": [
+                {
+                  "op": "selectZone",
+                  "var": "z",
+                  "cardVar": "call",
+                  "emptyOnly": true
+                },
+                {
+                  "op": "payCardCostForSelection",
+                  "var": "call",
+                  "purpose": "call"
+                },
+                {
+                  "op": "callSelected",
+                  "var": "call",
+                  "zoneVar": "z",
+                  "resolveOnEnter": true
+                }
+              ]
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0012-final-call"
+          }
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "bf-h-eb04-0012-bakurai",
+          "label": "爆雷",
+          "kind": "triggered",
+          "event": "opponentAttack",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "item"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0012-bakurai"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0013",
+      "no": "H-EB04/0013",
+      "name": "憂い顔の竜騎士 エル・キホーテ",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■このカードの攻撃で相手にダメージを与えた時、君のデッキの上から１枚をゲージに置き、カード１枚を引く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0013-urei-gao-damage",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0014",
+      "no": "H-EB04/0014",
+      "name": "原初の格闘竜 デモンゴドル",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■“竜式格闘術の開祖”このカードが登場した時、君のデッキからカード名に「デモンゴドル」を含むモンスター１枚までを手札に加え、デッキをシャッフルする。「竜式格闘術の開祖」は１ターンに１回だけ使える。",
+        "■このカードがカード名に「デモンゴドル」を含むモンスターのソウルにあるなら、そのモンスターの攻撃力＋2000、防御力＋2000！"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "soulContinuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "cardType": "monster",
+            "nameIncludes": "デモンゴドル"
+          },
+          "power": 2000,
+          "defense": 2000
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0014-search",
+          "kind": "triggered",
+          "event": "enter",
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0014-search"
+          },
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "m",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "デモンゴドル"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "allowEmpty": true,
+              "title": "原初の格闘竜 デモンゴドル",
+              "lead": "手札に加える、カード名に「デモンゴドル」を含むモンスターを選んでください（加えなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "m",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を手札に加えました。"
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0015",
+      "no": "H-EB04/0015",
+      "name": "アーマナイト・ケルベロス “SD”",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■【起動】場のこのカードを君の場の他の《アーマナイト》のモンスター１枚のソウルに入れる。",
+        "■このカードがソウルにある《アーマナイト》が攻撃した時、ゲージ１を払ってよい。払ったら、相手の場のモンスター１枚を破壊する。"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0015-to-soul",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "excludeSource": true,
+            "filter": {
+              "cardType": "monster",
+              "attribute": "アーマナイト"
+            }
+          },
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "bf-h-eb04-0015-soul-destroy",
+          "kind": "triggered",
+          "event": "attack",
+          "optional": true,
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0016",
+      "no": "H-EB04/0016",
+      "name": "裂神呼法",
+      "type": "spell",
+      "world": "デンジャーW",
+      "attributes": [
+        "闘気",
+        "ドロー"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■【使用コスト】ゲージ１を払い、ライフ１を払う。",
+        "■カード１枚を引く。さらに、君が《武器》を装備しているなら、カード１枚を引く。「裂神呼法」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1,
+        "life": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0016-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0016-draw"
+          },
+          "script": [
+            {
+              "op": "draw",
+              "amount": 1
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "ownItemHasAttribute",
+                "attribute": "武器"
+              },
+              "then": [
+                {
+                  "op": "draw",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0017",
+      "no": "H-EB04/0017",
+      "name": "理想少女 メアリー・スー",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "魔術師"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■“オールマイン”このカードが登場した時、場のサイズ２以下のモンスター１枚を手札に戻してよい。「オールマイン」は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0017-enter-bounce",
+          "label": "オールマイン",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "target": {
+            "type": "fieldCard",
+            "controller": "any",
+            "filter": {
+              "cardType": "monster",
+              "sizeLte": 2
+            }
+          },
+          "effects": [
+            {
+              "op": "returnToHand",
+              "target": "$target"
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0018",
+      "no": "H-EB04/0018",
+      "name": "ナッシン・トゥ・イット",
+      "type": "spell",
+      "world": "マジックW",
+      "attributes": [
+        "魔術師",
+        "破壊"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君の場にサイズ２の《魔術師》がいるなら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】相手の場のサイズ３のモンスター１枚を破壊する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0018-counter-destroy",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  2
+                ],
+                "attribute": "魔術師"
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster",
+              "sizeIn": [
+                3
+              ]
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0019",
+      "no": "H-EB04/0019",
+      "name": "ナノマシン忍者 白夜 “SD”",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "忍者"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■“潜影”このカードは相手のセンターにモンスターがいても、相手を攻撃できる！",
+        "■君の場にカード名に「月影」を含むモンスターがいるなら、このカードの打撃力を＋１！"
+      ],
+      "keywords": [
+        "canAttackFighterThroughCenter"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "月影"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0020",
+      "no": "H-EB04/0020",
+      "name": "少年変化 闇狐",
+      "type": "monster",
+      "world": "カタナW",
+      "attributes": [
+        "髑髏武者"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 0,
+      "power": 4000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■“感覚同調”君の場の《髑髏武者》のモンスターが相手にダメージを与えた時、場のそのモンスターをドロップゾーンに置いてよい。置いたら、そのカードのサイズの数値分、相手にダメージ！「感覚同調」は１ターンに１回だけ発動する。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0020-ally-kankaku-doucho",
+          "label": "感覚同調",
+          "kind": "triggered",
+          "event": "allyDealDamage",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "damageSourceMatches",
+              "filter": {
+                "attribute": "髑髏武者"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dropEventCard",
+              "eventCard": "damageSource"
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amountFrom": {
+                "source": "damageSourceStat",
+                "stat": "size"
+              }
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0020-kankaku-doucho"
+          }
+        },
+        {
+          "id": "bf-h-eb04-0020-self-kankaku-doucho",
+          "label": "感覚同調",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "damageSourceMatches",
+              "filter": {
+                "attribute": "髑髏武者"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dropEventCard",
+              "eventCard": "damageSource"
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amountFrom": {
+                "source": "damageSourceStat",
+                "stat": "size"
+              }
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0020-kankaku-doucho"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0021",
+      "no": "H-EB04/0021",
+      "name": "鬼道 荒供養",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "鬼道",
+        "ドロー"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■このターン中、君の場の《髑髏武者》２枚以上が破壊されているなら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】カード３枚を引く。「鬼道 荒供養」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0021-kidou-arakuyou",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "destroyedThisTurnMatchingCountGte",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "髑髏武者"
+              },
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 3
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0022",
+      "no": "H-EB04/0022",
+      "name": "デュエルズィーガー “SD”",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 3,
+      "power": 6000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "■場かドロップゾーンのこのカードは「武神竜王 デュエルズィーガー」としても扱う。",
+        "■【起動】手札のこのカードを捨て、ゲージ１を払ってよい。そうしたら、君のデッキから、カード名に「デュエルズィーガー」を含むカード１枚を手札に加え、デッキをシャッフルする。",
+        "『ライフリンク１』"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "additionalNames": [
+        "武神竜王 デュエルズィーガー"
+      ],
+      "keywords": [
+        "lifeLink1"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0022-search",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "fromHandOnly": true,
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "s",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "nameIncludes": "デュエルズィーガー"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "allowEmpty": true,
+              "title": "デュエルズィーガー “SD”",
+              "lead": "手札に加える、カード名に「デュエルズィーガー」を含むカードを選んでください（加えなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "s",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を手札に加えました。"
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0023",
+      "no": "H-EB04/0023",
+      "name": "ギャング・ザ・キング “SD”",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 3,
+      "power": 6000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■君の場に他の元々のサイズが３の《怒羅魂頭》がいるなら、場のこのカードのサイズを３減らす。",
+        "『貫通』『ライフリンク２』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "penetrate",
+        "lifeLink2"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "size": -3,
+          "conditions": [
+            {
+              "op": "ownOtherFieldCardExists",
+              "filter": {
+                "attribute": "怒羅魂頭",
+                "baseSize": 3
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0024",
+      "no": "H-EB04/0024",
+      "name": "ドラゴンベビー リッキー",
+      "type": "monster",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■君の場の他の《怒羅魂頭》が場から離れる場合、このカードをドロップゾーンに置いてよい。置いたら、そのカードを場に残す。",
+        "『ライフリンク１』"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "keywords": [
+        "lifeLink1"
+      ],
+      "allyDestroyReplacement": {
+        "optional": true,
+        "filter": {
+          "attribute": "怒羅魂頭"
+        },
+        "cost": [
+          {
+            "op": "dropSource"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bf-h-eb04-0025",
+      "no": "H-EB04/0025",
+      "name": "ブレイドウイング・フェニックス “SD”",
+      "type": "monster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "Dエネミー",
+        "コンストラクト"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが登場した時、君の場に《冒険者》があるなら、相手の場のモンスター１枚を破壊する。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0025-enter-destroy",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "attribute": "冒険者"
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0026",
+      "no": "H-EB04/0026",
+      "name": "ヒートブレイド・ジョーカー",
+      "type": "monster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "火"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■【起動】場のこのカードを、君の場のサイズ２以上のソウルのない《魔王》のソウルに入れる。",
+        "■このカードが《魔王》のモンスターのソウルにあるなら、そのモンスターは『ソウルガード』を得る。"
+      ],
+      "soulContinuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "soulguard",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "魔王"
+          }
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0026-soul-in",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "魔王",
+                "sizeGte": 2,
+                "soulCountLte": 0
+              },
+              "amount": 1,
+              "require": true,
+              "title": "ヒートブレイド・ジョーカー",
+              "lead": "ソウルに入れる、サイズ２以上でソウルのない《魔王》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0027",
+      "no": "H-EB04/0027",
+      "name": "水王の秘術",
+      "type": "spell",
+      "world": "ダンジョンW",
+      "attributes": [
+        "魔王"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■【使用コスト】ライフ１を払う。",
+        "■次の２つから１つを選んで使う。「水王の秘術」は１ターンに１回だけ使える。\n・君のドロップゾーンの《魔王》のモンスター１枚を手札に加える。\n・君のデッキの上から１枚をゲージに置き、相手にダメージ１！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "life": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0027-choose",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "水王の秘術",
+              "lead": "次の２つから１つを選んで使ってください。",
+              "options": [
+                {
+                  "key": "recover",
+                  "label": "君のドロップゾーンの《魔王》のモンスター１枚を手札に加える",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "grab",
+                      "from": "drop",
+                      "controller": "self",
+                      "filter": {
+                        "cardType": "monster",
+                        "attribute": "魔王"
+                      },
+                      "amount": 1,
+                      "require": true,
+                      "title": "水王の秘術",
+                      "lead": "手札に加える《魔王》のモンスター１枚を選んでください。"
+                    },
+                    {
+                      "op": "moveSelected",
+                      "var": "grab",
+                      "to": "hand"
+                    }
+                  ]
+                },
+                {
+                  "key": "burn",
+                  "label": "デッキの上から１枚をゲージに置き、相手にダメージ１",
+                  "script": [
+                    {
+                      "op": "putTopDeckToGauge",
+                      "amount": 1
+                    },
+                    {
+                      "op": "dealDamage",
+                      "player": "opponent",
+                      "amount": 1
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0028",
+      "no": "H-EB04/0028",
+      "name": "風の大精霊 シルフ",
+      "type": "monster",
+      "world": "レジェンドW",
+      "attributes": [
+        "ワイダーサカー",
+        "妖精"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、ライフ１を払う。",
+        "■このカードが登場した時、次の２つから１つを選んで使ってよい。\n・君のドロップゾーンのアイテム１枚を、【装備コスト】を払って装備する。\n・君のドロップゾーンの《ワイダーサカー》のモンスター１枚を【コールコスト】を払って、コールする。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1,
+        "life": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0028-enter-choice",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "風の大精霊 シルフ",
+              "lead": "使う効果を1つ選んでください。",
+              "options": [
+                {
+                  "key": "equip-item",
+                  "label": "ドロップゾーンのアイテムを装備する",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "item",
+                      "from": "drop",
+                      "controller": "self",
+                      "filter": {
+                        "cardType": "item"
+                      },
+                      "amount": 1,
+                      "require": false,
+                      "title": "風の大精霊 シルフ",
+                      "lead": "装備するアイテムをドロップゾーンから選んでください。"
+                    },
+                    {
+                      "op": "useSelectedCard",
+                      "var": "item"
+                    }
+                  ]
+                },
+                {
+                  "key": "call-wilder",
+                  "label": "ドロップゾーンの《ワイダーサカー》をコールする",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "wilder",
+                      "from": "drop",
+                      "controller": "self",
+                      "filter": {
+                        "attribute": "ワイダーサカー",
+                        "cardType": "monster"
+                      },
+                      "amount": 1,
+                      "require": false,
+                      "callable": true,
+                      "canPayCost": "call",
+                      "title": "風の大精霊 シルフ",
+                      "lead": "コールする《ワイダーサカー》のモンスターを選んでください。"
+                    },
+                    {
+                      "op": "callSelectedToEmptyZones",
+                      "var": "wilder",
+                      "zones": [
+                        "left",
+                        "center",
+                        "right"
+                      ],
+                      "payCost": "call",
+                      "chooseZones": true,
+                      "resolveOnEnter": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0029",
+      "no": "H-EB04/0029",
+      "name": "デスゲイズ・ドラゴン “SD”",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜",
+        "死",
+        "深淵"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 6000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■君のバディモンスターが《黒竜》ならコールできる。",
+        "■“霊撃”このカードの攻撃で、相手のモンスターを破壊した時、相手にダメージ１。",
+        "■このカードの攻撃で、相手のモンスターを破壊した時、相手のゲージ１枚をドロップゾーンに置く。"
+      ],
+      "callConditions": [
+        {
+          "op": "buddyMatches",
+          "filter": {
+            "attribute": "黒竜"
+          }
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0029-spirit-strike",
+          "label": "霊撃",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb04-0029-gauge-drop",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "moveGaugeToDrop",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0030",
+      "no": "H-EB04/0030",
+      "name": "ミッドナイト・シャドウ",
+      "type": "spell",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "死",
+        "防御"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■相手のターンの攻撃中に使える。",
+        "■【対抗】その攻撃が連携攻撃でないなら、無効化する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0030-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackNotLink"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0031",
+      "no": "H-EB04/0031",
+      "name": "デッカー・ドラム “SD”",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■【対抗】【起動】このカードをドロップゾーンに置く。置いたら、相手の場のサイズ１以下のモンスター１枚を破壊する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0031-drop-destroy",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "dropSource"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster",
+              "sizeLte": 1
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0032",
+      "no": "H-EB04/0032",
+      "name": "それぞれの戦い",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "回復",
+        "ゲット"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■次の２つから１つを選んで使う。「それぞれの戦い」は１ターンに１回だけ使える。\n・君のライフを＋２する。\n・君のドロップゾーンの『搭乗』を持つカード１枚を『搭乗』コストを払って、『搭乗』する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0032-sorezore-no-tatakai",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "それぞれの戦い",
+              "lead": "次の２つから１つを選んで使ってください。",
+              "options": [
+                {
+                  "key": "life",
+                  "label": "君のライフを＋２する",
+                  "script": [
+                    {
+                      "op": "gainLife",
+                      "amount": 2
+                    }
+                  ]
+                },
+                {
+                  "key": "ride",
+                  "label": "君のドロップゾーンの『搭乗』を持つカード１枚を『搭乗』コストを払って、『搭乗』する",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "m",
+                      "from": "drop",
+                      "controller": "self",
+                      "filter": {
+                        "keyword": "ride"
+                      },
+                      "min": 0,
+                      "max": 1,
+                      "amount": 1,
+                      "require": false,
+                      "title": "それぞれの戦い",
+                      "lead": "ドロップゾーンから『搭乗』を持つカード１枚を選んでください。"
+                    },
+                    {
+                      "op": "equipSelectedAsItem",
+                      "var": "m",
+                      "payCost": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0033",
+      "no": "H-EB04/0033",
+      "name": "スタージャック・ブースト",
+      "type": "spell",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "チャージ",
+        "ドロー"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君のライフが７以上なら使える。",
+        "■君のデッキの上から１枚をゲージに置き、カード１枚を引く。「スタージャック・ブースト」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0033-boost",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "not",
+              "condition": {
+                "op": "lifeLte",
+                "amount": 6
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0033-boost"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0034",
+      "no": "H-EB04/0034",
+      "name": "空間跳躍光破 T・エレメンツ",
+      "type": "impact",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "火力",
+        "召喚"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君の場に《ネオドラゴン》のモンスターがいるなら使える。",
+        "■【使用コスト】ゲージ２を払う。",
+        "■君の手札かドロップゾーンの《ネオドラゴン》のモンスター１枚を、【コールコスト】を払ってコールしてよい。その後、君の場に《ネオドラゴン》のモンスター３枚以上がいるなら、相手にダメージ３！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0034-impact",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": [
+                "hand",
+                "drop"
+              ],
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "min": 0,
+              "max": 1,
+              "require": false,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "空間跳躍光破 T・エレメンツ",
+              "lead": "手札かドロップゾーンからコールする《ネオドラゴン》を選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "call",
+              "then": [
+                {
+                  "op": "selectZone",
+                  "var": "z",
+                  "cardVar": "call",
+                  "emptyOnly": true
+                },
+                {
+                  "op": "payCardCostForSelection",
+                  "var": "call",
+                  "purpose": "call"
+                },
+                {
+                  "op": "callSelected",
+                  "var": "call",
+                  "zoneVar": "z",
+                  "resolveOnEnter": true
+                }
+              ]
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "ownFieldCardCountGte",
+                "filter": {
+                  "cardType": "monster",
+                  "attribute": "ネオドラゴン"
+                },
+                "amount": 3
+              },
+              "then": [
+                {
+                  "op": "dealDamage",
+                  "player": "opponent",
+                  "amount": 3
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0035",
+      "no": "H-EB04/0035",
+      "name": "汚されし淵神の祠",
+      "type": "spell",
+      "world": "-",
+      "attributes": [
+        "ドロー",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■君のターン中、君の場に“爆雷”を持つモンスターが登場した時、カード１枚を引く。この能力は１ターンに１回だけ発動する。",
+        "■「汚されし淵神の祠」は君の場に１枚だけ『設置』できる。"
+      ],
+      "uniqueSet": true,
+      "keywords": [
+        "set"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0035-draw",
+          "kind": "triggered",
+          "event": "allyEnter",
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "enteredCardMatches",
+              "filter": {
+                "cardType": "monster",
+                "hasAbilityLabel": "爆雷"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0035-draw"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0036",
+      "no": "H-EB04/0036",
+      "name": "ジャックナイフ・ドラム",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが登場した時、相手の場のサイズ２以下のモンスター１枚を破壊する。さらに、君のライフが４以下なら、相手にダメージ１！！"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0036-enter",
+          "kind": "triggered",
+          "event": "enter",
+          "allowMissingTarget": true,
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster",
+              "sizeLte": 2
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "lifeLte",
+                  "amount": 4
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0037",
+      "no": "H-EB04/0037",
+      "name": "紅蓮闘士 ハルバード・ガントレット",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■君がカード名に「拳」を含むアイテムを装備しているなら、このカードを攻撃力＋2000、防御力＋2000し、『移動』を得る。"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "power": 2000,
+          "defense": 2000,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "filter": {
+                "nameIncludes": "拳"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "op": "grantKeyword",
+          "keyword": "move",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "filter": {
+                "nameIncludes": "拳"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0038",
+      "no": "H-EB04/0038",
+      "name": "ドラゴニック・インデュア",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "チャージ"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君がダメージを受けた時に使える。",
+        "■【対抗】君のデッキの上から３枚をゲージに置く。「ドラゴニック・インデュア」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0038-endure",
+          "label": "ドラゴニック・インデュア",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "selfReceivedDamage"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0038-endure"
+          },
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0039",
+      "no": "H-EB04/0039",
+      "name": "天衝撃",
+      "type": "spell",
+      "world": "デンジャーW",
+      "attributes": [
+        "闘気",
+        "破壊"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君が《武器》を装備していて、君のセンターにモンスターがいないなら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】相手の場のサイズ２以下のモンスター１枚を破壊する！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0039-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "conditions": [
+            {
+              "op": "ownItemHasAttribute",
+              "attribute": "武器"
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster",
+              "sizeLte": 2
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0040",
+      "no": "H-EB04/0040",
+      "name": "獄斧 魔風閃",
+      "type": "item",
+      "world": "デンジャーW",
+      "attributes": [
+        "斬魔",
+        "闘気",
+        "武器"
+      ],
+      "rarity": "エクストラブースター",
+      "power": 4000,
+      "critical": 3,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■君はセンターにモンスターをコールできない。",
+        "■このカードが攻撃した時、相手の場のサイズ１以下のモンスター１枚を破壊する。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "equipCost": {
+        "gauge": 1
+      },
+      "continuous": [
+        {
+          "op": "preventCenterCall",
+          "controller": "self"
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0040-attack-destroy",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster",
+              "sizeLte": 1
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0041",
+      "no": "H-EB04/0041",
+      "name": "キヌース・アクシア “SD”",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "魔術師"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 1000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが攻撃した時、君か相手を選び、ダメージ１！"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0041-attack-damage",
+          "kind": "triggered",
+          "event": "attack",
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "ダメージを与えるファイター",
+              "lead": "ダメージ１を与えるファイターを選んでください。",
+              "options": [
+                {
+                  "key": "opponent",
+                  "label": "相手",
+                  "script": [
+                    {
+                      "op": "dealDamage",
+                      "player": "opponent",
+                      "amount": 1
+                    }
+                  ]
+                },
+                {
+                  "key": "self",
+                  "label": "自分",
+                  "script": [
+                    {
+                      "op": "dealDamage",
+                      "player": "self",
+                      "amount": 1
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0042",
+      "no": "H-EB04/0042",
+      "name": "メイク・サム・ノイズ！",
+      "type": "spell",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君の場に《72柱》３種類以上があるなら使える。",
+        "■【使用コスト】ゲージ２を払う。",
+        "■【対抗】場のモンスター２枚までを持ち主の手札に戻す。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0042-counter-bounce",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "attribute": "72柱"
+              },
+              "distinct": "distinctByName",
+              "cmp": "gte",
+              "amount": 3
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "targets",
+              "from": "field",
+              "controller": "any",
+              "filter": {
+                "cardType": "monster"
+              },
+              "min": 0,
+              "max": 2,
+              "amount": 2,
+              "require": false,
+              "title": "メイク・サム・ノイズ！",
+              "lead": "持ち主の手札に戻すモンスターを２枚まで選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "targets",
+              "to": "hand",
+              "require": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0043",
+      "no": "H-EB04/0043",
+      "name": "ワンモアセッ！",
+      "type": "spell",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■【対抗】君の場のカード名に「アスモダイ」を含むモンスター１枚を【スタンド】する。「ワンモアセッ！」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0043-counter-stand",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "nameIncludes": "アスモダイ"
+            }
+          },
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$target"
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0044",
+      "no": "H-EB04/0044",
+      "name": "秘剣隠し“叢雲”",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "忍法"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君のデッキの上から２枚をゲージに置く。その後、君のドロップゾーンの《秘剣》１枚か、カード名に「絶命陣」を含むカード１枚を君のデッキに戻してよい。戻したら、君のデッキをシャッフルする。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0044-hikengakushi-murakumo",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            },
+            {
+              "op": "selectCards",
+              "var": "r",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "anyOf": [
+                  {
+                    "attribute": "秘剣"
+                  },
+                  {
+                    "nameIncludes": "絶命陣"
+                  }
+                ]
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "秘剣隠し“叢雲”",
+              "lead": "デッキに戻すドロップゾーンの《秘剣》か、カード名に「絶命陣」を含むカード１枚を選んでください（戻さなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "r",
+              "to": "deck",
+              "require": false
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0045",
+      "no": "H-EB04/0045",
+      "name": "秘剣 星影",
+      "type": "impact",
+      "world": "カタナW",
+      "attributes": [
+        "忍法",
+        "秘剣"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君の場のモンスターが破壊された時、このカードが「秘剣 絶命陣」のソウルにあるなら使える。(このカードは手札から使えない)",
+        "■【使用コスト】ゲージ２を払う。",
+        "■【対抗】相手の場のサイズ２以下のモンスター１枚か、アイテム１枚を破壊する。破壊したら、相手にダメージ２！！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0045-hiken-hoshikage",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "fromSoulOnly": true,
+          "conditions": [
+            {
+              "op": "lastDestroyedCardMatches",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster"
+              }
+            },
+            {
+              "op": "hostMatches",
+              "filter": {
+                "nameIncludes": "絶命陣"
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "anyOf": [
+                {
+                  "cardType": "monster",
+                  "sizeLte": 2
+                },
+                {
+                  "cardType": "item"
+                }
+              ]
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 2,
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0046",
+      "no": "H-EB04/0046",
+      "name": "忠竜義胆",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君の場にサイズ３ののモンスターがいるなら使える。",
+        "■次の２つから１つを選んで使う。\n・君のデッキからサイズ０のモンスター１枚までを【コールコスト】を払わず、コールし、デッキをシャッフルする。\n・このカードを君の場のサイズ３の《ドラゴンロード》のソウルに入れる。",
+        "■このカードがソウルにある《ドラゴンロード》が攻撃した時、君のデッキの上から１枚をゲージに置く。この能力は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0046-choose",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              }
+            }
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "忠竜義胆",
+              "lead": "使う効果を1つ選んでください。",
+              "options": [
+                {
+                  "key": "call",
+                  "label": "君のデッキからサイズ0のモンスター1枚までを、コールコストを払わずコールする",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "m",
+                      "from": "deck",
+                      "controller": "self",
+                      "filter": {
+                        "cardType": "monster",
+                        "sizeIn": [
+                          0
+                        ]
+                      },
+                      "min": 0,
+                      "max": 1,
+                      "amount": 1,
+                      "require": false,
+                      "allowEmpty": true,
+                      "title": "忠竜義胆",
+                      "lead": "コールするサイズ0のモンスターを選んでください（コールしなくてもよい）。"
+                    },
+                    {
+                      "op": "callSelectedToEmptyZones",
+                      "var": "m",
+                      "resolveOnEnter": true,
+                      "require": false
+                    },
+                    {
+                      "op": "shuffleDeck"
+                    }
+                  ]
+                },
+                {
+                  "key": "soul",
+                  "label": "このカードを君の場のサイズ3の《ドラゴンロード》のソウルに入れる",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "host",
+                      "from": "field",
+                      "controller": "self",
+                      "filter": {
+                        "cardType": "monster",
+                        "attribute": "ドラゴンロード",
+                        "sizeIn": [
+                          3
+                        ]
+                      },
+                      "amount": 1,
+                      "require": true,
+                      "title": "忠竜義胆",
+                      "lead": "ソウルに入れる、サイズ3の《ドラゴンロード》を選んでください。"
+                    },
+                    {
+                      "op": "moveSelfToSelectedSoul",
+                      "var": "host"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "bf-h-eb04-0046-soul-charge",
+          "kind": "triggered",
+          "event": "attack",
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0046-soul-charge"
+          },
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0047",
+      "no": "H-EB04/0047",
+      "name": "竜雪之功",
+      "type": "spell",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭",
+        "強化"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■【対抗】バトルしている《怒羅魂頭》のモンスター１枚を選び、このバトル中、攻撃力＋6000、防御力＋6000する！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0047-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "battleCard",
+            "filter": {
+              "attribute": "怒羅魂頭"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 6000,
+              "defense": 6000
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0048",
+      "no": "H-EB04/0048",
+      "name": "闘技場の覇者 ロウガ",
+      "type": "monster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードはセンターにコールできない。",
+        "■【コールコスト】ゲージ１を払う。",
+        "■君のライフが５以下なら、このカードの攻撃力＋1000、打撃力＋１！",
+        "『貫通』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "penetrate"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "power": 1000,
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 5
+            }
+          ]
+        }
+      ],
+      "cannotCallZones": [
+        "center"
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0049",
+      "no": "H-EB04/0049",
+      "name": "スマイル・チャーム",
+      "type": "spell",
+      "world": "ダンジョンW",
+      "attributes": [
+        "魔力"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君のデッキの上から１枚をゲージに置き、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0049-charge",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0050",
+      "no": "H-EB04/0050",
+      "name": "ひと握りの報酬",
+      "type": "spell",
+      "world": "ダンジョンW",
+      "attributes": [
+        "騎士",
+        "ゲット"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君の場の《騎士》が破壊された時に使える。",
+        "■【対抗】君のライフを＋１し、君のドロップゾーンの《騎士》のモンスターかアイテム１枚を手札に加える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0050-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "lastDestroyedCardMatches",
+              "controller": "self",
+              "filter": {
+                "attribute": "騎士"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "moveMatchingDropToHand",
+              "filter": {
+                "attribute": "騎士",
+                "cardTypeIn": [
+                  "monster",
+                  "item"
+                ]
+              },
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0051",
+      "no": "H-EB04/0051",
+      "name": "幻星の巨神 アストライオス",
+      "type": "monster",
+      "world": "レジェンドW",
+      "attributes": [
+        "オリンピア",
+        "星"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■君のメインフェイズ開始時、君のレフトとライトに《星》がいるなら、カード１枚を引き、相手にダメージ１！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0051-main-start",
+          "kind": "triggered",
+          "event": "mainStart",
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "ownFieldCardCountGte",
+              "zones": [
+                "left",
+                "right"
+              ],
+              "filter": {
+                "attribute": "星"
+              },
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0052",
+      "no": "H-EB04/0052",
+      "name": "知識の盾 テトラビブリオン",
+      "type": "spell",
+      "world": "レジェンドW",
+      "attributes": [
+        "星"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■【対抗】君の場の《星》１枚を選ぶ。そのターン中、次にそのカードが破壊される場合、そのカードを場に残し、さらに、君のレフトとライトに《星》がいるなら、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0052-preserve",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "attribute": "星"
+            }
+          },
+          "effects": [
+            {
+              "op": "setPreventNextDestroy",
+              "target": "$target",
+              "amount": 1,
+              "effects": [
+                {
+                  "op": "putTopDeckToGauge",
+                  "amount": 1,
+                  "conditions": [
+                    {
+                      "op": "ownFieldCardCountGte",
+                      "zones": [
+                        "left",
+                        "right"
+                      ],
+                      "filter": {
+                        "attribute": "星"
+                      },
+                      "amount": 2
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0053",
+      "no": "H-EB04/0053",
+      "name": "決戦の地 ヴィーグリーズ",
+      "type": "spell",
+      "world": "レジェンドW",
+      "attributes": [
+        "アースガルド",
+        "ルーン"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■君がカード名に「大魔法」を含むカードを使った時、カード２枚を引き、このカードをドロップゾーンに置く。この能力は１ターンに１回だけ発動する。",
+        "■「決戦の地 ヴィーグリーズ」は君の場に１枚だけ『設置』できる。"
+      ],
+      "uniqueSet": true,
+      "keywords": [
+        "set"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0053-daimahou",
+          "kind": "triggered",
+          "event": "allySpellCast",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "nameIncludes": "大魔法"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 2
+            },
+            {
+              "op": "dropSelf"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0053-daimahou"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0054",
+      "no": "H-EB04/0054",
+      "name": "煉獄騎士団 イレイザーハンド・ドラゴン",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "白竜"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 4000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■【起動】“アナザーハンド”君の場のこのカード以外のカード名に「煉獄騎士団」を含むカード１枚を破壊する。破壊したら、相手は手札１枚を選んで捨てる。“アナザーハンド”は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0054-another-hand",
+          "label": "アナザーハンド",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "sac",
+              "from": "field",
+              "controller": "self",
+              "excludeSource": true,
+              "filter": {
+                "nameIncludes": "煉獄騎士団"
+              },
+              "amount": 1,
+              "title": "アナザーハンド",
+              "lead": "破壊する君の場のこのカード以外のカード名に「煉獄騎士団」を含むカードを１枚選んでください。"
+            },
+            {
+              "op": "destroySelected",
+              "var": "sac",
+              "require": false
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "discardHand",
+                  "player": "opponent",
+                  "amount": 1
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0054-another-hand"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0055",
+      "no": "H-EB04/0055",
+      "name": "煉獄騎士団 アングリーハンド・ドラゴン",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "白竜"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■このカードがモンスターの効果で破壊された時、相手の場のアイテム１枚を選び、ゲージ１を払ってよい。払ったら、選んだアイテムを破壊する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0055-angry-hand",
+          "kind": "triggered",
+          "event": "destroyed",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "eventDestroyCauseMatches",
+              "byEffect": true,
+              "sourceType": "monster"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "item"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0056",
+      "no": "H-EB04/0056",
+      "name": "デスルーラー ガロウズ “SD”",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "死",
+        "深淵"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■君のドロップゾーンに《死》があるならコールできる。",
+        "■“潜影”このカードは相手のセンターにモンスターがいても、相手を攻撃できる！",
+        "■このカードの攻撃で相手にダメージを与えた時、君の場に他の《死》があるなら、君のライフを＋１！"
+      ],
+      "callConditions": [
+        {
+          "op": "ownDropHasCard",
+          "filter": {
+            "attribute": "死"
+          }
+        }
+      ],
+      "keywords": [
+        "canAttackFighterThroughCenter"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0056-soul-chain",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "conditions": [
+            {
+              "op": "ownOtherFieldCardExists",
+              "filter": {
+                "attribute": "死"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0057",
+      "no": "H-EB04/0057",
+      "name": "アブソリュート・アタック",
+      "type": "spell",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "死",
+        "深淵"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■そのターン中、君の場のカードが相手のモンスターを攻撃しているバトル中、相手は【対抗】を使えない。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0057-absolute-attack",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "preventOpponentCounterThisTurn",
+              "conditions": [
+                {
+                  "op": "pendingAttackTargetIs",
+                  "targetType": "monster"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0058",
+      "no": "H-EB04/0058",
+      "name": "デスハイディング",
+      "type": "spell",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "死",
+        "深淵"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君のドロップゾーンの“潜影”を持つモンスター１枚を手札に加える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0058-recover",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "moveMatchingDropToHand",
+              "filter": {
+                "cardType": "monster",
+                "keyword": "canAttackFighterThroughCenter"
+              },
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0059",
+      "no": "H-EB04/0059",
+      "name": "名無しの暗殺者",
+      "type": "monster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 4000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが登場した時、君の場に他の《ダークヒーロー》があるなら、相手の場のモンスター１枚のソウル１枚をドロップゾーンに置いてよい。",
+        "■このカードのバトル終了時、このカードを手札に戻す。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0059-enter-soul-drop",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "ownOtherFieldCardExists",
+              "filter": {
+                "attribute": "ダークヒーロー"
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster",
+              "soulCountGte": 1
+            }
+          },
+          "effects": [
+            {
+              "op": "dropTargetSoul",
+              "target": "$target",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-h-eb04-0059-battle-end-return",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "effects": [
+            {
+              "op": "returnSelfToHand"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0060",
+      "no": "H-EB04/0060",
+      "name": "正義の為に答える男！",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "チャージ"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君のデッキの上から１枚をゲージに置く。その後、君のデッキの１番上のカードを見て、君のデッキの１番上に置くか、ドロップゾーンに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0060-seigi-no-tame-ni",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "lookTopCardPlaceTopOrBottom",
+              "altTo": "drop"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0061",
+      "no": "H-EB04/0061",
+      "name": "そこを動くな！",
+      "type": "spell",
+      "world": "ヒーローW",
+      "attributes": [
+        "防御"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君の場にモンスターがいないなら使える。",
+        "■【使用コスト】ゲージ１を払い、ライフ１を払う。",
+        "■【対抗】相手の場のモンスター１枚を【レスト】する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1,
+        "life": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0061-soko-wo-ugokuna",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "not",
+              "condition": {
+                "op": "ownFieldCardExists",
+                "filter": {
+                  "cardType": "monster"
+                }
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "restTarget",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0062",
+      "no": "H-EB04/0062",
+      "name": "超黄竜 スフェルミオン",
+      "type": "monster",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 3,
+      "power": 5000,
+      "critical": 3,
+      "defense": 5000,
+      "rules": [
+        "■【起動】“アルドシーカー”君の場にサイズ２の《ネオドラゴン》がいるなら、手札のこのカードをドロップゾーンに置いてよい。そうしたら、君のライフを＋１！さらに、君の場に《ネオドラゴン》２枚以上がいるなら、カード１枚を引き、君の場に《ネオドラゴン》３枚以上がいるなら、君のドロップゾーンのカード１枚を手札に加える。「アルドシーカー」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0062-arudo-seeker",
+          "label": "アルドシーカー",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン",
+                "sizeIn": [
+                  2
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "ownFieldCardCountGte",
+                  "filter": {
+                    "cardType": "monster",
+                    "attribute": "ネオドラゴン"
+                  },
+                  "amount": 2
+                }
+              ]
+            },
+            {
+              "op": "moveMatchingDropToHand",
+              "amount": 1,
+              "filter": {},
+              "conditions": [
+                {
+                  "op": "ownFieldCardCountGte",
+                  "filter": {
+                    "cardType": "monster",
+                    "attribute": "ネオドラゴン"
+                  },
+                  "amount": 3
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0062-arudo-seeker"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0063",
+      "no": "H-EB04/0063",
+      "name": "竜装機 ナノブレイク",
+      "type": "monster",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "竜装機"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【起動】このカードが《ネオドラゴン》のソウルにあるなら、ゲージ２を払ってよい。払ったら、相手の場のモンスター１枚を破壊する。",
+        "『星合体』"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0063-star-merge",
+          "label": "星合体",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "竜装機 ナノブレイク",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "bf-h-eb04-0063-soul-destroy",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "hostMatches",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0064",
+      "no": "H-EB04/0064",
+      "name": "アームズ・リブート",
+      "type": "spell",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ゲット"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君のドロップゾーンの《竜装機》のモンスター１枚を手札に加える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0064-recover",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "moveMatchingDropToHand",
+              "amount": 1,
+              "filter": {
+                "cardType": "monster",
+                "attribute": "竜装機"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0065",
+      "no": "H-EB04/0065",
+      "name": "百鬼魔導 雷衝撃",
+      "type": "spell",
+      "world": "-",
+      "attributes": [
+        "ゲット",
+        "百鬼"
+      ],
+      "rarity": "エクストラブースター",
+      "rules": [
+        "■君のライフが６以下なら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■君のドロップゾーンのサイズ１以下の《百鬼》２枚までを手札に加える。「百鬼魔導 雷衝撃」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0065-recover",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 6
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "moveMatchingDropToHand",
+              "amount": 2,
+              "optional": true,
+              "filter": {
+                "cardType": "monster",
+                "attribute": "百鬼",
+                "sizeLte": 1
+              }
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0065-recover"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-0066",
+      "no": "H-EB04/0066",
+      "name": "ジャックナイフ “ドラムバンカー”",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "rarity": "エクストラブースター",
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、このカードを君の場のカード名に「ジャックナイフ」か「ドラム」を含むモンスターの上に重ねる。",
+        "■このカードのソウルにカード名に「ジャックナイフ」を含むカードがあるなら、このカードは『移動』と『２回攻撃』を得る。このカードのソウルにカード名に「ドラム」を含むカードがあるなら、このカードの打撃力を＋１し、『貫通』を得る。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "callStack": {
+        "filter": {
+          "anyOf": [
+            {
+              "nameIncludes": "ジャックナイフ"
+            },
+            {
+              "nameIncludes": "ドラム"
+            }
+          ],
+          "cardType": "monster"
+        }
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "move",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "sourceSoulMatchingCountGte",
+              "filter": {
+                "nameIncludes": "ジャックナイフ"
+              },
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "op": "grantKeyword",
+          "keyword": "doubleAttack",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "sourceSoulMatchingCountGte",
+              "filter": {
+                "nameIncludes": "ジャックナイフ"
+              },
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "sourceSoulMatchingCountGte",
+              "filter": {
+                "nameIncludes": "ドラム"
+              },
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "sourceSoulMatchingCountGte",
+              "filter": {
+                "nameIncludes": "ドラム"
+              },
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-s001",
+      "no": "H-EB04/S001",
+      "name": "ドラムバンカー・ドラゴン “SD”",
+      "type": "monster",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_04_s001.png",
+      "altArtOf": "bf-h-eb04-0005",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb04-0005・能力同一）",
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■“明日に向かってGO！”君の場にカード名に「ドラム」を含むモンスターが登場した時、このカードが君のドロップゾーンにあるなら、ゲージ１を払ってよい。払ったら、ドロップゾーンにあるこのカードを、そのカードのソウルに入れるか、コールする。「明日に向かってGO！」は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0005-ashita-ni-mukatte-go",
+          "label": "明日に向かってGO！",
+          "kind": "triggered",
+          "event": "allyEnter",
+          "triggerZones": [
+            "drop"
+          ],
+          "fromDropZone": true,
+          "optional": true,
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "drop"
+              ]
+            },
+            {
+              "op": "enteredCardMatches",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "ドラム"
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0005-ashita-ni-mukatte-go"
+          },
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "ドラムバンカー・ドラゴン “SD”",
+              "lead": "ドロップゾーンにあるこのカードを、そのカードのソウルに入れるか、コールするか選んでください。",
+              "options": [
+                {
+                  "key": "soul",
+                  "label": "そのカードのソウルに入れる",
+                  "script": [
+                    {
+                      "op": "moveSelfToTargetSoul",
+                      "target": "$target"
+                    }
+                  ]
+                },
+                {
+                  "key": "call",
+                  "label": "コールする",
+                  "script": [
+                    {
+                      "op": "selectZone",
+                      "var": "z",
+                      "emptyOnly": true
+                    },
+                    {
+                      "op": "callSelfFromHand",
+                      "zoneVar": "z"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-s002",
+      "no": "H-EB04/S002",
+      "name": "オレ分身の術！アスモダイ",
+      "type": "monster",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_04_s002.png",
+      "altArtOf": "bf-h-eb04-0002",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb04-0002・能力同一）",
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【対抗】【起動】“オレ分身の術！”君のターン中、場のこのカードをドロップゾーンに置いてよい。置いたら、君のドロップゾーンのカード名に「アスモダイ」を含むモンスター１枚を【コールコスト】を払ってコールする。「オレ分身の術！」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0002-bunshin",
+          "label": "オレ分身の術！",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "optional": true,
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "cost": [
+            {
+              "op": "dropSource"
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "アスモダイ"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "オレ分身の術！",
+              "lead": "コールする、ドロップゾーンのカード名に「アスモダイ」を含むモンスターを選んでください。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "call",
+              "payCost": "call",
+              "resolveOnEnter": true
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-s003",
+      "no": "H-EB04/S003",
+      "name": "進化の胎動 ヤミゲドウ",
+      "type": "monster",
+      "world": "-",
+      "attributes": [
+        "百鬼"
+      ],
+      "rarity": "究極レア",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_04_s003.png",
+      "altArtOf": "bf-h-eb04-0012",
+      "_note": "究極レア別絵再録（基カード=bf-h-eb04-0012・能力同一）",
+      "size": 0,
+      "power": 1000,
+      "critical": 0,
+      "defense": 1000,
+      "rules": [
+        "■【対抗】【起動】君のファイナルフェイズ中、君のデッキからサイズ３のカード名に「ヤミゲドウ」を含むモンスター１枚までを、【コールコスト】を払ってコールし、デッキをシャッフルする。この能力は１ターンに１回だけ使える。",
+        "■“爆雷”相手の場のアイテムが攻撃した時、このカードがモンスターのソウルにあるなら、相手にダメージ１！この能力は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-h-eb04-0012-final-call",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "phaseIs",
+              "phase": "final"
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ],
+                "nameIncludes": "ヤミゲドウ"
+              },
+              "amount": 1,
+              "min": 0,
+              "max": 1,
+              "require": false,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "進化の胎動 ヤミゲドウ",
+              "lead": "デッキからコールするサイズ３の「ヤミゲドウ」を１枚まで選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "call",
+              "then": [
+                {
+                  "op": "selectZone",
+                  "var": "z",
+                  "cardVar": "call",
+                  "emptyOnly": true
+                },
+                {
+                  "op": "payCardCostForSelection",
+                  "var": "call",
+                  "purpose": "call"
+                },
+                {
+                  "op": "callSelected",
+                  "var": "call",
+                  "zoneVar": "z",
+                  "resolveOnEnter": true
+                }
+              ]
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0012-final-call"
+          }
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "bf-h-eb04-0012-bakurai",
+          "label": "爆雷",
+          "kind": "triggered",
+          "event": "opponentAttack",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "item"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-eb04-0012-bakurai"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-h-eb04-fgs01",
+      "no": "H-EB04/★☆☆☆☆",
+      "name": "ドラゴンワールド",
+      "type": "flag",
+      "rarity": "シークレット",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "このファイターはドラゴンWのカードを使う。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_04_se001.png",
+      "_note": "フラッグ表示専用カード（絵違い/箔違い再録・機構は data/flags.json が担う）"
+    },
+    {
+      "id": "bf-h-eb04-fgs02",
+      "no": "H-EB04/☆★☆☆☆",
+      "name": "ダンジョンワールド",
+      "type": "flag",
+      "rarity": "シークレット",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "このファイターはダンジョンWのカードを使う。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_04_se002.png",
+      "_note": "フラッグ表示専用カード（絵違い/箔違い再録・機構は data/flags.json が担う）"
+    },
+    {
+      "id": "bf-h-eb04-fgs03",
+      "no": "H-EB04/☆☆★☆☆",
+      "name": "ダークネスドラゴンワールド",
+      "type": "flag",
+      "rarity": "シークレット",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "このファイターはダークネスドラゴンWのカードを使う。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_04_se003.png",
+      "_note": "フラッグ表示専用カード（絵違い/箔違い再録・機構は data/flags.json が担う）"
+    },
+    {
+      "id": "bf-h-eb04-fgs04",
+      "no": "H-EB04/☆☆☆★☆",
+      "name": "スタードラゴンワールド",
+      "type": "flag",
+      "rarity": "シークレット",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "このファイターはスタードラゴンWのカードを使う。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_04_se004.png",
+      "_note": "フラッグ表示専用カード（絵違い/箔違い再録・機構は data/flags.json が担う）"
+    },
+    {
+      "id": "bf-h-eb04-fgs05",
+      "no": "H-EB04/☆☆☆☆★",
+      "name": "ドラゴン・アイン",
+      "type": "flag",
+      "rarity": "シークレット",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "■君は属性に「竜」か「ドラゴン」を含むカードとジェネリックのカードを使える。",
+        "■君の最初の手札は４枚、ゲージは２枚、ライフは12になる！"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/heb_04_se005.png",
+      "_note": "フラッグ表示専用カード（絵違い/箔違い再録・機構は data/flags.json が担う）"
+    }
+  ]
+}
