@@ -342,6 +342,12 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     runTriggeredAbilities,
     runFieldEventTriggers,
     runPhaseStartTriggers,
+    // E8(D-CBT/PR-0330): ターン内ミルカウンタ(state.turnDeckMilled)と deckMilledThisTurn 条件を
+    // 実ミル経路（funnel/直接）で叩けるようプローブへ公開。
+    queueDeckMilledTriggers,
+    putCardsToDropWithTrigger,
+    // FE1(D-CBT/0090): 手札→ドロップの場ブロードキャスト（ally/opponentHandDiscarded）をプローブへ公開。
+    queueHandDiscardedTriggers,
     checkCondition,
     getState: () => state,
     legacyAbilityScriptDefinition,

@@ -590,6 +590,16 @@ function queueDeckMilledTriggers(deckOwner, cards = [], cause = null) {
   if (list.length === 0) {
     return;
   }
+  // E8(D-CBT/PR-0330 追撃者 アビゲール): デッキ→ドロップのミル枚数をデッキ所有者(deckOwner席)ごとに
+  // ターン内集計する（deckMilledThisTurn 条件・src/13 が参照）。ここは全ミル経路が合流する deckMilled の
+  // 唯一の発火点であり（funnel putCardsToDropWithTrigger も、それを経由しない直接ミル経路
+  // ―src/15 eachPlayerTopDeckToDrop… / lookTop… / 置換ミル等― も最終的にここへ来る）、下の hasListener
+  // 早期returnより「前」に置くことで、deckMilled リスナーが場に居るか否かに依らず常時カウントする。
+  // ―― 0330 本体が場に居なかった時点で起きたミルの履歴も条件opが見るため（cause 不問。効果起因/コスト
+  // 起因/置換を区別しない）。state 常駐で room 復元(JSON往復)後も保たれ、clearTurnModifiers(src/11) が
+  // ターン境界でリセットする。既存 state に無くても安全なようガード付き ||= で初期化。
+  state.turnDeckMilled ||= [0, 0];
+  state.turnDeckMilled[deckOwner] = (state.turnDeckMilled[deckOwner] || 0) + list.length;
   const hasListener = [0, 1].some((playerIndex) =>
     zones.some((zone) => {
       const c = state.players[playerIndex]?.field?.[zone];
@@ -604,6 +614,86 @@ function queueDeckMilledTriggers(deckOwner, cards = [], cause = null) {
   Promise.resolve()
     .then(async () => {
       await runFieldEventTriggers("deckMilled", deckOwner, list[0], null, { count: list.length, millCause: cause });
+      render();
+    })
+    .catch((error) => {
+      console.error(error);
+      render();
+    });
+}
+
+// E9(D-CBT/0109 シェイクハンズ・ドラゴン): 「(場のカードが)カードの効果でスタンドした時」の場ブロードキャスト。
+// stoodEntries = [{ owner, zone, card, cause }]（cause は makeEffectCause 由来の効果起因。details.standCause で
+// リスナーへ届き、条件op eventStandCauseMatches が照合する）。呼び出し元は効果スタンド経路のみ
+// （standTarget/standAll=src/15・standSelected=src/14。レスト→スタンドへ実際に遷移したカードだけを渡す）。
+// ターン開始の standPlayer(src/11)・多回攻撃キーワードのスタンド(src/10)からは呼ばない＝0109 の原文
+// 「君のカードの効果でスタンドした時」に合わせ、フェイズ/ルール処理スタンドでは発火させない（毎ターン誤爆防止）。
+// 同期経路からも安全なよう microtask 発火・リスナー不在なら何もしない（queueGaugePlacedTriggers と同型）。
+// 複数枚は「1本の」microtask チェーン内で逐次 await する（E5 の教訓: チェーンを複数立てると await 交錯で
+// named-once/limit の二重計上レースになる。src/15:moveTopDeckToDrop の注記参照）。
+// 既存カードに ally/opponentStand リスナーは無い＝hasListener が常に偽＝既存挙動完全不変。
+function queueStandTriggers(stoodEntries) {
+  const list = (Array.isArray(stoodEntries) ? stoodEntries : [stoodEntries]).filter((entry) => entry && entry.card);
+  if (list.length === 0) {
+    return;
+  }
+  const hasListener = [0, 1].some((playerIndex) =>
+    zones.some((zone) => {
+      const c = state.players[playerIndex]?.field?.[zone];
+      return cardHasTriggeredListener(c, "allyStand") || cardHasTriggeredListener(c, "opponentStand");
+    }),
+  );
+  if (!hasListener) {
+    return;
+  }
+  Promise.resolve()
+    .then(async () => {
+      for (const entry of list) {
+        await runFieldEventTriggers("stand", entry.owner, entry.card, entry.zone ?? null, {
+          standCause: entry.cause || null,
+        });
+      }
+      render();
+    })
+    .catch((error) => {
+      console.error(error);
+      render();
+    });
+}
+
+// FE1(D-CBT/0090 コルンバ・ファクト “青光”): 「君の手札がドロップゾーンに置かれた時」の場ブロードキャスト。
+// deckMilled(E5) と同型で、手札→ドロップの唯一の合流点 discardHandCardsToDrop(src/11) から呼ばれる。
+// discardOwner=手札を捨てたプレイヤー席（listener から見て ally=自分の手札／opponent=相手の手札が置かれた）。
+// details.discardCause に E6 の捨て起因（byEffect/byCost・sourceOwner・sourceCard）を載せ、必要なら listener 側が
+// 条件op eventDiscardCauseMatches で「〜の効果で」を照合できる（0090 は cause 不問＝原文に発生源限定が無い）。
+// バッチ発火: 1回の捨てアクション（discardHandCardsToDrop の1呼び出し）で1回だけ発火する。複数枚同時捨ても
+// list[0] を eventCard・count を details に載せて1発（0090 の named-once{turn} と合わせ、原文「1ターンに1回」の
+// 二重計上を避ける）。既存の per-card discardedFromHand（捨てられたカード自身の自己参照誘発・src/11
+// queueDiscardedFromHandTriggers）はこの場ブロードキャストとは独立に不変。同期の捨て経路（コスト等）からも
+// 安全なよう microtask で発火（queueDeckMilledTriggers/queueStandTriggers と同型）。
+// 既存カードに ally/opponentHandDiscarded リスナーは無い＝hasListener が常に偽＝既存挙動完全不変。
+function queueHandDiscardedTriggers(discardOwner, cards = [], cause = null) {
+  const list = Array.isArray(cards) ? cards.filter(Boolean) : [cards].filter(Boolean);
+  if (list.length === 0) {
+    return;
+  }
+  const hasListener = [0, 1].some((playerIndex) =>
+    zones.some((zone) => {
+      const c = state.players[playerIndex]?.field?.[zone];
+      return (
+        cardHasTriggeredListener(c, "allyHandDiscarded") || cardHasTriggeredListener(c, "opponentHandDiscarded")
+      );
+    }),
+  );
+  if (!hasListener) {
+    return;
+  }
+  Promise.resolve()
+    .then(async () => {
+      await runFieldEventTriggers("handDiscarded", discardOwner, list[0], null, {
+        count: list.length,
+        discardCause: cause,
+      });
       render();
     })
     .catch((error) => {

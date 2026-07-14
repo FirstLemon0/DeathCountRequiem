@@ -301,6 +301,9 @@ function newGame(options = {}) {
     counterHandOwner: null,
     turnCount: 1,
     impactMonsterCallsThisTurn: [0, 0], // 必殺モンスター(DDD)の「1ターンに1枚」コール数（席別）
+    turnDeckMilled: [0, 0], // E8(D-CBT/PR-0330): デッキ所有者ごとのターン内デッキ→ドロップ ミル枚数（席別）
+    nextAllyAttackTriggers: [], // E10(D-CBT/0110): 「そのターン中、次の味方攻撃時」ワンショット予約キュー
+
     fightLimits: [{}, {}],
     monsterAttackForbidden: [false, false],
     monsterAttackForbiddenSources: [[], []],

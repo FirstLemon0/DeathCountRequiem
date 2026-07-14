@@ -529,6 +529,11 @@ function describeAbilityCondition(condition) {
   if (condition.op === "phaseIs") return `${ABILITY_TIMING_LABELS[condition.phase] || condition.phase}フェイズ中`;
   if (condition.op === "turnOwnerIsSelf") return "自分のターン中";
   if (condition.op === "turnOwnerIsOpponent") return "相手のターン中";
+  if (condition.op === "deckMilledThisTurn") {
+    const who = condition.deckOwner === "opponent" ? "相手" : "自分";
+    const n = condition.amount ?? 1;
+    return `このターン中、${who}のデッキのカードが${n > 1 ? `${n}枚以上` : ""}ドロップに置かれていること`;
+  }
   if (condition.op === "hostMatches") return "装備している（搭乗/変身）カードの条件";
   if (condition.op === "sourceStanding") return "このカードがスタンドしていること";
   if (condition.op === "sourceZoneIn") {
@@ -817,6 +822,11 @@ function checkCondition(condition, owner, context = {}) {
   if (condition.op === "lifeLte") {
     return player.life <= condition.amount;
   }
+  if (condition.op === "lifeGte") {
+    // E12(D-CBT): describeAbilityCondition に表示文言だけ存在し評価分岐が無かった（未知opは末尾
+    // return true＝常時成立に落ちる罠）。既存カード使用0件＝挙動不変。lifeLte の鏡。
+    return player.life >= (condition.amount ?? 1);
+  }
   if (condition.op === "opponentLifeLte") {
     return opponent.life <= condition.amount;
   }
@@ -825,6 +835,15 @@ function checkCondition(condition, owner, context = {}) {
     // (相手ライフ − 自ライフ) >= amount の相対差分条件（owner基準。既存 lifeLte/opponentLifeLte は
     // 固定値比較のみで差分は表現不可だった）。効果列の途中で評価される場合は直前の増減を反映した現在値。
     return opponent.life - player.life >= (condition.amount ?? 1);
+  }
+  if (condition.op === "deckMilledThisTurn") {
+    // E8(D-CBT/PR-0330 追撃者 アビゲール):「このターン中、<deckOwner>のデッキのカードがドロップに
+    // 置かれているなら」。state.turnDeckMilled[席] はデッキ所有者ごとのターン内ミル枚数
+    // （queueDeckMilledTriggers=deckMilled 発火点で常時集計・clearTurnModifiers でリセット・src/07/11）。
+    // deckOwner を owner 視点で席へ解決する（"opponent"=相手のデッキ / 既定 "self"=自分のデッキ）。
+    // amount 既定=1（「1枚以上置かれているなら」）。
+    const milledSeat = condition.deckOwner === "opponent" ? 1 - owner : owner;
+    return (state.turnDeckMilled?.[milledSeat] || 0) >= (condition.amount ?? 1);
   }
   if (condition.op === "ownCenterEmpty") {
     return !player.field.center;
@@ -1028,6 +1047,18 @@ function checkCondition(condition, owner, context = {}) {
     // context.restCause は restTarget(15)/restSelectedForScript(14) が makeEffectCause で伝播する。
     // 攻撃レスト(reason:"attack")は restCause を伝播しないため自動的に不成立になる（対象外仕様）。
     const cause = context.restCause;
+    if (!cause?.byEffect) return false;
+    if (condition.sourceController === "self" && cause.sourceOwner !== owner) return false;
+    if (condition.sourceController === "opponent" && cause.sourceOwner === owner) return false;
+    if (condition.filter && !matchesCardFilter(cause.sourceCard, condition.filter || {})) return false;
+    return true;
+  }
+  if (condition.op === "eventStandCauseMatches") {
+    // E9(D-CBT/0109 シェイクハンズ・ドラゴン): ally/opponentStand 誘発時、スタンドの起因を照合する。
+    // context.standCause は queueStandTriggers（効果スタンド経路のみ・src/07）が伝播する。
+    // ターン開始スタンド(standPlayer)・多回攻撃キーワードのスタンド(src/10)はそもそもブロードキャスト
+    // されないため自動的に不成立（rest の reason:"attack" 対象外と同思想）。eventRestCauseMatches の鏡。
+    const cause = context.standCause;
     if (!cause?.byEffect) return false;
     if (condition.sourceController === "self" && cause.sourceOwner !== owner) return false;
     if (condition.sourceController === "opponent" && cause.sourceOwner === owner) return false;
@@ -1267,6 +1298,13 @@ function checkCondition(condition, owner, context = {}) {
   }
   if (condition.op === "pendingActionCardSizeLte") {
     return (state.pendingAction?.card?.size || 0) <= condition.amount;
+  }
+  if (condition.op === "pendingActionCardMatches") {
+    // E11(D-CBT/0053 秘剣 滅竜陣): pendingAction 中のカードを matchesCardFilter でフル照合する汎用条件
+    // （「相手が属性に「竜」か「ドラゴン」を含むモンスターをコールした時」= filter.attributeIncludesAny）。
+    // 既存 pendingActionCardType/pendingActionCardSizeLte の一般化（cardType/attribute*/world/sizeIn 等の
+    // 全 filter 語彙が使える）。既存カード使用0件＝挙動不変。
+    return Boolean(state.pendingAction?.card && matchesCardFilter(state.pendingAction.card, condition.filter || {}));
   }
   if (condition.op === "pendingAttackTargetIs") {
     // 「相手のモンスター全てと相手に攻撃する」全体攻撃はファイターも攻撃対象に含むため、

@@ -1232,12 +1232,16 @@ function queueDiscardedFromHandTriggers(card, owner, cause = null) {
 }
 
 // 手札のカードをドロップへ送り、「手札から捨てられた時」誘発を発火させる共通経路。
+// ここは手札→ドロップの唯一の合流点なので、FE1(D-CBT/0090) の場ブロードキャスト
+// ally/opponentHandDiscarded（deckMilled=E5 と同型）もここから1回だけ発火する。
 function discardHandCardsToDrop(player, cards, cause = null) {
   const owner = state.players.indexOf(player);
   cards.forEach((card) => {
     player.drop.push(card);
-    queueDiscardedFromHandTriggers(card, owner, cause);
+    queueDiscardedFromHandTriggers(card, owner, cause); // per-card 自己参照（不変）
   });
+  // FE1: 手札がドロップに置かれた事実を場のカードへブロードキャスト（バッチ1回・cause は E6 の捨て起因を継承）。
+  queueHandDiscardedTriggers(owner, cards, cause);
 }
 
 // 使用中カード(inUse)を除く手札を全て手札から取り除いて返す（discardAllHandコスト用）。
@@ -1659,6 +1663,8 @@ async function runEndTurnEffects(endingOwner) {
 
 function clearTurnModifiers() {
   state.spiritStrikeDamageBonus = [0, 0]; // 霊撃ブースト（ターンスコープ）をリセット
+  state.turnDeckMilled = [0, 0]; // E8(D-CBT/PR-0330): ターン内デッキ→ドロップ ミル枚数(席別)をリセット
+  state.nextAllyAttackTriggers = []; // E10(D-CBT/0110): 「そのターン中、次の味方攻撃時」ワンショット予約を破棄
   state.callRestrictionsThisTurn = []; // X6(D-BT01/0064): ターン限定コール制限をリセット
   state.turnFlagNameAliases = [[], []]; // E12(D-SS02/0005): ターン限定フラッグ名エイリアスをリセット
   state.turnNullifies = []; // E2(D-SS03/0010): ターン限定の全体能力無効化(nullifyFieldAbilities)をリセット

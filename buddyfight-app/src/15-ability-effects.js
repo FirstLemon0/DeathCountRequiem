@@ -1438,8 +1438,14 @@ async function executeAbilityEffect(effect, context) {
       addLog(`${target.card.name}はそのターン中スタンドできません。`);
       return;
     }
+    const wasRested = Boolean(target.card.used); // E9: レスト→スタンドへ実際に遷移した時のみ発火
     target.card.used = false;
     addLog(`${context.card.name}の効果で${target.card.name}をスタンドしました。`);
+    if (wasRested) {
+      queueStandTriggers([
+        { owner: target.owner, zone: target.zone, card: target.card, cause: makeEffectCause(context, target.owner) },
+      ]);
+    }
   }
   if (effect.op === "standAll") {
     // controller/filter 一致の場のカード全てをスタンド（「君の場の《冒険者》全てを【スタンド】」0046）。
@@ -1450,9 +1456,13 @@ async function executeAbilityEffect(effect, context) {
       return matchesTargetFilter(card, owner, zone, effect.filter || {});
     });
     let standCount = 0;
+    const stoodEntries = []; // E9: レスト→スタンドへ実際に遷移したカードのみブロードキャスト対象
     targets.forEach((t) => {
       // Z14(g)(S-UB-C03/0038): そのターン中スタンドできないカードは対象から除外。
       if (t.card && !t.card.cannotStandThisTurn) {
+        if (t.card.used) {
+          stoodEntries.push({ owner: t.owner, zone: t.zone, card: t.card, cause: makeEffectCause(context, t.owner) });
+        }
         t.card.used = false;
         standCount += 1;
       }
@@ -1460,6 +1470,36 @@ async function executeAbilityEffect(effect, context) {
     if (standCount > 0) {
       addLog(`${context.card?.name || "効果"}の効果で${standCount}枚をスタンドしました。`);
     }
+    queueStandTriggers(stoodEntries); // E9（複数枚も1チェーンで逐次発火）
+  }
+  if (effect.op === "setNextAllyAttackTrigger") {
+    // E10(D-CBT/0110 ヒートウェーブ・R5近似(a)): 「そのターン中、(attackerFilter に一致する)味方のカードが
+    // 攻撃した時」に一度だけ effects を実行するワンショット予約。state 常駐キュー（プレーンJSON＝room復元
+    // 対応）へ積み、攻撃宣言時（runAttackDeclarationTriggers 末尾・src/09）に一致した最初の攻撃で消費する。
+    // chooseTarget があれば発火時に対象選択（promptSeat=予約者の席）→ effects は "$target" で参照。
+    // ターン終了時に clearTurnModifiers（src/11）が破棄する。既存カード使用0件＝挙動不変。
+    state.nextAllyAttackTriggers ||= [];
+    state.nextAllyAttackTriggers.push({
+      owner: context.owner,
+      attackerFilter: effect.attackerFilter || effect.filter || {},
+      chooseTarget: effect.chooseTarget || null,
+      effects: effect.effects || [],
+      sourceName: context.card?.name || "効果",
+      // ログ/makeEffectCause 用の最小スナップショット。実カード参照は room 復元（JSON往復）で
+      // 同一性が切れるため持たない（cause の filter 照合に必要な面のみ写す）。
+      sourceCard: context.card
+        ? {
+            id: context.card.id,
+            name: context.card.name,
+            type: context.card.type,
+            currentType: context.card.currentType,
+            world: context.card.world,
+            attributes: [...(context.card.attributes || [])],
+            size: context.card.size,
+          }
+        : null,
+    });
+    addLog(`${context.card?.name || "効果"}の効果を予約しました（このターン中、条件を満たす攻撃時に発動）。`);
   }
   if (effect.op === "attackWithAll") {
     // controller/filter 一致の【スタンド】している場のカード全てで一度に(連携)攻撃する（0046）。

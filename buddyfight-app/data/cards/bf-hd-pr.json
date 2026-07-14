@@ -1142,6 +1142,347 @@
       "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/pr_0304.png",
       "generation": "DDD",
       "_note": "公式レシピ201612_1用の単品収録（R9(A)裁定・D-SS02単品8枚/トラゴス前例と同様）。連携攻撃トリガはbf-d-ss03-0006/エスカーマ(bf-d-bt04-0031)型のpendingAttackIncludesOtherMatching{attribute:太陽竜}。無名once{scope:turn}（shared無し・カード固有能力のためper-instance）。『２回攻撃』は常時keyword。"
+    },
+    {
+      "id": "bf-pr-0306",
+      "no": "PR/0306",
+      "name": "破壊虎竜 タイラント・タイガードレイク",
+      "type": "monster",
+      "world": "デンジャーW",
+      "attributes": [
+        "タイラント"
+      ],
+      "rarity": "PR",
+      "size": 3,
+      "power": 8000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■君のライフが回復した時、相手の場のモンスター１枚を破壊する。この能力は１ターンに１回だけ発動する。",
+        "『２回攻撃』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-pr-0306-lifegained-destroy",
+          "kind": "triggered",
+          "event": "allyLifeGained",
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/pr_0306.png",
+      "generation": "DDD",
+      "_note": "公式レシピ201702_16用の単品収録（R9(A)裁定・PR/0304前例と同様）。ライフ回復トリガはD-CBT/0046タイラント・ウィルスと同型のallyLifeGained（src/07:517 capitalizeAscii規約でgainLifeのrunFieldEventTriggers('lifeGained',...)をally側へ配送）で、0046と異なりサイズ制限なし（原文に「サイズ〜以下」の記載なし）。無名『この能力は1ターンに1回』=limit{scope:turn}（sharedなし）。『２回攻撃』は常時keyword。"
+    },
+    {
+      "id": "bf-pr-0307",
+      "no": "PR/0307",
+      "name": "鬼道 血喰い鳥",
+      "type": "spell",
+      "world": "カタナW",
+      "attributes": [
+        "鬼道",
+        "地獄"
+      ],
+      "rarity": "PR",
+      "rules": [
+        "■相手にダメージ１、君のライフを＋１する。君のドロップゾーンに《鬼道》３種類以上があるか、君のドロップゾーンが15枚以上なら、相手のゲージ１枚をドロップゾーンに置き、君のデッキの上から１枚をゲージに置く！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-pr-0307-damage-life-mill",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "any",
+                "conditions": [
+                  {
+                    "op": "cardCount",
+                    "controller": "self",
+                    "pile": "drop",
+                    "filter": {
+                      "attribute": "鬼道"
+                    },
+                    "distinct": "distinctByName",
+                    "cmp": "gte",
+                    "amount": 3
+                  },
+                  {
+                    "op": "cardCount",
+                    "controller": "self",
+                    "pile": "drop",
+                    "cmp": "gte",
+                    "amount": 15
+                  }
+                ]
+              },
+              "then": [
+                {
+                  "op": "moveGaugeToDrop",
+                  "player": "opponent",
+                  "amount": 1
+                },
+                {
+                  "op": "putTopDeckToGauge",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/pr_0307.png",
+      "generation": "DDD",
+      "_note": "公式レシピ201702_29(灼熱地獄)用の単品収録（R9(A)裁定）。使用コスト記載なし＝costs省略(零コスト。ドラゴニック・ディレクティブ等の前例)。分岐条件『《鬼道》3種類以上』はcardCount{pile:drop,filter:{attribute:鬼道},distinct:distinctByName,cmp:gte,amount:3}（D-EB01/0035と同型・公式属性タグは['鬼道','地獄']の別要素なので完全一致attributeで足りる。attributeIncludes不要）。『ドロップ15枚以上』はfilter無しcardCount。ORはop:any（D-EB01/0036等前例）。ifCondition/thenでdealDamage+gainLifeの後段2効果を一括ゲート（D-EB01/0019と同型）。"
+    },
+    {
+      "id": "bf-pr-0330",
+      "no": "PR/0330",
+      "name": "追撃者 アビゲール",
+      "type": "monster",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜"
+      ],
+      "rarity": "PR",
+      "size": 1,
+      "power": 6000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■【対抗】【起動】“追撃の黒翼”このターン中、相手のデッキのカードがドロップゾーンに置かれているなら、手札のこのカードを、【コールコスト】を払わずコールする。「追撃の黒翼」は１ターンに１回だけ使える。",
+        "■このカードが登場した時、相手のデッキの上から３枚をドロップゾーンに置く。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-pr-0330-recall",
+          "label": "追撃の黒翼",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "deckMilledThisTurn",
+              "deckOwner": "opponent"
+            }
+          ],
+          "cost": [],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "self",
+              "from": ["hand", "drop"],
+              "controller": "self",
+              "filter": {
+                "name": "追撃者 アビゲール"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "追撃の黒翼",
+              "lead": "コールコストを払わずにコールする手札のこのカードを選んでください。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "self",
+              "chooseZones": true,
+              "resolveOnEnter": true
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "追撃の黒翼",
+            "shared": true
+          }
+        },
+        {
+          "id": "bf-pr-0330-enter-mill",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "moveTopDeckToDrop",
+              "player": "opponent",
+              "amount": 3
+            }
+          ]
+        }
+      ],
+      "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/pr_0330.png",
+      "generation": "DDD",
+      "_note": "公式レシピ201702_2用の単品収録（R9(A)裁定）。E8条件op deckMilledThisTurn{deckOwner:opponent}（state.turnDeckMilled・src/07/11/13。本カード実装のためエンジンミニ班が新設・既存カード使用0件で後方互換）を使用。『コールコストを払わず』はcallSelfFromHandが常にcard.costs.callを課金する(通常コールと同じ関数)ため使えず、D-BT04/オゾンZ前例(bf-d-bt04-kagayake-super-sun-dragon.json 0007のnote参照)と同じselectCards+callSelectedToEmptyZones(payCost省略=無償)で実装。selectCardsのfromは['hand','drop']の配列（scriptCardSelectionCandidatesはfrom配列を複数パイル合算で受理）: timing:[counter]のfromHandOnly能力はuseHandAbilityAction(src/13)がコスト支払い後removeSelectedFromHandで手札から抜き、counter能力(非spell/impact・非(kind:activated&&!isCounterAbility))はplayer.drop.pushで一旦ドロップへ退避してからscript実行に入る(実機で確認・callSelfFromHandForScriptがdropを先に探す実装もこれが理由)ため、script実行時点のこのカードはドロップに居る。一方、findUsableHandAbility の事前充足判定(canSatisfyAbilityScript→canSatisfyScriptSteps)はステージング前(=まだ手札にある)状態でselectCardsの候補有無を検査するため、fromをdrop単独にすると使用可否判定自体が常に0件で不使用扱いになってしまう（{from:'hand'}単独/{from:'drop'}単独の双方を実機テストで検証し、いずれも失敗することを確認した上でfrom配列化で解消）。名前フィルタは自己参照の近似だが同名は完全に同一カードのため実害なし。named-once「追撃の黒翼」はlimit{scope:turn,key:'追撃の黒翼',shared:true}（PR/0267 突然変異・影化と同型）。登場時ミルはmoveTopDeckToDrop{player:opponent,amount:3}（既存op）。"
+    },
+    {
+      "id": "bf-pr-0331",
+      "no": "PR/0331",
+      "name": "風鬼 アウラー",
+      "type": "impactMonster",
+      "world": "ヒーローW",
+      "attributes": [
+        "ダークヒーロー",
+        "風"
+      ],
+      "rarity": "PR",
+      "size": 1,
+      "power": 4000,
+      "critical": 1,
+      "defense": 4000,
+      "rules": [
+        "■“鬼童の策略”このカードが攻撃した時、君の手札２枚までを捨ててよい。捨てたら、捨てた枚数分カードを引く。「鬼童の策略」は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-pr-0331-oni-douno-sakuryaku",
+          "label": "鬼童の策略",
+          "kind": "triggered",
+          "event": "attack",
+          "limit": {
+            "scope": "turn",
+            "key": "鬼童の策略",
+            "shared": true
+          },
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "鬼童の策略",
+              "lead": "手札から捨てる枚数を選んでください（２枚まで）。",
+              "options": [
+                {
+                  "key": "none",
+                  "label": "捨てない",
+                  "script": []
+                },
+                {
+                  "key": "one",
+                  "label": "手札１枚を捨てる",
+                  "condition": {
+                    "op": "cardCount",
+                    "controller": "self",
+                    "pile": "hand",
+                    "cmp": "gte",
+                    "amount": 1
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "discard",
+                      "from": "hand",
+                      "controller": "self",
+                      "amount": 1,
+                      "require": true,
+                      "title": "鬼童の策略",
+                      "lead": "捨てる手札を1枚選んでください。"
+                    },
+                    {
+                      "op": "moveSelected",
+                      "var": "discard",
+                      "to": "drop",
+                      "log": "discard"
+                    },
+                    {
+                      "op": "draw",
+                      "amount": 1
+                    }
+                  ]
+                },
+                {
+                  "key": "two",
+                  "label": "手札２枚を捨てる",
+                  "condition": {
+                    "op": "cardCount",
+                    "controller": "self",
+                    "pile": "hand",
+                    "cmp": "gte",
+                    "amount": 2
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "discard",
+                      "from": "hand",
+                      "controller": "self",
+                      "amount": 2,
+                      "require": true,
+                      "title": "鬼童の策略",
+                      "lead": "捨てる手札を2枚選んでください。"
+                    },
+                    {
+                      "op": "moveSelected",
+                      "var": "discard",
+                      "to": "drop",
+                      "log": "discard"
+                    },
+                    {
+                      "op": "draw",
+                      "amount": 2
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/pr_0331.png",
+      "generation": "DDD",
+      "_note": "公式レシピ201702_10用の単品収録（R9(A)裁定）。必殺モンスター（type:impactMonster・既存機構。コール制限は card.type 判定のみでカード固有フラグ不要）。原文にコール記載なし=無償コール(costs省略)。攻撃時トリガはevent:attack（runAttackDeclarationTriggersがattacker.card個体へ直接発火＝pendingAttackBySource等の自己確認条件は不要。D-EB01/0019と同型）。『手札2枚まで捨てて、捨てた枚数分引く』はdraw opがamountFromに非対応（drawはeffect.amountのみ参照）なためリゲル・オリオン(bf-h-bt01-giga-future.json/bf-d-bt03-horobose-daimaryu.json 前例)と同型のchooseBranch(0/1/2枚)分岐で枚数ごとに固定drawを充てる近似実装（属性制限なしの点のみリゲル・オリオンと異なる）。named-once「鬼童の策略」はlimit{scope:turn,key:'鬼童の策略',shared:true}。"
     }
   ]
 }

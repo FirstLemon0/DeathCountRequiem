@@ -515,6 +515,50 @@ async function runAttackDeclarationTriggers(attackers) {
       });
     }
   }
+  // E10(D-CBT/0110 ヒートウェーブ): setNextAllyAttackTrigger のワンショット予約を消費する。
+  // 予約者(entry.owner)の味方攻撃カードが attackerFilter に一致したら、その予約を1件消費して effects を
+  // 実行する（対象選択は発火時＝R5近似(a)・promptSeat=予約者）。複数予約が同時に一致すれば各予約とも
+  // 発火する（各エントリ1回ずつのワンショット。0110 を2枚使えばそれぞれ独立に誘発する原文semantics）。
+  if (Array.isArray(state.nextAllyAttackTriggers) && state.nextAllyAttackTriggers.length > 0) {
+    for (const attacker of attackers) {
+      const queue = state.nextAllyAttackTriggers;
+      for (let index = 0; index < queue.length; ) {
+        const entry = queue[index];
+        if (entry.owner === attacker.owner && matchesCardFilter(attacker.card, entry.attackerFilter || {})) {
+          queue.splice(index, 1); // 先に消費（effects 中の再帰的攻撃や例外でも二重発火しない）
+          await fireNextAllyAttackTrigger(entry, attacker, attackers);
+        } else {
+          index += 1;
+        }
+      }
+    }
+  }
+}
+
+// E10: setNextAllyAttackTrigger 予約エントリ1件の発火本体。chooseTarget があれば発火時に対象選択
+// （promptSeat=予約者の席・chooseAbilityTarget 経由）→ effects は "$target" 参照で解決する。
+// 対象候補が場に無ければ effects を解決せずログのみ（予約は消費済み＝ワンショット厳守）。
+async function fireNextAllyAttackTrigger(entry, attacker, attackers) {
+  const owner = entry.owner;
+  const sourceCard = entry.sourceCard || { name: entry.sourceName || "効果" };
+  const context = {
+    card: sourceCard,
+    owner,
+    player: state.players[owner],
+    vars: {},
+    attack: state.pendingAttack,
+    attackers,
+  };
+  addLog(`${sourceCard.name}の効果が${attacker.card.name}の攻撃により発動しました。`);
+  if (entry.chooseTarget) {
+    const chosen = await chooseAbilityTarget(sourceCard, { target: entry.chooseTarget }, owner);
+    if (!chosen) {
+      addLog(`${sourceCard.name}の効果の対象がないため、解決されませんでした。`);
+      return;
+    }
+    context.target = chosen;
+  }
+  await executeAbilityEffects(entry.effects || [], context);
 }
 
 // この attackTax エントリが、現在の攻撃宣言に対して発火するかを判定する（誰の・どの攻撃に・何を対象に）。

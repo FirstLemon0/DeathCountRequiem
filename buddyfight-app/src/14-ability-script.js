@@ -1596,6 +1596,7 @@ function moveSoulToGaugeForScript(step, context) {
 
 // 選択(var)した場のカードを【スタンド】する（used=false）。restSelected の対。
 function standSelectedForScript(step, context) {
+  const stoodEntries = []; // E9: レスト→スタンドへ実際に遷移したカードのみブロードキャスト対象
   for (const entry of scriptSelection(step, context)) {
     if (!entry.card) {
       continue;
@@ -1607,6 +1608,9 @@ function standSelectedForScript(step, context) {
       if (live && live.cannotStandThisTurn) {
         addLog(`${live.name}はそのターン中スタンドできません。`);
       } else if (live) {
+        if (live.used) {
+          stoodEntries.push({ owner: slot.owner, zone: slot.zone, card: live, cause: makeEffectCause(context, slot.owner) });
+        }
         live.used = false;
         if (step.log !== false) {
           addLog(`${live.name}を【スタンド】しました。`);
@@ -1614,6 +1618,7 @@ function standSelectedForScript(step, context) {
       }
     }
   }
+  queueStandTriggers(stoodEntries); // E9（複数枚も1チェーンで逐次発火）
   return true;
 }
 
