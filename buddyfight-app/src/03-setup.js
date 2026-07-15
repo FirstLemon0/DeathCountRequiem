@@ -122,8 +122,11 @@ function canUseCardForFlag(player, card) {
   if (!player || !card || effectiveCardType(card) === "flag") {
     return true;
   }
-  if (card.deckAnyFlag) {
-    return true; // 角王(deckAnyFlag)はどのフラッグのデッキに入れても使用できる
+  if (card.deckAnyFlag || card.usableInAnyFlag) {
+    // 角王(deckAnyFlag)はどのフラッグのデッキに入れても使用できる。
+    // usableInAnyFlag(X-SS01/0025 角王の証「このカードは全てのフラッグで使える」)も任意フラッグで適法。
+    // ただし角王アイコンではない＝filter.deckAnyFlag(src/17 X18 の角王枚数判定)には波及しない別プロパティ。
+    return true;
   }
   const flag = player.flag;
   if (!flag || flag.allowAllWorlds) {

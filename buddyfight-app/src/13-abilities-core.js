@@ -1567,6 +1567,19 @@ function checkCondition(condition, owner, context = {}) {
     // 本アプリではバディコール宣言時に立つ player.partnerCalled がそのフラグ（src/07 で設定）。
     return Boolean(player.partnerCalled);
   }
+  if (condition.op === "selectedStatSumLte") {
+    // E-Z1(X-SS01/0003 荒ぶる五角竜王 天武): script の ifCondition 内で使う。直前の selectCards が
+    // context.vars[var] に入れた「選んだカード群」の stat（既定 power=攻撃力）の現在値（バフ込み・
+    // visibleFieldStat）を合計し、amount 以下なら真。「選んだカードの攻撃力の合計が15000以下なら、
+    // 選んだカード全てを破壊する」のゲート専用（真なら then の destroySelected を実行）。
+    // stat（power/defense/critical）を持たないカードは visibleFieldStat が 0 を返す＝合計に非寄与。
+    // 選択0枚（"好きな枚数"＝0枚可）は合計0＝真になり得るが、後続 destroySelected は空選択で no-op。
+    // scriptSelection(src/14)/visibleFieldStat(src/15) は連結グローバルで実行時に参照可能。
+    const selection = scriptSelection({ var: condition.var }, context);
+    const stat = condition.stat || "power";
+    const sum = selection.reduce((total, entry) => total + visibleFieldStat(entry?.card, stat), 0);
+    return sum <= (condition.amount ?? 0);
+  }
   return true;
 }
 

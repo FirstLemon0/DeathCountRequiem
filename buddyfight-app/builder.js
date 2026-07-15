@@ -569,7 +569,10 @@ function isCardAllowedByFlag(flag, card) {
   // 投入枚数の制限（ホーム以外なら1枚等）は cardCopyLimitForFlag が別途判定する。
   // closedPool（S-UB-C03等のロゴ製品フラッグ）は角王のこの素通しを遮断する。角王は原則全フラッグに
   // 投入可だが、プール完全閉鎖のロゴ製品フラッグだけは例外として自製品カードのみに限定する。
-  if (card?.deckAnyFlag && !flag?.closedPool) {
+  // usableInAnyFlag(X-SS01/0025 角王の証「全てのフラッグで使える」)も同様に任意フラッグへ投入可（非角王の
+  // legality マーカー）。deckAnyFlag rule を持たないので cardCopyLimitForFlag は既定4枚均一を返す
+  // （角王のホーム4/非ホーム1とは別＝均一4枚）。engine の canUseCardForFlag(src/03) と一致させる。
+  if ((card?.deckAnyFlag || card?.usableInAnyFlag) && !flag?.closedPool) {
     return true;
   }
   return isCardNativelyAllowedByFlag(flag, card);

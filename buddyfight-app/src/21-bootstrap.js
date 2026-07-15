@@ -451,6 +451,11 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     recordAmbushOpportunity,
     putCardsToSoulWithTrigger,
     markSoulCardsFaceDown,
+    // E-Z1/R3(X-SS01/0003 selectedStatSumLte・0025 usableInAnyFlag)プローブ用に実経路を公開
+    // （_scratch/xss01-probe.js）。executeAbilityScript=ifCondition→destroySelected 統合、
+    // canUseCardForFlag=フラッグ適法判定（usableInAnyFlag マーカーの実測）。
+    executeAbilityScript,
+    canUseCardForFlag,
   };
 } else if (globalThis.__BUDDYFIGHT_REPLAY__) {
   // リプレイ再生専用ページ（replay.html）。対話操作・ネットUI・自動開始は行わず、データ読込と
