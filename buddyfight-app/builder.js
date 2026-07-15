@@ -99,7 +99,9 @@ async function loadGameData() {
     ...cardSets.flatMap(({ set, data }) => {
       const packName = (set.file || "").split("/").pop().replace(/\.json$/, "");
       return (data.cards || [])
-        .filter((card) => card.type !== "flag")
+        // FB1/R7(X-BT01/0128 ドラゴン・ドライ): type:flag でも deckable:true のカードはデッキ投入可のため
+        // カードプールに含める（それ以外の type:flag=パックの表示専用フラッグは従来どおり除外）。
+        .filter((card) => card.type !== "flag" || card.deckable)
         .map((card) => {
           const c = normalizeCard(card, set);
           c.imagePack = packName;
@@ -529,7 +531,8 @@ function validateDeck(deck) {
   if (buddy && !deckContainsName(buddy.name)) {
     items.push({ level: "warn", message: "バディと同名のカードがメインデッキにありません。" });
   }
-  if (deck.recipe.some(([id]) => findCard(id)?.type === "flag")) {
+  // FB1: deckable フラッグ(0128 ドラゴン・ドライ)はメインデッキに入れてよい。それ以外の type:flag のみエラー。
+  if (deck.recipe.some(([id]) => { const c = findCard(id); return c?.type === "flag" && !c.deckable; })) {
     items.push({ level: "error", message: "メインデッキにフラッグは入れられません。" });
   }
   return items;
@@ -855,7 +858,8 @@ function builderCardImgError(img) {
 
 function createCardResult(card) {
   const flag = findCard(currentDeck.flag);
-  const copyLimit = card.type === "flag" ? null : cardCopyLimitForFlag(flag, card);
+  // FB1: deckable フラッグ(0128)は通常カード同様に同名上限(4)の対象。開始フラッグ専用の type:flag は上限なし(null)。
+  const copyLimit = card.type === "flag" && !card.deckable ? null : cardCopyLimitForFlag(flag, card);
   const count = deckCardCount(card.id);
   const node = document.createElement("article");
   node.className = "builder-card";
@@ -877,7 +881,8 @@ function createCardResult(card) {
   const addButton = document.createElement("button");
   addButton.type = "button";
   addButton.textContent = "追加";
-  addButton.disabled = card.type === "flag" || (copyLimit != null && count >= copyLimit);
+  // FB1: deckable フラッグ(0128)はデッキ投入可（上限内なら追加可）。それ以外の type:flag は追加不可。
+  addButton.disabled = (card.type === "flag" && !card.deckable) || (copyLimit != null && count >= copyLimit);
   if (copyLimit != null && count >= copyLimit) {
     addButton.title = `同名カードの上限 ${copyLimit} 枚に達しています`;
   }
@@ -898,7 +903,8 @@ function createCardResult(card) {
   const flagButton = document.createElement("button");
   flagButton.type = "button";
   flagButton.textContent = "フラッグ";
-  flagButton.disabled = card.type !== "flag";
+  // FE1/FB1: 開始フラッグに設定できるのは startSelectable!==false かつ deckable でない type:flag のみ。
+  flagButton.disabled = card.type !== "flag" || card.deckable || card.startSelectable === false;
   flagButton.addEventListener("click", () => {
     currentDeck.flag = card.id;
     render();
@@ -975,7 +981,10 @@ function renderDeckList() {
 }
 
 function addCard(id, delta) {
-  if (findCard(id)?.type === "flag" && delta > 0) {
+  const target = findCard(id);
+  // FB1: deckable フラッグ(0128)は開始フラッグ枠ではなくデッキ本体(recipe)へ入れる。
+  // それ以外の type:flag は従来どおり「追加」で開始フラッグに設定する。
+  if (target?.type === "flag" && !target.deckable && delta > 0) {
     currentDeck.flag = id;
     render();
     return;
@@ -1088,7 +1097,8 @@ function encodeDeckObjectShareCode(d) {
 // validateDeckCodePayload 用の実在ID集合。実在しないカード/フラッグを弾く（authoritative-server の
 // getDeckValidationSets と同じ構成: カードは type:flag を除く全id、フラッグは flags.json のid＋別名）。
 function shareCodeCardIds() {
-  return new Set(cards.filter((card) => card.type !== "flag").map((card) => card.id));
+  // R7(X-BT01/0128): deckable:true の flag はデッキ投入可＝共有コードの実在ID集合にも含める。
+  return new Set(cards.filter((card) => card.type !== "flag" || card.deckable === true).map((card) => card.id));
 }
 function shareCodeFlagIds() {
   const ids = new Set(flagCards().map((card) => card.id));
@@ -1498,7 +1508,11 @@ function safeFileName(name) {
 }
 
 function flagCards() {
-  return cards.filter((card) => card.type === "flag").sort(compareCards);
+  // FE1/FB1: 開始時フラッグに選べるのは type:flag のうち startSelectable!==false かつ deckable でないもの。
+  // dragon-drei(startSelectable:false)・deckable フラッグ(0128=デッキ投入用) は開始フラッグの候補から除外する。
+  return cards
+    .filter((card) => card.type === "flag" && card.startSelectable !== false && !card.deckable)
+    .sort(compareCards);
 }
 
 function buddyCards() {

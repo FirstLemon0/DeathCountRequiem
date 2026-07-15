@@ -745,6 +745,13 @@ function checkCondition(condition, owner, context = {}) {
   if (condition.op === "not") {
     return !checkCondition(condition.condition || {}, owner, context);
   }
+  if (condition.op === "calledViaAmbush") {
+    // E-Y1(X-BT01 奇襲): この登場が『奇襲』ルート由来か（context.card=登場カード自身）。
+    // 0003/0033/0064/0092「登場した時…さらに奇襲で登場していたなら」の script ifCondition や、
+    // 0036/0094「奇襲で登場した時…」の ability.conditions ゲートで参照する。
+    // calledViaAmbush は resolveOnEnter で毎登場ごとに明示代入され、通常登場では false（既存挙動不変）。
+    return Boolean(context.card?.calledViaAmbush);
+  }
   if (condition.op === "declaredNameInZone") {
     // declareCardName で宣言したカード名が、指定の山(既定:相手の手札)に存在するか。
     const declaredName = context.declaredCardName ?? context.vars?.declaredCardName;
@@ -1315,6 +1322,25 @@ function checkCondition(condition, owner, context = {}) {
     }
     const sourceSlot = findFieldCardSlot(context.card || getSelectedCard());
     return Boolean(sourceSlot && (outcome.attackers || []).some((slot) => sameSlot(slot, sourceSlot)));
+  }
+  if (condition.op === "lastAttackNullified") {
+    // E-Y5(X-BT01/0088 軍師の計略): 「(君の)攻撃が無効化されたバトルの終了時に使える」を、発生源スロット
+    // 非依存で判定する（0088 は手札の対抗呪文＝findFieldCardSlot は常に偽のため selfIsNullifiedAttacker は使えない）。
+    // 窓管理: lastAttackOutcome は次の攻撃解決(finishPendingAttack/nullifyPendingAttack)で必ず上書きされ、
+    // 無効化されなかったバトルでは nullified:false になる＝「次の攻撃成立後/無効化なしのバトル後」は自然に不可。
+    // 加えて turnCount で同ターンに限定し、攻撃無しでターンを跨いで真のまま残らないようにする。
+    const outcome = state.lastAttackOutcome;
+    if (!outcome?.nullified || outcome.turnCount !== state.turnCount) {
+      return false;
+    }
+    const controller = condition.attackerController || "self";
+    if (controller === "any") {
+      return true;
+    }
+    // attackers スロットの owner で攻撃側の陣営を判定（self=owner の攻撃・opponent=相手の攻撃）。
+    return (outcome.attackers || []).some((slot) =>
+      controller === "opponent" ? slot.owner !== owner : slot.owner === owner,
+    );
   }
   if (condition.op === "pendingAttackIncludesOtherMatching") {
     const sourceSlot = findFieldCardSlot(context.card || getSelectedCard());

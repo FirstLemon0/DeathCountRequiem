@@ -33,7 +33,39 @@ function putCardsToSoulWithTrigger(hostCard, owner, cards, fromZone, options = {
     hostCard.soul ||= [];
     hostCard.soul.push(...cards);
   }
+  // E-Y1(X-BT01 奇襲): options.faceDown で「裏向きで」ソウルに入れる。所有者以外へは viewFor が伏せる
+  // （src=engine-host.js）。ソウル→ドロップで公開＝reconcileFaceDownSoulDrops が faceDown を解除する。
+  if (options.faceDown) {
+    markSoulCardsFaceDown(cards, hostCard);
+  }
   cards.forEach((soulCard) => queueEnteredSoulTriggers(soulCard, owner, fromZone, hostCard));
+}
+
+// E-Y1(X-BT01 奇襲): ソウルに入れた cards を「裏向き」に印付けする共有ヘルパー。
+// - faceDown=true: viewFor が所有者以外へ伏せる対象（秘匿の核）。
+// - __soulHost: ホストの公開スナップショット。落下時 selfDroppedFromSoul の hostFilter 照合に使う
+//   （0067 袖の下「場の《暗殺鬼》の裏向きのソウルから落ちた時」）。表情報は含めない（instanceId/名前/属性/種別のみ＝
+//   ホストは場の公開カード）。挿入時に確定するため、以後ホストが場を離れても落下時に種別/属性を照合できる。
+function markSoulCardsFaceDown(cards, hostCard) {
+  const snapshot = hostCard
+    ? {
+        instanceId: hostCard.instanceId,
+        name: hostCard.name,
+        type: hostCard.type,
+        currentType: effectiveCardType(hostCard),
+        attributes: [...(hostCard.attributes || [])],
+      }
+    : null;
+  (cards || []).forEach((soulCard) => {
+    if (!soulCard) {
+      return;
+    }
+    soulCard.faceDown = true;
+    if (snapshot) {
+      soulCard.__soulHost = snapshot;
+    }
+  });
+  return cards;
 }
 
 // cards を player のドロップ末尾に積み、「場かデッキからドロップに置かれた時」（movedToDrop）誘発を queue する。
@@ -225,7 +257,7 @@ async function executeAbilityEffect(effect, context) {
   if (effect.op === "putTopDeckToSoul" && context.card) {
     const receiver = effect.player === "opponent" ? opponent : player;
     const before = context.card.soul?.length || 0;
-    moveTopDeckToSoul(receiver, context.card, effect.amount || 1);
+    moveTopDeckToSoul(receiver, context.card, effect.amount || 1, Boolean(effect.faceDown)); // E-Y1(奇襲): faceDown
     const moved = (context.card.soul?.length || 0) - before;
     addLog(`${context.card.name}のソウルにデッキの上から${moved}枚を入れました。`);
   }
@@ -376,7 +408,14 @@ async function executeAbilityEffect(effect, context) {
       const rest = looked.filter((card) => !toSoul.includes(card));
       if (toSoul.length > 0) {
         putCardsToSoulWithTrigger(context.card, soulOwner, toSoul, "deck");
-        addLog(`デッキの上から${toSoul.length}枚を${context.card?.name || ""}のソウルに入れました。`);
+        if (effect.faceDown) {
+          markSoulCardsFaceDown(toSoul, context.card); // FE3/E-Y1(奇襲): 「裏向きで」（秘匿・名前を伏せる）
+        }
+        addLog(
+          effect.faceDown
+            ? `デッキの上から${toSoul.length}枚を裏向きで${context.card?.name || ""}のソウルに入れました。`
+            : `デッキの上から${toSoul.length}枚を${context.card?.name || ""}のソウルに入れました。`,
+        );
       }
       if (rest.length > 0) {
         putCardsToDropWithTrigger(player, soulOwner, rest, "deck", { cause: makeEffectCause(context, soulOwner) }); // E5
@@ -644,6 +683,10 @@ async function executeAbilityEffect(effect, context) {
       sourceCard: context.card,
       sourceOwner: context.owner,
       ignorePrevention: Boolean(effect.ignorePrevention),
+      // E-Y6(X-BT01/0048 クリスティアーノ・クリスタル・シュート！・0028 雷槍×天バスター！＋DUP 0118/0123):
+      // 「このカードで相手のライフが0になった場合、相手のカードで相手のライフは変更されない（復活できない）」。
+      // この致死に限り、受け手の lifeZeroReplacement（場アイテム型復活＝逆襲の型系）/ lifeZeroSafeguard を抑止する。
+      suppressLifeZeroReplacement: Boolean(effect.suppressLifeZeroReplacement),
       sourceAbilityLabel: context.ability?.label || null, // damageReceived 側で参照（爆雷等）
       floorLife: effect.floorLife, // 非致死: このダメージで受け手を floorLife 未満にしない（ミネウチでござる 0109）
     });
@@ -895,6 +938,26 @@ async function executeAbilityEffect(effect, context) {
       }
       context.cardMoved = true;
     }
+  }
+  if (effect.op === "stackOnFlag") {
+    // FE1(X-BT01/0128 ドラゴン・ドライ): 発動側プレイヤーのフラッグを flagId のフラッグ定義へ試合中差し替え。
+    // stackPlayerFlag(src/11) が cardLibrary から実体化して player.flag を置き換える（state 常駐・room/replay 安全）。
+    // 以後 flagNameIs・canUseCardForFlag・フラッグ表示が新フラッグを返す。効果op としても呼べる汎用形。
+    if (stackPlayerFlag(player, effect.flagId)) {
+      addLog(`${player.name}のフラッグは「${player.flag?.name || effect.flagId}」になりました。`);
+    }
+  }
+  if (effect.op === "banDrawNextTurn") {
+    // FE2(X-BT01/0124 ガエン『変身した時』): 「次の相手のターン中、相手はカードを引くことができない」。
+    // 通常ドローステップも含めて封じる（drawCards が全経路を止める）。state.drawBans に owner を積み、
+    // endTurn(src/11) が remainingTurnEnds を毎ターン端で減算＝「次の相手ターン」だけに限定。state 常駐でJSON安全。
+    const selfOwner = state.players.indexOf(player);
+    const targetOwner = effect.controller === "self" ? selfOwner : 1 - selfOwner;
+    state.drawBans ||= [];
+    // remainingTurnEnds:(turns+1) ＝ 発動側の残りターン端 ＋ 対象の次ターン端。既存の同 owner エントリは張り替え。
+    state.drawBans = state.drawBans.filter((entry) => entry.owner !== targetOwner);
+    state.drawBans.push({ owner: targetOwner, remainingTurnEnds: (effect.turns || 1) + 1 });
+    addLog(`${state.players[targetOwner].name}は次の自分のターン中、カードを引くことができなくなりました。`);
   }
   if (effect.op === "setLifeZeroSafeguard") {
     // 「そのターン中、次に君のライフが0になるなら、かわりにライフは1になる」（実は生きていた！）。
@@ -1836,6 +1899,41 @@ async function executeAbilityEffect(effect, context) {
     }
     return;
   }
+  if (effect.op === "destroyTargetLteFieldCardStat") {
+    // E-Y4(X-BT01/0007 プリズム・アイ): 「君のセンターのモンスターの防御力以下の攻撃力を持つ、相手の場の
+    // モンスター1枚を破壊」。しきい値は destroyTargetLteSourceStat（発生源自身の同一 stat）と違い、別の場カード
+    // （effect.source={controller,zone,stat}）の visible stat を既存 resolveAmountFrom の fieldCardStat 源
+    // （E8/D-BT03/0031 ケルベロスで実績）で確定する。破壊対象の判定 stat は effect.targetStat（既定 power）。
+    // 単体 target 選択（chooseCardEntries）で 1 枚破壊。センター不在等で source が取れない時は threshold=0 →
+    // 通常 stat>0 のモンスターは候補0＝実質不発（原文どおり「センターのモンスター」が要る）。
+    const targetStat = effect.targetStat || "power";
+    const threshold = resolveAmountFrom({ source: "fieldCardStat", ...(effect.source || {}) }, context);
+    const candidates = allFieldTargets((fieldCard, fieldOwner) => {
+      if (effect.controller === "opponent" && fieldOwner === context.owner) return false;
+      if (effect.controller === "self" && fieldOwner !== context.owner) return false;
+      if (effectiveCardType(fieldCard) !== "monster") return false;
+      if (effect.filter && !matchesCardFilter(fieldCard, effect.filter)) return false;
+      return visibleFieldStat(fieldCard, targetStat) <= threshold;
+    });
+    if (candidates.length === 0) {
+      addLog(`${context.card.name}の効果で破壊できるモンスターがいません。`);
+      return;
+    }
+    const picked = await chooseCardEntries(candidates, {
+      title: `${context.card.name}で破壊するモンスター`,
+      lead: `破壊するモンスターを1枚選んでください。`,
+      min: 1,
+      max: 1,
+      forceDialog: true,
+      promptSeat: context.owner,
+      purpose: "hostile",
+    });
+    const chosen = picked?.[0];
+    if (chosen) {
+      await destroyFieldCard(chosen.owner, chosen.zone, { cause: makeEffectCause(context, chosen.owner) });
+    }
+    return;
+  }
   if (effect.op === "destroyOpponentMonsterWithPowerLteOwnWeapon") {
     // 君の場の《武器》の攻撃力以下の攻撃力を持つ相手モンスター１枚を破壊する（斬魔烈斬）
     const weaponPowers = zones
@@ -2031,9 +2129,16 @@ async function executeAbilityEffect(effect, context) {
     if (movedCard.instanceId === context.card?.instanceId) {
       context.cardMoved = true;
     }
-    putCardsToSoulWithTrigger(target.card, context.owner, [movedCard], fromZone);
+    putCardsToSoulWithTrigger(target.card, context.owner, [movedCard], fromZone, {
+      faceDown: Boolean(effect.faceDown), // E-Y1(奇襲): 「裏向きで」
+    });
     context.cardMoved = true;
-    addLog(`${context.card.name}を${target.card.name}のソウルに入れました。`);
+    // 自身の移動は表向きが通常だが、faceDown 指定時は名前を伏せる（秘匿）。
+    addLog(
+      effect.faceDown
+        ? `1枚を裏向きで${target.card.name}のソウルに入れました。`
+        : `${context.card.name}を${target.card.name}のソウルに入れました。`,
+    );
   }
   if (effect.op === "dropEventCard") {
     const eventEntry = effect.eventCard === "damageSource" ? context.damageSource : context.eventCard;

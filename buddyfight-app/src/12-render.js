@@ -757,6 +757,8 @@ function renderActions() {
 
   document.querySelectorAll("[data-call-zone]").forEach((button) => {
     const canSpecialCall = specialCallOpportunityForCard(state.selected?.owner, selectedCard);
+    // E-Y1(奇襲): 奇襲コールはドロップから行う（選択中の本人カードをコール）。
+    const isAmbushCall = state.selected?.source === "drop" && canSpecialCall?.reason === "ambush";
     // 必殺モンスターは自分のファイナルフェイズにのみコール可（通常モンスターは従来通りメインのみ）。
     const callPhase = selectedCard?.type === "impactMonster" ? "final" : "main";
     button.disabled = Boolean(
@@ -764,7 +766,7 @@ function renderActions() {
         (state.winner && !canSpecialCall) ||
         (inBattle && !canSpecialCall) ||
         (state.phase !== callPhase && !canSpecialCall) ||
-        state.selected?.source !== "hand" ||
+        (state.selected?.source !== "hand" && !isAmbushCall) ||
         (!canSpecialCall && state.selected.owner !== state.active) ||
         !selectedCard ||
         !canUseCardForFlag(state.players[state.selected?.owner ?? state.active], selectedCard) ||

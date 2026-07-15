@@ -72,6 +72,19 @@ function removeSelectedFromHand() {
   return player.hand.splice(cardIndex, 1)[0];
 }
 
+// E-Y1(奇襲): 選択中のドロップ札を取り出す（奇襲コール＝ドロップからこのカード自身をコール）。
+function removeSelectedFromDrop() {
+  if (state.selected?.source !== "drop") {
+    return null;
+  }
+  const player = state.players[state.selected.owner];
+  const cardIndex = player.drop.findIndex((card) => card.instanceId === state.selected.instanceId);
+  if (cardIndex < 0) {
+    return null;
+  }
+  return player.drop.splice(cardIndex, 1)[0];
+}
+
 async function drawAction() {
   if (state.winner || hasPendingResolution() || state.drewThisTurn) {
     return;
@@ -83,13 +96,17 @@ async function drawAction() {
   expireTransientResponseWindows();
   await runPhaseStartTriggers("turnStart", state.active);
   await runPhaseStartTriggers("drawStart", state.active);
+  // FE2(0124 ガエン): ドローステップ自体も封じる。drawCards が封鎖ログを出すので二重ログを避ける。
+  const drawBanned = drawBanActive(state.active);
   drawCards(activePlayer(), 1);
   state.drewThisTurn = true;
   state.phase = "charge";
   state.counterHandOwner = null;
   state.linkAttackers = [];
   state.buddyCallDeclared = null;
-  addLog(`${activePlayer().name}はカードを1枚引きました。`);
+  if (!drawBanned) {
+    addLog(`${activePlayer().name}はカードを1枚引きました。`);
+  }
   render();
 }
 
@@ -112,6 +129,8 @@ async function chargeAction() {
     return;
   }
   expireTransientResponseWindows();
+  // FE2(0124 ガエン): チャージ自体（ゲージ送り）は可能だが、引くことはできない。
+  const drawBanned = drawBanActive(state.active);
   activePlayer().gauge.push(card);
   drawCards(activePlayer(), 1);
   state.chargedThisTurn = true;
@@ -123,7 +142,11 @@ async function chargeAction() {
   // 「相手のゲージにカードが置かれた時」誘発（爆雷 コールドラゴン メギトス 0020）。
   await runFieldEventTriggers("gaugePlaced", state.active, card, null, { count: 1 });
   await runPhaseStartTriggers("mainStart", state.active);
-  addLog(`${activePlayer().name}は${card.name}をチャージし、1枚引きました。`);
+  addLog(
+    drawBanned
+      ? `${activePlayer().name}は${card.name}をチャージしました（効果でカードを引けません）。`
+      : `${activePlayer().name}は${card.name}をチャージし、1枚引きました。`,
+  );
   render();
 }
 
@@ -239,6 +262,9 @@ async function callMonster(zone) {
   const selectedCard = getSelectedCard();
   const selectedOwner = state.selected?.owner;
   const specialCallOpportunity = specialCallOpportunityForCard(selectedOwner, selectedCard);
+  // E-Y1(奇襲): 奇襲コールはドロップから行う（落ちた本人カードを【コールコスト】で場へ戻す）。
+  // 他の特殊コール（破壊時逆転コール等）は従来どおり手札から。
+  const isAmbushCall = state.selected?.source === "drop" && specialCallOpportunity?.reason === "ambush";
   const player = state.players[selectedOwner ?? state.active];
   // 必殺モンスター(DDD)は自分のファイナルフェイズにのみコール可。通常モンスターは従来通りメインのみ。
   const callPhase = selectedCard?.type === "impactMonster" ? "final" : "main";
@@ -246,7 +272,7 @@ async function callMonster(zone) {
     (state.winner && !specialCallOpportunity) ||
     (hasPendingResolution() && !specialCallOpportunity) ||
     (state.phase !== callPhase && !specialCallOpportunity) ||
-    state.selected?.source !== "hand" ||
+    (state.selected?.source !== "hand" && !isAmbushCall) ||
     (!specialCallOpportunity && state.selected.owner !== state.active) ||
     !selectedCard ||
     !isCallableMonster(selectedCard) ||
@@ -311,7 +337,7 @@ async function callMonster(zone) {
     addLog(payment.reason);
     return;
   }
-  const card = removeSelectedFromHand();
+  const card = isAmbushCall ? removeSelectedFromDrop() : removeSelectedFromHand();
   beginPendingAction({
     kind: "call",
     owner: selectedOwner,
@@ -321,6 +347,9 @@ async function callMonster(zone) {
     targetZone: actualZone,
     stackTarget: stackTarget ? { owner: stackTarget.owner, zone: stackTarget.zone } : null,
     declaredBuddyCall,
+    // E-Y1(奇襲): このコールが『奇襲』ルート由来か。resolvePendingCall→resolveOnEnter で
+    // card.calledViaAmbush を立て、allyAmbushEnter を放送する。
+    viaAmbush: isAmbushCall,
     effectTargetValue: elements.effectTarget.value,
   });
   if (specialCallOpportunity) {
@@ -336,6 +365,17 @@ async function callMonster(zone) {
 function specialCallOpportunityForCard(owner, card) {
   if (owner === undefined || owner === null || !card) {
     return null;
+  }
+  // E-Y1(奇襲): 判定の直前に安全網の reconcile を回す（ドロップへ落ちた裏向き奇襲札を確実に登録）。
+  // 冪等・faceDown はオプトインなので既存挙動は不変。
+  reconcileFaceDownSoulDrops();
+  // E-Y1(奇襲): 『奇襲』keyword を持つ札は、ドロップに落ちた本人 instance の奇襲コール権を優先評価する。
+  // callConditions を必要とせず keyword 駆動で成立（B4/B5 は keywords:["ambush"] を付けるだけ）。
+  if (hasKeyword(card, "ambush")) {
+    const ambush = findAmbushOpportunity(owner, card);
+    if (ambush) {
+      return ambush;
+    }
   }
   // 旧 specialCallOnDestroyed は desugarCardFlags で callConditions へ統一済みのため、
   // ここでは callConditions の specialCall/temporaryCall 系エントリのみを評価する。
@@ -388,10 +428,12 @@ async function resolvePendingCall(action) {
   if (card.destroyAtEndOfTurn) {
     card.destroyAtEndOfTurnOwner = action.owner;
   }
-  // 通常コールは常に手札発（callMonster が source==="hand" をガード済み）。
+  // 通常コールは手札発。奇襲コールはドロップ発（E-Y1）。
   // enteredFromZoneIn 条件（「手札から登場した時」H-PP01/0031 等）のためにスタンプする。
-  card.enteredFromZone = "hand";
-  await resolveOnEnter(card, player, getTargetInfoFromValue(action.effectTargetValue));
+  card.enteredFromZone = action.viaAmbush ? "drop" : "hand";
+  await resolveOnEnter(card, player, getTargetInfoFromValue(action.effectTargetValue), {
+    ambush: Boolean(action.viaAmbush),
+  });
 }
 
 function getStackCallTarget(player, card) {
@@ -451,6 +493,9 @@ async function resolveOnEnter(card, player, storedTarget = null, options = {}) {
   const owner = state.players.indexOf(player);
   const zone = findFieldCardSlot(card)?.zone;
   recordEnteredEventWindow(card, owner, zone);
+  // E-Y1(奇襲): この登場が『奇襲』ルート由来かを card に刻む（毎登場ごとに明示代入＝過去の奇襲登場が
+  // 後の通常登場に残らない stale 防止）。calledViaAmbush 条件op（0003/0033/0036/0064/0092/0094）が参照する。
+  card.calledViaAmbush = Boolean(options.ambush);
   // onEnter:"destroy-opponent-size2" は desugarCardFlags で構造化 triggered/enter ability へ
   // 変換済みのため、専用ハードコード分岐は不要。すべて runTriggeredAbilities が処理する。
   await runTriggeredAbilities(card, "enter", {
@@ -458,12 +503,29 @@ async function resolveOnEnter(card, player, storedTarget = null, options = {}) {
     player,
     owner,
     zone,
+    // FE4: 自身の "enter" 放送にも entered* を供給（ally/opponent/ambush/equip/set 経路は供給済み＝欠落の是正）。
+    // enteredCardMatches（0113 ポーン。context.enteredCard 参照）・enteredZoneIn（bf-h-bt04-0069/0071
+    // レフト/ライト登場。context.enteredZone 参照）が自己登場でも正しく判定できる。enteredCard は
+    // 既存の `context.enteredCard || context.card` フォールバック（15/13）と同値のため他カードの挙動は不変。
+    enteredCard: card,
+    enteredOwner: owner,
+    enteredZone: zone,
     target: storedTarget || null,
     // 「カードの効果で登場した時」条件（enteredByEffect。H-PP01/0044）用。
     // 通常コール経路（resolvePendingCall/arriveCard）は false、script のコール系は true を渡す。
     enteredByEffect: Boolean(options.byEffect),
   });
   await runAllyEnterTriggers(card, owner, zone);
+  // E-Y1(奇襲): 「君のモンスターが『奇襲』で登場した時」の場イベント allyAmbushEnter（0039 飛翔刃）。
+  // 場全体へ放送。奇襲登場でない通常登場では発火しない＝既存挙動不変（オプトイン）。
+  if (options.ambush) {
+    await runFieldEventTriggers("ambushEnter", owner, card, zone, {
+      __excludeSourceInstanceId: card.instanceId,
+      enteredCard: card,
+      enteredOwner: owner,
+      enteredZone: zone,
+    });
+  }
 }
 
 async function runAllyEnterTriggers(enteredCard, owner, enteredZone) {
@@ -723,6 +785,23 @@ async function moveFieldCard(owner, fromZone, toZone, details = {}) {
     fromZone,
     ...details,
   });
+  // E-Y2(X-BT01/0010 ゴルディオン・ハルバード): 「このカードがセンターに『移動』した時」。
+  // 移動先がセンターの時だけ、移動したカード自身の movedToCenter 誘発を1回発火する。
+  // 移動後もセンターに在ることを再確認（move イベントの解決中に除去/再配置され得るため）。
+  // movedToCenter を持つ既存カードは0件＝hasListener ゲートで既存挙動は完全不変（オプトイン）。
+  if (
+    toZone === "center" &&
+    player.field.center?.instanceId === card.instanceId &&
+    (card.abilities || []).some((ability) => ability.kind === "triggered" && ability.event === "movedToCenter")
+  ) {
+    await runTriggeredAbilities(card, "movedToCenter", {
+      card,
+      player,
+      owner,
+      zone: "center",
+      fromZone,
+    });
+  }
   return true;
 }
 

@@ -856,6 +856,115 @@ function specialCallOpportunityMatches(event, owner, spec = {}) {
   return matchesCardFilter(event.destroyedCard, spec.filter || {});
 }
 
+// ==========================================================================
+// E-Y1(X-BT01 カタナW《暗殺鬼》): 『奇襲』(Ambush) — 裏向きソウル→ドロップの追跡と特殊コール権。
+// ==========================================================================
+// 裏向き(faceDown)でソウルに入ったカードは markSoulCardsFaceDown(src/15) で faceDown/__soulHost が付く。
+// そのカードがドロップへ落ちたら「公開」される＝faceDown を解除し、
+//  (a) 『奇襲』keyword 持ちなら drop からの特殊コール権(reason:"ambush")を記録、
+//  (b) selfDroppedFromSoul 誘発(0067 袖の下)を自己に発火する。
+// ドロップの札は公開情報のため、この時点で名前をログ/opportunity に載せても秘匿は破れない
+// （秘匿はソウル在中のみ＝viewFor が担保）。冪等: faceDown を解除するので再走査でスキップされる。
+// 呼び出し点: 主要な soul→drop 経路（queueSoulCardDroppedTriggers・destroyFieldCard のソウル一括ドロップ）
+// で eager に呼び、specialCallOpportunityForCard(src/07) で lazy に呼ぶ安全網も張る（同ターン内の取りこぼし救済）。
+function reconcileFaceDownSoulDrops() {
+  if (!Array.isArray(state?.players)) {
+    return;
+  }
+  state.players.forEach((player, owner) => {
+    (player?.drop || []).forEach((card) => {
+      if (!card || card.faceDown !== true) {
+        return;
+      }
+      const soulHost = card.__soulHost || null;
+      // 公開: ソウルを離れてドロップへ置かれたので裏向きは解ける（以後 viewFor でも伏せない）。
+      card.faceDown = false;
+      delete card.__soulHost;
+      // (b) 自己ドロップ誘発（0067）。requireFaceDown/hostFilter は queue 側で照合する。
+      queueSelfDroppedFromSoulTriggers(card, owner, { faceDown: true, host: soulHost });
+      // (a) 『奇襲』特殊コール権。
+      if (hasKeyword(card, "ambush")) {
+        recordAmbushOpportunity(card, owner);
+      }
+    });
+  });
+}
+
+// 『奇襲』特殊コール権を記録する（instance 単位・同ターン限定）。ドロップへ落ちた本人カードを、
+// その【コールコスト】を払って場へ戻せる（callMonster が source:"drop" を許容＝src/07）。
+function recordAmbushOpportunity(card, owner) {
+  state.specialCallOpportunities ||= [];
+  const already = state.specialCallOpportunities.some(
+    (event) =>
+      event.reason === "ambush" &&
+      event.instanceId === card.instanceId &&
+      !event.used &&
+      !event.expired &&
+      event.turnCount === state.turnCount,
+  );
+  if (already) {
+    return;
+  }
+  state.specialCallOpportunities.push({
+    owner,
+    reason: "ambush",
+    instanceId: card.instanceId, // このカード自身のみコールできる（destroyed 型の name filter とは別軸）
+    destroyedName: card.name, // ドロップの札＝公開情報（秘匿は破れない）
+    turnCount: state.turnCount,
+    phase: state.phase,
+    cause: null,
+    expired: false,
+  });
+  if (state.specialCallOpportunities.length > 20) {
+    state.specialCallOpportunities.splice(0, state.specialCallOpportunities.length - 20);
+  }
+  addLog(`${state.players[owner].name}は「${card.name}」を『奇襲』でコールできます。`);
+}
+
+// 『奇襲』コール権を、コールしようとしている本人カード(instance)について探す（src/07 が使う）。
+function findAmbushOpportunity(owner, card) {
+  const events = state.specialCallOpportunities || [];
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    const event = events[index];
+    if (
+      event.reason === "ambush" &&
+      !event.used &&
+      !event.expired &&
+      event.owner === owner &&
+      event.instanceId === card.instanceId &&
+      event.turnCount === state.turnCount
+    ) {
+      return event;
+    }
+  }
+  return null;
+}
+
+// selfDroppedFromSoul(0067 袖の下): 「このカードが場の(裏向きの)ソウルからドロップゾーンに置かれた時」の
+// 自己誘発。ability.requireFaceDown（裏向き限定）・ability.hostFilter（落ちる直前のホストの公開スナップショット
+// を照合＝「《暗殺鬼》のソウルから」）でゲートする。listener が無ければ何もしない（既存挙動不変＝オプトイン）。
+function queueSelfDroppedFromSoulTriggers(card, owner, info = {}) {
+  const matches = (ability) =>
+    ability.kind === "triggered" &&
+    ability.event === "selfDroppedFromSoul" &&
+    (!ability.requireFaceDown || info.faceDown === true) &&
+    (!ability.hostFilter || (info.host && matchesCardFilter(info.host, ability.hostFilter)));
+  if (!(card.abilities || []).some(matches)) {
+    return;
+  }
+  queueTriggerMicrotask(
+    () =>
+      runTriggeredAbilities(card, "selfDroppedFromSoul", {
+        card,
+        player: state.players[owner],
+        owner,
+        zone: "drop",
+        __abilityFilter: matches,
+      }),
+    { errorLabel: `${card.name}のソウル落下時能力の処理中にエラーが発生しました。` },
+  );
+}
+
 // 破壊された瞬間の実効サイズを凍結する共通算出（この後カードがドロップへ行っても、破壊時サイズを
 // 参照する判定 (lastDestroyedCardMatches / destroyedThisTurnMatchingCountGte) が破壊時のサイズで判定できる）。
 // 呼び出し時点で card は既に場から外れており effectiveSize は場外扱いで印字サイズを返すため、
@@ -961,6 +1070,10 @@ function queueTriggerMicrotask(runner, { errorLabel } = {}) {
         return;
       }
       await runner();
+      // E-Y1(奇襲): あらゆる誘発解決後に、ドロップへ落ちた裏向きソウル札を公開＋奇襲コール権/自己ドロップ誘発を消化する
+      // 共通の安全網（破壊のソウル一括ドロップ・手札/デッキ戻し等、個別 soul→drop 経路を全て網羅する）。
+      // faceDown は新フラグでオプトイン挿入時のみ立つため、既存カード/対戦では常に空振り＝挙動完全不変。
+      reconcileFaceDownSoulDrops();
       render();
     })
     .catch((error) => {
@@ -1046,6 +1159,9 @@ function queueSoulCardDroppedTriggers(hostCard, hostOwner, count = 1) {
   if (!hostCard || count <= 0 || !Array.isArray(state?.players)) {
     return;
   }
+  // E-Y1(奇襲): ソウル→ドロップの主要経路。listener 有無に関わらず、落ちた裏向き札の公開・
+  // 特殊コール権記録・selfDroppedFromSoul をここで先に消化する（ホスト在否は問わない＝下の early return より前）。
+  reconcileFaceDownSoulDrops();
   const slot = findFieldCardSlot(hostCard);
   if (!slot) {
     return; // ホストが場を離れていれば発火しない（対象「そのモンスター」が存在しない）。
@@ -1623,6 +1739,11 @@ async function endTurn() {
   state.turnProtections = (state.turnProtections || [])
     .map((entry) => ({ ...entry, remainingTurnEnds: (entry.remainingTurnEnds ?? 1) - 1 }))
     .filter((entry) => entry.remainingTurnEnds > 0);
+  // FE2(X-BT01/0124 ガエン): ドロー禁止(state.drawBans)も turnProtections と同じく毎ターン端で1減算。
+  // remainingTurnEnds:2 で設定＝発動側の残りターン端(→1)＋相手の次ターン端(→0で除去)＝「次の相手のターン中」限定。
+  state.drawBans = (state.drawBans || [])
+    .map((entry) => ({ ...entry, remainingTurnEnds: (entry.remainingTurnEnds ?? 1) - 1 }))
+    .filter((entry) => entry.remainingTurnEnds > 0);
   // Z4(f)(S-UB-C03/0051): ターン限定ダメージ軽減は毎ターン全消去（turnDestroyImmunityと同様、多ターン持続なし）。
   state.turnDamageReductions = [];
   state.lastDamageTaken = [0, 0];
@@ -1796,10 +1917,57 @@ function standPlayer(player) {
   });
 }
 
+// FE1(X-BT01/0128 ドラゴン・ドライ rule③): プレイヤーのフラッグを試合中に flagId のフラッグ定義へ差し替える。
+// player.flag は state 常駐（room 復元/リプレイの JSON 往復で保たれる）。以後 flagNameIs・canUseCardForFlag・
+// フラッグ表示(12-render)が新フラッグを返す。flagId は cardLibrary(flags.json 由来)から createCard で実体化する。
+function stackPlayerFlag(player, flagId) {
+  let newFlag = null;
+  try {
+    newFlag = createCard(flagId);
+  } catch (error) {
+    newFlag = null;
+  }
+  if (!newFlag) {
+    return false;
+  }
+  player.flag = newFlag;
+  return true;
+}
+
 function resolveLifeZeroReplacements() {
   state.players.forEach((player, owner) => {
     if (player.life > 0) {
       return;
+    }
+    // E-Y6(0048/0028): この致死ダメージが「相手のカードで相手のライフは変更されない（復活できない）」を
+    // 指定していれば、受け手(owner)の lifeZeroReplacement / lifeZeroSafeguard を丸ごとスキップして敗北確定させる。
+    // フラグは applyDamageToPlayer の checkWinner 呼び出しの間だけ立つ（この致死限定）。
+    if (state.suppressLifeZeroReplacementFor === owner) {
+      return;
+    }
+    // FE1(X-BT01/0128 ドラゴン・ドライ rule③): 「君のライフが0になるなら、手札のこのカードを君の
+    // 「ドラゴン・ツヴァイ」に重ねてよい。重ねたら、君の場のカード全てをドロップゾーンに置き、ライフを5にする」。
+    // 手札の handLifeZeroReplacement マーカー(0128)を、フラッグが requireFlag(ドラゴン・ツヴァイ)の時だけ発動。
+    // 任意だが延命は有利なため既存の置換群と同様に自動使用。フラッグ差し替えで 0124 ガエン召喚・0125-0127 の
+    // ドライ分岐が到達可能になる。resolveLifeZeroReplacements は同期経路のため直接操作のみ（非同期を使わない）。
+    const handIndex = (player.hand || []).findIndex((card) => card.handLifeZeroReplacement);
+    if (handIndex >= 0) {
+      const overlayCard = player.hand[handIndex];
+      const rep = overlayCard.handLifeZeroReplacement;
+      if (!rep.requireFlag || player.flag?.name === rep.requireFlag) {
+        player.hand.splice(handIndex, 1); // 手札のこのカードをフラッグに重ねる（消費）
+        stackPlayerFlag(player, rep.stackFlagId);
+        if (rep.dropAllField) {
+          zones.forEach((zone) => {
+            if (player.field[zone]) {
+              dropFieldCardByRule(player, zone);
+            }
+          });
+        }
+        player.life = rep.life ?? 5;
+        addLog(`${player.name}は${overlayCard.name}を「${rep.requireFlag || "フラッグ"}」に重ね、場のカードを全てドロップしてライフを${player.life}にしました。`);
+        return;
+      }
     }
     const replacementSlot = [...setZones, "item", ...fieldZones]
       .map((zone) => ({ zone, card: player.field[zone] }))

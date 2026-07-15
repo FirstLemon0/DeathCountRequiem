@@ -365,6 +365,9 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     getPendingAttackers,
     resolveAmountFrom,
     endTurn,
+    // FE2(X-BT01/0124 ドロー禁止)回帰テスト用: 通常ドローステップ(drawAction)・低レベルドロー(drawCards)を実経路で叩く。
+    drawAction,
+    drawCards,
     matchesCardFilter,
     canAttackTargetValue,
     applyAttackTaxes,
@@ -440,6 +443,14 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     checkWinner,
     declareDeckLoss,
     applyWinOnFighterDamage,
+    // E-Y1/E-Y2(X-BT01 奇襲・movedToCenter)プローブ用に実経路関数を公開（_scratch/xbt01-probe.js）。
+    moveFieldCard,
+    specialCallOpportunityForCard,
+    reconcileFaceDownSoulDrops,
+    findAmbushOpportunity,
+    recordAmbushOpportunity,
+    putCardsToSoulWithTrigger,
+    markSoulCardsFaceDown,
   };
 } else if (globalThis.__BUDDYFIGHT_REPLAY__) {
   // リプレイ再生専用ページ（replay.html）。対話操作・ネットUI・自動開始は行わず、データ読込と

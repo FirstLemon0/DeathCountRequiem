@@ -486,6 +486,7 @@ function finishPendingAttack(outcome = {}) {
     targetOwner: pending.targetOwner,
     targetZone: pending.targetZone,
     targetType: pending.targetType,
+    turnCount: state.turnCount, // E-Y5(0088): lastAttackNullified の同ターン窓限定用
   };
   if (!state.lastAttackOutcome.nullified) {
     runAfterAttackTriggers(state.lastAttackOutcome);
@@ -620,6 +621,7 @@ function nullifyPendingAttack(sourceName = "効果", sourceCard = null) {
     targetOwner: pending.targetOwner,
     targetZone: pending.targetZone,
     targetType: pending.targetType,
+    turnCount: state.turnCount, // E-Y5(0088): lastAttackNullified の同ターン窓限定用
   };
   clearPendingAttack({ nullified: true });
   return true;

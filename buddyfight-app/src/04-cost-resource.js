@@ -3,21 +3,37 @@
 // 旧 app.js L881-1758 由来。全モジュールはグローバルスコープを共有し、
 // HTML で番号順に <script> 読み込みする（連結すると旧 app.js とバイト等価）。
 // ==========================================================================
+// FE2(X-BT01/0124 ガエン): 「次の相手のターン中、相手はカードを引くことができない」。state.drawBans に
+// {owner, remainingTurnEnds} を積み、owner の自分のターン中(state.active===owner)は全ドローを封じる。
+// 通常ドローステップ・チャージドロー・効果ドローを一律に止める（drawCards が全経路の関門）。
+// state 常駐＝room 復元(JSON往復)/リプレイ安全。remainingTurnEnds は endTurn(src/11)が毎ターン端で1減算。
+function drawBanActive(owner) {
+  return state?.active === owner && (state?.drawBans || []).some((entry) => entry.owner === owner);
+}
+
 function drawCards(player, count = 1, shouldLog = true) {
+  const drawerIndex = Array.isArray(state?.players) ? state.players.indexOf(player) : -1;
+  if (drawerIndex >= 0 && drawBanActive(drawerIndex)) {
+    if (shouldLog) {
+      addLog(`${player.name}は効果によりカードを引けません。`);
+    }
+    return 0;
+  }
+  let drawn = 0;
   for (let index = 0; index < count; index += 1) {
     if (player.deck.length === 0) {
       if (shouldLog) {
         addLog(`${player.name}のデッキが0枚です。`);
       }
       declareDeckLoss(player);
-      return;
+      return drawn;
     }
     const card = player.deck.pop();
     if (card) {
       player.hand.push(card);
+      drawn += 1;
       // 「（相手が）カードを引いた時」誘発（1枚ごと。H-BT04/0008）。
       // createPlayer の初期手札ドロー時は state.players 未構築のため発火しない（indexOf が -1）。
-      const drawerIndex = Array.isArray(state?.players) ? state.players.indexOf(player) : -1;
       if (drawerIndex >= 0) {
         queueDrewTriggers(drawerIndex);
       }
@@ -26,10 +42,11 @@ function drawCards(player, count = 1, shouldLog = true) {
           addLog(`${player.name}のデッキが0枚になりました。`);
         }
         declareDeckLoss(player);
-        return;
+        return drawn;
       }
     }
   }
+  return drawn;
 }
 
 function applyDamageToPlayer(owner, amount = 0, options = {}) {
@@ -157,7 +174,13 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
     if (!options.byAttack && options.sourceOwner !== undefined) {
       openDamageReceivedCounterWindow(owner, remaining, options);
     }
+    // E-Y6: この致死に限り受け手の lifeZeroReplacement/safeguard を抑止する（0048/0028）。
+    // フラグはこの checkWinner の同期実行だけの寿命＝直後に必ず解除するので room 復元スナップショットには残らない。
+    if (options.suppressLifeZeroReplacement) {
+      state.suppressLifeZeroReplacementFor = owner;
+    }
     checkWinner();
+    state.suppressLifeZeroReplacementFor = null;
     // 「君がダメージを受けた時」誘発（五角竜王ドラム等）。同期経路のため microtask で遅延発火。
     queueDamageReceivedTriggers(owner, remaining, options);
   }
@@ -825,7 +848,7 @@ function costStepApplies(player, step = {}, context = {}) {
   });
 }
 
-function moveCostEntriesToSoul(player, entries, sourceCard) {
+function moveCostEntriesToSoul(player, entries, sourceCard, faceDown = false) {
   const bySource = new Map();
   entries.forEach((entry) => {
     const group = bySource.get(entry.source) || [];
@@ -847,7 +870,15 @@ function moveCostEntriesToSoul(player, entries, sourceCard) {
   if (movedCards.length > 0) {
     sourceCard.soul ||= [];
     sourceCard.soul.push(...movedCards);
-    addLog(`${player.name}はコストで${movedCards.map((card) => card.name).join("、")}を${sourceCard.name}のソウルに入れました。`);
+    if (faceDown) {
+      markSoulCardsFaceDown(movedCards, sourceCard); // E-Y1(奇襲): 「裏向きで」
+    }
+    // E-Y1(奇襲): 裏向きコストは表情報(カード名)を log に出さない（秘匿）。枚数のみ記す。
+    addLog(
+      faceDown
+        ? `${player.name}はコストで${movedCards.length}枚を裏向きで${sourceCard.name}のソウルに入れました。`
+        : `${player.name}はコストで${movedCards.map((card) => card.name).join("、")}を${sourceCard.name}のソウルに入れました。`,
+    );
   }
   return movedCards;
 }
@@ -909,13 +940,17 @@ function payStructuredCost(player, costSteps = [], context = {}) {
         const index = player.hand.findIndex((candidate) => candidate.instanceId === card.instanceId);
         if (index >= 0) {
           sourceCard.soul ||= [];
-          sourceCard.soul.push(player.hand.splice(index, 1)[0]);
+          const moved = player.hand.splice(index, 1)[0];
+          sourceCard.soul.push(moved);
+          if (step.faceDown) {
+            markSoulCardsFaceDown([moved], sourceCard); // E-Y1(奇襲): 「裏向きで」
+          }
         }
       });
     }
     if (step.op === "putCardToSoul") {
       const candidates = cardToSoulCostCandidates(player, step, selectedCard).slice(0, amount);
-      moveCostEntriesToSoul(player, candidates, sourceCard);
+      moveCostEntriesToSoul(player, candidates, sourceCard, Boolean(step.faceDown)); // E-Y1(奇襲)
     }
     if (step.op === "payLife") {
       player.life -= amount;
@@ -939,7 +974,7 @@ function payStructuredCost(player, costSteps = [], context = {}) {
       cancelCallOpportunityLifeLink(state.players.indexOf(player), step, sourceCard?.name);
     }
     if (step.op === "putTopDeckToSoul") {
-      moveTopDeckToSoul(player, sourceCard, amount);
+      moveTopDeckToSoul(player, sourceCard, amount, Boolean(step.faceDown)); // E-Y1(奇襲)
     }
     if (step.op === "putDropToSoul") {
       moveDropToSoul(player, sourceCard, amount, step.filter);
@@ -1649,12 +1684,20 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       handToSoulStepIndex += 1;
       sourceCard.soul ||= [];
       sourceCard.soul.push(...movedCards);
+      if (step.faceDown) {
+        markSoulCardsFaceDown(movedCards, sourceCard); // E-Y1(奇襲): 「裏向きで」
+      }
       if (movedCards.length > 0) {
-        addLog(`${player.name}はコストで${movedCards.map((card) => card.name).join("、")}を${sourceCard.name}のソウルに入れました。`);
+        // E-Y1(奇襲): 裏向きコストは表情報(カード名)を log に出さない（秘匿）。枚数のみ記す。
+        addLog(
+          step.faceDown
+            ? `${player.name}はコストで${movedCards.length}枚を裏向きで${sourceCard.name}のソウルに入れました。`
+            : `${player.name}はコストで${movedCards.map((card) => card.name).join("、")}を${sourceCard.name}のソウルに入れました。`,
+        );
       }
     }
     if (step.op === "putCardToSoul") {
-      moveCostEntriesToSoul(player, cardToSoulSelections[cardToSoulStepIndex] || [], sourceCard);
+      moveCostEntriesToSoul(player, cardToSoulSelections[cardToSoulStepIndex] || [], sourceCard, Boolean(step.faceDown)); // E-Y1(奇襲)
       cardToSoulStepIndex += 1;
     }
     if (step.op === "payLife") {
@@ -1679,7 +1722,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       cancelCallOpportunityLifeLink(state.players.indexOf(player), step, sourceCard?.name);
     }
     if (step.op === "putTopDeckToSoul") {
-      moveTopDeckToSoul(player, sourceCard, amount);
+      moveTopDeckToSoul(player, sourceCard, amount, Boolean(step.faceDown)); // E-Y1(奇襲)
     }
     if (step.op === "putDropToSoul") {
       moveDropToSoul(player, sourceCard, amount, step.filter);
@@ -1822,7 +1865,8 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     if (step.op === "lookTopSelectToSoulRestToDrop") {
       const pick = lookTopSoulSelections[lookTopSoulStepIndex] || { revealed: [], soulSelected: [] };
       lookTopSoulStepIndex += 1;
-      lookTopSelectToSoulRestToDrop(player, sourceCard, step.count || 1, step.amount || 1, pick.revealed, pick.soulSelected);
+      // FE3(X-BT01/0032 羅生門): faceDown で選んだ1枚を裏向きソウルへ（秘匿・ログに名前を出さない）。
+      lookTopSelectToSoulRestToDrop(player, sourceCard, step.count || 1, step.amount || 1, pick.revealed, pick.soulSelected, step.faceDown);
     }
     if (step.op === "dropOwnMonster") {
       const selectedTargets = dropOwnMonsterSelections[dropOwnMonsterStepIndex] || [];
@@ -1865,13 +1909,18 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
   return { ok: true, discarded };
 }
 
-function moveTopDeckToSoul(player, card, amount = 1) {
+function moveTopDeckToSoul(player, card, amount = 1, faceDown = false) {
   card.soul ||= [];
+  const moved = [];
   for (let index = 0; index < amount; index += 1) {
     const soulCard = player.deck.pop();
     if (soulCard) {
       card.soul.push(soulCard);
+      moved.push(soulCard);
     }
+  }
+  if (faceDown) {
+    markSoulCardsFaceDown(moved, card); // E-Y1(奇襲): 「裏向きで」
   }
   if (player.deck.length === 0) {
     declareDeckLoss(player);
@@ -1940,7 +1989,7 @@ function moveSelectedFieldCardsToSoul(player, sourceCard, entries = []) {
 
 // デッキ上から count 枚を見て、soulCards をソウルへ、残りをドロップへ（lookTopSelectToSoulRestToDrop用）。
 // revealed 未指定時はここでデッキ上から count 枚めくる。soulCards 未指定時は先頭 amount 枚をソウルにする。
-function lookTopSelectToSoulRestToDrop(player, sourceCard, count = 1, amount = 1, revealed = null, soulCards = null) {
+function lookTopSelectToSoulRestToDrop(player, sourceCard, count = 1, amount = 1, revealed = null, soulCards = null, faceDown = false) {
   const cards = revealed || [];
   if (!revealed) {
     for (let index = 0; index < count && player.deck.length > 0; index += 1) {
@@ -1953,11 +2002,19 @@ function lookTopSelectToSoulRestToDrop(player, sourceCard, count = 1, amount = 1
   const toSoul = cards.filter((card) => soulSet.has(card.instanceId));
   const toDrop = cards.filter((card) => !soulSet.has(card.instanceId));
   sourceCard.soul.push(...toSoul);
+  if (faceDown) {
+    markSoulCardsFaceDown(toSoul, sourceCard); // FE3/E-Y1(奇襲): 「裏向きで」
+  }
   player.drop.push(...toDrop);
   // E5: デッキ→ドロップ（コスト起因の残りドロップ）も deckMilled ブロードキャスト対象（byEffect ではない）。
   queueDeckMilledTriggers(state.players.indexOf(player), toDrop, { byCost: true, sourceOwner: state.players.indexOf(player), sourceCard: sourceCard || null });
   if (toSoul.length > 0) {
-    addLog(`${toSoul.map((card) => card.name).join("、")}を${sourceCard.name}のソウルに入れました。`);
+    // 裏向き札は表情報(名前)を log に出さない（秘匿。state.log は両席/観戦へ配信）。
+    addLog(
+      faceDown
+        ? `${toSoul.length}枚を裏向きで${sourceCard.name}のソウルに入れました。`
+        : `${toSoul.map((card) => card.name).join("、")}を${sourceCard.name}のソウルに入れました。`,
+    );
   }
   if (toDrop.length > 0) {
     addLog(`残りの${toDrop.map((card) => card.name).join("、")}をドロップゾーンに置きました。`);

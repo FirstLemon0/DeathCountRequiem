@@ -460,6 +460,7 @@ function keywordAliases(keyword) {
     dropOpponentMonsterSoulOnAttack: ["dropOpponentMonsterSoulOnAttack", "攻撃時ソウル落とし"],
     cannotBeLinkAttacked: ["cannotBeLinkAttacked", "連携攻撃されない"],
     move: ["move", "移動"],
+    ambush: ["ambush", "奇襲"], // E-Y1(X-BT01 カタナW《暗殺鬼》): 裏向きソウル→ドロップで特殊コールできる新キーワード
     penetrate: ["penetrate", "貫通"],
     doubleAttack: ["doubleAttack", "2回攻撃", "２回攻撃"],
     tripleAttack: ["tripleAttack", "3回攻撃", "３回攻撃"],

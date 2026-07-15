@@ -297,7 +297,7 @@ async function getDeckValidationSets() {
       try {
         const data = JSON.parse(stripBom(fs.readFileSync(path.join(rootDir, set.file), "utf8")));
         for (const card of data.cards || []) {
-          if (card.type === "flag") continue;
+          if (card.type === "flag" && card.deckable !== true) continue; // R7: deckable flag はデッキ投入可
           if (card.id) cardIds.add(card.id);
         }
       } catch (error) {

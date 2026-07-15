@@ -332,6 +332,20 @@ class GameRoom {
           }
         }
       }
+      // E-Y1(X-BT01 奇襲): 裏向き(faceDown)でソウルに入った札は所有者本人のみ表を見られる。
+      // 相手席は上で soul 全体を hiddenPile 済みだが、観戦ロールは face-up ソウルを見せる（公開情報）ため、
+      // face-down 札だけを個別に伏せる（face-up は公開のまま）。__soulHost 等の内部メタも落とす。
+      // シード非漏洩(T13)と同じ思想＝相手/観戦へ表情報を出さない。
+      if (!own) {
+        for (const zone of ["left", "center", "right", "item"]) {
+          const card = player.field[zone];
+          if (card && Array.isArray(card.soul) && card.soul.length) {
+            card.soul = card.soul.map((soulCard) =>
+              soulCard && soulCard.faceDown ? { hidden: true } : soulCard,
+            );
+          }
+        }
+      }
       // Z2(S-UB-C03/0095他・公式裁定Q2629/Q2630): バディゾーンの裏向きカードは所有者本人のみ表を見られる。
       // 相手席からは常に伏せる。観戦系ロールは手札より厳格に扱い、両者とも常に伏せる
       // （spectatorはown判定が常にfalseになる既存構造上の帰結として、!own を満たせば自動的に対象になる）。

@@ -24,7 +24,9 @@ async function loadGameData() {
     ...cardSets.flatMap(({ set, data }) => {
       const packName = (set.file || "").split("/").pop().replace(/\.json$/, "");
       return (data.cards || [])
-        .filter((card) => card.type !== "flag")
+        // R7(X-BT01/0128 ドラゴン・ドライ): deckable:true の flag はデッキ投入可＝cardLibrary に含める
+        // （手札の handLifeZeroReplacement=FE1 が読むため）。通常の表示専用 flag は従来どおり除外。
+        .filter((card) => card.type !== "flag" || card.deckable === true)
         .map((card) => {
           const def = normalizeCardDefinition(card, set);
           if (packName && def.id) {

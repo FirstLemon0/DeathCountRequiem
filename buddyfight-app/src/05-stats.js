@@ -100,6 +100,14 @@ function granterOnField(instanceId) {
 let evaluatingNullifyProtection = false;
 function isAbilitiesNullified(card) {
   if (!card || card.nullifyImmune || !state?.players?.length) return false;
+  // FD5(X-BT01/0124 ガエン): ゾーン限定の無効化耐性。指定ゾーン(item=変身中)に在る間だけ「能力を無効化されない」。
+  // destroyImmunity/preventReturnToHand が conditions:[sourceZoneIn(item)] でゲート済みなのに合わせた対称形。
+  // 在ゾーンを直接読むだけ（continuous 評価に再入しない＝自己 grantNullifyImmunity のような循環で無効化に負けない）。
+  // 既存カードは nullifyImmuneZones 未所持＝この分岐は素通り（後方互換）。
+  if (Array.isArray(card.nullifyImmuneZones) && card.nullifyImmuneZones.length) {
+    const slotZone = findFieldCardSlot(card)?.zone;
+    if (slotZone && card.nullifyImmuneZones.includes(slotZone)) return false;
+  }
   // フラッグは能力無効化を受けない（公式裁定Q2220: ∞ the Chaos ∞ 先例）。フラッグは場のzonesにも
   // 誰のソウルにも存在しないため、下の探索は本来どのみち host が見つからず false になるが、
   // 将来の実装変更（フラッグを走査対象に含める等）に備えて明示的に免除しておく。

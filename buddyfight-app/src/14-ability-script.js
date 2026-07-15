@@ -81,8 +81,13 @@ async function runTriggeredAbilities(card, event, baseContext = {}) {
         continue;
       }
       context.player = player;
-      await executeAbilityBody(context);
+      // 発動回数制限は「発動時」に消費する（本体解決の前）。コスト支払い済みでこの能力は確定発動なので、
+      // ここで印字するのが「この能力は1ターンに1回だけ発動する」の正しいタイミング。かつ本体解決中に
+      // 同一イベントが同期再発火する効果（爆雷連鎖: dealDamage→opponentDamagedByBakurai 等）でも、
+      // markAbilityLimit を本体後に置くと再入時に isAbilityLimitUsed がまだ false で無限再発火→ヒープOOM。
+      // 発動時に印字しておけば再入は isAbilityLimitUsed=true で弾かれ、規則通り1回で打ち切られる。
       markAbilityLimit(owner, card, ability);
+      await executeAbilityBody(context);
     }
 }
 
@@ -457,6 +462,9 @@ async function executeAbilityScriptStep(step, context) {
   }
   if (step.op === "putTopDeckToSelectedSoul") {
     return putTopDeckToSelectedSoulForScript(step, context);
+  }
+  if (step.op === "lookTopSelectToSelectedSoulRestToBottom") {
+    return lookTopSelectToSelectedSoulRestToBottomForScript(step, context);
   }
   if (step.op === "searchDeckToSelectedSoul") {
     return searchDeckToSelectedSoulForScript(step, context);
@@ -1646,10 +1654,18 @@ function moveSelectedToSelectedSoulForScript(step, context) {
   const movedEntries = takeScriptSelectionCards(scriptSelection(step, context));
   host.soul ||= []; // 0枚選択時も従来通りソウル配列を初期化しておく（挙動不変）。
   movedEntries.forEach((entry) => {
-    putCardsToSoulWithTrigger(host, entry.owner ?? context.owner, [entry.card], entry.source || "field");
+    putCardsToSoulWithTrigger(host, entry.owner ?? context.owner, [entry.card], entry.source || "field", {
+      faceDown: Boolean(step.faceDown), // E-Y1(奇襲): 「裏向きで」ソウルに入れる
+    });
   });
   if (movedEntries.length > 0 && step.log !== false) {
-    addLog(`${movedEntries.map((entry) => entry.card.name).join("、")}を${host.name}のソウルに入れました。`);
+    // E-Y1(奇襲): 裏向き挿入は表情報(カード名)を addLog に出さない（相手席/観戦へ log は伏せられず配信される＝
+    // シード非漏洩と同じ思想）。枚数とホスト名（場の公開カード）のみ記す。
+    addLog(
+      step.faceDown
+        ? `${movedEntries.length}枚を裏向きで${host.name}のソウルに入れました。`
+        : `${movedEntries.map((entry) => entry.card.name).join("、")}を${host.name}のソウルに入れました。`,
+    );
   }
   return true;
 }
@@ -1663,16 +1679,76 @@ function putTopDeckToSelectedSoulForScript(step, context) {
   const player = state.players[step.controller === "opponent" ? 1 - context.owner : context.owner];
   const amount = step.amount || 1;
   host.soul ||= [];
-  let moved = 0;
+  const moved = [];
   for (let index = 0; index < amount; index += 1) {
     const card = player.deck.pop();
     if (card) {
       host.soul.push(card);
-      moved += 1;
+      moved.push(card);
     }
   }
-  if (moved > 0 && step.log !== false) {
-    addLog(`デッキの上から${moved}枚を${host.name}のソウルに入れました。`);
+  if (step.faceDown) {
+    markSoulCardsFaceDown(moved, host); // E-Y1(奇襲): 「裏向きで」
+  }
+  if (moved.length > 0 && step.log !== false) {
+    addLog(`デッキの上から${moved.length}枚を${host.name}のソウルに入れました。`);
+  }
+  if (player.deck.length === 0) {
+    declareDeckLoss(player);
+  }
+  return true;
+}
+
+// FE3(X-BT01/0035 眼の妖 阿欲): デッキ上 count 枚を見て、その中の max 枚までを（裏向きで）選択済みホスト(var)の
+// ソウルへ入れ、残りをデッキの下へ置く。「見る/選ぶ」は所有者のみ（promptSeat=owner）で秘匿を担保し、
+// faceDown 選択札は markSoulCardsFaceDown で裏向き・ログに名前を出さない。「デッキの下へ好きな順」は
+// lookTopSelectToBottomRestToTop(15-ability-effects.js) 同様 unshift 順の近似（順序選択は省略・残差）。
+async function lookTopSelectToSelectedSoulRestToBottomForScript(step, context) {
+  const host = scriptSelection(step, context)[0]?.card;
+  if (!host) {
+    return step.require === false ? true : { ok: false, reason: "no_soul_host" };
+  }
+  const player = state.players[step.controller === "opponent" ? 1 - context.owner : context.owner];
+  const owner = state.players.indexOf(player);
+  const count = step.count || 1;
+  const revealed = [];
+  for (let index = 0; index < count && player.deck.length > 0; index += 1) {
+    revealed.push(player.deck.pop());
+  }
+  if (revealed.length > 0) {
+    const wantMax = Math.min(step.max || 1, revealed.length);
+    const picked = await chooseCardEntries(
+      revealed.map((card) => ({ card, owner })),
+      {
+        title: step.title || context.card?.name || "効果",
+        lead: step.lead || `${host.name}のソウルに入れるカードを${wantMax}枚まで選んでください（残りはデッキの下へ）。`,
+        min: 0,
+        max: wantMax,
+        forceDialog: true,
+        promptSeat: owner,
+        purpose: "search",
+      },
+    );
+    const toSoul = (picked || []).map((entry) => entry.card);
+    const soulSet = new Set(toSoul.map((card) => card.instanceId));
+    const rest = revealed.filter((card) => !soulSet.has(card.instanceId));
+    if (toSoul.length > 0) {
+      host.soul ||= [];
+      host.soul.push(...toSoul);
+      if (step.faceDown) {
+        markSoulCardsFaceDown(toSoul, host); // E-Y1(奇襲): 「裏向きで」（秘匿・名前を伏せる）
+      }
+      addLog(
+        step.faceDown
+          ? `${toSoul.length}枚を裏向きで${host.name}のソウルに入れました。`
+          : `${toSoul.map((card) => card.name).join("、")}を${host.name}のソウルに入れました。`,
+      );
+    }
+    // 残りをデッキの下へ（top=末尾/pop・bottom=先頭/unshift。「好きな順」は unshift 順で近似）。
+    rest.forEach((card) => player.deck.unshift(card));
+    if (rest.length > 0) {
+      addLog(`残りの${rest.length}枚をデッキの下に置きました。`);
+    }
   }
   if (player.deck.length === 0) {
     declareDeckLoss(player);
@@ -1709,7 +1785,13 @@ async function searchDeckToSelectedSoulForScript(step, context) {
       if (deckIndex >= 0) {
         player.deck.splice(deckIndex, 1);
         host.soul.push(entry.card);
-        addLog(`デッキから${entry.card.name}を${host.name}のソウルに入れました。`);
+        if (step.faceDown) {
+          markSoulCardsFaceDown([entry.card], host); // E-Y1(奇襲): 「裏向きで」
+          // 裏向きは表情報(カード名)を log に出さない（秘匿）。
+          addLog(`デッキから1枚を裏向きで${host.name}のソウルに入れました。`);
+        } else {
+          addLog(`デッキから${entry.card.name}を${host.name}のソウルに入れました。`);
+        }
       }
     }
   }
@@ -1772,9 +1854,14 @@ function moveSelfToSelectedSoulForScript(step, context) {
   if (card.instanceId === context.card?.instanceId) {
     context.cardMoved = true;
   }
-  putCardsToSoulWithTrigger(host, context.owner, [card], fromZone);
+  putCardsToSoulWithTrigger(host, context.owner, [card], fromZone, { faceDown: Boolean(step.faceDown) });
   if (step.log !== false) {
-    addLog(`${card.name}を${host.name}のソウルに入れました。`);
+    // E-Y1(奇襲): 裏向き挿入は名前を伏せる（このカード自身の移動なので通常は表向きだが、faceDown 指定に追従）。
+    addLog(
+      step.faceDown
+        ? `1枚を裏向きで${host.name}のソウルに入れました。`
+        : `${card.name}を${host.name}のソウルに入れました。`,
+    );
   }
   return true;
 }
