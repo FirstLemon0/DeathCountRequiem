@@ -448,8 +448,56 @@
               "target": "$attackTarget"
             }
           ]
+        },
+        {
+          "id": "bf-d-eb02-0005-henshin-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "bf-d-eb02-0005-henshin-field",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
         }
-      ]
+      ],
+      "_note": "『変身』〔ゲージ１を払う〕(rules末尾)＝通常のメインフェイズ変身。従来これが未実装で、対抗変身(counter)しか無く、メイン中に使用/装備を押すと対抗変身の条件不成立で早期returnし装備できなかった(出荷後バグ)。henshin-hand(手札から・fromHandOnly)とhenshin-field(モンスタースペースから・sourceZoneIn left/center/right)を追加。本カードはcallCostゲージ2で場に出せるため、同ファイルの搭乗0006(ride-hand/ride-field)やキャプテン・アンサー0008(henshin-hand/henshin-field)と同型でfield版も付与する。変身コストはゲージ1(0005 rules原文)。既存のhenshin(counter=対抗変身・ヒロイン被攻撃中にequipSelf＋そのヒロイン1枚を手札戻し)とturnend-return(ターン終了時に場のこのカードを手札戻し)は不変。"
     },
     {
       "id": "bf-d-eb02-0006",

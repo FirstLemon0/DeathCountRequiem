@@ -490,6 +490,17 @@ function finishPendingAttack(outcome = {}) {
   if (!state.lastAttackOutcome.nullified) {
     runAfterAttackTriggers(state.lastAttackOutcome);
     queueBattleEndTriggers(state.lastAttackOutcome.attackers || []);
+    // E-X1: 被攻撃モンスターを eventCard に「バトル終了」を場全体へ放送する（defender-side 誘発＝ally/opponentBattleEnd。
+    // 上の attacker-only bare "battleEnd" とは別イベント名で非衝突・既存挙動不変）。fighter 攻撃（モンスター非対象）は
+    // 放送しない。被攻撃札は現在の場から取り直す（戦闘を耐えて場に残ったモンスターのみ＝破壊済みは null で放送しない）。
+    if (pending.targetType !== "fighter") {
+      const attackedCard = state.players[pending.targetOwner]?.field?.[pending.targetZone];
+      queueBattleEndFieldTriggers(pending.targetOwner, attackedCard, pending.targetZone, {
+        nullified: false,
+        attackerOwner: pending.attackerOwner,
+        targetType: pending.targetType,
+      });
+    }
   }
   clearPendingAttack(outcome);
 }
@@ -526,6 +537,45 @@ function queueBattleEndTriggers(attackerSlots) {
         render();
       });
   });
+}
+
+// E-X1(X-SD02/0015 クリスタル・マーク): 「君の場の《プリズムドラゴン》のモンスターが攻撃されたバトルの終了時」を
+// 場全体へブロードキャストする。直上の queueBattleEndTriggers は『攻撃者スロットのカード自身』の bare "battleEnd"
+// 誘発のみを発火し（出荷済み57リスナーが依存＝1ビットも変えない）、防御側の被攻撃モンスターや場のアイテム
+// （クリスタル・マーク）には届かなかった。ここは別イベント名 ally/opponentBattleEnd を新設する —— runFieldEventTriggers
+// が eventBase を capitalize して ally+/opponent+ を動的生成するため、bare "battleEnd" とは非衝突（既存データに
+// ally/opponentBattleEnd リスナーは0件＝grep 実証・挙動完全不変）。被攻撃モンスター(defenderCard)を eventCard に載せ、
+// defenderOwner から見て ally=自軍が攻撃された/opponent=相手が攻撃された を配送する（クリスタル・マークは自軍側の
+// allyBattleEnd＋eventCardMatches{cardType:monster,attribute:プリズムドラゴン} で受ける）。finishPendingAttack の
+// !nullified 経路からのみ呼ぶ（＝既存 bare battleEnd と同一タイミング。無効化された攻撃は『バトル』が成立しないため
+// 放送しない）。hasListener ゲート＋microtask（queueDeckMilledTriggers 同型）。defenderCard は呼び出し時点の場札
+// （戦闘を耐えて場に残った被攻撃モンスター）をクロージャで凍結する（state には積まない＝room 復元での二重参照を避ける）。
+// 戦闘で破壊された被攻撃モンスターは呼び出し側で defenderCard=null となり放送しない（それがセンター札なら『君の
+// センターに《プリズムドラゴン》がいるなら』条件も同時に外れ実害なし・非センターの被破壊のみ取りこぼす近似）。
+function queueBattleEndFieldTriggers(defenderOwner, defenderCard, defenderZone, details = {}) {
+  if (!defenderCard) {
+    return;
+  }
+  const hasListener = [0, 1].some((playerIndex) =>
+    zones.some((zone) => {
+      const c = state.players[playerIndex]?.field?.[zone];
+      return (
+        cardHasTriggeredListener(c, "allyBattleEnd") || cardHasTriggeredListener(c, "opponentBattleEnd")
+      );
+    }),
+  );
+  if (!hasListener) {
+    return;
+  }
+  Promise.resolve()
+    .then(async () => {
+      await runFieldEventTriggers("battleEnd", defenderOwner, defenderCard, defenderZone, details);
+      render();
+    })
+    .catch((error) => {
+      console.error(error);
+      render();
+    });
 }
 
 function pendingAttackNullifyBlocker(pending = state.pendingAttack) {

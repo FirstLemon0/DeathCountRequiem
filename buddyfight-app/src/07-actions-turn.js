@@ -1008,6 +1008,13 @@ function grantedNullifyImmunity(card, owner) {
         if (e.controller === "self" && owner !== sourceOwner) return false;
         if (e.controller === "opponent" && owner === sourceOwner) return false;
         if (e.filter && !matchesCardFilter(card, e.filter)) return false;
+        // E-X4(出荷済みバグ修正・E-X3 と同型): 継続エントリの conditions を評価する。従来この関数
+        // （アクション無効化耐性＝nullifyPendingAction 経路）だけが conditions を黙殺し、能力無効化側の
+        // grantedProtectionBlocks(kind:nullify・src/05:828)は読むという非対称だった。該当4枚: S-UB-C03/0001
+        // 島村卯月「アイドル3種類以上なら」・0008 高垣楓「他の《アイドル》があるなら」＋idolrare クローン
+        // ir001/ir008 が条件不問で常時耐性化していた。sibling と同じ走査規約＝発生源席 sourceOwner 視点・
+        // context{card:source, zone}で評価。conditions 無しエントリ（既存4件）は完全不変＝後方互換。
+        if (e.conditions && !checkCardConditions(e.conditions, sourceOwner, { card: source, zone })) return false;
         return true;
       });
     }),

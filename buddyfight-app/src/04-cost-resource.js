@@ -139,6 +139,14 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
     // 受けたダメージ量を記録（豪胆逆怒などの「受けたダメージと同じ数値分」効果が参照する）
     state.lastDamageTaken ||= [0, 0];
     state.lastDamageTaken[owner] = remaining;
+    // E-X2(X-SD02/0016 クリスタル・フローレス・シュート！): このターン中に owner席が受けた実ダメージ
+    // （軽減/無効化を通過した最終値）を席別に累積する。applyDamageToPlayer は戦闘・効果・必殺技の全ダメージが
+    // 合流する単一 funnel であり、ここが実適用点(player.life -= remaining)。payLife 等コストの直減算は funnel 外
+    // ＝計上しない（＝原文「君がダメージを受けていない」に忠実）。条件op damageTakenThisTurn(src/13)が参照・
+    // clearTurnModifiers(src/11)でリセット・createInitialState(src/03)で初期化。state 常駐で room 復元(JSON往復)
+    // 後も保たれ、旧 state に無くても安全なようガード付き ||= で初期化する（E8 deckMilledThisTurn と同型）。
+    state.turnDamageTaken ||= [0, 0];
+    state.turnDamageTaken[owner] = (state.turnDamageTaken[owner] || 0) + remaining;
     if (options.log !== false && options.sourceName) {
       addLog(`${options.sourceName}により${player.name}に${remaining}ダメージを与えました。`);
     }

@@ -3,16 +3,18 @@
 // 旧 app.js L5706-6486 由来。全モジュールはグローバルスコープを共有し、
 // HTML で番号順に <script> 読み込みする（連結すると旧 app.js とバイト等価）。
 // ==========================================================================
-function findUsableHandAbility(card, options = {}) {
+// 手札から今使える能力を「すべて」返す（変身/搭乗の装備と別の起動/対抗が同時に使える等、複数ある時は
+// useCardAction が選択させる。findUsableFieldAbilities の手札版）。単数形 findUsableHandAbility は先頭を返す薄いラッパ。
+function findUsableHandAbilities(card, options = {}) {
   // F1(D-EB02): カードレベルの useConditions（「〜なら使える」）を通常の手札キャスト経路でも評価する。
   // 従来は castSetSpell（設置・src/08）でのみ評価され、通常の魔法/必殺技/対抗では無視されていた
   //（bf-s-ub-c03-0052/0053/0054/0093 のゲートが不発だった）。全手札キャスト経路
   //（useCardAction/castSpell/castImpact/useCounterCard/useCounterPlayCard/render/AI）はここを通る。
   const useOwner = state.selected?.owner ?? state.active;
   if (!checkCardConditions(card.useConditions || [], useOwner, { card, owner: useOwner })) {
-    return undefined;
+    return [];
   }
-  return (card.abilities || []).find((ability) => {
+  return (card.abilities || []).filter((ability) => {
     if (!canUseAbilityFromHand(ability)) {
       return false;
     }
@@ -36,6 +38,40 @@ function findUsableHandAbility(card, options = {}) {
       canSatisfyAbilityScript(card, ability, state.selected.owner)
     );
   });
+}
+
+// 互換: 従来の単数形は先頭候補を返す（内部委譲。全既存呼び出し元はこれを使い続けられる）。
+function findUsableHandAbility(card, options = {}) {
+  return findUsableHandAbilities(card, options)[0];
+}
+
+// 手札のカードに使える能力が複数ある時、どれを使うか選ばせる（場の chooseFieldAbility の手札版）。
+// 例: 変身/搭乗の装備と、別の起動能力が同時に使えるカード。ラベルは fieldAbilityLabel を共有し、
+// equipSelf 系は「このカードを装備する（変身／搭乗）」・その他は ability.label/名前を出す。
+async function chooseHandAbility(card, abilities, owner = state.selected?.owner ?? state.active) {
+  if (globalThis.__BUDDYFIGHT_TEST__ && typeof globalThis.__forcedHandAbilityId === "string") {
+    return abilities.find((ability) => ability.id === globalThis.__forcedHandAbilityId) || abilities[0];
+  }
+  const selected = await chooseCardEntries(
+    abilities.map((ability) => ({
+      ability,
+      card: {
+        name: fieldAbilityLabel(card, ability),
+        type: "choice",
+      },
+    })),
+    {
+      title: `${card.name}の能力`,
+      lead: "使う能力を選んでください。",
+      min: 1,
+      max: 1,
+      forceDialog: true,
+      allowCancel: true,
+      purpose: "ability-pick", // CPU対戦(src/22): 先頭選択で解決＝無限ループしない
+      promptSeat: owner,
+    },
+  );
+  return selected?.[0]?.ability || null;
 }
 
 function canUseAbilityFromHand(ability) {
@@ -534,6 +570,11 @@ function describeAbilityCondition(condition) {
     const n = condition.amount ?? 1;
     return `このターン中、${who}のデッキのカードが${n > 1 ? `${n}枚以上` : ""}ドロップに置かれていること`;
   }
+  if (condition.op === "damageTakenThisTurn") {
+    const who = condition.damageOwner === "opponent" ? "相手" : "自分";
+    const n = condition.amount ?? 1;
+    return `このターン中、${who}が${n > 1 ? `${n}以上の` : ""}ダメージを受けていること`;
+  }
   if (condition.op === "hostMatches") return "装備している（搭乗/変身）カードの条件";
   if (condition.op === "sourceStanding") return "このカードがスタンドしていること";
   if (condition.op === "sourceZoneIn") {
@@ -844,6 +885,16 @@ function checkCondition(condition, owner, context = {}) {
     // amount 既定=1（「1枚以上置かれているなら」）。
     const milledSeat = condition.deckOwner === "opponent" ? 1 - owner : owner;
     return (state.turnDeckMilled?.[milledSeat] || 0) >= (condition.amount ?? 1);
+  }
+  if (condition.op === "damageTakenThisTurn") {
+    // E-X2(X-SD02/0016 クリスタル・フローレス・シュート！):「このターン中、<damageOwner>がダメージを受けているなら」。
+    // state.turnDamageTaken[席]=席別のターン内被ダメージ累積（applyDamageToPlayer=全ダメージ funnel の実適用点で
+    // 軽減/無効化後の実ダメージのみ加算・src/04。payLife 等コスト直減算は funnel 外＝非計上）。damageOwner を owner
+    // 視点で席へ解決（"opponent"=相手 / 既定 "self"=自分）。amount 既定=1（「1以上受けているなら」）。0016 の
+    // 「君がダメージを受けていなくて」は {op:"not", condition:{op:"damageTakenThisTurn"}} で否定合成する
+    // （self が0ダメージ＝真）。deckMilledThisTurn(E8)と同型・?. ガードで旧state 非throw。
+    const damagedSeat = condition.damageOwner === "opponent" ? 1 - owner : owner;
+    return (state.turnDamageTaken?.[damagedSeat] || 0) >= (condition.amount ?? 1);
   }
   if (condition.op === "ownCenterEmpty") {
     return !player.field.center;

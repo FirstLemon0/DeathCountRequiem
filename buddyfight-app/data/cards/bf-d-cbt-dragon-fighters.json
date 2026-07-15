@@ -2853,6 +2853,34 @@
           ]
         },
         {
+          "id": "bf-d-cbt-0034-henshin-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            },
+            {
+              "op": "returnOwnFieldCardToHand",
+              "filter": {
+                "cardType": "item"
+              },
+              "amount": 1,
+              "min": 0,
+              "max": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
           "id": "bf-d-cbt-0034-henshin-search-heroine",
           "kind": "triggered",
           "event": "enter",
@@ -2908,7 +2936,7 @@
           ]
         }
       ],
-      "_note": "『変身』が単一の限定条件(『対抗』『起動』のみ、原文に他の変身条件行が無い)のためbf-d-eb02-0005包帯戦士バンテージ仮面と同型=hand/field汎用henshinは付与せずcounter限定の1能力のみ(条件成立時のみ変身可)。条件『君の場の《ヒロイン》が破壊された時』はlastDestroyedCardMatches{controller:self, filter:{attribute:ヒロイン}}(既存op、destroyedEventWindowが同ターン中を対象=bf-d-bt01-0070帰巣本能と同じ既知近似『破壊直後』より広い窓)。コスト『ゲージ2を払い、アイテム1枚までを手札に戻す』はreturnOwnFieldCardToHand{min:0,max:1}(『まで』=up-to、既存chooseCardEntries min/max機構で対応、src/04:1406)。『このカードが変身した時』はevent:enter+sourceZoneIn item系4枠(bf-d-bt04-0040ギガドロイドと同型=通常コールでなく変身装備時のみ発火)。ターン終了時手札戻しはbf-d-eb02-0005のturnend-returnをそのまま踏襲(returnToHand $self、returnSelfToHandではない=場にいる状態からの戻し)。原文に『コールコスト』行が無いため costs.call は付与しない(変身専用モンスター、通常コール不可を前提とした無記載)。"
+      "_note": "『変身』〔ゲージ２を払い、君の場のアイテム１枚までを手札に戻す〕(rules末尾)＝通常のメインフェイズ変身。旧実装は対抗変身(counter)のみで通常変身が欠落しており、bf-d-eb02-0005と同型のバグ(メイン中に使用/装備しても対抗変身の条件不成立で早期returnし装備不可)を持っていた→henshin-hand(手札から・fromHandOnly・cost=ゲージ2＋アイテム1枚まで手札戻し・equipSelf)を追加。本カードはcosts.call無し(通常コール不可の変身専用モンスター)＝モンスタースペースに出ないため henshin-field(sourceZoneIn監視の場版)は付与しない(0005と異なる点)。既存の対抗変身(henshin-on-heroine-destroyed=『君の場の《ヒロイン》が破壊された時』lastDestroyedCardMatches{controller:self, filter:{attribute:ヒロイン}}・destroyedEventWindowが同ターン中を対象=bf-d-bt01-0070帰巣本能と同じ既知近似)とターン終了時手札戻し(turnend-return)は不変。『このカードが変身した時』はevent:enter+sourceZoneIn item系4枠(bf-d-bt04-0040ギガドロイドと同型=通常コールでなく変身装備時のみ発火)で、counter/normalどちらの変身でも発火する。変身コスト『ゲージ2を払い、アイテム1枚まで手札に戻す』はreturnOwnFieldCardToHand{min:0,max:1}(『まで』=up-to)。"
     },
     {
       "id": "bf-d-cbt-0035",

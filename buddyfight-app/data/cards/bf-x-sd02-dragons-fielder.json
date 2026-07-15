@@ -1,0 +1,799 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-x-sd02-dragons-fielder",
+    "name": "バッツ 500円スタートデッキ第２弾「ドラゴンズ・フィールダー」",
+    "kind": "スタートデッキ",
+    "generation": "バッツ",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=55"
+  },
+  "cards": [
+    {
+      "id": "bf-x-sd02-0001",
+      "no": "X-SD02/0001",
+      "name": "麗しの晶竜 アトラ",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■このカードがセンターにいるなら、相手のターン中、このカードは効果で破壊されない。",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "destroyImmunity": [
+        {
+          "from": {
+            "byEffect": true
+          },
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "center"
+              ]
+            },
+            {
+              "op": "turnOwnerIsOpponent"
+            }
+          ]
+        }
+      ],
+      "_note": "コールコストは原文順どおり putTopDeckToSoul→payGauge（C7）。「センターにいるなら相手のターン中、効果で破壊されない」はカード級 destroyImmunity（continuous ではない）を採用。理由: 継続 grantDestroyImmunity は conditions ゲートを評価しない実装（src/11-destroy-turn.js grantedDestroyImmunityBlocks は op/controller/excludeSource/zoneIn/filter/from のみ判定し e.conditions を読まない＝設計書C1が示す continuous 形は VM実測で conditions無視のバグと判明。vm-harness で実測: 自ターン中に continuous 形は誤って破壊耐性を発動＝SURVIVED、card-level 形は正しく破壊された＝DESTROYED）。card-level destroyImmunityBlocks（同ファイル）は e.conditions を checkCardConditions で正しく評価するため、conditions:[sourceZoneIn(center), turnOwnerIsOpponent] をそちらに置いた（bf-h-bt04-0109/0110 と同型の card-level destroyImmunity+conditions 前例に倣う）。sourceZoneIn は context.zone=このカード自身のゾーンを見る（destroyImmunityBlocks が zone:findFieldCardSlot(card)?.zone を渡す）ためセンター限定として機能。byBattle は from に含めないためバトル破壊は素通り（効果破壊のみ耐性）。"
+    },
+    {
+      "id": "bf-x-sd02-0002",
+      "no": "X-SD02/0002",
+      "name": "黄晶竜 ラ・ムウ",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 3,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。（ソウルはこのカードの下に重ねる）",
+        "『ソウルガード』（このカードが場から離れる場合、ソウル１枚を捨てて場に残せる）"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "_note": "コールコスト putTopDeckToSoul→payGauge（原文順）。『ソウルガード』はキーワードのみで完結（既存挙動）、追加abilities不要。"
+    },
+    {
+      "id": "bf-x-sd02-0003",
+      "no": "X-SD02/0003",
+      "name": "緑晶竜 ブランデイ",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 2,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■このカードが登場した時、君のライフを＋３！",
+        "『ソウルガード』（このカードが場から離れる場合、ソウル１枚を捨てて場に残せる）"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-sd02-0003-enter-life",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 3
+            }
+          ]
+        }
+      ],
+      "_note": "登場時ライフ+3は無条件 enter トリガー。コールコスト順は0001/0002と同型。"
+    },
+    {
+      "id": "bf-x-sd02-0004",
+      "no": "X-SD02/0004",
+      "name": "泡晶竜 ジービール",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが攻撃した時、君のライフを＋１！",
+        "『２回攻撃』（このカードは１ターンに１回、攻撃した後スタンドできる）"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-sd02-0004-attack-life",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "event:attack はカード自身へ直接発火（SKILL.md）のため pendingAttackBySource 等の追加条件不要（bf-d-bt04-0003/0046 等の無条件 attack トリガー前例と同型）。"
+    },
+    {
+      "id": "bf-x-sd02-0005",
+      "no": "X-SD02/0005",
+      "name": "赤晶竜 ピノワール",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 1,
+      "defense": 4000,
+      "rules": [
+        "■君のセンターにサイズ３のモンスターがいるなら、場のこのカードのサイズを１減らす。"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "size": -1,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "center",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "『君のセンターにサイズ3のモンスターがいるなら、場のこのカードのサイズを1減らす』= 継続modifyStats(sameInstanceAsSource)+conditions cardCount(pile:center, sizeIn:[3])。design.md row13 のとおり size:3 スカラーではなく sizeIn:[3]（FS1）。pile:center は src/13:760 で実在確認済み。ピノワール自身は size1 固定のため自己参照の混同なし。"
+    },
+    {
+      "id": "bf-x-sd02-0006",
+      "no": "X-SD02/0006",
+      "name": "白晶竜 モスカート",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■【対抗】【起動】相手のターンの攻撃中、ゲージ１を払い、場のこのカードをドロップゾーンに置いてよい。そうしたら、その攻撃を無効化する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-sd02-0006-nullify",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "optional": true,
+          "conditions": [
+            {
+              "op": "pendingAttackExists"
+            },
+            {
+              "op": "turnOwnerIsOpponent"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "dropSelf"
+            },
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ],
+      "_note": "bf-h-bt03-0096 アンドラス（【対抗】【起動】ゲージ1+dropSelf+nullifyAttack）と同型構造。条件は design.md C5 のとおり pendingAttackDefenderIsSelf を付けない（原文に『君が攻撃されている』限定文言が無く、相手ターンの任意の攻撃を無効化できる）。代わりに pendingAttackExists(進行中の攻撃が存在)+turnOwnerIsOpponent(相手のターン中)で『相手のターンの攻撃中』を表現。"
+    },
+    {
+      "id": "bf-x-sd02-0007",
+      "no": "X-SD02/0007",
+      "name": "赤晶竜 マルベック",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": []
+    },
+    {
+      "id": "bf-x-sd02-0008",
+      "no": "X-SD02/0008",
+      "name": "白晶竜 ヴィオニエ",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■このカードが登場した時、君のセンターにサイズ３のモンスターがいるなら、君のライフを+１！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-sd02-0008-enter-life",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "center",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "『登場時、センターにサイズ3のモンスターがいるならライフ+1』はability級conditions（bf-d-ss02-0004 hostMatches・bf-d-bt04-0004/0013 enter+conditions前例と同型）でゲート。単一effectのみのため effects[].conditions ではなく ability.conditions を採用。"
+    },
+    {
+      "id": "bf-x-sd02-0009",
+      "no": "X-SD02/0009",
+      "name": "ディスパージョン",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ドロー"
+      ],
+      "rules": [
+        "■君のセンターに《プリズムドラゴン》がいるなら使える。",
+        "■【使用コスト】ゲージ２を払う。",
+        "■カード２枚を引く。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "useConditions": [
+        {
+          "op": "cardCount",
+          "controller": "self",
+          "pile": "center",
+          "filter": {
+            "attribute": "プリズムドラゴン"
+          },
+          "cmp": "gte",
+          "amount": 1
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-sd02-0009-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 2
+            }
+          ]
+        }
+      ],
+      "_note": "非対抗の通常スペル（timing:main）。使用条件『君のセンターに《プリズムドラゴン》がいるなら使える』はcardCount{controller:self, pile:center, filter:{attribute}, cmp:gte, amount:1}（B3の0005/0008と同型pile:center。cardType指定なし=センターは実質モンスターのみ在圏のため既存X-SD02バッチの慣例に合わせcardType省略）。使用コストpayGauge:2はcosts.cast(トップレベル)+ability.cost(実行時優先)の両方に明記（FIX7）。draw{amount:2}はbf-d-bt04-0020のdraw{amount:1}と同型op。"
+    },
+    {
+      "id": "bf-x-sd02-0010",
+      "no": "X-SD02/0010",
+      "name": "ヴィジブル・ライト",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "チャージ"
+      ],
+      "rules": [
+        "■君のデッキの上から２枚をゲージに置く。君のライフが８以上なら、さらに、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-sd02-0010-charge",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "lifeGte",
+                  "amount": 8
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "raw原文に【使用コスト】行なし＝無償スペル（costsキー無し・useConditionsも無し=使用条件行も無い）。『デッキの上から２枚をゲージに置く。ライフが8以上ならさらに1枚』はputTopDeckToGauge(amount:2)＋putTopDeckToGauge(amount:1, conditions:[lifeGte(amount:8)])の2段（bf-d-bt04-0020のeffects[].conditionsゲート型・design.md row17と同型。lifeGteはD-CBT E12で評価分岐実装済）。"
+    },
+    {
+      "id": "bf-x-sd02-0011",
+      "no": "X-SD02/0011",
+      "name": "プリズム・アミュレット",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "強化"
+      ],
+      "rules": [
+        "■【対抗】バトルしている《プリズムドラゴン》のモンスター１枚を選び、このバトル中、攻撃力＋3000、防御力＋3000し、さらに『反撃』を与える！(『反撃』：このカードが攻撃された後、このカードが場にいるなら、このカードの攻撃力以下の防御力を持つ攻撃してきたモンスター１枚を破壊する）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-sd02-0011-amulet",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "target",
+              "from": "field",
+              "controller": "any",
+              "filter": {
+                "attribute": "プリズムドラゴン"
+              },
+              "onlyBattling": true,
+              "amount": 1,
+              "require": true,
+              "title": "プリズム・アミュレット",
+              "lead": "バトルしている《プリズムドラゴン》のモンスターを選んでください。"
+            },
+            {
+              "op": "modifySelectedStats",
+              "var": "target",
+              "power": 3000,
+              "defense": 3000,
+              "duration": "battle"
+            },
+            {
+              "op": "grantKeywordSelected",
+              "var": "target",
+              "keyword": "counterattack",
+              "duration": "battle"
+            }
+          ]
+        }
+      ],
+      "_note": "raw原文に【使用コスト】行なし＝無償の対抗スペル（costsキー無し）。X-SD01/0011サンダー×エナジー（xsd-b2、design.md row8）と全同型: selectCards{onlyBattling:true, filter:{attribute}, controller:any}→modifySelectedStats{power,defense,duration:battle}→grantKeywordSelected{counterattack,duration:battle}。反撃の説明文はkeywordAliases内蔵の定型文でDSL不要。controller:anyはバトル中の両陣営どちらのモンスターも選べる余地を残す（filter:attributeで自然に限定）。"
+    },
+    {
+      "id": "bf-x-sd02-0012",
+      "no": "X-SD02/0012",
+      "name": "マーズバリア",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中に使える。",
+        "■【対抗】その攻撃が連携攻撃でないなら、無効化する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-sd02-0012-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackNotLink"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-sd02-0013",
+      "no": "X-SD02/0013",
+      "name": "ハリー・グラインド",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "召喚"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中に使える。",
+        "■【対抗】君の手札の《プリズムドラゴン》のモンスター１枚を【コールコスト】を払って、君のセンターにコールし、このバトル中、『反撃』を与え、その攻撃の対象を、そのモンスターに変更する。(『反撃』：このカードが攻撃された後、このカードが場にいるなら、このカードの攻撃力以下の防御力を持つ攻撃してきたモンスター１枚を破壊する)"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-sd02-0013-counter-call-redirect",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "calledMonster",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "attribute": "プリズムドラゴン",
+                "cardType": "monster"
+              },
+              "callable": true,
+              "canUseForFlag": true,
+              "canPayCost": "call",
+              "amount": 1,
+              "require": true,
+              "title": "ハリー・グラインド",
+              "lead": "手札の《プリズムドラゴン》のモンスターを選んでください。"
+            },
+            {
+              "op": "payCardCostForSelection",
+              "var": "calledMonster",
+              "purpose": "call"
+            },
+            {
+              "op": "callSelected",
+              "var": "calledMonster",
+              "zone": "center",
+              "grantKeywords": [
+                "counterattack"
+              ],
+              "redirectPendingAttack": true,
+              "resolveOnEnter": true
+            }
+          ]
+        }
+      ],
+      "_note": "D-CBT/0086 怒羅魂頭参上！（design.md row10・§附録『redirect+救援』）と同型構造。原文差分: (a) コール先が『君のセンター』固定＝0086のselectZone[left/center/right]を省略しcallSelected.zoneを直書き'center'（センター占有時はcallSelectedForScriptがdropFieldCardByRuleで既存センター札を差し替える＝design.mdC4『既存センターと差し替えは公式裁定』を実装が担保。callSelectedToEmptyZonesは占有時サイレントno-opになり原文『コールし…変更する』の確定発動と乖離するため不採用）、(b) 防御力+2000の追加効果なし。redirectPendingAttack:trueがcallSelected内蔵（src/14:2172-2174相当）で『反撃を与え、その攻撃の対象をそのモンスターに変更する』を1手順に統合。使用条件『相手のターンの攻撃中に使える』はpendingAttackDefenderIsSelf（0086と同一op）。使用コスト表記なし（costsキー無し）。selectCardsのcallable/canUseForFlag/canPayCost:callは0086と同じ防御的フィルタ（コール不能・フラグ不許可・コスト払えない候補を事前排除）。"
+    },
+    {
+      "id": "bf-x-sd02-0014",
+      "no": "X-SD02/0014",
+      "name": "水晶球",
+      "type": "item",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン",
+        "防御",
+        "武器"
+      ],
+      "power": 0,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■このカードは君のセンターにモンスターがいても攻撃できる。"
+      ],
+      "keywords": [
+        "canAttackWithCenter"
+      ],
+      "_note": "design.md row11のとおりkeyword canAttackWithCenter（src/18:458 keywordAliases実在・src/11:35 canDeclareAttackで判定）。raw原文に【装備コスト】行なし＝無償装備（costsキー無し。type:item無償装備の既存前例44件でcostsキー省略が標準・grep確認済）。"
+    },
+    {
+      "id": "bf-x-sd02-0015",
+      "no": "X-SD02/0015",
+      "name": "クリスタル・マーク",
+      "type": "item",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン",
+        "防御",
+        "武器"
+      ],
+      "power": 0,
+      "critical": 0,
+      "defense": 4000,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■君のセンターの《プリズムドラゴン》の攻撃力＋1000、防御力＋1000！",
+        "■君の場の《プリズムドラゴン》のモンスターが攻撃されたバトルの終了時、君のセンターに《プリズムドラゴン》がいるなら、君のデッキの上から１枚をゲージに置く。この能力は１ターンに１回だけ発動する。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "targetZones": [
+            "center"
+          ],
+          "filter": {
+            "attribute": "プリズムドラゴン"
+          },
+          "power": 1000,
+          "defense": 1000
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-sd02-0015-battleend",
+          "kind": "triggered",
+          "event": "allyBattleEnd",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "プリズムドラゴン"
+              }
+            },
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "center",
+              "filter": {
+                "attribute": "プリズムドラゴン"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "E-X1採用カード。装備コストpayGauge:1はcosts.equip(トップレベル配列)のみ（既存慣例）。『君のセンターの《プリズムドラゴン》の攻撃力+1000、防御力+1000』は継続modifyStats{controller:self, filter:{attribute:プリズムドラゴン}, targetZones:[\"center\"], power:1000, defense:1000}——★engine-notes.md記載例のfilter.zone:\"center\"は不採用: continuousEffectApplies（src/05-stats.js:722-790）の末尾はmatchesCardFilter(targetCard, effect.filter)のみを呼びfilter.zoneはmatchesTargetFilter専用（対象選択のみ・src/17:279-296)でcontinuous評価では未参照＝FS1黙殺になるため、実在確認済のeffect.targetZones（bf-h-eb03-0047/bt05-0130/bf-d-ss02-0008で実例）に置換。battleEnd放送部はengine-notes.md記法どおり: event:allyBattleEnd+eventCardMatches{cardType:monster,attribute:プリズムドラゴン}+cardCount{pile:center,attribute}gte1+limit{scope:turn}+putTopDeckToGauge:1。ability idはbf-x-sd02-0015-*でnamespace（named-once衝突回避）。grep/VM自己検査: queueBattleEndFieldTriggers(src/10:555)がfinishPendingAttackの!nullified経路・pending.targetType!==\"fighter\"時のみ呼ばれ、eventCard=defenderCard（戦闘で破壊されたらnull=不放送）＝engine-notes.mdのタイミング注記と一致。_scratch/xsd-probe.js のmkCrystalMark（本カードと同一abilities形）で正/負/弁別/limit/room復元/既存bare battleEnd不変の全ケースをVM実測PASS済み（本バッチでも再実行しPASS確認）。"
+    },
+    {
+      "id": "bf-x-sd02-0016",
+      "no": "X-SD02/0016",
+      "name": "クリスタル・フローレス・シュート！",
+      "type": "impact",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "rules": [
+        "■このターン中、君がダメージを受けていなくて、君のセンターにサイズ３の《プリズムドラゴン》がいるなら、相手のターンのファイナルフェイズに使える。",
+        "■【使用コスト】ゲージ３を払う。",
+        "■【対抗】相手にダメージ３！！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "useConditions": [
+        {
+          "op": "not",
+          "condition": {
+            "op": "damageTakenThisTurn"
+          }
+        },
+        {
+          "op": "cardCount",
+          "controller": "self",
+          "pile": "center",
+          "filter": {
+            "attribute": "プリズムドラゴン",
+            "sizeIn": [
+              3
+            ]
+          },
+          "cmp": "gte",
+          "amount": 1
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-sd02-0016-impact",
+          "kind": "impact",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "phaseIs",
+              "phase": "final"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 3
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 3
+            }
+          ]
+        }
+      ],
+      "_note": "E-X2採用カード。useConditionsはengine-notes.md記法どおり: not(damageTakenThisTurn)（damageOwner省略=self・amount省略=1＝『このターン中、君がダメージを受けていない』）＋cardCount{pile:center, filter:{attribute:プリズムドラゴン, sizeIn:[3]}, cmp:gte, amount:1}（size:3スカラーはFS1黙殺のためsizeIn使用・design.md row13/engine-notes.md明記）。★追加: 『相手のターンのファイナルフェイズに使える』はtiming:[\"counter\"]だけでは保証されない——isCounterPlayTiming()（src/13-abilities-core.js:104-106）はturnOwner非依存でdraw/charge/main/attack/finalの全フェイズでtrue化する汎用ゲートのため、明示的にability.conditionsへturnOwnerIsOpponent+phaseIs{phase:\"final\"}を追加（bt05-s012 ディストーション・パニッシャー!!の実例=phaseIs+turnOwnerIsOpponentを対抗必殺techに付与する precedent と同型。これが無いと自分のターンの終盤フェイズでも使用可能になってしまう対応漏れを防止）。使用コストゲージ3はcosts.cast+ability.costの両方（FIX7）。ダメージはdealDamage{player:opponent, amount:3}（player キーが実DB193件で標準＝target/controllerではない）。grep/VM自己検査: turnDamageTaken条件op(src/13:853)・turnOwnerIsOpponent(src/13)・phaseIs(src/13)全実在確認、_scratch/xsd-probe.jsのE-X2節（damageTakenThisTurn+not+funnel加算点+room復元+旧state後方互換）全PASS再確認済み。本バッチでは追加でability.conditions(turnOwnerIsOpponent+phaseIs final)込みの完全なability形をVMハーネスで直接実測（別紙一時スクリプト・後述自己検査ログ）。"
+    },
+    {
+      "id": "bf-x-sd02-0017",
+      "no": "X-SD02/0017",
+      "name": "スタードラゴンワールド",
+      "type": "flag",
+      "rarity": "デッキ商品",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "このファイターはスタードラゴンWのカードを使う。"
+      ],
+      "imageUrl": null
+    }
+  ]
+}

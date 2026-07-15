@@ -74,15 +74,22 @@ async function useCardAction() {
     await arriveCard(selectedCard);
     return;
   }
-  const handAbility = findUsableHandAbility(selectedCard);
-  if (handAbility) {
-    await useHandAbilityAction(selectedCard, handAbility);
+  // 手札から使える能力を「全件」集める。複数あれば選択、1件は即実行（変身/搭乗の装備と別の起動能力が
+  // 同時に使えるカード対応）。0件でも、下記の装備/魔法/必殺技の本来のアクションは遮らない。
+  const handAbilities = findUsableHandAbilities(selectedCard);
+  if (handAbilities.length > 0) {
+    const handAbility =
+      handAbilities.length === 1
+        ? handAbilities[0]
+        : await chooseHandAbility(selectedCard, handAbilities, state.selected.owner);
+    if (handAbility) {
+      await useHandAbilityAction(selectedCard, handAbility);
+    }
     return;
   }
-  if (hasKnownHandAbility(selectedCard)) {
-    addLog(handAbilityUnavailableReason(selectedCard, state.selected.owner));
-    return;
-  }
+  // 使える手札能力が0件の場合: 「既知だが今使えない能力」（例: メイン中の対抗限定変身＝条件不成立）で
+  // 装備/魔法/必殺技の本来のアクションを遮らない。まず本来のアクションを試し、それも無い時だけ
+  // 最後に「使えない理由」を出す（下の hasKnownHandAbility ブロック）。
   if (selectedCard.type === "item") {
     await equipItem(selectedCard);
     return;
@@ -96,9 +103,15 @@ async function useCardAction() {
     await castSpell(selectedCard);
     return;
   }
-  if (selectedCard.type === "impact") {
-    await castImpact(selectedCard);
+  if (selectedCard.type !== "impact") {
+    // 装備/魔法/必殺技のいずれでもない（例: 手札の対抗限定変身しか持たないモンスターをメインで押した）。
+    // 下流アクションが無いので、既知だが使えない能力の理由を説明して終わる（従来挙動）。
+    if (hasKnownHandAbility(selectedCard)) {
+      addLog(handAbilityUnavailableReason(selectedCard, state.selected.owner));
+    }
+    return;
   }
+  await castImpact(selectedCard);
   // Z6(S-UB-C03/0054): endFinalPhase効果op(15-ability-effects.js)が立てた state.pendingEndTurn を、
   // カード使用の解決が完全にアンワインドしたこの地点で消費してターンを終える。必殺技はファイナルフェイズ
   // でのみ使用できる(上のcastImpact到達条件)ため、この時点でstate.phaseは既に"final"のはず。

@@ -335,6 +335,7 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     executeAbilityBody,
     hasKeyword,
     findUsableHandAbility,
+    findUsableHandAbilities,
     findUsableFieldAbilities,
     isAbilitiesNullified,
     visibleCritical,
@@ -342,6 +343,10 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     runTriggeredAbilities,
     runFieldEventTriggers,
     runPhaseStartTriggers,
+    // E-X1(X-SD02/0015 クリスタル・マーク): 場プレゼンスの battleEnd 放送（ally/opponentBattleEnd）と、既存
+    // attacker-only bare "battleEnd"（queueBattleEndTriggers）の不変性をプローブで突き合わせるため両方を公開。
+    queueBattleEndFieldTriggers,
+    queueBattleEndTriggers,
     // E8(D-CBT/PR-0330): ターン内ミルカウンタ(state.turnDeckMilled)と deckMilledThisTurn 条件を
     // 実ミル経路（funnel/直接）で叩けるようプローブへ公開。
     queueDeckMilledTriggers,

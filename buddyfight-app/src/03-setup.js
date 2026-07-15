@@ -302,6 +302,7 @@ function newGame(options = {}) {
     turnCount: 1,
     impactMonsterCallsThisTurn: [0, 0], // 必殺モンスター(DDD)の「1ターンに1枚」コール数（席別）
     turnDeckMilled: [0, 0], // E8(D-CBT/PR-0330): デッキ所有者ごとのターン内デッキ→ドロップ ミル枚数（席別）
+    turnDamageTaken: [0, 0], // E-X2(X-SD02/0016): 席別のターン内被ダメージ累積（軽減/無効化後の実ダメージ・payLife 等コスト直減算は除外）
     nextAllyAttackTriggers: [], // E10(D-CBT/0110): 「そのターン中、次の味方攻撃時」ワンショット予約キュー
 
     fightLimits: [{}, {}],

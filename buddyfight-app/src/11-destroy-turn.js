@@ -140,6 +140,15 @@ function grantedDestroyImmunityBlocks(card, cause) {
           if (e.from.byEffect && !cause.byEffect) return false;
           if (e.from.byOpponent && !cause.byOpponent) return false;
         }
+        // E-X3(出荷済みバグ修正): 継続エントリの conditions を評価する。従来この関数だけが conditions を黙殺し、
+        // 条件付き耐性が条件不問で常時発動していた（該当6枚: S-UB-C03/0003「アイドル3種以上なら」・0022「神谷奈緒が
+        // いるなら」・0025「小日向美穂がいるなら」＋idolrare クローン ir003/ir022/ir025）。sibling の
+        // grantedProtectionBlocks(src/05:828)/statDecreaseProtected(src/05:890)/soulguardNullifiedFor(src/11)と同じ
+        // 走査規約＝発生源席 sourceOwner 視点・context{card:source, zone, owner}で評価。conditions 無しエントリ
+        // （既存12件＋X-SD の turnOwnerIs* を条件に持つ全ソース型バッツ/アトラ）は完全不変＝後方互換。
+        if (e.conditions && !checkCardConditions(e.conditions, sourceOwner, { card: source, zone, owner: sourceOwner })) {
+          return false;
+        }
         return true;
       });
     }),
@@ -1664,6 +1673,7 @@ async function runEndTurnEffects(endingOwner) {
 function clearTurnModifiers() {
   state.spiritStrikeDamageBonus = [0, 0]; // 霊撃ブースト（ターンスコープ）をリセット
   state.turnDeckMilled = [0, 0]; // E8(D-CBT/PR-0330): ターン内デッキ→ドロップ ミル枚数(席別)をリセット
+  state.turnDamageTaken = [0, 0]; // E-X2(X-SD02/0016): ターン内被ダメージ(席別)をリセット
   state.nextAllyAttackTriggers = []; // E10(D-CBT/0110): 「そのターン中、次の味方攻撃時」ワンショット予約を破棄
   state.callRestrictionsThisTurn = []; // X6(D-BT01/0064): ターン限定コール制限をリセット
   state.turnFlagNameAliases = [[], []]; // E12(D-SS02/0005): ターン限定フラッグ名エイリアスをリセット
