@@ -977,6 +977,31 @@ async function executeAbilityEffect(effect, context) {
       cards: receiver.hand.map(compactCardForLog),
     });
   }
+  if (effect.op === "revealRandomHandThenBranch") {
+    // E-XU1(X-UB01/0057 パル子): 相手（既定）の手札からランダム1枚を公開し、種別で効果を分岐する。
+    // 公開したカードは動かさない＝「公開したカードは元に戻す」を満たす（no move）。手札0枚は no-op。
+    const revealFrom = effect.player === "self" ? player : opponent;
+    if (revealFrom.hand.length > 0) {
+      // 乱数索引は state 常駐 rngInt（クロージャ禁止・シード/counter は state 常駐＝リプレイ/room 復元で決定的）。
+      // 索引値やシードは addLog しない（T13 精神＝シード漏洩防止）。公開したカード名は addLog 可（両席可視の「公開」）。
+      const index = rngInt(revealFrom.hand.length);
+      const revealed = revealFrom.hand[index];
+      addLog(`${context.card.name}の効果で${revealFrom.name}の手札からランダムに選んだ${revealed.name}を公開しました。`);
+      recordDiagnosticEvent("reveal_random_hand", {
+        source: compactCardForLog(context.card),
+        targetPlayer: revealFrom.name,
+        revealed: compactCardForLog(revealed), // 公開カード名（公開は正規挙動）。乱数索引は記録しない。
+      });
+      const kind = effectiveCardType(revealed);
+      if (kind === "monster" && Array.isArray(effect.ifMonster)) {
+        await executeAbilityEffects(effect.ifMonster, context);
+      } else if (kind === "spell" && Array.isArray(effect.ifSpell)) {
+        await executeAbilityEffects(effect.ifSpell, context);
+      } else if (kind === "item" && Array.isArray(effect.ifItem)) {
+        await executeAbilityEffects(effect.ifItem, context);
+      }
+    }
+  }
   if (effect.op === "setNextActivatedCostMayUseOpponentGauge") {
     player.nextActivatedCostMayUseOpponentGauge = true;
     addLog(`${context.card.name}の効果で、次に君の場のモンスターの【起動】でゲージを払う時、相手のゲージからも払えます。`);
@@ -1694,9 +1719,9 @@ async function executeAbilityEffect(effect, context) {
     }
   }
   if (effect.op === "standTarget" && target?.card) {
-    // Z14(g)(S-UB-C03/0038): そのターン中スタンドできない場合はスキップ。
-    if (target.card.cannotStandThisTurn) {
-      addLog(`${target.card.name}はそのターン中スタンドできません。`);
+    // Z14(g)(S-UB-C03/0038): そのターン中スタンド不可。E-XU4(0043 グミスライム): アタックフェイズ中の継続スタンド不可。
+    if (standRestrictedNow(target.card)) {
+      addLog(`${target.card.name}はスタンドできません。`);
       return;
     }
     const wasRested = Boolean(target.card.used); // E9: レスト→スタンドへ実際に遷移した時のみ発火
@@ -1719,8 +1744,8 @@ async function executeAbilityEffect(effect, context) {
     let standCount = 0;
     const stoodEntries = []; // E9: レスト→スタンドへ実際に遷移したカードのみブロードキャスト対象
     targets.forEach((t) => {
-      // Z14(g)(S-UB-C03/0038): そのターン中スタンドできないカードは対象から除外。
-      if (t.card && !t.card.cannotStandThisTurn) {
+      // Z14(g)(S-UB-C03/0038): そのターン中スタンド不可＋E-XU4(0043): アタックフェイズ中の継続スタンド不可を対象外に。
+      if (t.card && !standRestrictedNow(t.card)) {
         if (t.card.used) {
           stoodEntries.push({ owner: t.owner, zone: t.zone, card: t.card, cause: makeEffectCause(context, t.owner) });
         }

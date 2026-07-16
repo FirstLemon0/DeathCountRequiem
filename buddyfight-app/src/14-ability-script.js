@@ -1617,9 +1617,9 @@ function standSelectedForScript(step, context) {
     const slot = findFieldCardSlot(entry.card);
     if (slot) {
       const live = state.players[slot.owner].field[slot.zone];
-      // Z14(g)(S-UB-C03/0038): そのターン中スタンドできないカードはスキップ。
-      if (live && live.cannotStandThisTurn) {
-        addLog(`${live.name}はそのターン中スタンドできません。`);
+      // Z14(g)(S-UB-C03/0038): そのターン中スタンド不可＋E-XU4(0043): アタックフェイズ中の継続スタンド不可はスキップ。
+      if (live && standRestrictedNow(live)) {
+        addLog(`${live.name}はスタンドできません。`);
       } else if (live) {
         if (live.used) {
           stoodEntries.push({ owner: slot.owner, zone: slot.zone, card: live, cause: makeEffectCause(context, slot.owner) });
@@ -1880,6 +1880,7 @@ async function payCardCostForScriptSelection(step, context) {
   const player = state.players[entry.owner ?? context.owner];
   const payment = await payCardCostWithSelection(player, entry.card, step.purpose || "call", entry.card, {
     sourceCard: entry.card,
+    callFromZone: entry.source, // E-XU3: コール元ゾーン（drop/soul/deck 等）を軽減判定へ橋渡し
   });
   if (!payment.ok) {
     addLog(payment.reason);
@@ -2236,6 +2237,29 @@ async function callSelectedForScript(step, context) {
     addLog(`${context.card.name}のコール先を選んでください。`);
     return { ok: false, reason: "missing_call_zone" };
   }
+  // E-XU5(X-UB01/0068 仲間を集めろ！): opt-in の対戦ジャンケンゲート。「勝ったら〜コールする」を、選んだ
+  // カードを動かす前（コスト未払い・状態未変更）に判定し、勝ち以外（負け/引き分け/キャンセル）は {ok:false} で
+  // script を中断する＝カードは元ゾーン（ドロップ等）に残る。乱数/往復は既存 resolveRockPaperScissors の
+  // 作法どおり（promptSeat=各席・リプレイ/room 復元決定性・シード非漏洩）。既存 callSelected 使用カードは
+  // rockPaperScissors 非保持＝挙動完全不変（オプトイン。effect.rockPaperScissors ゲートは src/15 の単純 effect
+  // にのみ効き、専用ディスパッチの本 op には届かなかった＝B7 実測の silent no-op を封じる正規経路）。
+  if (step.rockPaperScissors && (await resolveRockPaperScissors(context)) !== "win") {
+    addLog(`${context.card.name}のジャンケンに勝てなかったため、${entry.card.name}はコールされませんでした。`);
+    return { ok: false, reason: "rps_not_won" };
+  }
+  // E-XU5: 勝った時のみ【コールコスト】等を支払う（step.payCost:"call"）。支払えなければ中断（カードは元ゾーンに
+  // 残る）。callSelectedToEmptyZones/stackCallSelected の step.payCost と同形（callSelected は従来 payCost 非対応＝
+  // 既存使用0件・オプトイン。原文の「勝ったら【コールコスト】を払ってコール」の順＝RPS 勝利後に課金）。
+  if (step.payCost) {
+    const payment = await payCardCostWithSelection(player, entry.card, step.payCost, entry.card, {
+      sourceCard: entry.card,
+      callFromZone: entry.source, // E-XU3: コール元ゾーンを軽減判定へ橋渡し
+    });
+    if (!payment.ok) {
+      addLog(payment.reason);
+      return { ok: false, reason: "call_cost_unpaid" };
+    }
+  }
   const moved = takeScriptSelectionCards([entry]);
   const calledCard = moved[0]?.card;
   if (!calledCard) {
@@ -2276,7 +2300,7 @@ async function callSelectedForScript(step, context) {
   }
   calledCard.enteredFromZone = entry.source || step.from || null; // 発生元ゾーン記録（enteredFromZoneIn 用。飛雲丸 0056）
   if (step.resolveOnEnter) {
-    await resolveOnEnter(calledCard, player, null, { byEffect: true });
+    await resolveOnEnter(calledCard, player, null, { byEffect: true, enterCauseCard: context.card });
   }
   return true;
 }
@@ -2336,7 +2360,7 @@ async function callSelfFromHandForScript(step, context) {
   enforceSizeLimit(player, zone);
   addLog(`${card.name}を${zoneLabel(zone)}にコールしました。`);
   if (step.resolveOnEnter !== false) {
-    await resolveOnEnter(card, player, null, { byEffect: true });
+    await resolveOnEnter(card, player, null, { byEffect: true, enterCauseCard: context.card });
   }
   return true;
 }
@@ -2392,7 +2416,7 @@ async function callSelfFromSoulForScript(step, context) {
   enforceSizeLimit(player, zone);
   addLog(`${removed.name}をソウルから${zoneLabel(zone)}にコールしました。`);
   if (step.resolveOnEnter !== false) {
-    await resolveOnEnter(removed, player, null, { byEffect: true });
+    await resolveOnEnter(removed, player, null, { byEffect: true, enterCauseCard: context.card });
   }
   return true;
 }
@@ -2615,6 +2639,7 @@ async function callSelectedToEmptyZonesForScript(step, context) {
     if (step.payCost) {
       const payment = await payCardCostWithSelection(player, entry.card, step.payCost, entry.card, {
         sourceCard: entry.card,
+        callFromZone: entry.source, // E-XU3: コール元ゾーン（drop/soul/deck 等）を軽減判定へ橋渡し
       });
       if (!payment.ok) {
         addLog(payment.reason);
@@ -2645,7 +2670,7 @@ async function callSelectedToEmptyZonesForScript(step, context) {
     enforceSizeLimit(player, zone);
     addLog(`${context.card.name}の効果で${calledCard.name}を${zoneLabel(zone)}にコールしました。`);
     if (step.resolveOnEnter) {
-      await resolveOnEnter(calledCard, player, null, { byEffect: true });
+      await resolveOnEnter(calledCard, player, null, { byEffect: true, enterCauseCard: context.card });
     }
   }
   return true;
@@ -2678,6 +2703,7 @@ async function stackCallSelectedForScript(step, context) {
     // 支払い失敗時は選択したカードを動かさず、重ねコール自体を中止する。
     const payment = await payCardCostWithSelection(player, entry.card, step.payCost, entry.card, {
       sourceCard: entry.card,
+      callFromZone: entry.source, // E-XU3: コール元ゾーン（drop/soul/deck 等）を軽減判定へ橋渡し
     });
     if (!payment.ok) {
       addLog(payment.reason);
@@ -2695,7 +2721,7 @@ async function stackCallSelectedForScript(step, context) {
   enforceSizeLimit(player, zone);
   addLog(`${context.card.name}の効果で${calledCard.name}を${zoneLabel(zone)}に重ねてコールしました。`);
   if (step.resolveOnEnter) {
-    await resolveOnEnter(calledCard, player, null, { byEffect: true });
+    await resolveOnEnter(calledCard, player, null, { byEffect: true, enterCauseCard: context.card });
   }
   return true;
 }
@@ -2868,6 +2894,7 @@ function isScriptEffectStep(step) {
     "returnSelfToDeckBottom", // E-XC11(X-CP02/0016 ネクタル): 場のこのカードをデッキの下へ（effect版 src/15 へ委譲）
     "nullifySelectedAbilities", // E-XC8(X-CP02/0040 マインドフェイカー): 選択1枚をそのターン中 能力無効化
     "dropSoulSourceCard", // E-XC13(X-CP02/0046 ビガーブレイブ): triggered soulAbility から発生源ソウル札をドロップへ
+    "revealRandomHandThenBranch", // E-XU1(X-UB01/0057 パル子): 相手手札ランダム1枚公開＋種別分岐（effect版 src/15 へ委譲）
     "endFinalPhase",
   ].includes(step.op);
 }

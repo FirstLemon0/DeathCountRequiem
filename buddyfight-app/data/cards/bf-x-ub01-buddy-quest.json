@@ -1,0 +1,6001 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-x-ub01-buddy-quest",
+    "name": "バッツ アルティメットブースター第１弾「バディクエスト～冒険者VS魔王～」",
+    "kind": "アルティメットブースター",
+    "generation": "バッツ",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=62"
+  },
+  "cards": [
+    {
+      "id": "bf-x-ub01-0001",
+      "no": "X-UB01/0001",
+      "name": "剛雷大魔王 バッツ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": [
+        "ドラゴンW",
+        "ダンジョンW"
+      ],
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "雷帝軍"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■君のターン中、場のこのカードは破壊されない。",
+        "■【起動】このカードがセンターにいるなら、手札１枚を捨ててよい。捨てたら、君のデッキからサイズ３の《魔王》１枚までを、君の場の空いているエリアに、【コールコスト】を払ってコールし、デッキをシャッフルする。そのカードは場から離れるまでサイズ０になる。この能力は１ターンに１回だけ使える。",
+        "『２回攻撃』『ライフリンク２』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "destroyImmunity": [
+        {
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        },
+        {
+          "from": {
+            "byBattle": true
+          },
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "doubleAttack",
+        "lifeLink2"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0001-discard-call-maou",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "optional": true,
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "center"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "魔王",
+                "sizeIn": [
+                  3
+                ]
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "allowEmpty": true,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "剛雷大魔王 バッツ",
+              "lead": "【コールコスト】を払ってコールする、サイズ３の《魔王》を選んでください（選ばなくてもよい）。",
+              "emptyMessage": "コールできるサイズ３の《魔王》がデッキにありません。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "call",
+              "payCost": "call",
+              "chooseZones": true,
+              "grantConditionalSize": {
+                "size": 0,
+                "unconditional": true
+              },
+              "resolveOnEnter": true,
+              "require": false
+            },
+            {
+              "op": "shuffleDeck",
+              "controller": "self"
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-0002",
+      "no": "X-UB01/0002",
+      "name": "超星大魔王 ジャックナイフ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "ネオドラゴン"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】君のドロップゾーンのカード１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■このカードが攻撃した時、このカードのソウルが２枚以上あるなら、そのターン中、このカードは『貫通』と『２回攻撃』を得る。",
+        "■君のアタックフェイズ開始時、君のドロップゾーンのカード１枚までをこのカードのソウルに入れるか、ゲージに置く。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putDropToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0002-attack-soul-buff",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "sourceSoulCountGte",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "penetrate",
+              "duration": "turn"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "doubleAttack",
+              "duration": "turn"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ub01-0002-attackstart-drop-choice",
+          "kind": "triggered",
+          "event": "attackStart",
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "d",
+              "from": "drop",
+              "controller": "self",
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "超星大魔王 ジャックナイフ",
+              "lead": "君のドロップゾーンのカード1枚までを、このカードのソウルに入れるかゲージに置いてください（選ばなくてもよい）。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "d",
+              "then": [
+                {
+                  "op": "chooseBranch",
+                  "title": "超星大魔王 ジャックナイフ",
+                  "lead": "選んだカードの置き場所を選んでください。",
+                  "options": [
+                    {
+                      "key": "soul",
+                      "label": "このカードのソウルに入れる",
+                      "script": [
+                        {
+                          "op": "moveSelected",
+                          "var": "d",
+                          "to": "soul"
+                        }
+                      ]
+                    },
+                    {
+                      "key": "gauge",
+                      "label": "ゲージに置く",
+                      "script": [
+                        {
+                          "op": "moveSelected",
+                          "var": "d",
+                          "to": "gauge"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "『【コールコスト】君のドロップゾーンのカード1枚をこのカードのソウルに入れ、ゲージ2を払う』=costs.call:[putDropToSoul:1(filter無し=種別不問。bf-x-bt01-0050型),payGauge:2]。『このカードが攻撃した時、このカードのソウルが2枚以上あるなら、そのターン中『貫通』と『2回攻撃』を得る』はevent:\"attack\"（カード自身へ直接発火。src/09:428 runAttackDeclarationTriggers）+conditions:[sourceSoulCountGte(2)](src/13:1544)+grantKeyword(penetrate/doubleAttack,duration:turn)を2回（grantKeywordは単一keyword引数のみ=src/15:1605、複数キーワードは2エフェクトに分割。bf-x-ub01-0064型踏襲）。『君のアタックフェイズ開始時、ドロップの1枚までをソウルに入れるかゲージに置く』はevent:\"attackStart\"（runPhaseStartTriggers、src/07:864・場の全カードへ配送＝turnOwner文脈はcontext.turnOwner）+conditions:[turnOwnerIsSelf]（B7 0029型踏襲）+script selectCards{from:drop,min:0,require:false}→ifSelection→chooseBranch{soul:moveSelected(to:soul)/gauge:moveSelected(to:gauge)}（moveSelectedのto:\"soul\"はcontext.card=発生源カード自身のソウルへ入る仕様。src/14:1006・bf-h-eb01-0056型のchooseBranch構造を1枚選択+2択の宛先選択へ流用）。『ソウルガード』=keywords:[soulguard]。grep自己検査: putDropToSoul/payGauge/sourceSoulCountGte(src/13:1544)/grantKeyword(src/15:1605)/attackStart(src/07:864,864)/turnOwnerIsSelf/selectCards/ifSelection/chooseBranch/moveSelected(to:soul/gauge, src/14:988,1006,1391) 全実在確認。VM実測: ソウル0/1枚では貫通・2回攻撃不成立、2枚以上で成立(そのターン限り)／アタックフェイズ開始時ドロップ選択→ソウル/ゲージそれぞれへ実際に移動／相手のアタックフェイズでは不発(turnOwnerIsSelf)。"
+    },
+    {
+      "id": "bf-x-ub01-0003",
+      "no": "X-UB01/0003",
+      "name": "運命の守護者 タスク",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "冒険者",
+        "ネオドラゴン"
+      ],
+      "size": 1,
+      "power": 6000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、ライフ１を払う。",
+        "■【対抗】【起動】“未来からの使者”君のライフが６以下なら、手札のこのカードを、【コールコスト】を払ってコールする。「未来からの使者」は１ターンに１回だけ使える。",
+        "■このカードが登場した時、相手の場のサイズ２以下のモンスター１枚を破壊する。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0003-mirai-kara-no-shisha",
+          "label": "未来からの使者",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 6
+            }
+          ],
+          "script": [
+            {
+              "op": "selectZone",
+              "var": "z",
+              "emptyOnly": true
+            },
+            {
+              "op": "callSelfFromHand",
+              "zoneVar": "z"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xub01-mirai-kara-no-shisha"
+          }
+        },
+        {
+          "id": "bf-x-ub01-0003-enter-destroy",
+          "kind": "triggered",
+          "event": "enter",
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster",
+              "sizeLte": 2
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "_note": "『【コールコスト】ゲージ1を払い、ライフ1を払う』=costs.call:[payGauge:1,payLife:1]。『【対抗】【起動】\"未来からの使者\"君のライフが6以下なら、手札のこのカードを、【コールコストを】払ってコールする』は named-once(design.md §5表: xub01-mirai-kara-no-shisha)。kind:activated+fromHandOnly:true+timing:[main,counter]（対抗+起動の両マーク）+conditions:[lifeLte(6)](src/13:891)+script selectZone{emptyOnly:true}→callSelfFromHand{zoneVar}（callSelfFromHandは自身のcosts.callを自動精算=bf-h-eb03-0003型の骨格を流用。turnOwnerIsSelf等の追加ゲートは原文に無いため付与せず＝対抗窓としても使用可）+limit{scope:turn,key:xub01-mirai-kara-no-shisha}。『このカードが登場した時、相手の場のサイズ2以下のモンスター1枚を破壊する』はevent:enter+target(fieldCard,controller:opponent,filter:{cardType:monster,sizeLte:2})+destroy{target:$target}（bf-d-bt04-0111型の登場時破壊を単純化）。grep自己検査: payGauge/payLife/lifeLte(src/13:891)/selectZone/callSelfFromHand(src/14:2287)/destroy/enter event 全実在確認。VM実測: ライフ7ではmirai-kara-no-shisha不発／ライフ6以下で手札から実コール(コスト精算込み)・1ターン1回制限／登場時に相手サイズ2以下モンスターを実破壊・サイズ3では対象外(no-op)。"
+    },
+    {
+      "id": "bf-x-ub01-0004",
+      "no": "X-UB01/0004",
+      "name": "轟雷の勇者 牙王",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ドラゴンW"
+      ],
+      "attributes": [
+        "冒険者",
+        "雷帝軍"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードが登場した時、そのターン中、君の場の《冒険者》のモンスター１枚の打撃力＋１！",
+        "■“一緒に戦おうぜ！”このカードが他の《冒険者》と連携攻撃した時、君の場の《冒険者》１枚を選び、ゲージ１を払ってよい。払ったら、選んだカードとこのカードをスタンドする。「一緒に戦おうぜ！」は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0004-enter-critical",
+          "kind": "triggered",
+          "event": "enter",
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "冒険者"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "critical": 1,
+              "duration": "turn"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ub01-0004-issho-ni-tatakaou",
+          "label": "一緒に戦おうぜ！",
+          "kind": "triggered",
+          "event": "allyLinkAttack",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            },
+            {
+              "op": "eventAttackersInclude",
+              "excludeSelf": true,
+              "filter": {
+                "attribute": "冒険者"
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "attribute": "冒険者"
+            }
+          },
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$target"
+            },
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xub01-issho-ni-tatakaou"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-0005",
+      "no": "X-UB01/0005",
+      "name": "碧空の皇女 クウ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ヒーローW"
+      ],
+      "attributes": [
+        "冒険者",
+        "ヒロイン"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■“空を制する者”君の場のアイテムが攻撃した時、君のライフを＋１し、カード１枚を引き、そのターン中、そのアイテムの攻撃力＋3000！「空を制する者」は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0005-sora-wo-seisuru-mono",
+          "label": "空を制する者",
+          "kind": "triggered",
+          "event": "allyAttack",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "item"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            },
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 3000,
+              "duration": "turn"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xub01-sora-wo-seisuru-mono"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-0006",
+      "no": "X-UB01/0006",
+      "name": "ボーナスクエスト",
+      "type": "spell",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "ドロー",
+        "チャージ",
+        "回復"
+      ],
+      "rules": [
+        "■【使用コスト】君の手札のサイズ２以上のモンスター１枚を捨てる。",
+        "■君のデッキの上から２枚をゲージに置き、君のライフを＋１し、カード２枚を引く。「ボーナスクエスト」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "discardHand",
+            "amount": 1,
+            "filter": {
+              "cardType": "monster",
+              "sizeGte": 2
+            }
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0006-gauge-life-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xub01-bonus-quest"
+          }
+        }
+      ],
+      "_note": "named-once bare slug='xub01-bonus-quest'（design.md §5表）。使用コストは手札のsizeGte:2モンスター1枚discardHand（3経路実装済・grep確認）。カード名limitパターンはbf-d-td01-0010竜王伝（limit.key='ryuoden'）を踏襲。"
+    },
+    {
+      "id": "bf-x-ub01-0007",
+      "no": "X-UB01/0007",
+      "name": "結晶魔王 アトラ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "プリズムドラゴン"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■相手のカードの効果で君が受けるダメージを１減らす。",
+        "■君のセンターのモンスターと、君の場の魔法は、相手のカードの効果で破壊されない。",
+        "『２回攻撃』『ソウルガード』『ライフリンク２』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard",
+        "lifeLink2"
+      ],
+      "continuous": [
+        {
+          "op": "damageReceivedReduction",
+          "amount": 1,
+          "byOpponent": true,
+          "nonAttackOnly": true
+        },
+        {
+          "op": "grantDestroyImmunity",
+          "controller": "self",
+          "zoneIn": [
+            "center"
+          ],
+          "filter": {
+            "cardType": "monster"
+          },
+          "from": {
+            "byEffect": true,
+            "byOpponent": true
+          }
+        },
+        {
+          "op": "grantDestroyImmunity",
+          "controller": "self",
+          "filter": {
+            "cardType": "spell"
+          },
+          "from": {
+            "byEffect": true,
+            "byOpponent": true
+          }
+        }
+      ],
+      "_note": "原文『相手のカードの効果で君が受けるダメージを１減らす』は damageReceivedReduction に byOpponent:true（相手席発のダメージ限定）＋nonAttackOnly:true（攻撃以外＝カードの効果/必殺技のダメージ限定）を併用して忠実実装。byOpponent は F1 で新設: 04-cost-resource.js damageReceivedReductionFor が第4引数 sourceOwner（発生源席）を受け取り、相手席（整数かつ owner と異なる）発のダメージにのみ適用する（既存 preventOpponentEffectDamage と同じ sourceOwner 配線を再利用・sourceOwner 未供給時＝攻撃/発生源不明は非適用の安全側）。これにより自分の効果由来ダメージ（sourceOwner===owner）と攻撃ダメージ（byAttack/sourceOwner 未供給）は軽減されず、旧 nonAttackOnly 単独近似（自分の効果由来ダメージも軽減＝過広）の乖離を解消。既存 damageReceivedReduction 使用カードは byOpponent 非保持のため挙動完全不変。"
+    },
+    {
+      "id": "bf-x-ub01-0008",
+      "no": "X-UB01/0008",
+      "name": "百鬼魔王 ヤミゲドウ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "百鬼"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】君の場のモンスター１枚以上を好きな枚数このカードのソウルに入れ、ゲージ２を払う。",
+        "■“爆雷”相手の場にサイズ３以下のモンスターが登場した時、そのモンスターのサイズの数値分、相手にダメージ！！この能力は１ターンに１回だけ発動する。",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putSelectedOwnFieldCardsToSoul",
+            "filter": {
+              "cardType": "monster"
+            },
+            "min": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0008-bakurai",
+          "label": "爆雷",
+          "kind": "triggered",
+          "event": "opponentEnter",
+          "conditions": [
+            {
+              "op": "enteredCardMatches",
+              "filter": {
+                "cardType": "monster",
+                "sizeLte": 3
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amountFrom": {
+                "source": "targetStat",
+                "stat": "size"
+              }
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-0009",
+      "no": "X-UB01/0009",
+      "name": "煉獄魔王 ディミオス",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ダークネスドラゴンW"
+      ],
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "武装騎竜"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■【対抗】【起動】君のターン中、相手の場のモンスター１枚を選び、君の場のモンスター１枚を破壊する。破壊したら、このカードをスタンドし、選んだカードを破壊し、相手にダメージ１！この能力は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0009-counter-sacrifice",
+          "kind": "activated",
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "cost": [
+            {
+              "op": "destroyOwnMonster",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$self"
+            },
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "『君の場のモンスター１枚を破壊する』はdestroyOwnMonster（excludeSource無し＝bf-h-bt04-0099執行剣トラジディと同型）。このカード自身を選んで破壊した場合、後続の『このカードをスタンドする』はカードが場に無いためno-op（standTargetは対象が場に見つからなければ何もしない）が、選んだ相手モンスターの破壊とダメージ１は原文通り解決する。原文にこの自己選択を禁じる記述が無いため文字通り実装。"
+    },
+    {
+      "id": "bf-x-ub01-0010",
+      "no": "X-UB01/0010",
+      "name": "風車の騎士 ノボル",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ドラゴンW"
+      ],
+      "attributes": [
+        "冒険者",
+        "騎士",
+        "竜騎士"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 1,
+      "defense": 5000,
+      "rules": [
+        "【コールコスト】ゲージ１を払う。",
+        "■君の場に他の《冒険者》２枚以上があるなら、このカードの打撃力を＋１し、『移動』を得る！",
+        "■このカードの攻撃で相手にダメージを与えた時、君のデッキの上から１枚をゲージに置く。",
+        "『２回攻撃』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "attribute": "冒険者"
+              },
+              "excludeSource": true,
+              "cmp": "gte",
+              "amount": 2
+            }
+          ]
+        },
+        {
+          "op": "grantKeyword",
+          "keyword": "move",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "attribute": "冒険者"
+              },
+              "excludeSource": true,
+              "cmp": "gte",
+              "amount": 2
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0010-dealdamage-gauge",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-0011",
+      "no": "X-UB01/0011",
+      "name": "暗黒騎士 ガイト",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ダークネスドラゴンW"
+      ],
+      "attributes": [
+        "冒険者",
+        "騎士",
+        "黒竜"
+      ],
+      "size": 1,
+      "power": 6000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが他のカードと連携攻撃した時、相手の場のモンスター１枚を破壊する。破壊したら、破壊したカードのサイズの数値分、相手のデッキの上から相手のドロップゾーンに置き、置いた枚数分、君のライフを回復し、相手にダメージを与える。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0011-link-destroy-mill",
+          "kind": "triggered",
+          "event": "allyLinkAttack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "moveTopDeckToDrop",
+              "player": "opponent",
+              "amountFrom": {
+                "source": "targetStat",
+                "stat": "size"
+              },
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
+            },
+            {
+              "op": "gainLife",
+              "amountFrom": {
+                "source": "milledMatchCount",
+                "filter": {}
+              },
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amountFrom": {
+                "source": "milledMatchCount",
+                "filter": {}
+              },
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-0012",
+      "no": "X-UB01/0012",
+      "name": "勇者の仲間 爆&くぐる",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが登場した時、君のデッキから《冒険者》のモンスターかアイテム１枚までを手札に加え、デッキをシャッフルする。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0012-enter-search",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "searchDeckToHand",
+              "filter": {
+                "attribute": "冒険者",
+                "cardTypeIn": [
+                  "monster",
+                  "item"
+                ]
+              },
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "bf-d-bt02-0014鬼斬の刀獣型（searchDeckToHand+cardTypeIn[monster,item]、shuffle既定true）をそのまま踏襲。"
+    },
+    {
+      "id": "bf-x-ub01-0013",
+      "no": "X-UB01/0013",
+      "name": "闇の商人 ジン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "カタナW"
+      ],
+      "attributes": [
+        "冒険者",
+        "髑髏武者"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【起動】“用心棒の雇用”君のドロップゾーンのサイズ２以下のモンスター１枚を選び、ゲージ１を払い、ライフ１を払う。払ったら、選んだカードを【コールコスト】を払ってコールする。「用心棒の雇用」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0013-youjinbo-no-koyo",
+          "label": "用心棒の雇用",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "sizeLte": 2
+              },
+              "min": 1,
+              "max": 1,
+              "amount": 1,
+              "require": true,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "闇の商人 ジン",
+              "lead": "【コールコスト】を払ってコールする、ドロップゾーンのサイズ2以下のモンスターを選んでください。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "call",
+              "payCost": "call",
+              "chooseZones": true,
+              "resolveOnEnter": true,
+              "require": true
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "shared": true,
+            "key": "xub01-youjinbo-no-koyo"
+          }
+        }
+      ],
+      "_note": "『「用心棒の雇用」君のドロップゾーンのサイズ2以下のモンスター1枚を選び、ゲージ1を払い、ライフ1を払う。払ったら、選んだカードを【コールコスト】を払ってコールする』はbf-d-bt04-0015型（ability.cost:[payGauge,payLife]（useFieldAbilityActionが script 実行前に支払い済み）＋script selectCards{from:drop,filter:{cardType:monster,sizeLte:2},callable:true,canPayCost:\"call\"}→callSelectedToEmptyZones{payCost:\"call\",chooseZones:true,resolveOnEnter:true}＝bare callSelectedによる無償化はしていない=FIX7準拠）。「」名付き1ターン1回はlimit{scope:turn,shared:true,key:\"xub01-youjinbo-no-koyo\"}（同名カード合算=公式裁定。bf-d-bt04-0015/bf-x-bt01-0001前例）。callCost行なし=costs省略（bf-d-bt04-0015と同様、印字コールコスト無し=無償召喚）。timing:[\"main\"]のみ（【対抗】マーク無し＝【起動】単独。bf-x-bt01-0084/bf-d-bt03-0018型）。grep自己検査: selectCards/callSelectedToEmptyZones(src/14:2569)/payGauge/payLife 全実在確認。"
+    },
+    {
+      "id": "bf-x-ub01-0014",
+      "no": "X-UB01/0014",
+      "name": "神脚拳士 カナタ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "冒険者",
+        "プリズムドラゴン"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■君のセンターにサイズ３以上のモンスターがいるなら、場のこのカードのサイズを１減らす。",
+        "■“輝光連脚”君の場のカードが連携攻撃した時、君のライフを＋１し、相手にダメージ１！「輝光連脚」は１ターンに１回だけ発動する。"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "size": -1,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "center",
+              "filter": {
+                "cardType": "monster",
+                "sizeGte": 3
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0014-kiko-rengyaku",
+          "label": "輝光連脚",
+          "kind": "triggered",
+          "event": "allyLinkAttack",
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xub01-kiko-rengyaku"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-0015",
+      "no": "X-UB01/0015",
+      "name": "暗殺教団の刺客 サカテ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "カタナW"
+      ],
+      "attributes": [
+        "冒険者",
+        "暗殺鬼"
+      ],
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■【起動】ライフ１を払い、場のカード１枚のソウル１枚を、ドロップゾーンに置いてよい。そうしたら、カード１枚を引く。この能力は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0015-soul-drop-draw",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "h",
+              "from": "field",
+              "controller": "any",
+              "filter": {
+                "soulCountGte": 1
+              },
+              "amount": 1,
+              "min": 0,
+              "require": false,
+              "title": "暗殺教団の刺客 サカテ",
+              "lead": "ソウルをドロップゾーンに置く場合、場のカードを選んでください（置かなくてもよい）。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "h",
+              "then": [
+                {
+                  "op": "dropSelectedSoul",
+                  "var": "h",
+                  "amount": 1
+                },
+                {
+                  "op": "draw",
+                  "amount": 1
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "『ライフ1を払い、場のカード1枚のソウル1枚を、ドロップゾーンに置いてよい。そうしたら、カード1枚を引く』はability.cost:[payLife:1]（必須・「払い」＝てよい無し）＋script selectCards{from:field,controller:\"any\"（『場のカード』＝所有者無指定＝双方対象。bf-d-bt04-0079型）,filter:{soulCountGte:1},min:0,require:false}→ifSelection→dropSelectedSoul+draw（bf-x-bt01-0096『闇夜の用心棒』型の一体化オプトイン＝てよい～そうしたら をmin:0選択+ifSelectionで表現）。無名『この能力は1ターンに1回だけ使える』=limit{scope:turn}（key省略=ability.id既定・named-once表なし）。callCost行なし=costs省略。grep自己検査: selectCards/ifSelection/dropSelectedSoul/draw/payLife 全実在確認（src/14:394 dropSelectedSoulForScript）。"
+    },
+    {
+      "id": "bf-x-ub01-0016",
+      "no": "X-UB01/0016",
+      "name": "見習いシスター ハナコ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ドラゴンW"
+      ],
+      "attributes": [
+        "冒険者"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■君の場にこのカード以外のモンスターが登場した時、君のデッキの上から１枚をゲージに置き、君のライフを＋１！この能力は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0016-ally-enter-charge-life",
+          "kind": "triggered",
+          "event": "allyEnter",
+          "conditions": [
+            {
+              "op": "enteredCardMatches",
+              "excludeSource": true,
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "『君の場にこのカード以外のモンスターが登場した時』=event:allyEnter+enteredCardMatches{excludeSource:true,filter:{cardType:monster}}（bf-x-bt01-0001/bf-d-bt02-0043等の多数前例と同型）。「1ターンに1回」は無名なのでlimit.keyはability.id依拠（abilityLimitKey既定＝xub01-接頭辞不要）。grep確認: allyEnter(src/07:570)・enteredCardMatches(src/13:998)・putTopDeckToGauge/gainLife(共に既存)。"
+    },
+    {
+      "id": "bf-x-ub01-0017",
+      "no": "X-UB01/0017",
+      "name": "仮面剣士 キリ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "レジェンドW"
+      ],
+      "attributes": [
+        "冒険者",
+        "アースガルド"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■このカードが登場した時、場のカード１枚のソウル１枚をドロップゾーンに置いてよい。置いたら、君のライフを＋１！",
+        "■【対抗】【起動】場のこのカードをドロップゾーンに置く。置いたら、君の手札のカード名に「ミセリア」を含むモンスター１枚を、【コールコスト】を払ってコールしてよい。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0017-enter-soul-drop",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "h",
+              "from": "field",
+              "controller": "any",
+              "filter": {
+                "soulCountGte": 1
+              },
+              "amount": 1,
+              "min": 0,
+              "require": false,
+              "title": "仮面剣士 キリ",
+              "lead": "ソウル1枚をドロップゾーンに置く場のカードを選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "h",
+              "then": [
+                {
+                  "op": "dropSelectedSoul",
+                  "var": "h",
+                  "amount": 1
+                },
+                {
+                  "op": "gainLife",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ub01-0017-counter-drop-call",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "script": [
+            {
+              "op": "dropSelf"
+            },
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "ミセリア"
+              },
+              "amount": 1,
+              "min": 0,
+              "max": 1,
+              "require": false,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "仮面剣士 キリ",
+              "lead": "【コールコスト】を払ってコールする、カード名に「ミセリア」を含む手札のモンスターを選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "call",
+              "payCost": "call",
+              "chooseZones": true,
+              "resolveOnEnter": true,
+              "require": false
+            }
+          ]
+        }
+      ],
+      "_note": "①enter『場のカード１枚のソウル１枚をドロップゾーンに置いてよい。置いたら、君のライフを＋１』=controller:any（『場の』=両陣営）selectCards{soulCountGte:1,min:0}→ifSelection→dropSelectedSoul+gainLife（bf-x-bt01-0096闇夜の用心棒の同型script構造をそのまま踏襲・controllerのみself→anyに変更）。②【対抗】【起動】『場のこのカードをドロップゾーンに置く。置いたら、…コールしてよい』=kind:activated(fromHandOnlyでない・場発動)、timing:[counter,main]はbf-h-bt03-0107（同一開幕句『【対抗】【起動】場のこのカードをドロップゾーンに置く。置いたら、』）の踏襲。dropSelfをscript先頭に置く形はbf-d-bt04-0017/bf-d-ss03-0017等の多数前例。手札名指定コールはbf-s-ub-c03-0087（selectCards{from:hand,callable:true,canPayCost:call}+callSelectedToEmptyZones{payCost:call,chooseZones:true,resolveOnEnter:true,require:false}）を踏襲、filterのみnameIncludes:ミセリアに変更。E-XU2(0021ミセリア)への配線: callSelectedToEmptyZonesはengine-notes記載の5経路の1つでcontext.card(=キリ)をenterCauseCardとして自動で通す（バッチ側の追加配線不要）。"
+    },
+    {
+      "id": "bf-x-ub01-0018",
+      "no": "X-UB01/0018",
+      "name": "ミッションカード “冒険者ギルド 相棒アカデミー”",
+      "type": "spell",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "召喚"
+      ],
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■【対抗】【起動】君のアタックフェイズ中、君の場の《冒険者》のモンスター１枚を手札に戻す。戻したら、戻したカードとカード名が違う、君の手札の《冒険者》のモンスター１枚を、【コールコスト】を払って、君の場の空いているエリアにコールしてよい。この能力は１ターンに１回だけ使える。",
+        "■「ミッションカード “冒険者ギルド 相棒アカデミー”」は君の場に１枚だけ『設置』できる。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "uniqueSet": true,
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0018-swap",
+          "kind": "activated",
+          "timing": [
+            "attack",
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "phaseIs",
+              "phase": "attack"
+            },
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "attribute": "冒険者",
+                "cardType": "monster"
+              }
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          },
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "ret",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "attribute": "冒険者",
+                "cardType": "monster"
+              },
+              "min": 1,
+              "max": 1,
+              "amount": 1,
+              "require": true,
+              "title": "ミッションカード “冒険者ギルド 相棒アカデミー”",
+              "lead": "手札に戻す君の場の《冒険者》のモンスター1枚を選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "ret",
+              "to": "hand"
+            },
+            {
+              "op": "selectCards",
+              "var": "callee",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "attribute": "冒険者",
+                "cardType": "monster",
+                "differentNameFromVar": "ret"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "ミッションカード “冒険者ギルド 相棒アカデミー”",
+              "lead": "戻したカードとカード名が違う、【コールコスト】を払ってコールする手札の《冒険者》のモンスターを選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "callee",
+              "then": [
+                {
+                  "op": "selectZone",
+                  "var": "z",
+                  "cardVar": "callee",
+                  "emptyOnly": true
+                },
+                {
+                  "op": "payCardCostForSelection",
+                  "var": "callee",
+                  "purpose": "call"
+                },
+                {
+                  "op": "callSelected",
+                  "var": "callee",
+                  "zoneVar": "z",
+                  "resolveOnEnter": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "『設置』1枚制限=原文に「君の場に１枚だけ『設置』できる」明記あり→uniqueSet:true（codex開発ログ2026-06-xx『1枚だけ』限定方針に整合）。timing/conditions(turnOwnerIsSelf+phaseIs:attack)はbf-h-pp01-0051（【対抗】【起動】君のアタックフェイズ中）を踏襲。戻す→別名コールのscript構造はbf-d-eb02-0052（differentNameFromVar）をそのまま踏襲（差異: 場→手札に戻す/コール先が空きエリア/コールコスト実払い）。"
+    },
+    {
+      "id": "bf-x-ub01-0019",
+      "no": "X-UB01/0019",
+      "name": "天空魔王城 サツキ・パレス",
+      "type": "spell",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ヒーローW"
+      ],
+      "attributes": [
+        "魔王",
+        "召喚"
+      ],
+      "rules": [
+        "■【使用コスト】君のドロップゾーンの《魔王》２枚をこのカードのソウルに入れる。",
+        "■『設置』（このカードは場に置いて使う）",
+        "■君が《魔王》を手札以外からコールする場合、【コールコスト】に書かれている払うゲージの数値は１少なくなる。",
+        "■【対抗】【起動】君のセンターにモンスターがいないなら、このカードのソウルの《魔王》のモンスター１枚を【コールコスト】を払って、君のセンターにコールする。この能力は１ターンに１回だけ使える。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "putDropToSoul",
+            "amount": 2,
+            "filter": {
+              "attribute": "魔王"
+            }
+          }
+        ]
+      },
+      "costReduction": [
+        {
+          "purpose": "call",
+          "filter": {
+            "attribute": "魔王"
+          },
+          "payOp": "payGauge",
+          "amount": 1,
+          "callFromZoneNot": [
+            "hand"
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0019-counter-call-center",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "soul",
+              "filter": {
+                "attribute": "魔王",
+                "cardType": "monster"
+              },
+              "min": 1,
+              "max": 1,
+              "amount": 1,
+              "require": true,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "天空魔王城 サツキ・パレス",
+              "lead": "このカードのソウルの《魔王》のモンスター1枚を選んでください。"
+            },
+            {
+              "op": "payCardCostForSelection",
+              "var": "call",
+              "purpose": "call"
+            },
+            {
+              "op": "callSelected",
+              "var": "call",
+              "zone": "center",
+              "resolveOnEnter": true
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "E-XU3(engine-notes.md)そのまま採用: costReduction[0]={purpose:call,filter:{attribute:魔王},payOp:payGauge,amount:1,callFromZoneNot:[hand]}＝手札コールは非適用、ドロップ/ソウル/デッキ発コールに-1。『【使用コスト】ドロップの《魔王》2枚をこのカードのソウルに入れる』=costs.cast:[putDropToSoul:2,filter:{attribute:魔王}]（bt04-0092/ss01-0033型・min既定=amount=2で必須支払い）。『設置』=keywords:[set]（原文に『君の場に1枚だけ設置できる』の明記が無いため**uniqueSet不付与**＝rules原文優先。engine-notes.mdの例示DSLはuniqueSet:trueを含んでいたが、skeleton rules(唯一の正)に該当文言が無いためB7 0018の方針(『1枚だけ』明記時のみuniqueSet)に従い外した。食い違いとして報告）。『【対抗】【起動】君のセンターにモンスターがいないなら、このカードのソウルの《魔王》のモンスター1枚を【コールコスト】を払って、君のセンターにコールする。1ターンに1回』（named表に無し=無名limit）はconditions:[ownCenterEmpty](src/13:939)+script selectCards{from:soul(hostVar省略=context.card=このカード自身のソウル。src/14:774),filter:{attribute:魔王,cardType:monster},callable:true,canPayCost:call}→payCardCostForSelection{purpose:call}→callSelected{zone:\"center\"（固定ゾーン。空きチェックはability.conditionsのownCenterEmptyで担保）,resolveOnEnter:true}+limit{scope:turn}。grep自己検査: putDropToSoul/costReduction callFromZoneNot(engine-notes記載のE-XU3実装)/ownCenterEmpty(src/13:939)/selectCards from:soul(src/14:774)/payCardCostForSelection/callSelected zone固定(src/14:2235) 全実在確認。VM実測（design必須項目）: 手札コールでは-1が非適用・ドロップ/デッキ/ソウル発コールでは-1適用／センターにモンスターがいれば対抗起動不発／ソウルの魔王モンスターをセンターへ実コール・1ターン1回。"
+    },
+    {
+      "id": "bf-x-ub01-0020",
+      "no": "X-UB01/0020",
+      "name": "魔法剣 エーテルストーム",
+      "type": "item",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者",
+        "武器"
+      ],
+      "power": 3000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払い、ライフ１を払う。",
+        "■君の場の《冒険者》のモンスター全ての攻撃力＋1000、防御力＋1000！",
+        "■君の場の《冒険者》が連携攻撃した時、そのターン中、このカードは『２回攻撃』を得る。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "attribute": "冒険者",
+            "cardType": "monster"
+          },
+          "power": 1000,
+          "defense": 1000
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0020-link-double",
+          "kind": "triggered",
+          "event": "allyLinkAttack",
+          "conditions": [
+            {
+              "op": "eventAttackersMatch",
+              "filter": {
+                "attribute": "冒険者"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "doubleAttack",
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "allyLinkAttack+eventAttackersMatch(attribute:冒険者)はbf-d-ss03-0016太陽剣バルソードと同型（アイテム自身は攻撃者でなくてよい＝味方の《冒険者》連携攻撃で誘発）。継続バフはcontroller:self+filter(attribute,cardType)の場全体形（bf-x-bt01-0050型）。"
+    },
+    {
+      "id": "bf-x-ub01-0021",
+      "no": "X-UB01/0021",
+      "name": "氷竜魔王 ミセリア",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "レジェンドW"
+      ],
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "アースガルド"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】君のドロップゾーンの魔法１枚までをこのカードのソウルに入れ、ゲージ２を払う。",
+        "■君の場のカード全ては、相手のカードの効果で能力を無効化されない。",
+        "■このカードが「仮面剣士 キリ」の効果で登場した時、そのターン中、相手の場のカード全ての能力を無効化する。",
+        "『２回攻撃』『ソウルガード』『ライフリンク２』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putDropToSoul",
+            "filter": {
+              "cardType": "spell"
+            },
+            "amount": 1,
+            "min": 0
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard",
+        "lifeLink2"
+      ],
+      "continuous": [
+        {
+          "op": "grantNullifyImmunity",
+          "controller": "self",
+          "filter": {}
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0021-enter-kiri",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "enteredByCardNamed",
+              "name": "仮面剣士 キリ"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyFieldAbilities",
+              "controller": "opponent",
+              "filter": {},
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "E-XU2(enteredByCardNamed)を使用。『仮面剣士 キリ』(no.0017・別班B6実装予定)がcallSelected経由でこのカードを手札からコールした時のみ発火。通常コール（【コールコスト】払い等）では不発（enterCauseCard未追跡＝false）。VMでは仮のキリ役モンスターを自作しcallSelectedで検証。continuous grantNullifyImmunity{controller:self,filter:{}}はbf-x-ss02-0002と同型（既存op・新規op不要）。既知のエンジン特性として、このカード1枚のみが場にいる状況で『自分自身』を保護する経路はisAbilitiesNullifiedの自己再入で正しく解決できない（tests/effects-regression.test.js Z4(d)のコメントがS-UB-C03/0001でも同型の制約を明記）。本カード固有の不具合ではなくgrantNullifyImmunity全体の既存挙動のため実装は変更せず、VMは「別カードを保護する」核心機能を実測した。"
+    },
+    {
+      "id": "bf-x-ub01-0022",
+      "no": "X-UB01/0022",
+      "name": "鬼神魔王 イブキ",
+      "type": "monster",
+      "rarity": "",
+      "world": "カタナW",
+      "worlds": [
+        "カタナW",
+        "ダンジョンW"
+      ],
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "暗殺鬼"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードがカードの効果で登場した時、相手の場のモンスター１枚を破壊する。破壊したら、相手のゲージ１枚をドロップゾーンに置き、相手にダメージ１！",
+        "『奇襲』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "ambush"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0022-enter-by-effect-destroy",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "enteredByEffect"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "moveGaugeToDrop",
+              "player": "opponent",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-0023",
+      "no": "X-UB01/0023",
+      "name": "太陽の魔王 バルドラゴン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": [
+        "ドラゴンW",
+        "ダンジョンW"
+      ],
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "太陽竜"
+      ],
+      "size": 3,
+      "power": 10000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが１枚で攻撃している攻撃は無効化されない。",
+        "■このカードがレフトにいるなら、君の場のセンターのモンスターの打撃力＋１！",
+        "『貫通』『ライフリンク２』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate",
+        "lifeLink2"
+      ],
+      "attackResistances": [
+        {
+          "conditions": [
+            {
+              "op": "attackingAlone"
+            }
+          ],
+          "effects": [
+            "nullify"
+          ]
+        }
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "targetZones": [
+            "center"
+          ],
+          "filter": {
+            "cardType": "monster"
+          },
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-0024",
+      "no": "X-UB01/0024",
+      "name": "魔王番長 デュエルイェーガー",
+      "type": "monster",
+      "rarity": "",
+      "world": "エンシェントW",
+      "worlds": [
+        "エンシェントW",
+        "ダンジョンW"
+      ],
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "竜王番長"
+      ],
+      "size": 3,
+      "power": 9000,
+      "critical": 3,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】君のドロップゾーンのカード１枚までをこのカードのソウルに入れ、ゲージ２を払う。",
+        "■このカードが登場した時、相手の場のカード１枚を選び、君の手札１枚を捨ててよい。捨てたら、選んだカードを破壊する。",
+        "『ソウルガード』『ライフリンク１』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putDropToSoul",
+            "amount": 1,
+            "min": 0
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard",
+        "lifeLink1"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0024-enter-discard-destroy",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent"
+          },
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-0025",
+      "no": "X-UB01/0025",
+      "name": "螺旋魔王 ドラム",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": [
+        "ドラゴンW",
+        "ダンジョンW"
+      ],
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "武装騎竜"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 3,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■君のアタックフェイズ開始時、このカードがライトにいるなら、相手のレフトとライトのモンスター全てを破壊する。",
+        "『貫通』『ソウルガード』『ライフリンク２』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate",
+        "soulguard",
+        "lifeLink2"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0025-attackstart-destroy-lr",
+          "kind": "triggered",
+          "event": "attackStart",
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "right"
+              ]
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroy",
+              "scope": "opponent",
+              "filter": {
+                "cardType": "monster"
+              },
+              "zones": [
+                "left",
+                "right"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-0026",
+      "no": "X-UB01/0026",
+      "name": "鳥魔王 ブレイドウイング・フェニックス",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "コンストラクト"
+      ],
+      "size": 3,
+      "power": 10000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■このカードが攻撃した時、相手の場のモンスター１枚を選び、君のドロップゾーンの《Dエネミー》１枚を君のデッキの下に置いてよい。置いたら、選んだカードを破壊する。",
+        "『２回攻撃』『ソウルガード』『ライフリンク１』"
+      ],
+      "keywords": [
+        "doubleAttack",
+        "soulguard",
+        "lifeLink1"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0026-attack-select-destroy",
+          "kind": "triggered",
+          "event": "attack",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "kill",
+              "from": "field",
+              "controller": "opponent",
+              "filter": {
+                "cardType": "monster"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "鳥魔王 ブレイドウイング・フェニックス",
+              "lead": "相手の場のモンスターを1枚選んでください。"
+            },
+            {
+              "op": "selectCards",
+              "var": "back",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "attribute": "Dエネミー"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "allowEmpty": true,
+              "title": "鳥魔王 ブレイドウイング・フェニックス",
+              "lead": "君のドロップゾーンの《Dエネミー》1枚までをデッキの下に置いてください（選ばなくてもよい）。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "back",
+              "then": [
+                {
+                  "op": "moveSelected",
+                  "var": "back",
+                  "to": "deckBottom"
+                },
+                {
+                  "op": "destroySelected",
+                  "var": "kill"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "bf-x-cp01-0009バルドラゴン“ダブル・バルバライズ・ブレード！”のattack時script（select必須1→drop任意0-1→ifSelection[moveSelected deckBottom, destroySelected]）をそのまま踏襲（差異: targetは相手モンスター限定・drop選択filterはDエネミー属性）。"
+    },
+    {
+      "id": "bf-x-ub01-0027",
+      "no": "X-UB01/0027",
+      "name": "黙示録の魔王 グラトス",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ダークネスドラゴンW"
+      ],
+      "attributes": [
+        "魔王",
+        "黒騎士",
+        "深淵",
+        "百鬼"
+      ],
+      "size": 3,
+      "power": 9000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】君のドロップゾーンの《黒騎士》か《魔王》合計４枚をこのカードのソウルに入れ、ゲージ３を払う。",
+        "■【起動】相手の場のモンスター１枚を選び、このカードのソウル１枚を、君のデッキの下に置いてよい。置いたら、選んだカードを破壊し、そのターン中、このカードは『２回攻撃』を得る！",
+        "『ソウルガード』『ライフリンク２』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putDropToSoul",
+            "amount": 4,
+            "filter": {
+              "attributeIn": [
+                "黒騎士",
+                "魔王"
+              ]
+            }
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard",
+        "lifeLink2"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0027-soul-release-destroy-double",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "optional": true,
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "cost": [
+            {
+              "op": "discardSoulToDeckBottom",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "doubleAttack",
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-0028",
+      "no": "X-UB01/0028",
+      "name": "黒翼魔王 アビゲール",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ダークネスドラゴンW"
+      ],
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "黒竜"
+      ],
+      "size": 3,
+      "power": 8000,
+      "critical": 3,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが登場した時か破壊された時、相手のデッキの上から３枚を相手のドロップゾーンに置く。",
+        "■このカードが攻撃した時、相手のドロップゾーンが10枚以上なら、相手の場のモンスター全てを破壊し、相手にダメージ２！！",
+        "『ライフリンク２』"
+      ],
+      "callCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0028-enter-mill3",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "moveTopDeckToDrop",
+              "player": "opponent",
+              "amount": 3
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ub01-0028-destroyed-mill3",
+          "kind": "triggered",
+          "event": "destroyed",
+          "effects": [
+            {
+              "op": "moveTopDeckToDrop",
+              "player": "opponent",
+              "amount": 3
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ub01-0028-attack-wipe",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "opponent",
+              "pile": "drop",
+              "cmp": "gte",
+              "amount": 10
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroy",
+              "scope": "opponent",
+              "filter": {
+                "cardType": "monster"
+              }
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 2
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "lifeLink2"
+      ],
+      "_note": "『登場した時か破壊された時』はbf-d-bt02-0019(黒斬鬼竜ガルニバエル)型のenter/destroyed 2アビリティ分離（同一effects複製）。攻撃時ドロップ10枚以上ゲートはcardCount{pile:drop,cmp:gte,amount:10}（filter無し=枚数条件のみ、フィルタ無しで良い旨は原文『ドロップゾーンが10枚以上』に忠実）。相手モンスター全体破壊はdestroy{scope:opponent,filter:{cardType:monster}}（zones省略=全ゾーン）。grep自己検査: moveTopDeckToDrop(src/15)/cardCount(src/13)/destroy scope(src/15,17 collectFieldTargets)/dealDamage(src/15)/lifeLinkAmount(src/11:1487) 全実在確認。"
+    },
+    {
+      "id": "bf-x-ub01-0029",
+      "no": "X-UB01/0029",
+      "name": "四神導師 スザク",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "冒険者",
+        "ネオドラゴン"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 3,
+      "defense": 2000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■君のアタックフェイズ開始時、君のドロップゾーンのサイズ１以下の《Dエネミー》か《ネオドラゴン》のモンスター１枚までを、【コールコスト】を払ってコールする。",
+        "『ソウルガード』"
+      ],
+      "keywords": [
+        "soulguard"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0029-attackstart-call",
+          "kind": "triggered",
+          "event": "attackStart",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "sizeLte": 1,
+                "attributeIn": [
+                  "Dエネミー",
+                  "ネオドラゴン"
+                ]
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "四神導師 スザク",
+              "lead": "空いているエリアに【コールコスト】を払ってコールする、ドロップゾーンのサイズ1以下の《Dエネミー》か《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "call",
+              "payCost": "call",
+              "chooseZones": true,
+              "resolveOnEnter": true
+            }
+          ]
+        }
+      ],
+      "_note": "bf-d-bt02-0031蒼海の覇王デュエルイェーガーのattackStart誘発スクリプトをそのまま踏襲。filterはattributeIn:[Dエネミー,ネオドラゴン]のOR。"
+    },
+    {
+      "id": "bf-x-ub01-0030",
+      "no": "X-UB01/0030",
+      "name": "不滅の剣聖 ショウセツ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "レジェンドW"
+      ],
+      "attributes": [
+        "冒険者",
+        "騎士",
+        "英雄"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■君の場のアイテム全ては相手のカードの効果で破壊されない。",
+        "■君の場のアイテムが攻撃した時、相手の場のモンスター１枚のソウル１枚をドロップゾーンに置く。",
+        "『移動』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "move",
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "grantDestroyImmunity",
+          "controller": "self",
+          "filter": {
+            "cardType": "item"
+          },
+          "from": {
+            "byEffect": true,
+            "byOpponent": true
+          }
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0030-item-attack-soul-drop",
+          "kind": "triggered",
+          "event": "allyAttack",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "item"
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "dropTargetSoul",
+              "target": "$target",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "『【コールコスト】君のデッキの上から1枚をこのカードのソウルに入れ、ゲージ1を払う』はcosts.call:[putTopDeckToSoul:1,payGauge:1]（bf-x-bt01-0006型）。『君の場のアイテム全ては相手のカードの効果で破壊されない』はcontinuous grantDestroyImmunity{controller:self,filter:{cardType:item},from:{byEffect:true,byOpponent:true}}（bf-x-ss02-0009/bf-d-eb01-0044完全precedent）。『君の場のアイテムが攻撃した時、相手の場のモンスター1枚のソウル1枚をドロップゾーンに置く』はevent:allyAttack（フィールドイベント・カード自身のattackとは別軸）+conditions:[eventCardMatches{filter:{cardType:item}}]（bf-d-bt03-0055完全precedent）+ability.target(fieldCard,controller:opponent,filter:{cardType:monster})+effects dropTargetSoul{target:\"$target\",amount:1}（ソウル0枚なら自動no-op）。『移動』『ソウルガード』=keywords:[move,soulguard]。1ターン回数制限の記載なし=limitキー付与せず（原文どおり毎攻撃で発動しうる）。grep自己検査: putTopDeckToSoul/payGauge/grantDestroyImmunity(src/11:132)/allyAttack(runFieldEventTriggers)/eventCardMatches/dropTargetSoul(src/15:1599) 全実在確認。"
+    },
+    {
+      "id": "bf-x-ub01-0031",
+      "no": "X-UB01/0031",
+      "name": "近衛三騎士 ナノ・ガーディアンズ",
+      "type": "monster",
+      "rarity": "",
+      "world": "カタナW",
+      "worlds": [
+        "カタナW",
+        "ダンジョンW"
+      ],
+      "attributes": [
+        "Dエネミー",
+        "冒険者",
+        "騎士",
+        "忍者"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】君のドロップゾーンのカード１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■“潜影”このカードは相手のセンターにモンスターがいても、相手を攻撃できる！",
+        "■【対抗】【起動】相手のカードが１枚で攻撃している攻撃中、手札１枚を捨ててよい。捨てたら、その攻撃を無効化する。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putDropToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "canAttackFighterThroughCenter",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0031-nullify-solo-attack",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "attackingAlone"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            }
+          ],
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ],
+      "_note": "『【コールコスト】君のドロップゾーンのカード1枚をこのカードのソウルに入れ、ゲージ1を払う』はcosts.call:[putDropToSoul:1（filter無し=カード種別不問）,payGauge:1]（bf-x-bt01-0050完全precedent＝同一原文）。『“潜影”』『ソウルガード』=keywords:[canAttackFighterThroughCenter,soulguard]。『【対抗】【起動】相手のカードが1枚で攻撃している攻撃中、手札1枚を捨ててよい。捨てたら、その攻撃を無効化する』はtiming:[counter]+conditions:[attackingAlone,pendingAttackDefenderIsSelf]+cost:[discardHand:1]（『捨ててよい』=起動そのものが任意選択のため通常costとして必須化。bf-d-eb02-0041型のgauge版と同型構造をdiscardHandへ差替）+effects:[nullifyAttack]。1ターン回数制限の記載なし=limit未設定（原文どおり対抗ウィンドウごとに使用可）。grep自己検査: putDropToSoul/payGauge/canAttackFighterThroughCenter/soulguard/attackingAlone(src/13:836)/pendingAttackDefenderIsSelf/discardHand/nullifyAttack 全実在確認。"
+    },
+    {
+      "id": "bf-x-ub01-0032",
+      "no": "X-UB01/0032",
+      "name": "復讐者 イカヅチ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者",
+        "百鬼"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■君の場に元々のサイズが３のモンスターがいるなら、場のこのカードのサイズを２減らす。",
+        "■君の場のサイズ３のモンスターが攻撃した時、相手にダメージ１！この能力は１ターンに１回だけ発動する。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "size": -2,
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "baseSize": 3
+              }
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0032-size3-attack-damage",
+          "kind": "triggered",
+          "event": "allyAttack",
+          "conditions": [
+            {
+              "op": "targetMatches",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "【コールコスト】『デッキ上から1枚をこのカードのソウルに入れ、ゲージ1を払う』=costs.call[putTopDeckToSoul{amount:1},payGauge{amount:1}]（bf-x-bt01-0006と同順で既存）。『君の場に元々のサイズが3のモンスターがいるなら、このカードのサイズを2減らす』=元々の(印字)サイズ→baseSize:3スカラー（filter.baseSizeはmatchesCardFilterの専用スカラーキー・src/17:369実在。size本体のスカラー直書きは不使用＝size スカラー禁止を遵守しsizeIn/baseSizeを使用）。『君の場のサイズ3のモンスターが攻撃した時』は元々のではなく現在サイズなのでtargetMatches{filter:{sizeIn:[3]}}（allyAttack場イベント・targetはeventCardエントリ＝bf-x-cp01-0004等の前例と同型）。grep確認: allyAttack(src/09:440)・targetMatches(src/13:851)・ownFieldCardExists・soulguardキーワード(既存多数)。"
+    },
+    {
+      "id": "bf-x-ub01-0033",
+      "no": "X-UB01/0033",
+      "name": "煉獄の魔剣士",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ダークネスドラゴンW"
+      ],
+      "attributes": [
+        "冒険者",
+        "黒騎士"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードはセンターにコールできない。",
+        "■【対抗】【起動】君のターン中、君の場のモンスター１枚を破壊する。破壊したら、君のデッキの上から１枚をゲージに置き、相手にダメージ１！！この能力は１ターンに１回だけ使える。"
+      ],
+      "cannotCallZones": [
+        "center"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0033-destroy-mill-damage",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "原文に【コールコスト】行が無い（rules確認済＝コスト無しで通常コール）ため costs/callCost は付与せず。『センターにコールできない』はcannotCallZones:['center']（X-CP01/X-SS01前例）。『対抗】【起動】君のターン中』はtiming:['counter']（house rule=counterは自分メインでも使える）+conditions:[turnOwnerIsSelf]。『破壊する。破壊したら』はbf-x-cp01-0008(ドラゴサクシード)型: destroy target必須選択→conditions:[lastDestroySucceeded]で後続2効果をゲート。対象は自分の場のモンスター（自分自身を含め除外指定なし=原文通り）。限定なしの『1ターンに1回』は無名=limit{scope:turn}（ability.id依拠）。grep自己検査: cannotCallZones(src/07,22)/turnOwnerIsSelf(src/13:882)/destroy target(src/15)/lastDestroySucceeded(src/13:1212)/putTopDeckToGauge(src/15)/dealDamage(src/15) 全実在確認。"
+    },
+    {
+      "id": "bf-x-ub01-0034",
+      "no": "X-UB01/0034",
+      "name": "正義の義賊 ムクロ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ヒーローW"
+      ],
+      "attributes": [
+        "冒険者",
+        "ダークヒーロー"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■このカードの攻撃で、相手のモンスターを破壊した時、相手にダメージ１！！",
+        "■このカードのバトル終了時、このカードを手札に戻す。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0034-destroy-damage",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ub01-0034-battleend-return",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "includeDefender": true,
+          "effects": [
+            {
+              "op": "returnToHand",
+              "target": "$self"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-0035",
+      "no": "X-UB01/0035",
+      "name": "機甲騎士団長 ジェネシス",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ヒーローW"
+      ],
+      "attributes": [
+        "冒険者",
+        "騎士",
+        "ダークヒーロー"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【対抗】【起動】“革命の礎”このターン中、４回以上君のカードが攻撃しているなら、手札のこのカードを捨ててよい。捨てたら、君のデッキの上から３枚を見て、その中の１枚を手札に加え、残りのカードをドロップゾーンに置く。「革命の礎」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0035-kakumei-no-ishizue",
+          "label": "革命の礎",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "attacksThisTurnGte",
+              "amount": 4
+            }
+          ],
+          "effects": [
+            {
+              "op": "lookTopSelectToHandRestToBottom",
+              "count": 3,
+              "max": 1,
+              "altTo": "drop"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xub01-kakumei-no-ishizue"
+          }
+        }
+      ],
+      "_note": "『このターン中、4回以上君のカードが攻撃しているなら使える』=conditions:[attacksThisTurnGte{amount:4}]（Z7/bf-x-bt01-0002と同型）。『手札のこのカードを捨ててよい』はkind:activated+fromHandOnly:trueの活性化自体が『捨てる』コストを兼ねる（useHandAbilityActionが発生源を先にドロップへ移す＝bf-x-bt01-0108/bf-d-bt02-0034の全前例がdiscardSelf等の明示コスト無し）。timing:[counter]は『【対抗】【起動】』のfromHandOnly版（bf-d-td01-0004/0005/bf-d-bt04-0043の3前例）。『デッキ上3枚見てその中の1枚を手札に加え、残りをドロップに置く』=lookTopSelectToHandRestToBottom{count:3,max:1,altTo:drop}はbf-x-bt01-0002バッツ×リンク（『その中の1枚を手札に加え』＝『まで』表記なしでも同op・min:0既定を採用する完全同型・同一シリーズ内前例）を踏襲。named-once bare slug='xub01-kakumei-no-ishizue'（design.md §5表）。C6実測項目。 ／【F2 調査結果】原文『その中の1枚を手札に加え』は必須（辞退不可）だが、op lookTopSelectToHandRestToBottom は選択 chooseCardEntries を min:0 でハードコード（src/15-ability-effects.js:593・effect.min を読まない）＝候補が1枚以上でも辞退できる点が原文より緩い。op が min 指定を非対応のため min:1 を JSON に足しても無視される＝修正せず現状維持（op 拡張は本スライスの範囲外）。忠実化には lookTopSelectToHandRestToBottom へ min サポート（既定0・候補0枚時のみ空許可）を新設する op 拡張が必要＝将来課題。"
+    },
+    {
+      "id": "bf-x-ub01-0036",
+      "no": "X-UB01/0036",
+      "name": "太陽の勇者 ヨウタ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": [
+        "ドラゴンW",
+        "ダンジョンW"
+      ],
+      "attributes": [
+        "冒険者",
+        "太陽"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが《冒険者》と連携攻撃した時、そのターン中、このカードの攻撃力は∞になる。（∞は足しても減らしてもどの数値より大きい数値として扱う）",
+        "■このカードが破壊された時、君のライフを＋２！",
+        "『移動』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "move"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0036-link-infinite",
+          "kind": "triggered",
+          "event": "allyLinkAttack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            },
+            {
+              "op": "eventAttackersInclude",
+              "excludeSelf": true,
+              "filter": {
+                "attribute": "冒険者"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "power": 999999,
+              "duration": "turn"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ub01-0036-destroyed-life",
+          "kind": "triggered",
+          "event": "destroyed",
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-0037",
+      "no": "X-UB01/0037",
+      "name": "酔いどれ老師 エル・キホーテ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ドラゴンW"
+      ],
+      "attributes": [
+        "冒険者",
+        "騎士",
+        "竜騎士"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■“老師の教え”このカードが他の《冒険者》か《竜騎士》と連携攻撃した時、君のデッキの上から１枚をゲージに置き、カード１枚を引く。「老師の教え」は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0037-roshi-no-oshie",
+          "label": "老師の教え",
+          "kind": "triggered",
+          "event": "allyLinkAttack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            },
+            {
+              "op": "eventAttackersInclude",
+              "excludeSelf": true,
+              "filter": {
+                "anyOf": [
+                  {
+                    "attribute": "冒険者"
+                  },
+                  {
+                    "attribute": "竜騎士"
+                  }
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xub01-roshi-no-oshie"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-0038",
+      "no": "X-UB01/0038",
+      "name": "魔王襲来",
+      "type": "spell",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "ゲット"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■君のデッキから必殺モンスター以外の《魔王》のモンスター１枚までを手札に加え、デッキをシャッフルする。「魔王襲来」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0038-mao-shurai",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "searchDeckToHand",
+              "filter": {
+                "attribute": "魔王",
+                "cardType": "monster",
+                "cardTypeNot": "impactMonster"
+              },
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xub01-mao-shurai"
+          }
+        }
+      ],
+      "_note": "named-once bare slug=xub01-mao-shurai（design.md §5表・カード名self limit＝手札魔法のためshared不要）。『【使用コスト】ゲージ1を払う』=costs.cast:[payGauge:1]。『君のデッキから必殺モンスター以外の《魔王》のモンスター1枚までを手札に加え、デッキをシャッフルする』=effects searchDeckToHand{filter:{attribute:魔王,cardType:monster,cardTypeNot:impactMonster},amount:1}（design.md §4-A#その他自明枠で明示precedent。cardTypeNotは印字[raw]card.typeとの一致比較のためeffectiveCardType正規化[impactMonster→monster]を回避でき『必殺モンスター以外』を表現できる。src/17:314-317）。『1枚まで』はsearchDeckToHandのmin既定=0（optional未指定時。src/15:382）でmin0=そのまま満たす、shuffleも既定true（effect.shuffle!==false）で明示不要。『「魔王襲来」は1ターンに1回だけ使える』=limit{scope:turn,key:xub01-mao-shurai}（bf-d-td01-0010竜王伝型のカード名self-limitパターンを踏襲）。grep自己検査: payGauge/searchDeckToHand(src/15:368)/filter.cardTypeNot(src/17:317) 全実在確認。VM実測: 使用コストゲージ1消費・デッキから魔王モンスター1枚まで選択して手札へ・デッキシャッフル・必殺モンスター(impactMonster)は候補から除外・1ターン1回制限。"
+    },
+    {
+      "id": "bf-x-ub01-0039",
+      "no": "X-UB01/0039",
+      "name": "邪悪な儀式",
+      "type": "spell",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "魔王"
+      ],
+      "rules": [
+        "■君の場の《魔王》のモンスターが攻撃されている攻撃中に使える。",
+        "■【対抗】その攻撃を無効化し、君のデッキの上から１枚をゲージに置き、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0039-counter-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetMatches",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "魔王"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "『君の場の《魔王》のモンスターが攻撃されている攻撃中に使える』はability.conditions:[pendingAttackDefenderIsSelf, pendingAttackTargetMatches{filter:{cardType:monster,attribute:魔王}}]（bf-x-bt01-0046ラディアン・シェル/bf-h-bt03-0060ザッツ・ハウ・アイ・ロール完全precedent＝『使用コスト』記載なしの対抗spellと同型。pendingAttackTargetMatchesはgetPendingBattleTargetInfoでtargetType:monster時のfield[targetZone]カードをfilter照合＝src/13:1386-1389、pendingAttackDefenderIsSelfでdefender=targetOwner=selfを保証）。『【対抗】その攻撃を無効化し、君のデッキの上から1枚をゲージに置き、君のライフを+1する』=effects[nullifyAttack, putTopDeckToGauge:1, gainLife:1]（原文の記載順）。使用コスト記載なし=costs.cast省略（bf-h-bt03-0060と同型）。grep自己検査: pendingAttackDefenderIsSelf(src/13:1445)/pendingAttackTargetMatches(src/13:1386)/nullifyAttack/putTopDeckToGauge/gainLife 全実在確認。VM実測: 攻撃対象が自分の魔王モンスターの時のみ使用可（相手の魔王モンスターへの攻撃・自分の非魔王モンスターへの攻撃・fighter攻撃では不発）、対抗成立で攻撃無効化+ゲージ1+ライフ+1。"
+    },
+    {
+      "id": "bf-x-ub01-0040",
+      "no": "X-UB01/0040",
+      "name": "グラウルズ・ワンド",
+      "type": "item",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "魔王",
+        "杖",
+        "武器"
+      ],
+      "power": 2000,
+      "critical": 1,
+      "rules": [
+        "■【装備コスト】ライフ１を払う。",
+        "■《魔王》の『ライフリンク』で君が受けるダメージを１減らす。",
+        "■【起動】このカードをレストしてよい。レストしたら、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "reduceLifeLinkDamage",
+          "controller": "self",
+          "filter": {
+            "attribute": "魔王"
+          },
+          "amount": 1
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0040-rest-gauge",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceStanding"
+            }
+          ],
+          "effects": [
+            {
+              "op": "restSelf"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "『【装備コスト】ライフ1を払う』=costs.equip:[payLife:1]。『《魔王》の『ライフリンク』で君が受けるダメージを1減らす』はcontinuous reduceLifeLinkDamage{controller:self,filter:{attribute:魔王},amount:1}（design.md明記のH-BT03/0111『宝輪 始原のホノオ』完全precedent実測＝top-levelキーではなくcontinuous[]内のop。lifeLinkDamageReductionForがcontinuousのop==='reduceLifeLinkDamage'を走査。src/11:1557-1573）。『【起動】このカードをレストしてよい。レストしたら、君のデッキの上から1枚をゲージに置く』=kind:activated,timing:[main]（【対抗】マーク無し）+conditions:[sourceStanding]+effects:[restSelf,putTopDeckToGauge:1]（bt04-0063ルーンスタッフ完全precedent＝restSelfはeffect op、cost化しない。『てよい』の任意性は起動そのものが選択制であることで担保）。1ターン回数制限の記載なし=limit未設定。grep自己検査: payLife/reduceLifeLinkDamage(src/11:1557,1563)/sourceStanding(src/13:965)/restSelf(src/15:1077)/putTopDeckToGauge 全実在確認。VM実測: 装備でライフ1消費／魔王のライフリンクで受けるダメージが1減る(非魔王のライフリンクでは減らない)／起動でレスト+デッキ上1枚ゲージ・レスト済みでは使用不可(sourceStanding)。"
+    },
+    {
+      "id": "bf-x-ub01-0041",
+      "no": "X-UB01/0041",
+      "name": "魔王 ガーグナー “第二形態：アイアンハンド”",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "Dエネミー",
+        "魔王"
+      ],
+      "size": 3,
+      "power": 12000,
+      "critical": 4,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】このカードを君の場の《魔王》のモンスター１枚の上に重ね、ゲージ３を払う。",
+        "■【起動】“魔王の掌”相手とジャンケンする。君がジャンケンに勝ったら、そのターン中、このカードは『２回攻撃』を得る。「魔王の掌」は１ターンに１回だけ使える。",
+        "『貫通』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callStack": {
+        "filter": {
+          "cardType": "monster",
+          "attribute": "魔王"
+        }
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0041-mao-no-shou",
+          "label": "魔王の掌",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "doubleAttack",
+              "duration": "turn",
+              "rockPaperScissors": true
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xub01-mao-no-shou"
+          }
+        }
+      ],
+      "keywords": [
+        "penetrate",
+        "soulguard"
+      ],
+      "_note": "『君の場の《魔王》のモンスター1枚の上に重ね、ゲージ3を払う』=callStack{filter:{cardType:monster,attribute:魔王}}+costs.call[payGauge3]（bf-d-eb01-0023デウクルーザ型・callStack併用時はcallCost表示キー省略の慣例に倣った）。『“魔王の掌”相手とジャンケンする。勝ったら2回攻撃を得る』=grantKeyword{keyword:doubleAttack,duration:turn,rockPaperScissors:true}（bt03-0036勇者ドラム型・rockPaperScissors:trueを効果に直付けするとRPS勝利時のみ解決される。ジャンケン自体は勝敗に関わらず必ず行われ、能力の使用（=limit記帳）はRPS結果と独立）。named-once『魔王の掌』はxub01-design.md §5表の提案キーxub01-mao-no-shouをそのまま採用（shared指定なし=既定のインスタンス分離）。grep自己検査: callStack.filter(src/07:494)/payGauge(src/04)/grantKeyword+rockPaperScissors(src/15)/doubleAttack alias(src/18:465) 全実在確認。"
+    },
+    {
+      "id": "bf-x-ub01-0042",
+      "no": "X-UB01/0042",
+      "name": "旅の魔法使いコンビ テツヤ＆アスモダイ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "マジックW"
+      ],
+      "attributes": [
+        "魔王",
+        "冒険者",
+        "72柱"
+      ],
+      "size": 3,
+      "power": 10000,
+      "critical": 3,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが破壊された時、君のデッキから《魔王》か《72柱》のモンスター１枚までを、【コールコスト】を払ってコールし、デッキをシャッフルする。",
+        "『ライフリンク３』"
+      ],
+      "callCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0042-destroyed-search-call",
+          "kind": "triggered",
+          "event": "destroyed",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "target",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attributeIn": [
+                  "魔王",
+                  "72柱"
+                ]
+              },
+              "amount": 1,
+              "require": false,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "旅の魔法使いコンビ テツヤ＆アスモダイ",
+              "lead": "デッキからコールする《魔王》か《72柱》のモンスターを選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "target",
+              "payCost": "call",
+              "resolveOnEnter": true,
+              "require": false
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "lifeLink3"
+      ],
+      "_note": "『破壊された時、デッキから《魔王》か《72柱》のモンスター1枚までを【コールコスト】を払ってコールし、デッキをシャッフルする』はbf-h-pp01-0058(ひとときの夢)の定型: selectCards{from:deck,callable:true,canPayCost:call}→callSelectedToEmptyZones{payCost:call,resolveOnEnter:true}→shuffleDeck。attributeInで2属性OR。grep自己検査: selectCards from deck(src/14)/callSelectedToEmptyZones(src/14:2482)/shuffleDeck(src/14)/attributeIn(src/17) 全実在確認。"
+    },
+    {
+      "id": "bf-x-ub01-0043",
+      "no": "X-UB01/0043",
+      "name": "キング・グミスライム",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "Dエネミー"
+      ],
+      "size": 3,
+      "power": 10000,
+      "critical": 3,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】君のドロップゾーンのカード名に「スライム」を含むカード２枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■相手の場のモンスター全ては、『移動』できず、手札に戻せず、アタックフェイズ中にスタンドできない。",
+        "■このカードとバトルしている相手のモンスターの能力全てを無効化する。この能力は無効化されない。",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putDropToSoul",
+            "amount": 2,
+            "filter": {
+              "nameIncludes": "スライム"
+            }
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "nullifyImmune": true,
+      "continuous": [
+        {
+          "op": "restrictOpponentMonsters",
+          "controller": "opponent",
+          "filter": {
+            "cardType": "monster"
+          },
+          "move": true,
+          "standInAttackPhase": true
+        },
+        {
+          "op": "preventReturnToHand",
+          "controller": "opponent",
+          "filter": {
+            "cardType": "monster"
+          }
+        },
+        {
+          "op": "nullifyAbilities",
+          "controller": "opponent",
+          "battleOpponentOnly": true,
+          "filter": {}
+        }
+      ],
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "_note": "E-XU4採用カード本体。engine-notes.md『0043 グミスライムの継続部・全体』のDSLを原文どおり使用（restrictOpponentMonsters{move,standInAttackPhase}+preventReturnToHand{controller:opponent}+nullifyAbilities{battleOpponentOnly,filter:{}}+nullifyImmune:true）。callCostは『ドロップの《スライム》を含むカード2枚をソウルに入れ、ゲージ2を払う』=putDropToSoul{amount:2,filter:{nameIncludes:スライム}}+payGauge2（カード種別制限なし=原文『カード名に「スライム」を含むカード』に忠実、モンスター限定にしない）。callCost表示キーは複合コストのため省略（precedent踏襲）。VM実測必須(design C7指定): 移動不可/AF中スタンド不可/メイン可/退場解除。grep自己検査: putDropToSoul(src/04:594,996,1744)/restrictOpponentMonsters(src/05:850-890)/preventReturnToHand(src/17:250,257)/nullifyAbilities battleOpponentOnly(src/05:157-159)/nullifyImmune(src/05) 全実在確認。"
+    },
+    {
+      "id": "bf-x-ub01-0044",
+      "no": "X-UB01/0044",
+      "name": "武神魔王 デュエルズィーガー",
+      "type": "monster",
+      "rarity": "",
+      "world": "エンシェントW",
+      "worlds": [
+        "エンシェントW",
+        "ダンジョンW"
+      ],
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "ドラゴンロード"
+      ],
+      "size": 3,
+      "power": 8000,
+      "critical": 2,
+      "defense": 8000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から２枚をこのカードのソウルに入れ、ゲージ４を払う。",
+        "■【対抗】【起動】君のドロップゾーンの《魔王》か《ドラゴンロード》のモンスター２枚を君のデッキの下に好きな順番で置いてよい。置いたら、このカードをスタンドする。この能力は１ターンに１回だけ使える。",
+        "『２回攻撃』『ソウルガード』『ライフリンク４』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 2
+          },
+          {
+            "op": "payGauge",
+            "amount": 4
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0044-recycle-stand",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "d",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attributeIn": [
+                  "魔王",
+                  "ドラゴンロード"
+                ]
+              },
+              "min": 2,
+              "max": 2,
+              "amount": 2,
+              "require": false,
+              "title": "武神魔王 デュエルズィーガー",
+              "lead": "デッキの下に好きな順番で置く、ドロップゾーンの《魔王》か《ドラゴンロード》のモンスターを2枚選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "moveSelectedToDeckBottomOrdered",
+              "var": "d",
+              "require": false
+            },
+            {
+              "op": "ifSelection",
+              "var": "d",
+              "then": [
+                {
+                  "op": "standTarget",
+                  "target": "$self"
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "keywords": [
+        "doubleAttack",
+        "soulguard",
+        "lifeLink4"
+      ],
+      "_note": "callCostの『デッキの上から2枚をこのカードのソウルに入れ』=putTopDeckToSoul{amount:2}。『ドロップの《魔王》か《ドラゴンロード》2枚をデッキの下に好きな順番で置いてよい。置いたら、このカードをスタンドする』=bf-d-eb03-0002(アヴァロン)型のmoveSelectedToDeckBottomOrdered＋ifSelectionゲート（min:max:2の丁度2枚selectCards+require:false=『2枚を…置いてよい』＝0枚か2枚の二択、既存『1枚まで』min:max:1,require:falseパターンの2枚版）。限定なしの『1ターンに1回』は無名=limit{scope:turn}。grep自己検査: putTopDeckToSoul(src/04)/selectCards min/max(src/14:496-520)/moveSelectedToDeckBottomOrdered(src/14:339)/ifSelection(src/14:327)/standTarget(src/15) 全実在確認。"
+    },
+    {
+      "id": "bf-x-ub01-0045",
+      "no": "X-UB01/0045",
+      "name": "大司教 ゲンマ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "エンシェントW"
+      ],
+      "attributes": [
+        "冒険者",
+        "ドラゴンロード"
+      ],
+      "size": 3,
+      "power": 8000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■【起動】相手の場のモンスター１枚を選び、君の場のサイズ０のモンスター１枚をレストする。レストしたら、選んだカードを破壊する。",
+        "『２回攻撃』『ソウルガード』『ライフリンク２』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0045-rest-destroy",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "r",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  0
+                ]
+              },
+              "amount": 1,
+              "title": "大司教 ゲンマ",
+              "lead": "レストする、君の場のサイズ０のモンスターを選んでください。"
+            },
+            {
+              "op": "restSelected",
+              "var": "r"
+            },
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "doubleAttack",
+        "soulguard",
+        "lifeLink2"
+      ],
+      "_note": "『相手の場のモンスター1枚を選び、君の場のサイズ0のモンスター1枚をレストする。レストしたら、選んだカードを破壊する』はbf-s-ub-c03-0039(三村かな子)型と同様、対象選択(target=$target=相手モンスター、必須)+自分のサイズ0モンスターへのレストは既存にrest失敗概念(destroyImmunity相当)が無い（grep: lastRestSucceeded 0件）ためレストは選択できれば必ず成立＝『レストしたら』を明示的な条件ゲート無しでdestroyへ直結（bf-s-ub-c03-0039も同型で条件ゲート無し）。sizeIn:[0]（size スカラー禁止のため既存語彙）。grep自己検査: target+script $target併用(bf-d-bt04-0078型)/selectCards from field/restSelected(src/14:1504)/destroy(src/15) 全実在確認。"
+    },
+    {
+      "id": "bf-x-ub01-0046",
+      "no": "X-UB01/0046",
+      "name": "魔犬王 ボルゾイコボルト・ロード",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "Dエネミー",
+        "魔王"
+      ],
+      "size": 3,
+      "power": 8000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】君のドロップゾーンのカード名に「コボルト」を含むカード３枚をこのカードのソウルに入れ、ゲージ３を払う。",
+        "■【起動】このカードのソウルにあるカード名に「コボルト」を含むモンスター１枚を、【コールコスト】を払ってコールする。そのカードは場から離れるまで、サイズが０になる。",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putDropToSoul",
+            "amount": 3,
+            "filter": {
+              "nameIncludes": "コボルト"
+            }
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0046-soul-call",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "soul",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "コボルト"
+              },
+              "amount": 1,
+              "require": true,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "魔犬王 ボルゾイコボルト・ロード",
+              "lead": "【コールコスト】を払ってコールする、このカードのソウルのカード名に「コボルト」を含むモンスターを選んでください。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "call",
+              "payCost": "call",
+              "chooseZones": true,
+              "resolveOnEnter": true,
+              "grantConditionalSize": {
+                "size": 0,
+                "unconditional": true
+              }
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "_note": "callCostの『ドロップのカード名に「コボルト」を含むカード3枚をソウルに入れ、ゲージ3を払う』=putDropToSoul{amount:3,filter:{nameIncludes:コボルト}}+payGauge3。『ソウルにあるカード名に「コボルト」を含むモンスター1枚を【コールコスト】を払ってコールする。そのカードは場から離れるまでサイズ0』はbf-d-bt03-0018(ナンバー・オブ・スタッフ)型のsoul selectCards{callable,canPayCost:call}→callSelectedToEmptyZones{payCost:call}にgrantConditionalSize{size:0,unconditional:true}（H-PP01/0013型）を付加。原文に『1ターンに1回』の記載なし＝limit無し。grep自己検査: putDropToSoul/selectCards from soul(src/14:774)/callSelectedToEmptyZones grantConditionalSize(src/14) 全実在確認。"
+    },
+    {
+      "id": "bf-x-ub01-0047",
+      "no": "X-UB01/0047",
+      "name": "影使い ワタル",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "マジックW"
+      ],
+      "attributes": [
+        "冒険者",
+        "シャドウシェイド"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】君のドロップゾーンの魔法１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■このカードのソウルが３枚以上なら、君の場のモンスター全ての攻撃力＋1000、防御力＋1000！",
+        "■このカードが攻撃した時、このカードのソウルが１枚以上なら、そのターン中、このカードは『２回攻撃』を得る。",
+        "『ソウルガード』"
+      ],
+      "keywords": [
+        "soulguard"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putDropToSoul",
+            "amount": 1,
+            "filter": {
+              "cardType": "spell"
+            }
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster"
+          },
+          "power": 1000,
+          "defense": 1000,
+          "conditions": [
+            {
+              "op": "sourceSoulCountGte",
+              "amount": 3
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0047-attack-double",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "sourceSoulCountGte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "doubleAttack",
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "継続バフはsourceSoulCountGte(3)ゲート+controller:self,filter:{cardType:monster}の場全体形（bf-x-bt01-0050系）。attack誘発はsourceSoulCountGte(1)ゲートの2回攻撃付与（自明形）。"
+    },
+    {
+      "id": "bf-x-ub01-0048",
+      "no": "X-UB01/0048",
+      "name": "武装魔王 ケルベロス",
+      "type": "monster",
+      "rarity": "",
+      "world": "デンジャーW",
+      "worlds": [
+        "デンジャーW",
+        "ダンジョンW"
+      ],
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "タイラント"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■君の場の《武器》が攻撃した時、このカードをスタンドする。この能力は１ターンに１回だけ発動する。",
+        "『ソウルガード』『ライフリンク１』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0048-weapon-attack-stand",
+          "kind": "triggered",
+          "event": "allyAttack",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "item",
+                "attribute": "武器"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "keywords": [
+        "soulguard",
+        "lifeLink1"
+      ],
+      "_note": "『君の場の《武器》が攻撃した時、このカードをスタンドする。1ターンに1回だけ発動する』=bf-d-bt03-0062(タイラント・ジン)型: event:allyAttack+conditions:[eventCardMatches{filter:{cardType:item,attribute:武器}}]+standTarget{$self}。原文に「」名なし=無名limit{scope:turn}。grep自己検査: allyAttack event(src/07 runFieldEventTriggers)/eventCardMatches(src/13:1312)/standTarget(src/15) 全実在確認。"
+    },
+    {
+      "id": "bf-x-ub01-0049",
+      "no": "X-UB01/0049",
+      "name": "マスターモンク スズミ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ドラゴンW"
+      ],
+      "attributes": [
+        "冒険者"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードが連携攻撃した時、君のドロップゾーンの《冒険者》のモンスター１枚までを手札に加える。",
+        "■【対抗】【起動】君の場の《冒険者》１枚を選び、ゲージ１を払ってよい。払ったら、そのターン中、選んだカードの攻撃力を＋2000！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0049-link-recycle",
+          "kind": "triggered",
+          "event": "allyLinkAttack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            }
+          ],
+          "effects": [
+            {
+              "op": "moveMatchingDropToHand",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "冒険者"
+              },
+              "amount": 1,
+              "optional": true
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ub01-0049-power-buff",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "attribute": "冒険者"
+            }
+          },
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 2000,
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-0050",
+      "no": "X-UB01/0050",
+      "name": "叛逆の魔王 リベリウス",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者",
+        "騎士",
+        "魔王"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■【対抗】【起動】相手の場のモンスター１枚を選び、君の場か手札のアイテム１枚をドロップゾーンに置いてよい。置いたら、選んだカードを破壊する。",
+        "『ソウルガード』『ライフリンク１』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0050-item-cost-hand",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "item",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "cardType": "item"
+              },
+              "amount": 1,
+              "min": 0,
+              "require": false,
+              "title": "叛逆の魔王 リベリウス",
+              "lead": "ドロップゾーンに置く手札のアイテムを選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "item",
+              "then": [
+                {
+                  "op": "moveSelected",
+                  "var": "item",
+                  "to": "drop"
+                },
+                {
+                  "op": "destroy",
+                  "target": "$target"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ub01-0050-item-cost-field",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "item",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "item"
+              },
+              "amount": 1,
+              "min": 0,
+              "require": false,
+              "title": "叛逆の魔王 リベリウス",
+              "lead": "ドロップゾーンに置く場のアイテムを選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "item",
+              "then": [
+                {
+                  "op": "moveSelected",
+                  "var": "item",
+                  "to": "drop"
+                },
+                {
+                  "op": "destroy",
+                  "target": "$target"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "soulguard",
+        "lifeLink1"
+      ],
+      "_note": "『相手の場のモンスター1枚を選び、君の場か手札のアイテム1枚をドロップゾーンに置いてよい。置いたら、選んだカードを破壊する』: selectCards{from:['field','hand']}の複合配列はscriptPileForSource経由でfrom='field'をpileKeyとして扱うとplayer.fieldがゾーンmapオブジェクトでforEach不可＝壊れる（grep実証・DB内from配列にfieldを含む前例0件）ため、bf-h-eb02-0022/bf-d-bt03-0086型の『手札か場』2アビリティ分離パターンを一般化し、hand版/field版の2 activated ability（findUsableFieldAbilitiesで選択）に分解。対象(相手モンスター、必須選択)は両アビリティ共通のtarget、アイテムのドロップは各々min:0,max:1,require:false（1枚まで＝してもしなくてもよい）+ifSelectionゲートでdestroyへ接続。挙動は原文の単一プール選択と同一（プレイヤーがどちらのアイテムを対象にするか選ぶ点は変わらない）が、手札/場ともにアイテムが無い場合は両アビリティとも『0枚選択→宣言のみ』になり得る近似（実害なし、選んでも破壊が起きないだけ）。grep自己検査: target+script併用/selectCards from hand・from field/ifSelection/moveSelected to drop/destroy 全実在確認。"
+    },
+    {
+      "id": "bf-x-ub01-0051",
+      "no": "X-UB01/0051",
+      "name": "風来坊 ムネチカ",
+      "type": "monster",
+      "rarity": "",
+      "world": "カタナW",
+      "worlds": [
+        "カタナW",
+        "ダンジョンW"
+      ],
+      "attributes": [
+        "Dエネミー",
+        "冒険者",
+        "刀獣",
+        "日本刀"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードが登場した時、君のドロップゾーンのアイテム１枚までを手札に加える。",
+        "『移動』"
+      ],
+      "keywords": [
+        "move"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0051-enter-item-recover",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "moveMatchingDropToHand",
+              "filter": {
+                "cardType": "item"
+              },
+              "amount": 1,
+              "optional": true
+            }
+          ]
+        }
+      ],
+      "_note": "『このカードが登場した時、君のドロップゾーンのアイテム1枚までを手札に加える』はeffects moveMatchingDropToHand{filter:{cardType:item},amount:1,optional:true}（『1枚まで』=optional:trueでmin:0化。pp01-0054/bf-x-cp01-0055完全precedent）。『移動』=keywords:[move]。grep自己検査: moveMatchingDropToHand(src/15:944)/enter event 全実在確認。"
+    },
+    {
+      "id": "bf-x-ub01-0052",
+      "no": "X-UB01/0052",
+      "name": "道化師 ダークフォックス",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "カタナW"
+      ],
+      "attributes": [
+        "冒険者",
+        "髑髏武者"
+      ],
+      "size": 1,
+      "power": 6000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■君の場の《髑髏武者》か《冒険者》が攻撃したバトルの終了時、相手の場のモンスター１枚を選び、君の場のモンスター１枚を破壊してよい。破壊したら、選んだカードのソウル１枚をドロップゾーンに置き、そのカードを破壊する。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0052-battleend-trade",
+          "kind": "triggered",
+          "event": "allyAttack",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "monster",
+                "attributeIn": [
+                  "髑髏武者",
+                  "冒険者"
+                ]
+              }
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "opp",
+              "from": "field",
+              "controller": "opponent",
+              "filter": {
+                "cardType": "monster"
+              },
+              "amount": 1,
+              "title": "道化師 ダークフォックス",
+              "lead": "ソウルをドロップゾーンに置き破壊する、相手の場のモンスターを選んでください。"
+            },
+            {
+              "op": "selectCards",
+              "var": "own",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster"
+              },
+              "amount": 1,
+              "allowEmpty": true,
+              "require": false,
+              "title": "道化師 ダークフォックス",
+              "lead": "破壊してよい、君の場のモンスターを選んでください（破壊しなくてもよい）。"
+            },
+            {
+              "op": "destroySelected",
+              "var": "own",
+              "require": false
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "dropSelectedSoul",
+                  "var": "opp",
+                  "amount": 1
+                },
+                {
+                  "op": "destroySelected",
+                  "var": "opp",
+                  "require": false
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "『【コールコスト】ゲージ1を払う』=costs.call:[payGauge:1]。『君の場の《髑髏武者》か《冒険者》が攻撃したバトルの終了時、相手の場のモンスター1枚を選び、君の場のモンスター1枚を破壊してよい。破壊したら、選んだカードのソウル1枚をドロップゾーンに置き、そのカードを破壊する』の忠実な『バトルの終了時』トリガーは本エンジンに存在しない: allyBattleEnd/opponentBattleEnd（queueBattleEndFieldTriggers, src/10:606）は**被攻撃側**視点の場イベント（bf-x-cp02-0004/0022の原文『攻撃され'た'バトル終了時』専用。X-SD02/0015前例）であり、『攻撃した側』の場全体向けbattleEndイベントは無い（bare\"battleEnd\"は攻撃者スロットのカード自身にしか発火せずbf-x-ub01-0052のような他カードには届かない）。よってbf-d-bt03-0055『フレイム・ドラゴンJr.』の確立近似を踏襲し、event:allyAttack（攻撃宣言時点・runFieldEventTriggers(\"attack\",attacker.owner,...)＝攻撃者owner視点でallyへ配送。src/09:440）+conditions:[eventCardMatches{filter:{cardType:monster,attributeIn:[髑髏武者,冒険者]}}]で近似（宣言時点＝相手の【対抗】でその攻撃が無効化された場合もこの能力自体は解決してしまう点が原文『バトルの終了時』と僅かに異なる近似。bf-d-bt03-0055と同型の乖離）。script は2段選択（opp:相手モンスター1枚・own:君のモンスター1枚min:0/require:false=『破壊してよい』）+destroySelected{var:own,require:false}+ifCondition{lastDestroySucceeded}then[dropSelectedSoul(opp)+destroySelected(opp)]（bf-x-ss02-0033『ディミオスソード“インフェルノ”』型のselect+optional destroy+ifCondition(lastDestroySucceeded)構成を転用。『破壊してよい。破壊したら』を要求選択min:0＋lastDestroySucceededゲートで表現）。1ターン回数制限の記載なし=limit未設定。grep自己検査: runFieldEventTriggers/allyAttack(src/09:440)/eventCardMatches/selectCards/destroySelected(src/14:1415)/lastDestroySucceeded(src/13:1212)/dropSelectedSoul 全実在確認。"
+    },
+    {
+      "id": "bf-x-ub01-0053",
+      "no": "X-UB01/0053",
+      "name": "ギルドの案内人 ツルギ＆ステラ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ヒーローW"
+      ],
+      "attributes": [
+        "冒険者",
+        "ヒーロー"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■このカードが連携攻撃した時、君のデッキの上から１枚をゲージに置き、君のライフを＋１！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0053-link-charge-life",
+          "kind": "triggered",
+          "event": "allyLinkAttack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "『このカードが連携攻撃した時』=event:allyLinkAttack+conditions:[pendingAttackBySource]（bf-x-ub01-0011/0049/0058=B4前例と同型）。原文に『1ターンに1回』の repeat 制限文が無いため limit 無し（bf-s-ub-c03-0029神谷奈緒の前例＝同様の無制限テキストは limit key 無しが確立慣例）。"
+    },
+    {
+      "id": "bf-x-ub01-0054",
+      "no": "X-UB01/0054",
+      "name": "東国の皇子 ザンヤ&アカツキ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "カタナW"
+      ],
+      "attributes": [
+        "冒険者",
+        "忍者"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■このカードが攻撃した時、君のドロップゾーンの《忍者》か『設置』を持つカード１枚を手札に加える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0054-attack-recover",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "moveMatchingDropToHand",
+              "filter": {
+                "anyOf": [
+                  {
+                    "attribute": "忍者"
+                  },
+                  {
+                    "keyword": "set"
+                  }
+                ]
+              },
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "『このカードが攻撃した時、君のドロップゾーンの《忍者》か『設置』を持つカード1枚を手札に加える』はevent:attack（カード自身の攻撃=接頭辞なし直接発火）+effects moveMatchingDropToHand{filter:{anyOf:[{attribute:忍者},{keyword:set}]},amount:1}（filter.anyOf=OR結合。src/17:306実在。cardType不問=『設置』は魔法にも付くため種別制限しない）。『まで』表記なし=optional無し（『1枚を』＝対象0枚でも自動でmin=候補数に丸まるためエラーにはならない。chooseAndTakeMatchingCardsのmin既定=Math.min(amount,candidates.length)）。grep自己検査: moveMatchingDropToHand/filter.anyOf(src/17:306)/filter.keyword(src/17:457)/attack event 全実在確認。"
+    },
+    {
+      "id": "bf-x-ub01-0055",
+      "no": "X-UB01/0055",
+      "name": "死竜魔王 デスゲイズ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ダークネスドラゴンW"
+      ],
+      "attributes": [
+        "魔王",
+        "黒竜",
+        "死",
+        "深淵"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■君の場に元々のサイズ３のモンスターがいるなら、場のこのカードのサイズを１減らす。",
+        "■君の場の《魔王》か《黒竜》の攻撃で、相手のモンスターを破壊した時、相手のゲージ１枚をドロップゾーンに置き、相手にダメージ１！この能力は１ターンに１回だけ発動する。",
+        "『ライフリンク１』"
+      ],
+      "keywords": [
+        "lifeLink1"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "size": -1,
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "baseSizeGte": 3
+              }
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0055-attackdestroyed-mill-damage",
+          "kind": "triggered",
+          "event": "allyAttackDestroyed",
+          "conditions": [
+            {
+              "op": "eventAttackersMatch",
+              "filter": {
+                "attributeIn": [
+                  "魔王",
+                  "黒竜"
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "moveGaugeToDrop",
+              "player": "opponent",
+              "amount": 1
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "『君の場に元々のサイズ3のモンスターがいるなら、場のこのカードのサイズを1減らす』はcontinuous modifyStats{filter:{sameInstanceAsSource:true},size:-1,conditions:[ownFieldCardExists{filter:{cardType:monster,baseSizeGte:3}}]}（bf-x-ub01-0058/0014型のconditional size precedent。baseSizeGteは印字[raw]card.sizeとの比較=src/17:376）。『君の場の《魔王》か《黒竜》の攻撃で、相手のモンスターを破壊した時、相手のゲージ1枚をドロップゾーンに置き、相手にダメージ1！この能力は1ターンに1回だけ発動する』はevent:allyAttackDestroyed（攻撃側ownerの場全カードへ配送=src/10:183、context.attackersに実際の攻撃者一覧が乗る）+conditions:[eventAttackersMatch{filter:{attributeIn:[魔王,黒竜]}}](td04-0016ミッションカード\"モンスター討伐！\"完全precedent。「eventAttackersMatch」はsome判定=攻撃者のいずれかが一致すれば真＝連携攻撃でも対応)+effects:[moveGaugeToDrop{player:opponent,amount:1}(src/15:961),dealDamage{player:opponent,amount:1}]+limit{scope:turn}（無名『1ターンに1回』）。『ライフリンク1』=keywords:[lifeLink1]（/^lifeLink\\d+$/正規表現。src/11:1493）。grep自己検査: modifyStats/sameInstanceAsSource/ownFieldCardExists(src/13:1054)/baseSizeGte(src/17:376)/allyAttackDestroyed(src/10:183)/eventAttackersMatch(src/13:1539)/attributeIn(src/17:400)/moveGaugeToDrop(src/15:961)/dealDamage/lifeLink正規表現(src/11:1493) 全実在確認。VM実測: 元サイズ3モンスターの有無でサイズ増減／魔王or黒竜の攻撃で相手モンスター破壊時のみ発動(非該当属性の攻撃・破壊不成立では不発)・1ターン1回制限。"
+    },
+    {
+      "id": "bf-x-ub01-0056",
+      "no": "X-UB01/0056",
+      "name": "死を呼ぶ召喚士 カゲウラ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ダークネスドラゴンW"
+      ],
+      "attributes": [
+        "冒険者",
+        "死",
+        "深淵"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■“死神の残り香”このカードが破壊された時、君のドロップゾーンのサイズ１以下の《Dエネミー》か《死》のモンスター１枚までを、【コールコスト】を払って、コールする。「死神の残り香」は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0056-shinigami-no-nokoriga",
+          "label": "死神の残り香",
+          "kind": "triggered",
+          "event": "destroyed",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "sizeLte": 1,
+                "attributeIn": [
+                  "Dエネミー",
+                  "死"
+                ]
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "死を呼ぶ召喚士 カゲウラ",
+              "lead": "君のドロップゾーンのサイズ1以下の《Dエネミー》か《死》のモンスター1枚までを選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "call",
+              "payCost": "call",
+              "chooseZones": true,
+              "resolveOnEnter": true,
+              "require": false
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xub01-shinigami-no-nokoriga"
+          }
+        }
+      ],
+      "_note": "named-once bare slug=xub01-shinigami-no-nokoriga（design.md §5表）。『\"死神の残り香\"このカードが破壊された時、君のドロップゾーンのサイズ1以下の《Dエネミー》か《死》のモンスター1枚までを、【コールコスト】を払って、コールする。「死神の残り香」は1ターンに1回だけ発動する』はevent:destroyed（破壊されたカード自身へ直接発火=queueDestroyedTriggers, src/11:1044-1056。この時点でカードは既にdrop在中）+script selectCards{from:drop,filter:{cardType:monster,sizeLte:1,attributeIn:[Dエネミー,死]},min:0,require:false,callable:true,canPayCost:call}→callSelectedToEmptyZones{payCost:call,chooseZones:true,resolveOnEnter:true,require:false}（B7 0029型のdrop→コールprecedentを流用。『まで』=min0/require:false）+limit{scope:turn,key:xub01-shinigami-no-nokoriga}。原文に「このカードを除く」等の除外文言が無いため、自分自身（破壊時点で既にdropにありDエネミー無し・死属性ありサイズ1で候補に一致し得る）を候補から除外しない（design.md §4-A#7のリアニメイト分類どおり・自己蘇生も公式に許容される設計として忠実採用）。grep自己検査: destroyed event(src/11:1044)/selectCards from:drop/attributeIn(src/17:400)/callSelectedToEmptyZones(src/14:2570) 全実在確認。VM実測: 破壊された時、ドロップのサイズ1以下Dエネミー/死モンスター1枚までを【コールコスト】払ってコール（自分自身もドロップに存在すれば候補に含まれる）・候補0枚では自動no-op・1ターン1回制限。"
+    },
+    {
+      "id": "bf-x-ub01-0057",
+      "no": "X-UB01/0057",
+      "name": "ゴシップ怪盗 パル子",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ヒーローW"
+      ],
+      "attributes": [
+        "冒険者",
+        "ヒーロー"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■このカードが連携攻撃した時、相手の手札１枚をランダムに選び、選んだカードを公開する。そのカードがモンスターなら、相手にダメージ２を与え、魔法なら、君のライフを＋２！この能力は１ターンに１回だけ発動する。（公開したカードは元に戻す）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0057-link-reveal-branch",
+          "kind": "triggered",
+          "event": "allyLinkAttack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            }
+          ],
+          "effects": [
+            {
+              "op": "revealRandomHandThenBranch",
+              "player": "opponent",
+              "ifMonster": [
+                {
+                  "op": "dealDamage",
+                  "amount": 2,
+                  "player": "opponent"
+                }
+              ],
+              "ifSpell": [
+                {
+                  "op": "gainLife",
+                  "amount": 2
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "『このカードが連携攻撃した時』=event:allyLinkAttack+conditions:[pendingAttackBySource]（engine-notesのサンプルはeventAttackersInclude{excludeSelf:false}という空filter例だったが、これは既存B4前例(0011/0049/0053/0058)の自己参加限定と揃えるためpendingAttackBySource単独を採用＝『上は例』注記どおりバッチ側で確定。VM実測でallyLinkAttackが場全体へ配信される中、pendingAttackBySourceが自己不参加時は不発になることを確認）。E-XU1(revealRandomHandThenBranch)はengine-notes記載のDSL形をそのまま使用（player既定opponent・ifMonster/ifSpell分岐・手札0枚no-op・乱数索引/シード非ログはengine側実装済でグルー確認事項）。『この能力は1ターンに1回だけ発動する』=limit{scope:turn}（無名のためkey不要）。"
+    },
+    {
+      "id": "bf-x-ub01-0058",
+      "no": "X-UB01/0058",
+      "name": "バトルマスター バン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "エンシェントW"
+      ],
+      "attributes": [
+        "冒険者",
+        "怒羅魂頭"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードはセンターにコールできない。",
+        "■君の場に他の元々のサイズが２以上の《冒険者》か《怒羅魂頭》のモンスターがいるなら、場のこのカードのサイズを１減らす。",
+        "■このカードが連携攻撃した時、相手の場のアイテム１枚を破壊する。"
+      ],
+      "cannotCallZones": [
+        "center"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "size": -1,
+          "conditions": [
+            {
+              "op": "ownOtherFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "baseSizeGte": 2,
+                "anyOf": [
+                  {
+                    "attribute": "冒険者"
+                  },
+                  {
+                    "attribute": "怒羅魂頭"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0058-link-destroy-item",
+          "kind": "triggered",
+          "event": "allyLinkAttack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "item"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-0059",
+      "no": "X-UB01/0059",
+      "name": "元・領主 シドー",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ダークネスドラゴンW"
+      ],
+      "attributes": [
+        "冒険者",
+        "Dエネミー",
+        "死",
+        "深淵"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■“潜影”このカードは相手のセンターにモンスターがいても、相手を攻撃できる！",
+        "■【起動】君の場の《冒険者》１枚を選び、ゲージ１を払ってよい。払ったら、そのターン中、選んだカードは、相手のセンターにモンスターがいても、相手を攻撃できる。"
+      ],
+      "keywords": [
+        "canAttackFighterThroughCenter"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0059-grant-through-center",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "optional": true,
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "attribute": "冒険者"
+            }
+          },
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "canAttackFighterThroughCenter",
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "『“潜影”このカードは相手のセンターにモンスターがいても、相手を攻撃できる』=card級keywords:[canAttackFighterThroughCenter]。『君の場の《冒険者》1枚を選び、ゲージ1を払ってよい。払ったら、そのターン中、選んだカードは、相手のセンターにモンスターがいても、相手を攻撃できる』はability.target(fieldCard,controller:self,filter:{attribute:冒険者})+cost:[payGauge:1]+ability.optional:true（『選び…払ってよい。払ったら』一体ゲート。bf-x-bt01-0084/bf-x-cp02-0053完全precedent）+effects grantKeyword{target:\"$target\",keyword:canAttackFighterThroughCenter,duration:turn}。原文に『1ターンに1回』の記載なし=limit未設定（ゲージが続く限り複数回・複数対象へ使用可）。callCost行なし=costs省略。grep自己検査: canAttackFighterThroughCenter(src/09:165,12:950,18:459)/grantKeyword(src/15:1580)/payGauge 全実在確認。"
+    },
+    {
+      "id": "bf-x-ub01-0060",
+      "no": "X-UB01/0060",
+      "name": "魔王の飼い猫 ケットシー",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "レジェンドW"
+      ],
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "妖精"
+      ],
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■君のドロップゾーンに《妖精》か《魔王》が合計７枚以上あるなら、君のセンターのモンスターの打撃力＋２！",
+        "■このカードが破壊された時、君のデッキの上から２枚をドロップゾーンに置く。"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "targetZones": [
+            "center"
+          ],
+          "filter": {
+            "cardType": "monster"
+          },
+          "critical": 2,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "attributeIn": [
+                  "妖精",
+                  "魔王"
+                ]
+              },
+              "cmp": "gte",
+              "amount": 7
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0060-destroyed-mill",
+          "kind": "triggered",
+          "event": "destroyed",
+          "effects": [
+            {
+              "op": "moveTopDeckToDrop",
+              "amount": 2
+            }
+          ]
+        }
+      ],
+      "_note": "『君のドロップゾーンに《妖精》か《魔王》が合計7枚以上あるなら、君のセンターのモンスターの打撃力+2！』はcontinuous modifyStats{controller:self,targetZones:[center],filter:{cardType:monster},critical:2,conditions:[cardCount{controller:self,pile:drop,filter:{attributeIn:[妖精,魔王]},cmp:gte,amount:7}]}（『打撃力』=critical鉄則。targetZonesはD-BT01万竜不当0047『レフトとライトのモンスター』precedent＝targetZones:[left,right]の単一ゾーン版。cardCountのfilter.attributeIn=OR結合でカード単位重複無く合算カウント＝『合計』を素直に表現。src/17:400）。『このカードが破壊された時、君のデッキの上から2枚をドロップゾーンに置く』=event:destroyed+effects moveTopDeckToDrop{amount:2}（player省略=既定self。src/15:335-336）。回数制限記載なし=limit未設定。grep自己検査: modifyStats/targetZones(src/05:838)/cardCount/attributeIn(src/17:400)/destroyed event/moveTopDeckToDrop(src/15:335) 全実在確認。VM実測: ドロップの妖精+魔王合算6枚以下では不成立・7枚以上でセンターモンスターの打撃力+2（レフト/ライトには影響しない）／破壊された時デッキ上2枚をドロップへ。"
+    },
+    {
+      "id": "bf-x-ub01-0061",
+      "no": "X-UB01/0061",
+      "name": "吸血鬼 シュラ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "デンジャーW"
+      ],
+      "attributes": [
+        "冒険者",
+        "地獄"
+      ],
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■“血塊刃”このカードが登場した時、お互いのデッキの上から３枚をドロップゾーンに置き、君のデッキの上から１枚をゲージに置く。「血塊刃」は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0061-kekkaijin",
+          "label": "血塊刃",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "moveTopDeckToDrop",
+              "player": "self",
+              "amount": 3
+            },
+            {
+              "op": "moveTopDeckToDrop",
+              "player": "opponent",
+              "amount": 3
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xub01-kekkaijin"
+          }
+        }
+      ],
+      "_note": "『このカードが登場した時、お互いのデッキの上から3枚をドロップゾーンに置き、君のデッキの上から1枚をゲージに置く』=event:enter（自己登場）+moveTopDeckToDrop{player:self,amount:3}→moveTopDeckToDrop{player:opponent,amount:3}→putTopDeckToGauge{amount:1}（bt01-0004反逆者ベリアルの『script二段moveTopDeckToDrop(self→opponent)』構造と同型・原文語順どおりself先行）。named-once bare slug='xub01-kekkaijin'（design.md §5表）。grep確認: moveTopDeckToDrop(src/15:335・isScriptEffectStep src/14:2793)・putTopDeckToGauge既存。"
+    },
+    {
+      "id": "bf-x-ub01-0062",
+      "no": "X-UB01/0062",
+      "name": "女帝 クィーン・アゲハ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "冒険者",
+        "天国"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■“税金↑↑”このカードが連携攻撃した時、君か相手のドロップゾーンのカード１枚までを持ち主のデッキの下に置いてよい。置いたら、君のライフを＋１！",
+        "■このカードが連携攻撃したバトル終了時、場のこのカードを君の手札に戻してよい。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0062-zeikin",
+          "label": "税金↑↑",
+          "kind": "triggered",
+          "event": "allyLinkAttack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "d",
+              "from": "drop",
+              "controller": "any",
+              "amount": 1,
+              "min": 0,
+              "max": 1,
+              "require": false,
+              "title": "女帝 クィーン・アゲハ",
+              "lead": "持ち主のデッキの下に置くドロップゾーンのカードを1枚まで選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "d",
+              "then": [
+                {
+                  "op": "moveSelected",
+                  "var": "d",
+                  "to": "deckBottom"
+                },
+                {
+                  "op": "gainLife",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ub01-0062-link-mark",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            },
+            {
+              "op": "pendingAttackIncludesOtherMatching",
+              "filter": {}
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "xub01-0062-linked",
+              "duration": "turn"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ub01-0062-battleend-return",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "targetMatches",
+              "ref": "$self",
+              "filter": {
+                "keyword": "xub01-0062-linked"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "returnSelfToHand"
+            }
+          ]
+        }
+      ],
+      "_note": "①『税金↑↑』『このカードが連携攻撃した時、君か相手のドロップゾーンのカード1枚までを持ち主のデッキの下に置いてよい。置いたら、君のライフを＋1』=controller:『君か相手』→\"any\"（\"both\"は無効値・scriptControllerMatchesはself/opponent/anyのみsrc/14:741）。moveSelected{to:deckBottom}は宛先owner省略時=entry.owner=持ち主（scriptMoveDestinationOwner既定・src/14:1384実証）＝toOwner明示不要。原文に『N回』repeat制限が無いためlimit無し（design.md §5注記のとおりキーワード的名称でlimit key不要）。②③『このカードが連携攻撃したバトル終了時、場のこのカードを君の手札に戻してよい』=bf-d-ss03-0008太陽剣バルソード姉妹版と同型の『attack時マーク付与→battleEnd時マーク消費』2段構成: event:attackでpendingAttackBySource+pendingAttackIncludesOtherMatching{filter:{}}(=他の攻撃者が1体以上=連携)を満たしたら$selfへturn限定keyword付与、event:battleEndでtargetMatches{ref:$self,filter:{keyword:...}}を満たしたらoptional:trueでreturnSelfToHand。bareのbattleEndは攻撃者スロットのみ配信(queueBattleEndTriggers/src/10:528)のため自己限定は自然に成立。grep確認: pendingAttackIncludesOtherMatching(src/13:1378)・grantKeyword duration:turn→turnKeywords(src/15:1614)・targetMatches ref解決(src/13:851)・battleEnd(src/10:531)。"
+    },
+    {
+      "id": "bf-x-ub01-0063",
+      "no": "X-UB01/0063",
+      "name": "古代兵器の操縦者 ダッシュ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ヒーローW"
+      ],
+      "attributes": [
+        "冒険者",
+        "ライドチェンジャー"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■【対抗】【起動】君がアイテムを装備しているなら、君の場のアイテム１枚を選び、ライフ１を払ってよい。払ったら、場か手札のこのカードを選んだカードのソウルに入れる。",
+        "■このカードが君のアイテムのソウルにあるなら、そのカードは『貫通』と『ソウルガード』を得る。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0063-soul-in-field",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "item"
+              ],
+              "filter": {
+                "cardType": "item"
+              }
+            },
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "item"
+            }
+          },
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ub01-0063-soul-in-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "item"
+              ],
+              "filter": {
+                "cardType": "item"
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "item"
+            }
+          },
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "soulContinuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "filter": {
+            "cardType": "item"
+          }
+        },
+        {
+          "op": "grantKeyword",
+          "keyword": "soulguard",
+          "filter": {
+            "cardType": "item"
+          }
+        }
+      ],
+      "_note": "『君がアイテムを装備しているなら、君の場のアイテム1枚を選び、ライフ1を払ってよい。払ったら、場か手札のこのカードを選んだカードのソウルに入れる』はbf-x-cp01-0033『騎竜 ロシナンテ』完全precedent＝2ability構成（counter+sourceZoneIn左中右／counter+fromHandOnly）+conditions:[ownFieldCardExists{zones:[item],filter:{cardType:item}}]（bt03-0012/bf-x-cp01-0026型）+ability.target(fieldCard,controller:self,filter:{cardType:item})+cost:[payLife:1]+effects moveSelfToTargetSoul{target:\"$target\"}（field/hand/drop自動判別。src/15:2320）。timingは[counter]のみ（precedent踏襲・main不要=本能力は主に相手ターンの対抗窓での搭乗防御用途）。『このカードが君のアイテムのソウルにあるなら、そのカードは『貫通』と『ソウルガード』を得る』=soulContinuous:[grantKeyword(penetrate,filter:{cardType:item}),grantKeyword(soulguard,filter:{cardType:item})]（bf-x-cp01-0033のsoulContinuous型を貫通+ソウルガードへ差替）。callCost行なし=costs省略。grep自己検査: ownFieldCardExists/sourceZoneIn/moveSelfToTargetSoul(src/15:2320)/soulContinuous grantKeyword 全実在確認。"
+    },
+    {
+      "id": "bf-x-ub01-0064",
+      "no": "X-UB01/0064",
+      "name": "怪しい改造屋 ガラ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "冒険者",
+        "星",
+        "ネオドラゴン"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■【起動】このカード以外の君の場のモンスター１枚を選び、ライフ１を払う。払ったら、次の２つから１つを選んで使う。この能力は１ターンに１回だけ使える。",
+        "・そのターン中、選んだカードの攻撃力を＋3000し、『貫通』を与える！",
+        "・そのターン中、選んだカードの打撃力を＋１する！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0064-choose-buff",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "excludeSource": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "怪しい改造屋 ガラ",
+              "lead": "選んだカードへ与える効果を選んでください。",
+              "options": [
+                {
+                  "key": "power",
+                  "label": "攻撃力＋3000、『貫通』を与える",
+                  "script": [
+                    {
+                      "op": "modifyStats",
+                      "target": "$target",
+                      "power": 3000,
+                      "duration": "turn"
+                    },
+                    {
+                      "op": "grantKeyword",
+                      "target": "$target",
+                      "keyword": "penetrate",
+                      "duration": "turn"
+                    }
+                  ]
+                },
+                {
+                  "key": "critical",
+                  "label": "打撃力＋1",
+                  "script": [
+                    {
+                      "op": "modifyStats",
+                      "target": "$target",
+                      "critical": 1,
+                      "duration": "turn"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "『このカード以外の君の場のモンスター1枚を選び、ライフ1を払う。払ったら、次の2つから1つを選んで使う』はability.target(fieldCard,controller:self,excludeSource:true,filter:{cardType:monster})+cost:[payLife:1]（『払う』＝てよい無し=必須）+script chooseBranch（bf-h-bt04-0047『戦神機城 ヴォイドフォート・ムミョウ』完全precedent＝ability.target+script chooseBranchでoption.scriptがtarget:\"$target\"を直接参照）。分岐1『攻撃力+3000し、貫通を与える』=modifyStats(power:3000,duration:turn)+grantKeyword(penetrate,duration:turn)。分岐2『打撃力+1』=modifyStats(critical:1,duration:turn)（打撃力=criticalの鉄則）。『この能力は1ターンに1回だけ使える』=limit{scope:turn}（無名=key省略）。callCost行なし=costs省略。grep自己検査: chooseBranch(src/14:336,1154)/modifyStats/grantKeyword/target.excludeSource(src/17:216) 全実在確認。"
+    },
+    {
+      "id": "bf-x-ub01-0065",
+      "no": "X-UB01/0065",
+      "name": "サモン・トラップ",
+      "type": "spell",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "罠"
+      ],
+      "rules": [
+        "■相手のカードの攻撃中に使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】君のドロップゾーンの《罠》のモンスター１枚を選び、【コールコスト】を払ってコールし、その攻撃の対象を、そのモンスターに変更する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0065-redirect-call",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackByOpponentCardMatches",
+              "filter": {}
+            },
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "attribute": "罠",
+                "cardType": "monster"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "reserve",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "attribute": "罠",
+                "cardType": "monster"
+              },
+              "min": 1,
+              "max": 1,
+              "amount": 1,
+              "require": true,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "サモン・トラップ",
+              "lead": "君のドロップゾーンの《罠》のモンスター1枚を選んでください。"
+            },
+            {
+              "op": "selectZone",
+              "var": "z",
+              "cardVar": "reserve",
+              "emptyOnly": true
+            },
+            {
+              "op": "payCardCostForSelection",
+              "var": "reserve",
+              "purpose": "call"
+            },
+            {
+              "op": "callSelected",
+              "var": "reserve",
+              "zoneVar": "z",
+              "resolveOnEnter": true,
+              "redirectPendingAttack": true
+            }
+          ]
+        }
+      ],
+      "_note": "『相手のカードの攻撃中に使える』条件はbf-h-bt02-0089鬼道馬鹿囃子と同じpendingAttackByOpponentCardMatches(filter:{})。ドロップから選択→空きエリアへコール→攻撃対象変更は、bt01-0058クイックサモン(callSelected.redirectPendingAttack:true)の手札版をドロップ版に差し替え（src/14:2268 redirectPendingAttackがtargetOwner/targetZoneをコール先へ書き換えるのを実測確認）。"
+    },
+    {
+      "id": "bf-x-ub01-0066",
+      "no": "X-UB01/0066",
+      "name": "ピラー・オブ・ファイヤー",
+      "type": "spell",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "火力"
+      ],
+      "rules": [
+        "■君のセンターにモンスターがいないなら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】場の防御力6000以下のモンスター１枚を破壊する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0066-cast",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "any",
+            "filter": {
+              "cardType": "monster",
+              "defenseLte": 6000
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-0067",
+      "no": "X-UB01/0067",
+      "name": "シャルサーナの加護",
+      "type": "spell",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中に使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】その攻撃を無効化し、君のライフを＋１する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0067-shield",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-0068",
+      "no": "X-UB01/0068",
+      "name": "ミッションカード “仲間を集めろ！”",
+      "type": "spell",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "召喚"
+      ],
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■【起動】君のドロップゾーンの《冒険者》のモンスター１枚を選び、相手とジャンケンする。君がジャンケンに勝ったら、選んだカードを【コールコスト】を払ってコールする。この能力は１ターンに１回だけ使える。",
+        "■「ミッションカード“仲間を集めろ！”」は君の場に１枚だけ『設置』できる。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "uniqueSet": true,
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0068-recruit",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "attribute": "冒険者",
+                "cardType": "monster"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          },
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "adv",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "attribute": "冒険者",
+                "cardType": "monster"
+              },
+              "amount": 1,
+              "require": true,
+              "callable": true,
+              "canPayCost": "call"
+            },
+            {
+              "op": "selectZone",
+              "var": "advZone",
+              "cardVar": "adv",
+              "emptyOnly": true
+            },
+            {
+              "op": "callSelected",
+              "var": "adv",
+              "zoneVar": "advZone",
+              "rockPaperScissors": true,
+              "payCost": "call",
+              "resolveOnEnter": true
+            }
+          ]
+        }
+      ],
+      "_note": "忠実実装（E-XU5）: 原文『ドロップの《冒険者》のモンスター1枚を選び、相手とジャンケンする。勝ったら選んだカードを【コールコスト】を払ってコールする。1ターンに1回』。callSelected(script) に opt-in の rockPaperScissors ゲート＋payCost 対応を追加（エンジン班 E-XU5・src/14 callSelectedForScript。RPS勝ち以外は {ok:false} で中断＝カードはドロップ残留・コスト未払い。勝ちのみ payCost:'call' を課金してコール）。従来の effect.rockPaperScissors ゲートが専用ディスパッチの call 系 op に届かず silent no-op だった問題（B7 実測）の正規解。selectCards{callable,canPayCost:'call'}→selectZone{emptyOnly}→callSelected は bt03-0041 と同型の既存前例。軽微: コール先ゾーンの選択がジャンケンより先に行われる（対話順のみの差・盤面状態への影響なし）。VM: WIN→コールコスト課金込みでコール成立／LOSE→ドロップ残留・コスト未払いの両方を実操作経路（useFieldAbilityAction）で確認（_scratch/xub01-b7-verify.js）。"
+    },
+    {
+      "id": "bf-x-ub01-0069",
+      "no": "X-UB01/0069",
+      "name": "ミッションカード “パーティ結成！”",
+      "type": "spell",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "ドロー"
+      ],
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■君の場にこのカード以外の、カード名に「ミッション」を含むカードが『設置』された時、君のライフを＋１し、君のデッキから《冒険者》１枚を選び、手札に加え、デッキをシャッフルし、このカードをドロップゾーンに置く。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0069-mission",
+          "kind": "triggered",
+          "event": "allySet",
+          "conditions": [
+            {
+              "op": "enteredCardMatches",
+              "excludeSource": true,
+              "filter": {
+                "nameIncludes": "ミッション"
+              }
+            }
+          ],
+          "script": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "selectCards",
+              "var": "adventurer",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "attribute": "冒険者"
+              },
+              "amount": 1,
+              "allowEmpty": true,
+              "title": "ミッションカード “パーティ結成！”",
+              "lead": "デッキから《冒険者》1枚を選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "adventurer",
+              "to": "hand"
+            },
+            {
+              "op": "shuffleDeck"
+            },
+            {
+              "op": "moveTargetToDrop",
+              "target": "$self"
+            }
+          ]
+        }
+      ],
+      "_note": "既知の外部再録候補（design.md §3未検出・報告事項）: td04-0015『ミッションカード\"パーティ結成！\"』（世界/attributes/rules/keywords/abilityロジック完全一致・引用符のみ全角“”(本弾)対直角\"\"(td04)で相違）とrules原文が実質同一。detect_xub01.pyのNFKC正規化が曲線引用符“”/直線引用符\"\"を同一視しないため既存reprint検出(§3 SAME3枚)から漏れた可能性が高い。原文が正なので本カードは新規bodyとして起草しつつ、td04-0015のmech（allySet+enteredCardMatches excludeSource+nameIncludes:ミッション、script構造）をそのまま踏襲した。uniqueSetは原文に『1枚だけ設置できる』の明記が無いため付与せず（td04-0015も同様にuniqueSet無し＝一致）。オーケストレーターへ: 統括再録判定(detect_xub01.py)へのクォート正規化追加を推奨。"
+    },
+    {
+      "id": "bf-x-ub01-0070",
+      "no": "X-UB01/0070",
+      "name": "魔王のダンジョン",
+      "type": "spell",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "attributes": [
+        "魔王"
+      ],
+      "rules": [
+        "■君の場に《魔王》があるなら使える。",
+        "■『設置』（このカードは場に置いて使う）",
+        "■君のターン開始時、君のドロップゾーンのサイズ１以下の《Dエネミー》１枚を【コールコスト】を払って、コールできる。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "useConditions": [
+        {
+          "op": "ownFieldHasAttribute",
+          "attribute": "魔王"
+        }
+      ],
+      "uniqueSet": true,
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0070-call",
+          "kind": "triggered",
+          "event": "turnStart",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "enemy",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "attribute": "Dエネミー",
+                "sizeLte": 1
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "callable": true,
+              "canPayCost": "call"
+            },
+            {
+              "op": "ifSelection",
+              "var": "enemy",
+              "then": [
+                {
+                  "op": "selectZone",
+                  "var": "zone",
+                  "cardVar": "enemy",
+                  "emptyOnly": true
+                },
+                {
+                  "op": "payCardCostForSelection",
+                  "var": "enemy",
+                  "purpose": "call"
+                },
+                {
+                  "op": "callSelected",
+                  "var": "enemy",
+                  "zoneVar": "zone",
+                  "resolveOnEnter": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-br01",
+      "no": "X-UB01/BR01",
+      "name": "剛雷大魔王 バッツ",
+      "type": "monster",
+      "rarity": "バディレア",
+      "world": "ドラゴンW",
+      "worlds": [
+        "ドラゴンW",
+        "ダンジョンW"
+      ],
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "雷帝軍"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■君のターン中、場のこのカードは破壊されない。",
+        "■【起動】このカードがセンターにいるなら、手札１枚を捨ててよい。捨てたら、君のデッキからサイズ３の《魔王》１枚までを、君の場の空いているエリアに、【コールコスト】を払ってコールし、デッキをシャッフルする。そのカードは場から離れるまでサイズ０になる。この能力は１ターンに１回だけ使える。",
+        "『２回攻撃』『ライフリンク２』"
+      ],
+      "altArtOf": "bf-x-ub01-0001",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/XUB01_BR01_RGB.png",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "destroyImmunity": [
+        {
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        },
+        {
+          "from": {
+            "byBattle": true
+          },
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "doubleAttack",
+        "lifeLink2"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0001-discard-call-maou",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "optional": true,
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "center"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "魔王",
+                "sizeIn": [
+                  3
+                ]
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "allowEmpty": true,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "剛雷大魔王 バッツ",
+              "lead": "【コールコスト】を払ってコールする、サイズ３の《魔王》を選んでください（選ばなくてもよい）。",
+              "emptyMessage": "コールできるサイズ３の《魔王》がデッキにありません。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "call",
+              "payCost": "call",
+              "chooseZones": true,
+              "grantConditionalSize": {
+                "size": 0,
+                "unconditional": true
+              },
+              "resolveOnEnter": true,
+              "require": false
+            },
+            {
+              "op": "shuffleDeck",
+              "controller": "self"
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-br02",
+      "no": "X-UB01/BR02",
+      "name": "轟雷の勇者 牙王",
+      "type": "monster",
+      "rarity": "バディレア",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ドラゴンW"
+      ],
+      "attributes": [
+        "冒険者",
+        "雷帝軍"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードが登場した時、そのターン中、君の場の《冒険者》のモンスター１枚の打撃力＋１！",
+        "■“一緒に戦おうぜ！”このカードが他の《冒険者》と連携攻撃した時、君の場の《冒険者》１枚を選び、ゲージ１を払ってよい。払ったら、選んだカードとこのカードをスタンドする。「一緒に戦おうぜ！」は１ターンに１回だけ発動する。"
+      ],
+      "altArtOf": "bf-x-ub01-0004",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/XUB01_BR02_RGB.png",
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0004-enter-critical",
+          "kind": "triggered",
+          "event": "enter",
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "冒険者"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "critical": 1,
+              "duration": "turn"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ub01-0004-issho-ni-tatakaou",
+          "label": "一緒に戦おうぜ！",
+          "kind": "triggered",
+          "event": "allyLinkAttack",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            },
+            {
+              "op": "eventAttackersInclude",
+              "excludeSelf": true,
+              "filter": {
+                "attribute": "冒険者"
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "attribute": "冒険者"
+            }
+          },
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$target"
+            },
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xub01-issho-ni-tatakaou"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-s001",
+      "no": "X-UB01/S001",
+      "name": "剛雷大魔王 バッツ",
+      "type": "monster",
+      "rarity": "究極レア",
+      "world": "ドラゴンW",
+      "worlds": [
+        "ドラゴンW",
+        "ダンジョンW"
+      ],
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "雷帝軍"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■君のターン中、場のこのカードは破壊されない。",
+        "■【起動】このカードがセンターにいるなら、手札１枚を捨ててよい。捨てたら、君のデッキからサイズ３の《魔王》１枚までを、君の場の空いているエリアに、【コールコスト】を払ってコールし、デッキをシャッフルする。そのカードは場から離れるまでサイズ０になる。この能力は１ターンに１回だけ使える。",
+        "『２回攻撃』『ライフリンク２』"
+      ],
+      "altArtOf": "bf-x-ub01-0001",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/xub_01_s001.png",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "destroyImmunity": [
+        {
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        },
+        {
+          "from": {
+            "byBattle": true
+          },
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "doubleAttack",
+        "lifeLink2"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0001-discard-call-maou",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "optional": true,
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "center"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "魔王",
+                "sizeIn": [
+                  3
+                ]
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "allowEmpty": true,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "剛雷大魔王 バッツ",
+              "lead": "【コールコスト】を払ってコールする、サイズ３の《魔王》を選んでください（選ばなくてもよい）。",
+              "emptyMessage": "コールできるサイズ３の《魔王》がデッキにありません。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "call",
+              "payCost": "call",
+              "chooseZones": true,
+              "grantConditionalSize": {
+                "size": 0,
+                "unconditional": true
+              },
+              "resolveOnEnter": true,
+              "require": false
+            },
+            {
+              "op": "shuffleDeck",
+              "controller": "self"
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-s002",
+      "no": "X-UB01/S002",
+      "name": "運命の守護者 タスク",
+      "type": "monster",
+      "rarity": "究極レア",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "冒険者",
+        "ネオドラゴン"
+      ],
+      "size": 1,
+      "power": 6000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、ライフ１を払う。",
+        "■【対抗】【起動】“未来からの使者”君のライフが６以下なら、手札のこのカードを、【コールコスト】を払ってコールする。「未来からの使者」は１ターンに１回だけ使える。",
+        "■このカードが登場した時、相手の場のサイズ２以下のモンスター１枚を破壊する。"
+      ],
+      "altArtOf": "bf-x-ub01-0003",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/xub_01_s002.png",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0003-mirai-kara-no-shisha",
+          "label": "未来からの使者",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 6
+            }
+          ],
+          "script": [
+            {
+              "op": "selectZone",
+              "var": "z",
+              "emptyOnly": true
+            },
+            {
+              "op": "callSelfFromHand",
+              "zoneVar": "z"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xub01-mirai-kara-no-shisha"
+          }
+        },
+        {
+          "id": "bf-x-ub01-0003-enter-destroy",
+          "kind": "triggered",
+          "event": "enter",
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster",
+              "sizeLte": 2
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "_note": "『【コールコスト】ゲージ1を払い、ライフ1を払う』=costs.call:[payGauge:1,payLife:1]。『【対抗】【起動】\"未来からの使者\"君のライフが6以下なら、手札のこのカードを、【コールコストを】払ってコールする』は named-once(design.md §5表: xub01-mirai-kara-no-shisha)。kind:activated+fromHandOnly:true+timing:[main,counter]（対抗+起動の両マーク）+conditions:[lifeLte(6)](src/13:891)+script selectZone{emptyOnly:true}→callSelfFromHand{zoneVar}（callSelfFromHandは自身のcosts.callを自動精算=bf-h-eb03-0003型の骨格を流用。turnOwnerIsSelf等の追加ゲートは原文に無いため付与せず＝対抗窓としても使用可）+limit{scope:turn,key:xub01-mirai-kara-no-shisha}。『このカードが登場した時、相手の場のサイズ2以下のモンスター1枚を破壊する』はevent:enter+target(fieldCard,controller:opponent,filter:{cardType:monster,sizeLte:2})+destroy{target:$target}（bf-d-bt04-0111型の登場時破壊を単純化）。grep自己検査: payGauge/payLife/lifeLte(src/13:891)/selectZone/callSelfFromHand(src/14:2287)/destroy/enter event 全実在確認。VM実測: ライフ7ではmirai-kara-no-shisha不発／ライフ6以下で手札から実コール(コスト精算込み)・1ターン1回制限／登場時に相手サイズ2以下モンスターを実破壊・サイズ3では対象外(no-op)。"
+    },
+    {
+      "id": "bf-x-ub01-s003",
+      "no": "X-UB01/S003",
+      "name": "轟雷の勇者 牙王",
+      "type": "monster",
+      "rarity": "究極レア",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ドラゴンW"
+      ],
+      "attributes": [
+        "冒険者",
+        "雷帝軍"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードが登場した時、そのターン中、君の場の《冒険者》のモンスター１枚の打撃力＋１！",
+        "■“一緒に戦おうぜ！”このカードが他の《冒険者》と連携攻撃した時、君の場の《冒険者》１枚を選び、ゲージ１を払ってよい。払ったら、選んだカードとこのカードをスタンドする。「一緒に戦おうぜ！」は１ターンに１回だけ発動する。"
+      ],
+      "altArtOf": "bf-x-ub01-0004",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/xub_01_s003.png",
+      "abilities": [
+        {
+          "id": "bf-x-ub01-0004-enter-critical",
+          "kind": "triggered",
+          "event": "enter",
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "冒険者"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "critical": 1,
+              "duration": "turn"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ub01-0004-issho-ni-tatakaou",
+          "label": "一緒に戦おうぜ！",
+          "kind": "triggered",
+          "event": "allyLinkAttack",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            },
+            {
+              "op": "eventAttackersInclude",
+              "excludeSelf": true,
+              "filter": {
+                "attribute": "冒険者"
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "attribute": "冒険者"
+            }
+          },
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$target"
+            },
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xub01-issho-ni-tatakaou"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ub01-s004",
+      "no": "X-UB01/S004",
+      "name": "ドラゴンワールド",
+      "type": "flag",
+      "rarity": "究極レア",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "■君は＜ドラゴンワールド＞と＜ジェネリック＞のカードを使える。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/xub_01_s004.png",
+      "_note": "究極レア別絵（フラッグ表示専用カード・機構は data/flags.json が担う。altArtOf 無し＝fgs 前例）"
+    },
+    {
+      "id": "bf-x-ub01-s005",
+      "no": "X-UB01/S005",
+      "name": "スタードラゴンワールド",
+      "type": "flag",
+      "rarity": "究極レア",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "■君は＜スタードラゴンワールド＞と＜ジェネリック＞のカードを使える。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/xub_01_s005.png",
+      "_note": "究極レア別絵（フラッグ表示専用カード・機構は data/flags.json が担う。altArtOf 無し＝fgs 前例）"
+    },
+    {
+      "id": "bf-x-ub01-s006",
+      "no": "X-UB01/S006",
+      "name": "ダンジョンワールド",
+      "type": "flag",
+      "rarity": "究極レア",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "■君は＜ダンジョンワールド＞と＜ジェネリック＞のカードを使える。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/xub_01_s006.png",
+      "_note": "究極レア別絵（フラッグ表示専用カード・機構は data/flags.json が担う。altArtOf 無し＝fgs 前例）"
+    }
+  ]
+}

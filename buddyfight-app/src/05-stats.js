@@ -846,6 +846,46 @@ function continuousEffectApplies(effect, targetCard, sourceCard) {
 }
 
 // ==========================================================================
+// E-XU4(X-UB01/0043 キング・グミスライム): 相手モンスター全体への継続デナイアル。
+// 場札の continuous/turnContinuous op:"restrictOpponentMonsters"{move|standInAttackPhase} を live 走査する
+// （発生源が場を離れれば走査で見つからず自動解除＝継続評価。持続フラグは持たない）。
+// controller/filter/conditions のスコープ判定は continuousEffectApplies に委譲（controller:"opponent"＝
+// 相手モンスター限定・filter:{cardType:"monster"} 等）。能力無効化された発生源は activeContinuousEffects と
+// continuousEffectApplies(isAbilitiesNullified) の二重で除外される。
+// 既存カードは restrictOpponentMonsters op を持たない＝場に該当継続が無ければ常に false（高速パス・波及ゼロ）。
+// ==========================================================================
+function monsterActionRestricted(card, kind) {
+  if (!card || !findFieldCardSlot(card)) {
+    return false;
+  }
+  return state.players.some((player) =>
+    zones.some((zone) => {
+      const source = player.field[zone];
+      return activeContinuousEffects(source).some(
+        (e) => e.op === "restrictOpponentMonsters" && e[kind] === true && continuousEffectApplies(e, card, source),
+      );
+    }),
+  );
+}
+
+// 『移動』デナイアル: 移動キーワードの使用可否判定に使う（runMoveKeywordsAtAttackPhaseStart）。
+function monsterMovementRestricted(card) {
+  return monsterActionRestricted(card, "move");
+}
+
+// スタンドデナイアル: 既存の cannotStandThisTurn（Z14 S-UB-C03/0038＝そのターン中スタンド不可）に加え、
+// アタックフェイズ中のみ restrictOpponentMonsters{standInAttackPhase} でスタンド不可（メイン/ファイナルは可）。
+function standRestrictedNow(card) {
+  if (!card) {
+    return false;
+  }
+  if (card.cannotStandThisTurn) {
+    return true;
+  }
+  return state.phase === "attack" && monsterActionRestricted(card, "standInAttackPhase");
+}
+
+// ==========================================================================
 // Z4(S-UB-C03): 第三者付与型の耐性ゲート拡張（レスト/ソウル破棄/能力無効化/ステータス減少/ターン限定）。
 // 既存の破壊(grantedDestroyImmunityBlocks)/手札戻し(preventReturnToHand)ゲートとは独立レイヤで、
 // 同型のパターン（場の継続 grant*Immunity を controller/zoneIn/filter/conditions/from で判定）を

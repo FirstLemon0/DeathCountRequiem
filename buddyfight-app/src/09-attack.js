@@ -655,7 +655,8 @@ async function runMoveKeywordsAtAttackPhaseStart() {
     const player = state.players[owner];
     const movableSlots = fieldZones
       .map((zone) => ({ owner, zone, card: player.field[zone] }))
-      .filter(({ card }) => card && hasKeyword(card, "move"));
+      // E-XU4(0043 グミスライム): 相手継続で『移動』が封じられているカードは移動を提示しない。
+      .filter(({ card }) => card && hasKeyword(card, "move") && !monsterMovementRestricted(card));
     for (const slot of movableSlots) {
       const current = player.field[slot.zone];
       if (!current || current.instanceId !== slot.card.instanceId) {

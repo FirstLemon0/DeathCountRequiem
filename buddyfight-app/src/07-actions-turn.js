@@ -547,6 +547,10 @@ async function resolveOnEnter(card, player, storedTarget = null, options = {}) {
     // 「カードの効果で登場した時」条件（enteredByEffect。H-PP01/0044）用。
     // 通常コール経路（resolvePendingCall/arriveCard）は false、script のコール系は true を渡す。
     enteredByEffect: Boolean(options.byEffect),
+    // E-XU2(X-UB01/0021 ミセリア): 「『仮面剣士 キリ』の効果で登場した時」用。効果コール経路が
+    // 発生源カード（context.card＝キリ）を options.enterCauseCard として渡す。通常コール／未指定は null＝
+    // enteredByCardNamed/enterCauseMatches は false（既存カードの enter 誘発は挙動不変・オプトイン）。
+    enterCauseCard: options.enterCauseCard || null,
   });
   await runAllyEnterTriggers(card, owner, zone);
   // E-Y1(奇襲): 「君のモンスターが『奇襲』で登場した時」の場イベント allyAmbushEnter（0039 飛翔刃）。

@@ -459,6 +459,12 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     // canUseCardForFlag=フラッグ適法判定（usableInAnyFlag マーカーの実測）。
     executeAbilityScript,
     canUseCardForFlag,
+    // E-XU4(X-UB01/0043 グミスライム)プローブ用（_scratch/xub01-probe.js）: 『移動』提示の実経路と、
+    // 手札戻し不可（既存 preventReturnToHand 継続の scope:opponent 実測）・移動/スタンド継続デナイアルの consult。
+    runMoveKeywordsAtAttackPhaseStart,
+    cannotReturnToHand,
+    monsterMovementRestricted,
+    standRestrictedNow,
   };
 } else if (globalThis.__BUDDYFIGHT_REPLAY__) {
   // リプレイ再生専用ページ（replay.html）。対話操作・ネットUI・自動開始は行わず、データ読込と

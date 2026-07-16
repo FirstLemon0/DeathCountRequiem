@@ -58,9 +58,10 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
   state.damagePrevention[owner] ||= [];
   let remaining = amount;
   // 継続 damageReceivedReduction（装備者が受けるダメージを amount 減らす。
-  // nonAttackOnly:true は攻撃以外のダメージ限定(マグナグレイス0011)、既定は全ダメージ(0056)）。
+  // nonAttackOnly:true は攻撃以外のダメージ限定(マグナグレイス0011)、既定は全ダメージ(0056)。
+  // byOpponent:true は相手席発のダメージ限定(X-UB01/0007 結晶魔王アトラ)＝options.sourceOwner を渡して判定）。
   if (!options.ignorePrevention) {
-    const cap = damageReceivedReductionFor(owner, Boolean(options.byAttack), remaining);
+    const cap = damageReceivedReductionFor(owner, Boolean(options.byAttack), remaining, options.sourceOwner);
     if (cap) {
       const reduced = Math.max(0, remaining - cap.amount);
       if (reduced !== remaining) {
@@ -214,7 +215,8 @@ function openDamageReceivedCounterWindow(defender, damage, options = {}) {
 // 継続 damageReceivedReduction を持つ場札から、owner が受けるダメージの軽減設定（最も減らせる1件）を返す。
 // nonAttackOnly:true は byAttack===false の時のみ適用（攻撃以外限定。マグナグレイス0011）。
 // attackOnly:true は byAttack===true の時のみ適用（攻撃限定。E-ZA2/X-SS02/0002 ソル・アステール）。既定は全ダメージ(0056)。
-function damageReceivedReductionFor(owner, byAttack, incomingDamage = Infinity) {
+// byOpponent:true は sourceOwner が相手席の時のみ適用（相手のカードの効果で受けるダメージ限定。X-UB01/0007 結晶魔王アトラ）。
+function damageReceivedReductionFor(owner, byAttack, incomingDamage = Infinity, sourceOwner = undefined) {
   let best = null;
   zones.forEach((zone) => {
     const source = state.players[owner]?.field?.[zone];
@@ -237,6 +239,14 @@ function damageReceivedReductionFor(owner, byAttack, incomingDamage = Infinity) 
       // 使用は0件＝この分岐を踏むエントリは無いため、attackOnly 未指定の従来挙動は完全に不変。
       if (effect.attackOnly && !byAttack) {
         return; // 攻撃限定の軽減は攻撃以外（効果/必殺技）のダメージには効かない
+      }
+      // F1(X-UB01/0007 結晶魔王アトラ): byOpponent:true は「相手のカードの効果で受けるダメージ」限定。
+      // sourceOwner（発生源の席）が相手席（整数かつ owner と異なる）の時のみ適用する。sourceOwner 未供給
+      // （攻撃ダメージ・発生源不明のライフリンク/コスト減算等）では適用しない安全側＝preventOpponentEffectDamage
+      // (04-cost-resource.js 上部)と同じ sourceOwner 配線を再利用。既存の damageReceivedReduction 使用カードは
+      // byOpponent 非保持＝この分岐を踏まず挙動完全不変（DB全数監査済み）。
+      if (effect.byOpponent && !(Number.isInteger(sourceOwner) && sourceOwner !== owner)) {
+        return;
       }
       if (effect.threshold && incomingDamage < effect.threshold) {
         return; // 「N以上のダメージを受ける場合」限定の軽減はN未満には効かない（0056）
@@ -431,7 +441,8 @@ function cardCostSteps(player, card, purpose, context = {}) {
   }
   return {
     exists: true,
-    steps: adjustedCostSteps(player, card, purpose, rawCost),
+    // E-XU3: コール元ゾーン（context.callFromZone）を軽減判定へ橋渡し（「手札以外から」ゲート）。
+    steps: adjustedCostSteps(player, card, purpose, rawCost, { callFromZone: context.callFromZone }),
   };
 }
 
@@ -445,13 +456,22 @@ function fieldCostReductions(player) {
   return out;
 }
 
-function costReductionApplies(reduction, card, purpose) {
+function costReductionApplies(reduction, card, purpose, options = {}) {
   if ((reduction.purpose || "cast") !== purpose || !matchesCardFilter(card, reduction.filter || {})) {
     return false;
   }
   // フェイズ/状況限定のコスト軽減（0070: アタックフェイズ中のみ魔法ゲージ-2）。
   if (reduction.conditions && !checkCardConditions(reduction.conditions, state.active, {})) {
     return false;
+  }
+  // E-XU3(X-UB01/0019 サツキ・パレス): 「手札以外からコールする場合」限定の軽減。コール元ゾーンが判明
+  // していて、かつ除外ゾーンに含まれない時だけ適用する。ゾーン不明（通常の手札コール等＝callFromZone 未供給）は
+  // 非適用＝後方互換（callFromZoneNot を持たない既存 costReduction はこの分岐を素通り＝挙動完全不変）。
+  if (Array.isArray(reduction.callFromZoneNot)) {
+    const fromZone = options.callFromZone;
+    if (!fromZone || reduction.callFromZoneNot.includes(fromZone)) {
+      return false;
+    }
   }
   return true;
 }
@@ -466,10 +486,10 @@ function adjustedLegacyCost(player, card, purpose, cost = {}) {
   return adjusted;
 }
 
-function adjustedCostSteps(player, card, purpose, costSteps = []) {
+function adjustedCostSteps(player, card, purpose, costSteps = [], options = {}) {
   const steps = deepClone(costSteps || []);
   fieldCostReductions(player).forEach((r) => {
-    if (!costReductionApplies(r, card, purpose)) return;
+    if (!costReductionApplies(r, card, purpose, options)) return;
     const payOp = r.payOp || "payGauge";
     const step = steps.find((st) => st.op === payOp && (st.amount || 0) > 0);
     if (step) step.amount = Math.max(0, step.amount - (r.amount || 1));

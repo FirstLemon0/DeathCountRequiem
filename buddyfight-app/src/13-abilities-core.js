@@ -870,6 +870,15 @@ function checkCondition(condition, owner, context = {}) {
     // 「このカードがカードの効果で登場した時」（enter誘発のconditionsで使う。H-PP01/0044）。
     return Boolean(context.enteredByEffect);
   }
+  if (condition.op === "enteredByCardNamed") {
+    // E-XU2(X-UB01/0021 ミセリア): 「『仮面剣士 キリ』の効果で登場した時」。登場の発生源カード名で弁別する。
+    // matchesCardFilter の name 判定（additionalNames 込み）を再利用。発生源未追跡（通常コール等）は false。
+    return Boolean(context.enterCauseCard) && matchesCardFilter(context.enterCauseCard, { name: condition.name });
+  }
+  if (condition.op === "enterCauseMatches") {
+    // 汎用形: 登場の発生源カードを filter で判定（属性/種別等での弁別に使う）。
+    return Boolean(context.enterCauseCard) && matchesCardFilter(context.enterCauseCard, condition.filter || {});
+  }
   if (condition.op === "turnOwnerIsSelf") {
     return (context.turnOwner ?? state.active) === owner;
   }
