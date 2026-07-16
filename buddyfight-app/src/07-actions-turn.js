@@ -300,7 +300,11 @@ async function callMonster(zone) {
     return;
   }
   const stackTarget = selectedCard.callStack ? getStackCallTarget(player, selectedCard) : null;
-  if (selectedCard.callStack && !stackTarget) {
+  // callStack.optional は原文が「モンスター１枚"まで"の上に重ね」型（重ねずに通常コールも可）。
+  // 重ね先が選ばれていない/居ない場合は stackTarget=null のまま通常コールとして続行する
+  // （actualZone は下で zone に落ち、costs.call は通常コール経路で従来どおり課金される）。
+  // optional 無し（重ね必須型）は従来どおり重ね先未解決ならブロック（後方互換）。
+  if (selectedCard.callStack && !stackTarget && !selectedCard.callStack.optional) {
     addLog(`${selectedCard.name}は、重ねる対象を効果対象から選んでください。`);
     return;
   }
@@ -332,12 +336,24 @@ async function callMonster(zone) {
   }
   expireTransientResponseWindows({ preserveSpecialCallOpportunity: specialCallOpportunity });
   const declaredBuddyCall = isBuddyCallDeclared(player, selectedCard);
+  const deckBeforeCost = player.deck.length;
+  const lifeBeforeCost = player.life;
   const payment = await payCardCostWithSelection(player, selectedCard, "call", selectedCard);
   if (!payment.ok) {
     addLog(payment.reason);
     return;
   }
   const card = isAmbushCall ? removeSelectedFromDrop() : removeSelectedFromHand();
+  // 非同期誘発レース(fuzzer seed915): queueTriggerMicrotask の誘発（例: D-BT01/0045 スラスターズ・レスポンスの
+  // discardHand コスト）は fire-and-forget で、宣言フローの await 境界（コスト支払い中のプロンプト等）に割り込み
+  // 手札を書き換えうる。冒頭検証後〜ここまでの間に選択カードが手札/ドロップを離れていたら null が返る。
+  // null のまま beginPendingAction すると card.name/card.conditionalSize で二重クラッシュ→pump 停止（進行不能）
+  // になるため、chargeAction/useMagicalGoodbyeCounterCard と同じ前例に倣い宣言を中止する（カードは移動済みの
+  // 正規ゾーンに保存されている＝保存則は保たれる）。
+  if (!card) {
+    addLog(`${selectedCard.name}が${isAmbushCall ? "ドロップゾーン" : "手札"}にないため、コールを中止しました。`);
+    return;
+  }
   beginPendingAction({
     kind: "call",
     owner: selectedOwner,
@@ -360,6 +376,23 @@ async function callMonster(zone) {
   recordImpactMonsterCall(selectedOwner, card);
   addLog(`${player.name}は${card.name}を${zoneLabel(actualZone)}にコール宣言しました。対抗確認を行ってください。`);
   render();
+  await resolveDeclarationIfGameEnded(deckBeforeCost, lifeBeforeCost, player);
+}
+
+// 保存則: 宣言のコスト支払いで自分が敗北条件に落ちた（このコストで山札が0/ライフが0以下）場合、pending 解決を
+// 待たずに即解決して札を正規のゾーンへ着地させる。winner 成立後は pump/UI が対抗解決を回さないため、
+// removeSelectedFromHand で抜いた札(＋そのソウル)が pendingAction.card に宙吊りのまま物理消失する
+// （fuzzer 終局時保存則の恒久漏れ・seed12/337/51/722）。決着済みで対抗の意味が無いこの局面のみ、既存の
+// resolvePendingResolution 経路をそのまま使って着地させる（コール→場・装備→アイテム枠・魔法→解決後ドロップ等）。
+// 支払いで実際にデッキ/ライフがしきい値を跨いだ時だけ発火＝空デッキ前提テスト等の無変化ケースは従来どおり不変。
+async function resolveDeclarationIfGameEnded(deckBeforeCost, lifeBeforeCost, player) {
+  if (
+    state.winner &&
+    state.pendingAction &&
+    ((deckBeforeCost > 0 && player.deck.length === 0) || (lifeBeforeCost > 0 && player.life <= 0))
+  ) {
+    await resolvePendingResolution();
+  }
 }
 
 function specialCallOpportunityForCard(owner, card) {
@@ -770,7 +803,26 @@ async function restFieldCard(owner, zone, card = state.players[owner]?.field?.[z
   }
   card.used = true;
   await runFieldEventTriggers("rest", owner, card, zone, details);
+  // E-XC4(X-CP01/0068 ギアーズランス):「君の場の《竜騎士》がカードの効果でレストした時」。効果起因(reason:"effect")の
+  // レストに限り restedByEffect を放送する（allyRestedByEffect/opponentRestedByEffect）。攻撃宣言レスト(reason:"attack")
+  // やターン開始の自動処理では発火しない（details.reason で分岐）。hasListener ゲート＝既存リスナー0件で挙動完全不変。
+  if (details.reason === "effect" && fieldHasRestedByEffectListener()) {
+    await runFieldEventTriggers("restedByEffect", owner, card, zone, details);
+  }
   return true;
+}
+
+// E-XC4: restedByEffect リスナーが盤面に1枚でもあるか（放送前の軽量ゲート。既存0件なら常に偽＝素通り不変）。
+function fieldHasRestedByEffectListener() {
+  return [0, 1].some((seat) =>
+    zones.some((zone) => {
+      const c = state.players[seat]?.field?.[zone];
+      return (
+        cardHasTriggeredListener(c, "allyRestedByEffect") ||
+        cardHasTriggeredListener(c, "opponentRestedByEffect")
+      );
+    }),
+  );
 }
 
 async function moveFieldCard(owner, fromZone, toZone, details = {}) {
@@ -1131,16 +1183,19 @@ function pendingActionLabel(action = state.pendingAction) {
   if (!action) {
     return "行動";
   }
+  // 診断ログ(diagnosticContext)からも呼ばれるため、card 欠落の異常 pendingAction でも絶対に throw しない
+  //（ここが投げると「一次エラーの記録中に二次クラッシュして一次原因が隠れる」＝seed915 で実害）。
+  const cardName = action.card?.name || "カード";
   if (action.kind === "call") {
-    return `${action.card.name}のコール`;
+    return `${cardName}のコール`;
   }
   if (action.kind === "ability") {
-    return `${action.card.name}の能力`;
+    return `${cardName}の能力`;
   }
   if (action.kind === "equip") {
-    return `${action.card.name}の装備`;
+    return `${cardName}の装備`;
   }
-  return `${action.card.name}の使用`;
+  return `${cardName}の使用`;
 }
 
 function pendingResponderOwner() {

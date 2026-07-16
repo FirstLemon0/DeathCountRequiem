@@ -490,7 +490,15 @@ function finishPendingAttack(outcome = {}) {
   };
   if (!state.lastAttackOutcome.nullified) {
     runAfterAttackTriggers(state.lastAttackOutcome);
-    queueBattleEndTriggers(state.lastAttackOutcome.attackers || []);
+    // F3(X-CP01/0035 リーネア・0043 キャノンボール隊): 攻撃者スロットに加え、被攻撃（防御）スロットも渡す。
+    // queueBattleEndTriggers は defender スロットへは includeDefender:true を明示した battleEnd 能力に限り配信する
+    // （原文が無限定の「このカードのバトル終了時」＝攻撃・被攻撃どちらでも発火すべき札の救済）。fighter 攻撃は
+    // モンスター非対象なので defenderSlot なし＝既存挙動不変。
+    const defenderSlot =
+      pending.targetType !== "fighter" && pending.targetOwner != null && pending.targetZone
+        ? { owner: pending.targetOwner, zone: pending.targetZone }
+        : null;
+    queueBattleEndTriggers(state.lastAttackOutcome.attackers || [], defenderSlot);
     // E-X1: 被攻撃モンスターを eventCard に「バトル終了」を場全体へ放送する（defender-side 誘発＝ally/opponentBattleEnd。
     // 上の attacker-only bare "battleEnd" とは別イベント名で非衝突・既存挙動不変）。fighter 攻撃（モンスター非対象）は
     // 放送しない。被攻撃札は現在の場から取り直す（戦闘を耐えて場に残ったモンスターのみ＝破壊済みは null で放送しない）。
@@ -511,7 +519,13 @@ function finishPendingAttack(outcome = {}) {
 // D-SS02/0003 流星機ネブローサ「ホストが攻撃したバトル終了時、ホストは２回攻撃を得る」等・queueDrewTriggers と同型）。
 // 旧実装は card.abilities のみを見ていたため、ソウル札発の battleEnd 誘発が queue 前に取りこぼされていた
 // （既存カードに soulAbilities+event:battleEnd の使用は0件＝この拡張で挙動が変わる既存カードは無い）。
-function queueBattleEndTriggers(attackerSlots) {
+//
+// F3(X-CP01/0035 リーネア・0043 キャノンボール隊): 第2引数 defenderSlot（被攻撃モンスターのスロット・省略可）を
+// 受け取り、その札の battleEnd 能力のうち includeDefender:true を明示したものだけを追加で発火する。bare battleEnd は
+// 攻撃者スロットのみ配信するため、原文が無限定の「このカードのバトル終了時」（攻撃・被攻撃どちらでも発火すべき）を
+// 被攻撃側で不発にしていた。includeDefender を持たない既存 bare battleEnd（57件）は defender 経路で一切発火しない
+// ＝完全なオプトインで後方互換。攻撃者側の多重攻撃スタンド処理（standAttackerForMultiAttack）は防御側では行わない。
+function queueBattleEndTriggers(attackerSlots, defenderSlot = null) {
   attackerSlots.forEach((slot) => {
     const card = state.players[slot.owner]?.field?.[slot.zone];
     if (!card || !cardHasTriggeredListener(card, "battleEnd")) {
@@ -538,6 +552,42 @@ function queueBattleEndTriggers(attackerSlots) {
         render();
       });
   });
+  // F3: 被攻撃（防御）側 battleEnd の配信（includeDefender:true のみ）。
+  if (defenderSlot) {
+    const card = state.players[defenderSlot.owner]?.field?.[defenderSlot.zone];
+    if (card && cardHasIncludeDefenderBattleEnd(card)) {
+      Promise.resolve()
+        .then(async () => {
+          await runTriggeredAbilities(card, "battleEnd", {
+            card,
+            player: state.players[defenderSlot.owner],
+            owner: defenderSlot.owner,
+            zone: defenderSlot.zone,
+            // includeDefender を明示した能力のみに絞る（他の bare battleEnd は防御側で発火させない）。
+            __abilityFilter: (ability) => ability.includeDefender === true,
+          });
+          render();
+        })
+        .catch((error) => {
+          console.error(error);
+          addLog(`${card.name}のバトル終了時能力の処理中にエラーが発生しました。`);
+          render();
+        });
+    }
+  }
+}
+
+// F3: card が「被攻撃側でも発火する battleEnd 能力」(includeDefender:true) を持つか。
+// 自身の abilities とソウル札の soulAbilities の両方を見る（bare battleEnd は includeDefender を持たない＝false）。
+function cardHasIncludeDefenderBattleEnd(card) {
+  if (!card) {
+    return false;
+  }
+  const has = (list) =>
+    (list || []).some(
+      (ability) => ability.kind === "triggered" && ability.event === "battleEnd" && ability.includeDefender === true,
+    );
+  return has(card.abilities) || (card.soul || []).some((soulCard) => has(soulCard.soulAbilities));
 }
 
 // E-X1(X-SD02/0015 クリスタル・マーク): 「君の場の《プリズムドラゴン》のモンスターが攻撃されたバトルの終了時」を

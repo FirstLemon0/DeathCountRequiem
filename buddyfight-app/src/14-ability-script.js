@@ -1434,6 +1434,11 @@ async function destroySelectedForScript(step, context) {
   // 実際に破壊した枚数を context へ露出（dealDamage の amountFrom:destroyedCount が参照。破壊耐性で免れた分は除外）。
   context.destroyedCounts = context.destroyedCounts || {};
   context.destroyedCounts[step.var] = destroyedCount;
+  // 後続 ifCondition(lastDestroySucceeded) の「破壊したら〜」報酬ゲート用に破壊成立フラグを立てる
+  // （effect版 destroy の src/15:1089/1097 と同じ定義＝destroyFieldCard が実カードを返した＝破壊成立。
+  //  ソウルガード/破壊耐性で場に残った分は destroyedCount に数えない＝false のまま）。
+  // これが無いと lastDestroySucceeded が常に false になり「破壊したら」報酬が不発だった（F1 恒久FIX）。
+  context.lastDestroyed = destroyedCount > 0;
   if (destroyedCount === 0 && step.require !== false) {
     return { ok: false, reason: "no_destroyed_cards" };
   }
@@ -2798,6 +2803,11 @@ function isScriptEffectStep(step) {
     "topTwoRevealOneOpponentRandomToHandOrGauge",
     "startAttackPhase",
     "restSelf",
+    // standTarget を script からも使えるよう許可（effect版 src/15 の standTarget へ委譲。target:"$self" は
+    // resolveEffectReference が発生源へ解決）。ifCondition(lastDestroySucceeded) の then で自壊スタンドする
+    // インフェルノ/ディミオスソード・ドラゴン/ミセリア等は、この許可が無いと「未実装のscript命令」で script が
+    // 停止し報酬（スタンド＋後続破壊）が不発だった（F1 と同経路で露見した欠落・後方互換＝旧挙動は常に停止）。
+    "standTarget",
     "setLifeZeroSafeguard",
     "preventAllDamageThisTurn",
     "dropSelf",
@@ -2841,7 +2851,10 @@ function isScriptEffectStep(step) {
     "gainLifeMinusMatchingDropCount",
     "winGame",
     "lookTopSelectToHandRestToBottom",
+    "lookTopSelectToSoulOrHand", // E-ZA3(X-SS02/0001 英雄竜 ジャックナイフ): デッキ上1枚look→ソウル/手札の二択
     "revealTopDamagePerMatchRestToBottom",
+    "revealTopCard", // E-XC1(X-CP02 コスモドラグーン reveal-gate): デッキ上1枚を両席公開＝context.revealedCard 記録
+    "putRevealedToDeckBottom", // E-XC1: 公開カードをデッキ下へ（不一致 else 分岐 / 「その後デッキの下」型）
     // Z2/Z4(e)/Z4(f)/Z6/Z9/Z12(b)/Z14(g)（S-UB-C03）: script(ability.script)からも使えるよう許可リストに追加。
     "putTopDeckToBuddyZoneFaceDown",
     "moveSelfToBuddyZoneFaceDown",
@@ -2851,6 +2864,10 @@ function isScriptEffectStep(step) {
     "grantTurnDestroyImmunity",
     "setPreventNextLeaveField",
     "preventStandThisTurn",
+    "preventStandNextTurn", // E-XC10(X-CP02/0070 グラビトン・ジェネレーター): 次の相手スタートフェイズ 全体スタンド不可
+    "returnSelfToDeckBottom", // E-XC11(X-CP02/0016 ネクタル): 場のこのカードをデッキの下へ（effect版 src/15 へ委譲）
+    "nullifySelectedAbilities", // E-XC8(X-CP02/0040 マインドフェイカー): 選択1枚をそのターン中 能力無効化
+    "dropSoulSourceCard", // E-XC13(X-CP02/0046 ビガーブレイブ): triggered soulAbility から発生源ソウル札をドロップへ
     "endFinalPhase",
   ].includes(step.op);
 }

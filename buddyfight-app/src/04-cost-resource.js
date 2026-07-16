@@ -212,7 +212,8 @@ function openDamageReceivedCounterWindow(defender, damage, options = {}) {
 }
 
 // 継続 damageReceivedReduction を持つ場札から、owner が受けるダメージの軽減設定（最も減らせる1件）を返す。
-// nonAttackOnly:true は byAttack===false の時のみ適用（攻撃以外限定。マグナグレイス0011）。既定は全ダメージ(0056)。
+// nonAttackOnly:true は byAttack===false の時のみ適用（攻撃以外限定。マグナグレイス0011）。
+// attackOnly:true は byAttack===true の時のみ適用（攻撃限定。E-ZA2/X-SS02/0002 ソル・アステール）。既定は全ダメージ(0056)。
 function damageReceivedReductionFor(owner, byAttack, incomingDamage = Infinity) {
   let best = null;
   zones.forEach((zone) => {
@@ -230,6 +231,12 @@ function damageReceivedReductionFor(owner, byAttack, incomingDamage = Infinity) 
       }
       if (effect.nonAttackOnly && byAttack) {
         return; // 攻撃以外限定の軽減は攻撃ダメージには効かない
+      }
+      // E-ZA2(X-SS02/0002 超光星竜 ジャックナイフ "ソル・アステール"): attackOnly:true は byAttack===false の時のみ
+      // スキップする（攻撃限定＝「君が攻撃で受けるダメージを2減らす」。nonAttackOnly の完全対称）。既存カードでの
+      // 使用は0件＝この分岐を踏むエントリは無いため、attackOnly 未指定の従来挙動は完全に不変。
+      if (effect.attackOnly && !byAttack) {
+        return; // 攻撃限定の軽減は攻撃以外（効果/必殺技）のダメージには効かない
       }
       if (effect.threshold && incomingDamage < effect.threshold) {
         return; // 「N以上のダメージを受ける場合」限定の軽減はN未満には効かない（0056）

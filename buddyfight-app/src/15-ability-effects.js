@@ -37,6 +37,11 @@ function putCardsToSoulWithTrigger(hostCard, owner, cards, fromZone, options = {
   // （src=engine-host.js）。ソウル→ドロップで公開＝reconcileFaceDownSoulDrops が faceDown を解除する。
   if (options.faceDown) {
     markSoulCardsFaceDown(cards, hostCard);
+  } else {
+    // E-XC12(X-CP02/0029 ヴィーガー "ダブルアームビット"): 表向きソウル札のうち selfDroppedFromSoul 誘発を
+    // 持つものにホストの公開スナップショットを付ける（faceDown は付けない＝秘匿対象ではない）。落下時に
+    // reconcileFaceDownSoulDrops が __soulHost を見て自己離脱を発火し hostFilter を照合する。
+    markFaceUpSoulSelfDropHost(cards, hostCard);
   }
   cards.forEach((soulCard) => queueEnteredSoulTriggers(soulCard, owner, fromZone, hostCard));
 }
@@ -46,8 +51,8 @@ function putCardsToSoulWithTrigger(hostCard, owner, cards, fromZone, options = {
 // - __soulHost: ホストの公開スナップショット。落下時 selfDroppedFromSoul の hostFilter 照合に使う
 //   （0067 袖の下「場の《暗殺鬼》の裏向きのソウルから落ちた時」）。表情報は含めない（instanceId/名前/属性/種別のみ＝
 //   ホストは場の公開カード）。挿入時に確定するため、以後ホストが場を離れても落下時に種別/属性を照合できる。
-function markSoulCardsFaceDown(cards, hostCard) {
-  const snapshot = hostCard
+function soulHostSnapshot(hostCard) {
+  return hostCard
     ? {
         instanceId: hostCard.instanceId,
         name: hostCard.name,
@@ -56,6 +61,9 @@ function markSoulCardsFaceDown(cards, hostCard) {
         attributes: [...(hostCard.attributes || [])],
       }
     : null;
+}
+function markSoulCardsFaceDown(cards, hostCard) {
+  const snapshot = soulHostSnapshot(hostCard);
   (cards || []).forEach((soulCard) => {
     if (!soulCard) {
       return;
@@ -66,6 +74,29 @@ function markSoulCardsFaceDown(cards, hostCard) {
     }
   });
   return cards;
+}
+
+// E-XC12(X-CP02/0029 竜装機ヴィーガー "ダブルアームビット"): 表向きでソウルに入る札のうち
+// selfDroppedFromSoul 誘発を持つものだけにホストの公開スナップショット(__soulHost)を付ける（faceDown は
+// 付けない＝秘匿対象ではない・viewFor でも伏せない）。落下時 reconcileFaceDownSoulDrops が __soulHost を
+// 見て自己離脱誘発を発火し、ability.hostFilter でホスト（例《ネオドラゴン》）を照合する。listener を持たない
+// 札は一切タグ付けしない（オプトイン＝既存の表向きソウル札の挙動不変）。
+function markFaceUpSoulSelfDropHost(cards, hostCard) {
+  const snapshot = soulHostSnapshot(hostCard);
+  if (!snapshot) {
+    return;
+  }
+  (cards || []).forEach((soulCard) => {
+    if (!soulCard || soulCard.faceDown) {
+      return;
+    }
+    const hasSelfDrop = (soulCard.abilities || []).some(
+      (ability) => ability.kind === "triggered" && ability.event === "selfDroppedFromSoul",
+    );
+    if (hasSelfDrop) {
+      soulCard.__soulHost = snapshot;
+    }
+  });
 }
 
 // cards を player のドロップ末尾に積み、「場かデッキからドロップに置かれた時」（movedToDrop）誘発を queue する。
@@ -225,8 +256,12 @@ async function executeAbilityEffect(effect, context) {
     if (isDrawByEffectPrevented(state.players.indexOf(drawer))) {
       addLog(`${drawer.name}はカードの効果でカードを引けません。`);
     } else {
-      const drew = drawCards(drawer, effect.amount || 1);
-      if (drew !== 0 || effect.amount) {
+      // amountFrom 対応（gainLife/putTopDeckToGauge/dealDamage と同形。X-CP01/0020「破壊した枚数分、カードを引く」＝lastDestroyedCount）。
+      const amount = effect.amountFrom ? resolveAmountFrom(effect.amountFrom, context) : effect.amount || 1;
+      const drew = drawCards(drawer, amount);
+      // 後方互換: amountFrom 未指定時の発火判定は元の effect.amount の生値の真偽（デフォルト適用前）に完全一致させる
+      // （effect.amount 省略時は drew!==0 のみで判定＝既存呼び出し0件変更。amountFrom 使用時は解決後amountの真偽で判定）。
+      if (drew !== 0 || (effect.amountFrom ? amount : effect.amount)) {
         await runFieldEventTriggers("drawByEffect", state.players.indexOf(drawer));
       }
     }
@@ -337,7 +372,8 @@ async function executeAbilityEffect(effect, context) {
     const searcherOwner = state.players.indexOf(searcher);
     const candidates = searcher.deck
       .map((card, index) => ({ card, index, owner: searcherOwner }))
-      .filter((entry) => matchesCardFilter(entry.card, effect.filter || {}));
+      // E-XC15(X-CP01/0061): owner を渡して filter.buddy を「デッキ内でも」検索主の登録バディ名で判定させる。
+      .filter((entry) => matchesCardFilter(entry.card, effect.filter || {}, { owner: searcherOwner }));
     const wanted = effect.amount || 1;
     if (candidates.length > 0) {
       const picked = await chooseCardEntries(candidates, {
@@ -426,6 +462,40 @@ async function executeAbilityEffect(effect, context) {
       declareDeckLoss(player);
     }
   }
+  if (effect.op === "lookTopSelectToSoulOrHand") {
+    // E-ZA3(X-SS02/0001 英雄竜 ジャックナイフ): 「このカードが登場した時、君のデッキの上から1枚を見る。
+    // その後、そのカードをこのカードのソウルに入れるか、手札に加える。」
+    // ・デッキ上1枚を owner にのみ開示（confirmChoiceAsync の promptSeat=context.owner。往復は該当席のみ＝
+    //   lookTopCardPlaceTopOrBottom と同じ「見る」の秘匿）し、ソウル/手札の二択で選んだ先へ移す。
+    // ・秘匿厳守(T13 精神): state.log にカード名を出さない（log は両席/観戦へ配信＝下の addLog は枚数のみ）。
+    //   デッキは全ロールで枚数のみ（viewFor/hiddenPile）＝開示は owner の往復プロンプトだけ。見た1枚は
+    //   pop 済み＝どのゾーンにも無い（クロージャ保持）。busy 中は room 非永続＝再開時は宣言時から再実行され整合。
+    // ・ホスト(ソウルの入れ先)は既定で発生源自身(context.card)。hostVar 指定時は事前選択した場カードのソウルへ
+    //   （将来 X-BT02 等での再利用向け。scriptSelection は未確定なら [] を返すので既定の self へフォールバック）。
+    const host = effect.hostVar
+      ? scriptSelection({ var: effect.hostVar }, context)[0]?.card || context.card
+      : context.card;
+    if (player.deck.length === 0 || !host) {
+      // デッキ0枚（または host 不在）は no-op（見るカードが無い）。カード名は出さない。
+      addLog(`${context.card?.name || "効果"}で見るカードがありません。`);
+    } else {
+      const soulOwner = state.players.indexOf(player);
+      const top = player.deck.pop();
+      const toSoul = await confirmChoiceAsync(
+        context.owner,
+        `${context.card?.name || "効果"}: デッキの上の${top.name}を、${host.name}のソウルに入れますか？（いいえ＝手札に加える）`,
+        { yesLabel: "ソウルに入れる", noLabel: "手札に加える", purpose: "search" },
+      );
+      if (toSoul) {
+        // enteredSoul 誘発を発火（0004 光核反応「ジャックナイフのソウルに入った時」等の再出誘発を通す）。
+        putCardsToSoulWithTrigger(host, soulOwner, [top], "deck", { faceDown: Boolean(effect.faceDown) });
+        addLog(`${context.card?.name || "効果"}でデッキの上から1枚を${host.name}のソウルに入れました。`);
+      } else {
+        player.hand.push(top);
+        addLog(`${context.card?.name || "効果"}でデッキの上から1枚を手札に加えました。`);
+      }
+    }
+  }
   if (effect.op === "addTurnContinuous") {
     // X19(D-BT01/0131 レビュー修正): ターン中の継続効果を発生源カードに一時付与する
     //（「そのターン中、君のレフトとライトのサイズ2以下の《百鬼》はサイズ0になる」= 発動後にコールした
@@ -496,6 +566,9 @@ async function executeAbilityEffect(effect, context) {
       const gained = effect.amountFrom ? resolveAmountFrom(effect.amountFrom, context) : effect.amount || 1;
       player.life += gained;
       if (gained > 0) {
+        // 可逆winner: 同一解決内で致死→回復が続いた場合（例: 緑竜の盾の無効化がヤミゲドウ“爆雷”を即時誘発→
+        // 致死→直後の本効果ライフ+1）に勝敗を巻き戻す。ライフリンク相殺(src/11:1633)と同じ扱い。
+        clearWinnerIfNoCurrentLoss();
         await runFieldEventTriggers("lifeGained", state.players.indexOf(player));
       }
     }
@@ -504,6 +577,7 @@ async function executeAbilityEffect(effect, context) {
     // ライフを固定値に代入（「ライフを10にする」等。gainLifeの加算では表せない）。
     const target = effect.player === "opponent" ? opponent : player;
     target.life = effect.life ?? effect.amount ?? target.life;
+    clearWinnerIfNoCurrentLoss(); // 可逆winner: 正のライフへの代入は致死の巻き戻しになりうる（gainLife と同じ）
     addLog(`${target.name}のライフは${target.life}になりました。`);
   }
   if (effect.op === "lookTopSelectToHandRestToBottom") {
@@ -600,6 +674,58 @@ async function executeAbilityEffect(effect, context) {
       addLog(`${context.card.name}の効果でデッキの上${revealed.length}枚を見て、${toBottom.length}枚をデッキの下に置きました。`);
     }
   }
+  if (effect.op === "lookTopSelectToGaugeRestToTop") {
+    // E-XC14(X-CP02/0062 コスモチャージ・プロテクション): デッキの上から count 枚を「見て」、その中から
+    //   選んだ枚数(既定1枚)をゲージへ、残りを選んだ順でデッキの上へ戻す。lookTopSelectToBottomRestToTop の
+    //   「選択分→行き先／残り→別の行き先」の兄弟（宛先＝ゲージ）。
+    // 秘匿: これは「公開」ではなく「見る」＝owner のみ開示（promptSeat=context.owner・往復は該当席のみ・
+    //   state.log にカード名を出さない＝T13 精神。E-XC1 revealTopCard の両席公開とは逆）。
+    // デッキ向き規約: top=末尾(pop/push)・bottom=先頭(unshift)。残りの上戻しは index0=最上段の順で積む。
+    const count = effect.count || 2;
+    const pick = effect.pick || 1;
+    const revealed = [];
+    for (let i = 0; i < count && player.deck.length > 0; i += 1) revealed.push(player.deck.pop());
+    if (revealed.length === 0) {
+      addLog(`${context.card.name}の効果で見るカードがありません。`);
+    } else {
+      // (1) ゲージへ置くカードを選ぶ（見た中から pick 枚まで）。
+      const sel = await chooseCardEntries(revealed.map((c) => ({ card: c })), {
+        title: effect.title || context.card.name,
+        lead: effect.lead || "ゲージに置くカードを選んでください。",
+        min: Math.min(pick, revealed.length),
+        max: Math.min(pick, revealed.length),
+        forceDialog: true,
+        promptSeat: context.owner, // 「見る」＝能力主体の席のみへ開示（誤配送防止・秘匿）
+        purpose: "search",
+      });
+      const toGauge = (sel || []).map((e) => e.card);
+      // (2) 残りをデッキの上へ。2枚以上なら上での順序（1番目=最上段）を1枚ずつ選ばせる。
+      let toTop = revealed.filter((c) => !toGauge.includes(c));
+      if (toTop.length >= 2) {
+        const ordered = [];
+        let remaining = toTop.map((c) => ({ card: c }));
+        while (remaining.length > 1) {
+          const order = await chooseCardEntries(remaining, {
+            title: effect.title || context.card.name,
+            lead: `デッキの上から${ordered.length + 1}番目に置くカードを選んでください。`,
+            min: 1, max: 1, forceDialog: true,
+            promptSeat: context.owner,
+            purpose: "scry",
+          });
+          const entry = order?.[0] || remaining[0];
+          ordered.push(entry.card);
+          remaining = remaining.filter((r) => r.card.instanceId !== entry.card.instanceId);
+        }
+        if (remaining.length) ordered.push(remaining[0].card);
+        toTop = ordered;
+      }
+      toGauge.forEach((c) => player.gauge.push(c));
+      // 上バッチ: ordered[0] を最上段(末尾)にするため逆順 push（reorderTopOrdered と同規約）。
+      for (let i = toTop.length - 1; i >= 0; i -= 1) player.deck.push(toTop[i]);
+      // 秘匿: 枚数のみログ（カード名は出さない＝相手先読み防止）。
+      addLog(`${context.card.name}の効果でデッキの上${revealed.length}枚を見て、${toGauge.length}枚をゲージに置きました。`);
+    }
+  }
   if (effect.op === "revealTopDamagePerMatchRestToBottom") {
     const count = effect.count || 5;
     const revealed = [];
@@ -624,6 +750,40 @@ async function executeAbilityEffect(effect, context) {
     addLog(`${context.card.name}の効果で${revealed.length}枚を公開し、${matched}枚一致。`);
     if (dmg > 0) applyDamageToPlayer(1 - context.owner, dmg, { sourceName: context.card?.name, sourceCard: context.card, sourceOwner: context.owner });
     revealed.forEach((c) => player.deck.unshift(c));
+  }
+  if (effect.op === "revealTopCard") {
+    // E-XC1(X-CP02 コスモドラグーン reveal-gate): 「君のデッキの上から1枚を公開する」。
+    // ・これは E-ZA3(0001 look)の伏せ札とは逆＝両席に見える正規の「公開」なので addLog にカード名を出してよい
+    //   （viewFor で伏せる秘匿札ではない＝T13 のシード漏洩とは無関係。「見る」=秘匿 / 「公開」=両席可視 を混同しない）。
+    // ・カードはデッキ上に残したまま(peek＝pop しない)で context.revealedCard に記録する。pop せず宙に浮かせないので
+    //   room 復元(busy中の非永続)や effects/script の途中でカードが「どのゾーンにも無い」瞬間を作らない（既存 lookTop 系の作法）。
+    // ・一致時の効果Aで手札/ソウル/ゲージへ移す場合は、デッキ上に残った1枚を既存の top-deck op がそのまま消費する
+    //   （手札=draw / ソウル=putTopDeckToSoul / ゲージ=putTopDeckToGauge）。不一致(else)は putRevealedToDeckBottom がデッキ下へ循環。
+    const revealer = effect.controller === "opponent" ? opponent : player;
+    const top = revealer.deck[revealer.deck.length - 1] || null;
+    context.revealedCard = top;
+    context.revealedCardOwner = state.players.indexOf(revealer);
+    addLog(
+      top
+        ? `${revealer.name}はデッキの上から${top.name}を公開しました。`
+        : `${revealer.name}のデッキに公開するカードがありません。`,
+    );
+  }
+  if (effect.op === "putRevealedToDeckBottom") {
+    // E-XC1: 直前に revealTopCard で公開したカードをデッキの下へ置く（不一致分岐、または「その後デッキの下に置く」型）。
+    // 効果Aで既に手札/ソウル/ゲージへ移動済み（デッキに無い）なら no-op。デッキ上に残っていれば取り出して下へ循環。
+    const rc = context.revealedCard;
+    if (rc) {
+      const bottomOwner = context.revealedCardOwner ?? context.owner;
+      const deck = state.players[bottomOwner]?.deck || [];
+      const idx = deck.indexOf(rc);
+      if (idx >= 0) {
+        deck.splice(idx, 1);
+        deck.unshift(rc);
+        addLog(`${state.players[bottomOwner]?.name || ""}は公開した${rc.name}をデッキの下に置きました。`);
+      }
+    }
+    context.revealedCard = null;
   }
   if (effect.op === "lookTopCardPlaceTopOrBottom") {
     // デッキの1番上のカードを見て、1番上か1番下に置く（ブレイド・オブ・アサメイ 0089 のスクライ）。
@@ -661,6 +821,9 @@ async function executeAbilityEffect(effect, context) {
       ).length;
       const amount = Math.max(0, (effect.baseAmount || 0) - copies);
       player.life += amount;
+      if (amount > 0) {
+        clearWinnerIfNoCurrentLoss(); // 可逆winner（gainLife と同じ扱い）
+      }
       addLog(`${player.name}は${context.card.name}の効果でライフを${amount}回復しました。`);
       if (amount > 0) {
         await runFieldEventTriggers("lifeGained", state.players.indexOf(player));
@@ -832,6 +995,7 @@ async function executeAbilityEffect(effect, context) {
         applyDamageToPlayer(owner, effect.damage || 1, { sourceName: context.card?.name, sourceCard: context.card, sourceOwner: context.owner });
       } else if (!isLifeGainByEffectPrevented(state.players.indexOf(receiver))) {
         receiver.life += effect.life || 1;
+        clearWinnerIfNoCurrentLoss(); // 可逆winner（gainLife と同じ扱い）
         addLog(`${context.card.name}の効果で${receiver.name}のライフを${effect.life || 1}回復しました。`);
       }
     }
@@ -1009,6 +1173,22 @@ async function executeAbilityEffect(effect, context) {
       addLog(`${context.card?.name || player.name}の効果で、そのターン中${ids.length}体のモンスターの能力を無効化しました。`);
     }
   }
+  if (effect.op === "nullifySelectedAbilities") {
+    // E-XC8(X-CP02/0040 マインドフェイカー): selectCards で選んだカード（相手の場のモンスター1枚等）を、
+    // そのターン中だけ能力無効化する。nullifyFieldAbilities(D-SS03/0010)と同じ state.turnNullifies 機構
+    // （isNullifiedByTurnEffect が instanceId 集合を consult・room復元/リプレイの JSON 往復で保持・
+    // クリアは clearTurnModifiers）を、filter/controller の一括ではなく「選択された instance」に限定して使う。
+    // nullifyFieldAbilities は「発動時点で filter 一致の全カード」を対象にするため単体選択と組み合わせられず、
+    // 単体・ターン限定の無効化には本 op が要る（既存カード0件＝turnNullifies は常に空＝挙動完全不変）。
+    const sel = context.vars?.[effect.var];
+    const entries = Array.isArray(sel) ? sel : sel ? [sel] : [];
+    const ids = entries.map((entry) => entry.card?.instanceId).filter(Boolean);
+    if (ids.length) {
+      state.turnNullifies ||= [];
+      state.turnNullifies.push({ instanceIds: ids });
+      addLog(`${context.card?.name || player.name}の効果で、そのターン中${ids.length}体の能力を無効化しました。`);
+    }
+  }
   if (effect.op === "destroy") {
     // 統合形: target(単体) / scope(全体) / target:"$self"(自己) を1opに。
     // options(cause/ignoreSoulguard 等)で破壊耐性の挙動差を明示的に再現する。
@@ -1144,6 +1324,24 @@ async function executeAbilityEffect(effect, context) {
       const selfPlayer = context.player || state.players[context.owner];
       selfPlayer.drop.push(removed);
       addLog(`${removed.name}を${context.hostCard.name}のソウルからドロップに置きました。`);
+    }
+  }
+  if (effect.op === "dropSoulSourceCard" && context.card && context.soulSourceCard) {
+    // E-XC13(X-CP02/0046 ビガーブレイブ): triggered soulAbility（event:battleEnd 等）の解決から、発生源の
+    // ソウル札自身（context.soulSourceCard＝runTriggeredAbilities が設定）を、ホスト（context.card）の
+    // ソウルからドロップへ置く。dischargeSelfFromHostSoul は activated 用（context.card=ソウル本体・
+    // context.hostCard 必須）の逆配線でこの triggered 経路では不発のため、対の op を新設する。
+    // soul→drop funnel（queueSoulCardDroppedTriggers＝reconcileFaceDownSoulDrops＋ホスト側 soulCardDropped）
+    // を通して離脱を整合させる（既存カード0件＝挙動不変）。
+    const host = context.card;
+    const soul = host.soul || [];
+    const soulIndex = soul.findIndex((c) => c.instanceId === context.soulSourceCard.instanceId);
+    if (soulIndex >= 0) {
+      const [removed] = soul.splice(soulIndex, 1);
+      const selfPlayer = context.player || state.players[context.owner];
+      selfPlayer.drop.push(removed);
+      addLog(`${removed.name}を${host.name}のソウルからドロップに置きました。`);
+      queueSoulCardDroppedTriggers(host, context.owner, 1);
     }
   }
   if (effect.op === "returnSelfToDeckBottom" && context.card) {
@@ -2603,7 +2801,11 @@ function resolveAmountFrom(spec, context) {
   }
   if (spec.source === "dropCount") {
     const owner = ownerOf(spec.controller);
-    const count = (state.players[owner]?.drop || []).filter((card) => matchesCardFilter(card, spec.filter || {})).length;
+    const matched = (state.players[owner]?.drop || []).filter((card) => matchesCardFilter(card, spec.filter || {}));
+    // E-ZA1(X-SS02/0031 ジェノサイド・パニッシャー): distinct:"distinctByName" は filter 一致カードの
+    // 名称ユニーク数（「君のドロップの「煉獄騎士団」を含むカードの種類分」）を返す。条件op cardCount(src/13)の
+    // distinct と同ロジック。distinct 未指定は従来どおり総枚数＝完全に後方互換（既存 dropCount は挙動不変）。
+    const count = spec.distinct === "distinctByName" ? new Set(matched.map((card) => card.name)).size : matched.length;
     const capped = spec.max !== undefined ? Math.min(count, spec.max) : count;
     return capped * (spec.per ?? 1);
   }

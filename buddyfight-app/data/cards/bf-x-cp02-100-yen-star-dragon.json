@@ -1,0 +1,5667 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-x-cp02-100-yen-star-dragon",
+    "name": "バッツ キャラクターパック第２弾「むっちゃ!! 100円スタードラゴン」",
+    "kind": "キャラクターパック",
+    "generation": "バッツ",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=61"
+  },
+  "cards": [
+    {
+      "id": "bf-x-cp02-0001",
+      "no": "X-CP02/0001",
+      "name": "超剰元竜 EXA・ディメンジョン",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "size": 3,
+      "power": 10000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】君のドロップゾーンのモンスター３枚までをこのカードのソウルに入れ、ゲージ３を払う。",
+        "■【起動】このカードのソウル２枚をドロップゾーンに置く。置いたら、そのターン中、このカードは『３回攻撃』を得る。",
+        "■このカードの攻撃で相手のモンスターを破壊した時、相手にダメージ１！！",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putDropToSoul",
+            "amount": 3,
+            "min": 0,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0001-soul-release-triple",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "discardSoul",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "tripleAttack",
+              "duration": "turn"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-cp02-0001-destroy-by-attack-damage",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "コールコスト=putDropToSoul{amount:3,min:0,filter:monster}(『まで』)+payGauge3。起動=discardSoul(cost,固定2枚)→grantKeyword tripleAttack turn(bf-d-bt01-0007型)。攻撃で相手モンスター破壊時ダメージ1=event:destroyByAttack(bt03-0005等の定型)。"
+    },
+    {
+      "id": "bf-x-cp02-0002",
+      "no": "X-CP02/0002",
+      "name": "“絢爛朱雀” ヴァリアブルコード",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "size": 3,
+      "power": 9000,
+      "critical": 3,
+      "defense": 5000,
+      "rules": [
+        "『角王』",
+        "■【コールコスト】君の手札を好きな枚数、このカードのソウルに入れ、ゲージ３を払う。",
+        "■君のアタックフェイズ開始時、君のデッキから１枚までを、このカードのソウルに入れ、デッキをシャッフルする。",
+        "『移動』『貫通』『ソウルガード』"
+      ],
+      "deckAnyFlag": true,
+      "costs": {
+        "call": [
+          {
+            "op": "putHandToSoul",
+            "amount": 20,
+            "min": 0,
+            "max": 20
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "keywords": [
+        "move",
+        "penetrate",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0002-attack-start-soul",
+          "kind": "triggered",
+          "event": "attackStart",
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "script": [
+            {
+              "op": "searchDeckToSelectedSoul",
+              "amount": 1
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ]
+        }
+      ],
+      "_note": "角王(deckAnyFlag=true)はskeleton付与済のためmech側で再設定せず(META扱い・両掲載無害だが本batch範囲外)。コールコスト『手札を好きな枚数』=putHandToSoul(amount20,min0,max20)+payGauge3(bf-h-bt02-0007 六角嵐王ヴァリアブルコード型)。『デッキから1枚までソウルに入れシャッフル』=searchDeckToSelectedSoul(var省略→host=context.card自身)+shuffleDeck、turnOwnerIsSelfで自分のアタックフェイズ限定(bf-x-bt01-0114型)。"
+    },
+    {
+      "id": "bf-x-cp02-0003",
+      "no": "X-CP02/0003",
+      "name": "藍玉晶竜 アトラ",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ３を払う。",
+        "■このカードがセンターにいるなら、場のこのカードはカードの効果で破壊されない。",
+        "■相手の場のカード全ての攻撃力－1000、防御力－1000！",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "destroyImmunity": [
+        {
+          "from": {
+            "byEffect": true
+          },
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "center"
+              ]
+            }
+          ]
+        }
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "opponent",
+          "power": -1000,
+          "defense": -1000
+        }
+      ],
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "_note": "コールコストは原文順どおり putTopDeckToSoul(1)→payGauge(3)。『このカードがセンターにいるなら、場のこのカードはカードの効果で破壊されない』はカード級 destroyImmunity（continuousではない）を採用: bf-x-sd02-0001 麗しの晶竜アトラ（同型・センター限定効果破壊耐性）の前例踏襲。継続 grantDestroyImmunity 経路(grantedDestroyImmunityBlocks)はE-X3で conditions を正しく評価するよう修正済みだが、『このカードが…なら、場のこのカードは』という完全自己言及の1文はカード級 destroyImmunity{conditions:[sourceZoneIn(center)]} の方が素直（sd02-0001前例と同一パターンで統一）。sd02-0001と異なり『相手のターン中』の限定が無いため turnOwnerIsOpponent 条件は付けない（自ターンでも他者効果破壊を防ぐ＝原文通り）。byBattle は from に含めないためバトル破壊は素通り（効果破壊のみ耐性、原文『カードの効果で』の通り）。『相手の場のカード全ての攻撃力－1000、防御力－1000！』はcontinuous modifyStats{controller:opponent, power:-1000, defense:-1000}（filter省略=全カード対象、bf-s-ub-c03-0025型のfilter省略パターンに倣う。恒常デバフのためduration指定なし=battleでもturnでもなく継続常時）。grep自己検査: putTopDeckToSoul(src/04)/payGauge(src/04)/sourceZoneIn(src/13:580,933)/modifyStats(src/05,15) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0004",
+      "no": "X-CP02/0004",
+      "name": "翠晶竜 シャルトリューズ",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■君のセンターに元々のサイズが３の《プリズムドラゴン》がいるなら、レフトかライトのこのカードのサイズを３減らす。",
+        "■君の場の《プリズムドラゴン》のモンスターが攻撃されたバトル終了時、君のセンターに《プリズムドラゴン》がいるなら、相手にダメージ１！この能力は１ターンに１回だけ発動する。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "size": -3,
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "center",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "プリズムドラゴン",
+                "baseSize": 3
+              },
+              "cmp": "gte",
+              "amount": 1
+            },
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "right"
+              ]
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0004-battleend",
+          "kind": "triggered",
+          "event": "allyBattleEnd",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "プリズムドラゴン"
+              }
+            },
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "center",
+              "filter": {
+                "attribute": "プリズムドラゴン"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "amount": 1,
+              "player": "opponent"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-x-cp02-0004-battleend"
+          }
+        }
+      ],
+      "_note": "『君のセンターに元々のサイズが3の《プリズムドラゴン》がいるなら、レフトかライトのこのカードのサイズを3減らす』は continuous modifyStats{size:-3, filter:sameInstanceAsSource, conditions:[cardCount(pile:center, filter:{cardType:monster, attribute:プリズムドラゴン, baseSize:3}, gte1), sourceZoneIn(left,right)]}。baseSize条件はbf-d-cbt-0009 フレアデバイス・ドラゴン（『元々のサイズが３の《太陽竜》』=baseSize:3）、pile:center条件はbf-x-sd02-0005 赤晶竜ピノワール（cardCount pile:center sizeIn:[3]）の合成。『レフトかライトの』は自己ゲート sourceZoneIn(left,right)（bf-cp01-100-yen-dragon前例のsourceZoneIn使用法）を追加=センター在中の自分自身には非適用（原文が『レフトかライトのこのカード』と明記=センターにいる間は無効）。サイズ0クリップはeffectiveSizeのMath.max(0,…)側で保証済み(bf-d-ss02-0027等前例)。『君の場の《プリズムドラゴン》のモンスターが攻撃されたバトル終了時、君のセンターに《プリズムドラゴン》がいるなら、相手にダメージ1！1ターン1回』はE-X1で新設された event:allyBattleEnd の実例そのもの＝bf-x-sd02-0015 クリスタル・マーク（同一の2文言「君の場の《プリズムドラゴン》のモンスターが攻撃されたバトルの終了時、君のセンターに《プリズムドラゴン》がいるなら」）と全く同型のconditions（eventCardMatches+cardCount pile:center gte1）を流用し、効果部分のみgainGauge→dealDamage(1,opponent)に差し替え。grep自己検査: modifyStats/cardCount/sourceZoneIn/eventCardMatches/dealDamage/allyBattleEnd(src/10-battle-resolve.js:546-573) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0005",
+      "no": "X-CP02/0005",
+      "name": "永遠の守護竜 エーティル",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン",
+        "天国"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが攻撃された時、場のこのカードと、攻撃しているモンスター１枚を持ち主の手札に戻してよい。",
+        "『移動』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "move"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0005-attacked-return-both",
+          "kind": "triggered",
+          "event": "attacked",
+          "optional": true,
+          "effects": [
+            {
+              "op": "returnSelfToHand"
+            },
+            {
+              "op": "returnToHand",
+              "target": "$attacker"
+            }
+          ]
+        }
+      ],
+      "_note": "『場のこのカードと、攻撃しているモンスター1枚を持ち主の手札に戻してよい』=1つのoptionalアビリティでreturnSelfToHand(自分)+returnToHand target:$attacker(攻撃者)の2effectsを解決(bf-d-eb03-0007永遠の御使いエーティルは自分のみ返す近縁カード=attacked+optionalの型は同一、$attacker解決はresolveEffectReference実在・使用前例0件のためVM実測必須)。"
+    },
+    {
+      "id": "bf-x-cp02-0006",
+      "no": "X-CP02/0006",
+      "name": "SAC17：クラーク",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "コスモドラグーン"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■【起動】君のデッキの上から１枚を公開する。公開したカードが《コスモドラグーン》なら、そのカードを手札に加え、そのターン中、このカードは『２回攻撃』を得る。そうでないなら、そのカードを君のデッキの下に置く。この能力は１ターンに１回だけ使える。",
+        "『移動』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "move",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0006-reveal-gate",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "limit": {
+            "scope": "turn"
+          },
+          "script": [
+            {
+              "op": "revealTopCard",
+              "controller": "self"
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "revealedMatches",
+                "filter": {
+                  "attribute": "コスモドラグーン"
+                }
+              },
+              "then": [
+                {
+                  "op": "draw",
+                  "amount": 1
+                },
+                {
+                  "op": "grantKeyword",
+                  "target": "$self",
+                  "keyword": "doubleAttack",
+                  "duration": "turn"
+                }
+              ],
+              "else": [
+                {
+                  "op": "putRevealedToDeckBottom"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC1(reveal-gate)忠実実装。【コールコスト】putTopDeckToSoul(自ソウル)→payGauge(1)(原文順)。【起動】は revealTopCard(peek・両席公開)→ifCondition(revealedMatches attribute:コスモドラグーン)→ 一致: draw(1)=公開カードそのものが手札へ(デッキ上に残っている1枚を消費) + grantKeyword(doubleAttack,target:$self,duration:turn) / 不一致: putRevealedToDeckBottom(デッキ下)。『この能力は1ターンに1回だけ使える』=limit{scope:turn}(ability.id 既定キーで十分・named-once表記なし)。keywords=『移動』『ソウルガード』。grep自己検査: putTopDeckToSoul(costs/src/04)・payGauge・revealTopCard/revealedMatches/putRevealedToDeckBottom(E-XC1・src/14/15)・draw・grantKeyword 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0007",
+      "no": "X-CP02/0007",
+      "name": "RA07：ハインライン",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "コスモドラグーン"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■“ルナ・ゲート”このカードが登場した時、君のデッキの上から１枚を公開する。公開したカードが《コスモドラグーン》なら、そのカードを手札に加え、カード１枚を引く。そうでないなら、そのカードを君のデッキの下に置く。「ルナ・ゲート」は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0007-luna-gate",
+          "kind": "triggered",
+          "event": "enter",
+          "limit": {
+            "scope": "turn",
+            "key": "xcp02-luna-gate"
+          },
+          "script": [
+            {
+              "op": "revealTopCard",
+              "controller": "self"
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "revealedMatches",
+                "filter": {
+                  "attribute": "コスモドラグーン"
+                }
+              },
+              "then": [
+                {
+                  "op": "draw",
+                  "amount": 1
+                },
+                {
+                  "op": "draw",
+                  "amount": 1
+                }
+              ],
+              "else": [
+                {
+                  "op": "putRevealedToDeckBottom"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC1(reveal-gate)。「そのカードを手札に加え、カード1枚を引く」=公開カード自体を手札へ加える draw(1回目=デッキ上に残る公開カードを消費) と、別途もう1枚引く draw(2回目=通常のデッキ上を引く) の2連続draw。「ルナ・ゲート」は§5 named-once表(設計書)通り bare slug limit.key=xcp02-luna-gate(scope:turn)。event:enterはこのカードが場に出た時の標準トリガ(callMonster実経路で発火)。grep自己検査: revealTopCard/revealedMatches/putRevealedToDeckBottom/draw 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0008",
+      "no": "X-CP02/0008",
+      "name": "アトラ “SD”",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■君のセンターに元々のサイズが３の《プリズムドラゴン》がいるなら、レフトかライトのこのカードは破壊されない。",
+        "■君の場のサイズ３のモンスターが破壊される場合、このカードをドロップゾーンに置いてよい。置いたら、そのカードを場に残す。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "destroyImmunity": [
+        {
+          "from": {
+            "byBattle": true
+          },
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "center",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "プリズムドラゴン",
+                "baseSize": 3
+              },
+              "cmp": "gte",
+              "amount": 1
+            },
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "right"
+              ]
+            }
+          ]
+        },
+        {
+          "from": {
+            "byEffect": true
+          },
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "center",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "プリズムドラゴン",
+                "baseSize": 3
+              },
+              "cmp": "gte",
+              "amount": 1
+            },
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "right"
+              ]
+            }
+          ]
+        }
+      ],
+      "allyDestroyReplacement": {
+        "optional": true,
+        "filter": {
+          "cardType": "monster",
+          "sizeIn": [
+            3
+          ]
+        },
+        "cost": [
+          {
+            "op": "dropSource"
+          }
+        ]
+      },
+      "_note": "『君のセンターに元々のサイズが3の《プリズムドラゴン》がいるなら、レフトかライトのこのカードは破壊されない』は原文に『カードの効果で』の限定が無い＝バトル/効果いずれの破壊も防ぐため、byBattle/byEffectそれぞれ独立entryを同一conditionsで2本用意（destroyImmunityBlocksのバトル/効果排他ロジック上、1entryにfrom両方は同時成立不可＝bf-d-bt04-0003等『ドラゴンフォース』シリーズの定型2entry構成を踏襲）。conditions内容は0004/0014と同一部品（cardCount pile:center baseSize:3 プリズムドラゴン gte1 + sourceZoneIn(left,right)）。『君の場のサイズ3のモンスターが破壊される場合、このカードをドロップゾーンに置いてよい。置いたら、そのカードを場に残す。』はallyDestroyReplacement（src/11-destroy-turn.js:539 applyAllyDestroyReplacement）。src/11のコメントが例示する『ドラゴントゥース・ウォリアー「君の場のサイズ３のモンスターが破壊される場合、このカードをドロップに置いてよい。置いたら場に残す」』＝bf-h-eb01-0024と一字一句同型の原文につき、filter/cost/optionalとも全く同一構成（filter:{cardType:monster, sizeIn:[3]}, cost:[dropSource], optional:true）で流用。原文に世界限定（＜ダンジョンワールド＞等）が無いためfilterはサイズのみ（h-eb01-0024はダンジョンワールド限定filterを追加していたがこちらは無し）。grep自己検査: destroyImmunity(src/11:189)/allyDestroyReplacement(src/11:539)/dropSource(src/04:593,1016,1775)/cardCount/sourceZoneIn 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0009",
+      "no": "X-CP02/0009",
+      "name": "赤晶竜 メルロー",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■“涙紅石”相手のターン中、君の場の《プリズムドラゴン》のモンスターが破壊された時、君のデッキの上から１枚をゲージに置き、カード１枚を引く。「涙紅石」は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0009-ruikoseki",
+          "kind": "triggered",
+          "event": "allyDestroyed",
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "プリズムドラゴン"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xcp02-ruikoseki"
+          }
+        }
+      ],
+      "_note": "skeletonに【コールコスト】行が無い＝無料コール（costs/callCost省略）。『“涙紅石”相手のターン中、君の場の《プリズムドラゴン》のモンスターが破壊された時、君のデッキの上から１枚をゲージに置き、カード１枚を引く。「涙紅石」は１ターンに１回だけ発動する』は event:allyDestroyed（bf-x-ss02-0030/0043/0044型のフィールドイベント）+conditions:[turnOwnerIsOpponent, eventCardMatches{cardType:monster, attribute:プリズムドラゴン}]+効果putTopDeckToGauge(1)→draw(1)+limit{scope:turn, key:xcp02-ruikoseki}（design.md §5 named-once表の指定キーそのまま）。named-once『涙紅石』はability id自体ではなくlimit.keyに固定文字列を設定（bf-x-ss02-0030-fatal-buff等の慣例通りability idはbf-x-cp02-0009-ruikoseki、limit.keyは設計書指定のxcp02-ruikoseki）。grep自己検査: allyDestroyed(runFieldEventTriggers経由・data/cards multiple前例)/turnOwnerIsOpponent(src/13:567,864)/eventCardMatches/putTopDeckToGauge/draw 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0010",
+      "no": "X-CP02/0010",
+      "name": "超越星竜王 エーヴィヒカイト",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "worlds": [
+        "スタードラゴンW",
+        "エンシェントW"
+      ],
+      "attributes": [
+        "ネオドラゴン",
+        "ドラゴンロード"
+      ],
+      "size": 3,
+      "power": 9000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ３を払う。",
+        "■このカードが攻撃した時、君のデッキの上から３枚をドロップゾーンに置き、その中のモンスター１枚までを、【コールコスト】を払ってコールする。そのカードは場から離れるまで、サイズが０になる。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0010-attack-mill-call",
+          "kind": "triggered",
+          "event": "attack",
+          "script": [
+            {
+              "op": "moveTopDeckToDrop",
+              "amount": 3
+            },
+            {
+              "op": "selectCards",
+              "var": "pick",
+              "from": "movedToDrop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster"
+              },
+              "callable": true,
+              "canPayCost": "call",
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "超越星竜王 エーヴィヒカイト",
+              "lead": "コールするドロップゾーンのモンスターを1枚まで選んでください。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "pick",
+              "payCost": "call",
+              "chooseZones": true,
+              "resolveOnEnter": true,
+              "require": false,
+              "grantConditionalSize": {
+                "size": 0,
+                "unconditional": true
+              }
+            }
+          ]
+        }
+      ],
+      "_note": "C7: bf-d-bt03-0019(超越竜王エーヴィヒカイト・ほぼ同名/同系譜カード)のmill-call scriptをそのまま流用(payLife2コスト無し・活性化条件無し・event:attackトリガに差し替えのみ)。grantConditionalSize{size:0,unconditional:true}=『場から離れるまでサイズ0』のinstanceフラグ型(H-PP01/0013前例と同義務)。VM実測必須(design指定)。"
+    },
+    {
+      "id": "bf-x-cp02-0011",
+      "no": "X-CP02/0011",
+      "name": "輝晶竜 ジェネヴァ",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 3,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】君のドロップゾーンの《プリズムドラゴン》２枚までをこのカードのソウルに入れ、ゲージ２を払う。",
+        "■【起動】相手の場のモンスター１枚を選び、このカードのソウル１枚をドロップゾーンに置いてよい。置いたら、選んだカードを破壊し、破壊したモンスターのサイズの数値分、君のライフを回復する。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putDropToSoul",
+            "amount": 2,
+            "min": 0,
+            "filter": {
+              "attribute": "プリズムドラゴン"
+            }
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0011-sac-destroy-heal",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "discardSoul",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "gainLife",
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ],
+              "amountFrom": {
+                "source": "targetStat",
+                "stat": "size"
+              }
+            }
+          ]
+        }
+      ],
+      "_note": "コールコストは原文順どおり putDropToSoul(2,min:0,filter:{attribute:プリズムドラゴン})→payGauge(2)（『2枚まで』=min:0/amount:2、bf-h-eb03-0013・bt05-s006等の定型)。『【起動】相手の場のモンスター1枚を選び、このカードのソウル1枚をドロップゾーンに置いてよい。置いたら、選んだカードを破壊し、破壊したモンスターのサイズの数値分、君のライフを回復する』はkind:activated,timing:[main]（【対抗】マーク無し）+cost:[discardSoul(1)]（『このカードのソウル』=discardSoulはcontext.sourceCardのソウルを対象、src/04-cost-resource.js:587,992,1740。dropOwnFieldCardSoulだと『任意の自分の場カードのソウル』になり誤り）+target:fieldCard controller:opponent filter:cardType:monster+effects:[destroy $target, gainLife{conditions:[lastDestroySucceeded], amountFrom:{source:targetStat, stat:size}}]（bf-h-bt04-0015 百鬼魔導ソウルドレインと同型のdestroy→size分gainLife定型）。kind:activatedは使用自体が任意選択のため、コスト『てよい』を追加のoptionalフラグで二重化しない（bf-h-ss01-0002インフェルノシュートと同型判断）。原文に『1ターンに1回』表記無しのためlimit無し。grep自己検査: putDropToSoul/payGauge/discardSoul/destroy/gainLife/lastDestroySucceeded/targetStat(src/15:2653) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0012",
+      "no": "X-CP02/0012",
+      "name": "BW25：オールディス",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "コスモドラグーン"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが登場した時、相手の場のモンスター１枚を破壊する。",
+        "■【起動】相手の場のカード１枚を選び、君のデッキの上から１枚を公開する。公開したカードが《コスモドラグーン》なら、選んだカードを破壊する。その後、公開したカードを君のデッキの下に置く。この能力は１ターンに１回だけ使える。",
+        "『２回攻撃』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0012-enter-destroy",
+          "kind": "triggered",
+          "event": "enter",
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-cp02-0012-reveal-destroy",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent"
+          },
+          "limit": {
+            "scope": "turn"
+          },
+          "script": [
+            {
+              "op": "revealTopCard",
+              "controller": "self"
+            },
+            {
+              "op": "destroy",
+              "target": "$target",
+              "conditions": [
+                {
+                  "op": "revealedMatches",
+                  "filter": {
+                    "attribute": "コスモドラグーン"
+                  }
+                }
+              ]
+            },
+            {
+              "op": "putRevealedToDeckBottom"
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC1(reveal-gate・『その後デッキの下』always型)。【コールコスト】payGauge(2)のみ。登場時=相手の場のモンスター1枚を破壊(allowMissingTarget=対象0枚ならno-op)。【起動】は『相手の場のカード1枚を選び』=ability.target(controller:opponent・filter無し=モンスター/アイテム両対応。B2の0019型の無filter前例踏襲)で先に対象を確定してからscript実行(選択順=原文通り選択が先)→revealTopCard(peek公開)→destroy{target:$target,conditions:[revealedMatches]}(一致時のみ・destroyはconditions未成立ならno-op)→putRevealedToDeckBottom(公開カードは選んだ対象とは別カードなのでdestroyでは消費されず常にデッキ下へ循環=design note『0012はalways putRevealedToDeckBottom』方針)。『1ターンに1回』=limit{scope:turn}(既定キー)。keywords=『2回攻撃』。grep自己検査: destroy/allowMissingTarget/revealTopCard/revealedMatches/putRevealedToDeckBottom 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0013",
+      "no": "X-CP02/0013",
+      "name": "大晶竜 ヴァルカン",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■このカードが攻撃した時、君が《プリズムドラゴン》のアイテムを装備していて、君のライフが相手より多いなら、そのターン中、このカードの打撃力＋３！",
+        "『貫通』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "penetrate",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0013-vulcan-strike",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "item"
+              ],
+              "filter": {
+                "cardType": "item",
+                "attribute": "プリズムドラゴン"
+              }
+            },
+            {
+              "op": "ownLifeGreaterThanOpponent"
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "critical": 3,
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC5採用カード（design.md/rulings.md/engine-notes.md 指定）。コールコストは原文順どおり putTopDeckToSoul(1)→payGauge(2)。『このカードが攻撃した時、君が《プリズムドラゴン》のアイテムを装備していて、君のライフが相手より多いなら、そのターン中、このカードの打撃力＋３！』はevent:attack（接頭辞なし・カード自身へ直接発火）+conditions:[ownFieldCardExists{zones:[item], filter:{cardType:item, attribute:プリズムドラゴン}}（装備確認・bf-x-sd02系のitem zone限定チェックと同型）, ownLifeGreaterThanOpponent（E-XC5・src/13-abilities-core.js:888-892・self>opponentの厳密大なり、同値は不成立）]+effects:[modifyStats{target:$self, critical:3, duration:turn}]（engine-notes.md記載の定型DSLそのまま）。grep自己検査: ownFieldCardExists(src/13:1033)/ownLifeGreaterThanOpponent(src/13:888)/modifyStats 全実在確認。VM別途 self>opp=真／同値=偽 を実測。"
+    },
+    {
+      "id": "bf-x-cp02-0014",
+      "no": "X-CP02/0014",
+      "name": "剛晶竜 エヴァクリア",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 3,
+      "power": 5000,
+      "critical": 2,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■君のセンターに元々のサイズが３の《プリズムドラゴン》がいるなら、レフトかライトのこのカードのサイズを３減らす。",
+        "■相手の場のカードが攻撃した時、その攻撃の対象をこのカードに変更する。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "size": -3,
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "center",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "プリズムドラゴン",
+                "baseSize": 3
+              },
+              "cmp": "gte",
+              "amount": 1
+            },
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "right"
+              ]
+            }
+          ]
+        },
+        {
+          "op": "redirectAttackToSelf"
+        }
+      ],
+      "_note": "サイズ減少部は0004/0008と共通部品（cardCount pile:center baseSize:3 プリズムドラゴン gte1 + sourceZoneIn(left,right) + modifyStats size:-3 sameInstanceAsSource）。『相手の場のカードが攻撃した時、その攻撃の対象をこのカードに変更する。』はcontinuous:[{op:redirectAttackToSelf}]（bf-d-eb01-0021 ビリオンナックル、eb02-0006前例と同型・条件無し=常時挑発。applyAttackRedirectContinuous, src/09-attack.js:310-333）。grep自己検査: modifyStats/cardCount/sourceZoneIn/redirectAttackToSelf(src/09:326) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0015",
+      "no": "X-CP02/0015",
+      "name": "超重機 シュランゲ：04",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "size": 1,
+      "power": 1000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】君の手札１枚までをこのカードのソウルに入れる。",
+        "■君の場のカードのソウル１枚につき、このカードの攻撃力＋1000、防御力＋1000！",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putHandToSoul",
+            "amount": 1,
+            "min": 0,
+            "max": 1
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "amountFrom": {
+            "source": "fieldSoulCount",
+            "per": {
+              "power": 1000,
+              "defense": 1000
+            }
+          }
+        }
+      ],
+      "_note": "継続『君の場のカードのソウル1枚につき攻撃力+1000防御力+1000』はbf-x-ss02-0016超星竜ルミナスブルーと原文完全一致=同型continuous(amountFrom:fieldSoulCount)をそのまま流用。コールコスト『手札1枚までをソウルに入れる』=putHandToSoul(amount1,min0,max1)。"
+    },
+    {
+      "id": "bf-x-cp02-0016",
+      "no": "X-CP02/0016",
+      "name": "生命の御使い ネクタル",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン",
+        "天国"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■【対抗】【起動】このカード以外の場のサイズ１以下のモンスター１枚を選び、場のこのカードをデッキの下に置く。置いたら、選んだカードを手札に戻す。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0016-counter-recycle",
+          "kind": "activated",
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "t",
+              "from": "field",
+              "controller": "any",
+              "excludeSource": true,
+              "filter": {
+                "cardType": "monster",
+                "sizeLte": 1
+              },
+              "amount": 1,
+              "require": true,
+              "title": "生命の御使い ネクタル",
+              "lead": "手札に戻す、このカード以外の場のサイズ1以下のモンスターを選んでください。"
+            },
+            {
+              "op": "returnSelfToDeckBottom"
+            },
+            {
+              "op": "moveSelected",
+              "var": "t",
+              "to": "hand"
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC11(実装済): 【対抗】【起動】=timing:[main,counter](既存113件の定型)。『このカード以外の場のサイズ1以下…』はcontroller:any+excludeSource:true(step直下キー・filter内ではない)。場のこのカードをデッキの下=returnSelfToDeckBottom(effect版 src/15:1229 実在)。この op は isScriptEffectStep(src/14) の許可リストに未登録で script 内では『未実装のscript命令』で停止していたため、許可リストへ1行追加(F1 standTarget と同型の修理)。選んだカードを手札に戻す=moveSelected{var,to:hand}(destinationOwnerは既定entry.owner=選んだカードの持ち主)。「置いたら」の分岐は無く単純逐次実行(『してよい』文言が無いため全て確定処理)。後方互換: returnSelfToDeckBottom を script で使う既存カードは0件(全DB走査。bf-h-eb02-0049/bt05-0029 の使用は abilities.effects 経路=script 非依存)=挙動不変。"
+    },
+    {
+      "id": "bf-x-cp02-0017",
+      "no": "X-CP02/0017",
+      "name": "フィフス・フォーカス",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ドロー"
+      ],
+      "rules": [
+        "■君の場に《コスモドラグーン》があるなら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■君のデッキの上から５枚を見て、君のデッキの上に好きな順番で置く。その後、カード１枚を引く。「フィフス・フォーカス」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0017-fifth-focus",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "attribute": "コスモドラグーン"
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "reorderTopOrdered",
+              "count": 5
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "『君の場に《コスモドラグーン》があるなら使える』はability.conditions:[ownFieldCardExists{filter:{attribute:コスモドラグーン}}]（cardType不指定=モンスター/アイテム両対応。0036星竜槍ブラック・クロック等コスモドラグーン属性アイテムも実在するため、rules原文が『のモンスター』と限定していない=cardType非限定が正）。【使用コスト】ゲージ1はcosts.cast+ability.cost（FIX7両掲載）。『デッキの上から5枚を見て、好きな順番でデッキの上に置く』はscript reorderTopOrdered{count:5}（G4 D-EB01前例、target省略=既定self=『君のデッキ』と一致）。『その後、カード1枚を引く』はdraw{amount:1}。『「フィフス・フォーカス」は1ターンに1回だけ使える』は原文の引用名がカード名自身と完全一致（サブ能力の固有名ではない）ため、named-once表(§5)対象外＝匿名limit:{scope:turn}で十分（ability.idが既にbf-x-cp02-0017を含み、abilityLimitKeyのbase=ability.id、isHandCastLimitAbility(kind:spell)によりインスタンス非依存キーとなるため同名カード合算でも正しく機能。同型precedent=同一バッチ内0018スタービリーバー『「スタービリーバー」は1ターンに1回だけ使える』も同じ扱い）。grep自己検査: ownFieldCardExists(src/13:1033)/payGauge(src/04:524)/reorderTopOrdered(src/14:342)/draw(src/15:135) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0018",
+      "no": "X-CP02/0018",
+      "name": "スタービリーバー",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "星",
+        "ドロー"
+      ],
+      "rules": [
+        "■【使用コスト】君の場のカードのソウル１枚を捨てる。",
+        "■君のライフを＋１し、カード２枚を引く。「スタービリーバー」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "dropOwnFieldCardSoul",
+            "filter": {},
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0018-star-believer",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "dropOwnFieldCardSoul",
+              "filter": {},
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp02-0019",
+      "no": "X-CP02/0019",
+      "name": "マスター・ドミネーション",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ドロー",
+        "強化"
+      ],
+      "rules": [
+        "■君の場のカード１枚を選び、そのターン中、攻撃力を＋2000し、『貫通』を与える。さらに、君の場のカードのソウルが３枚以上あるなら、カード１枚を引き、５枚以上あるなら、そのターン中、選んだカードに『２回攻撃』を与える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0019-buff-draw-double",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self"
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 2000,
+              "duration": "turn"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "penetrate",
+              "duration": "turn"
+            },
+            {
+              "op": "draw",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "cardCount",
+                  "controller": "self",
+                  "pile": "soul",
+                  "cmp": "gte",
+                  "amount": 3
+                }
+              ]
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "doubleAttack",
+              "duration": "turn",
+              "conditions": [
+                {
+                  "op": "cardCount",
+                  "controller": "self",
+                  "pile": "soul",
+                  "cmp": "gte",
+                  "amount": 5
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "『君の場のカード1枚を選び』はtarget:{type:fieldCard,controller:self}（filter無し=モンスター/アイテム両対応、eb02-0027型で無filter前例あり）。『そのターン中、攻撃力+2000、貫通』はmodifyStats+grantKeyword（duration:turn明示、cp01-0036/d-eb03-0040型)。『君の場のカードのソウルが3枚以上ならドロー、5枚以上なら2回攻撃』は『君の場のカードのソウル』=自陣フィールド全体のソウル合算という定型句（bf-d-bt01-0101/bf-h-pp01-0011/bf-h-ss01-0059で同一文言=cardCount{pile:soul}集計と確認済・選んだ対象個別のソウルではない）。汎用effect.conditionsゲート（src/15:216-220、全op対象）をdraw/grantKeyword(2回攻撃)にそれぞれ付けて2閾値を表現。grep自己検査: modifyStats/grantKeyword/draw/cardCount 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0020",
+      "no": "X-CP02/0020",
+      "name": "エクステンド・ディフェンダー",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "防御"
+      ],
+      "rules": [
+        "■君の場にソウル２枚以上があるモンスターがいるなら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】次の２つから１つを選んで使う。",
+        "・そのターン中、次に君が受けるダメージを０に減らす。",
+        "・相手の場のモンスター１枚をレストする。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0020-counter-choice",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "soulCountGte": 2
+              }
+            }
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "エクステンド・ディフェンダー",
+              "lead": "次の２つから１つを選んで使ってください。",
+              "options": [
+                {
+                  "key": "reduce",
+                  "label": "そのターン中、次に君が受けるダメージを０に減らす。",
+                  "script": [
+                    {
+                      "op": "preventNextDamage",
+                      "all": true
+                    }
+                  ]
+                },
+                {
+                  "key": "rest",
+                  "label": "相手の場のモンスター１枚をレストする。",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "m",
+                      "from": "field",
+                      "controller": "opponent",
+                      "filter": {
+                        "cardType": "monster"
+                      },
+                      "amount": 1,
+                      "allowEmpty": true,
+                      "emptyMessage": "相手の場にモンスターがいないため、レストは行いません。",
+                      "title": "エクステンド・ディフェンダー",
+                      "lead": "レストする相手の場のモンスターを選んでください。"
+                    },
+                    {
+                      "op": "restSelected",
+                      "var": "m"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "『君の場にソウル2枚以上があるモンスターがいるなら使える』はability.conditions:[ownFieldCardExists{filter:{cardType:monster,soulCountGte:2}}]（bf-x-bt01-0082型・X系直近前例に準拠。card-level useConditionsではなくability.conditionsで統一）。【使用コスト】ゲージ1はcosts.cast。『次の2つから1つを選んで使う』はscript chooseBranch（bf-x-bt01-0068型）。分岐1『次に受けるダメージを0に減らす』=preventNextDamage{all:true}（bt05-0098/d-bt02-0022等で確定した『0に減らす』=all:trueの語彙、amount指定の『N減らす』とは別）。分岐2はselectCards{allowEmpty,emptyMessage}+restSelected（対象0枚でもno-op、x-ss02-0027型の規約）。grep自己検査: ownFieldCardExists/chooseBranch/preventNextDamage/selectCards/restSelected 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0021",
+      "no": "X-CP02/0021",
+      "name": "抹消石",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "破壊"
+      ],
+      "rules": [
+        "■君のセンターにサイズ３の《プリズムドラゴン》がいるなら使える。",
+        "■【使用コスト】ゲージ１を払い、ライフ１を払う。",
+        "■次の２つから１つを選んで使う。",
+        "・相手の場のモンスター１枚のソウル全てをドロップゾーンに置く。",
+        "・相手の場のカード１枚を破壊する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0021-modal",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "center"
+              ],
+              "filter": {
+                "cardType": "monster",
+                "attribute": "プリズムドラゴン",
+                "sizeIn": [
+                  3
+                ]
+              }
+            }
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "抹消石",
+              "lead": "次の２つから１つを選んで使ってください。",
+              "options": [
+                {
+                  "key": "soul-drop",
+                  "label": "相手の場のモンスター１枚のソウル全てをドロップゾーンに置く。",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "m",
+                      "from": "field",
+                      "controller": "opponent",
+                      "filter": {
+                        "cardType": "monster"
+                      },
+                      "amount": 1,
+                      "allowEmpty": true,
+                      "emptyMessage": "相手の場にモンスターがいないため、効果は解決されません。",
+                      "title": "抹消石",
+                      "lead": "ソウルをドロップゾーンに置く相手の場のモンスターを選んでください。"
+                    },
+                    {
+                      "op": "dropSelectedSoul",
+                      "var": "m"
+                    }
+                  ]
+                },
+                {
+                  "key": "destroy",
+                  "label": "相手の場のカード１枚を破壊する。",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "k",
+                      "from": "field",
+                      "controller": "opponent",
+                      "amount": 1,
+                      "allowEmpty": true,
+                      "emptyMessage": "相手の場にカードがないため、破壊は行いません。",
+                      "title": "抹消石",
+                      "lead": "破壊する相手の場のカードを選んでください。"
+                    },
+                    {
+                      "op": "destroySelected",
+                      "var": "k",
+                      "require": false
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "『君のセンターにサイズ3の《プリズムドラゴン》がいるなら使える』はability.conditions:[ownFieldCardExists{zones:[center],filter:{cardType:monster,attribute:プリズムドラゴン,sizeIn:[3]}}]。【使用コスト】ゲージ1+ライフ1はcosts.cast。『次の2つから1つを選んで使う』はchooseBranch。分岐1『相手の場のモンスター1枚のソウル全てをドロップゾーンに置く』はselectCards(1体)+dropSelectedSoul{var}（amount省略=対象ソウル全て、eb01-0034で確認済みの規約）。分岐2『相手の場のカード1枚を破壊する』はselectCards(filter無し=モンスター/アイテム両対応)+destroySelected{require:false}（bf-x-ss02-0027型のallowEmpty+require:false規約）。grep自己検査: ownFieldCardExists/chooseBranch/selectCards/dropSelectedSoul/destroySelected 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0022",
+      "no": "X-CP02/0022",
+      "name": "ラピスラズリ・スパイク",
+      "type": "item",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン",
+        "防御",
+        "武器"
+      ],
+      "power": 0,
+      "critical": 0,
+      "defense": 4000,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■君の場の《プリズムドラゴン》のモンスター全ての能力は無効化されず、攻撃力＋1000、防御力＋1000！この能力は無効化されない。",
+        "■君の場の《プリズムドラゴン》のモンスターが攻撃されたバトル終了時、そのターン中、君のセンターのモンスターの防御力＋1000！"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "nullifyImmune": true,
+      "continuous": [
+        {
+          "op": "grantNullifyImmunity",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "プリズムドラゴン"
+          }
+        },
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "プリズムドラゴン"
+          },
+          "power": 1000,
+          "defense": 1000
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0022-battleend-center-defense",
+          "kind": "triggered",
+          "event": "allyBattleEnd",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "プリズムドラゴン"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "scope": "self",
+              "zones": [
+                "center"
+              ],
+              "filter": {
+                "cardType": "monster"
+              },
+              "defense": 1000,
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "bf-x-bt01-0122クリスタル・スパイク（同ロット“スパイク”アイテムの近縁前例）を踏襲しつつ、対象範囲を君のセンター限定から君の場全体に拡張。『君の場の《プリズムドラゴン》のモンスター全ての能力は無効化されず、攻撃力+1000、防御力+1000』はcontinuous grantNullifyImmunity{controller:self,filter:{cardType:monster,attribute:プリズムドラゴン}}（zoneIn省略=場全体）+modifyStats(同filter)。『この能力は無効化されない』はcard-level nullifyImmune:true（このアイテム自身の継続付与が相手のnullifyAbilities全体無効化を受けない、bf-x-bt01-0122/H-BT02/0004型）。『君の場の《プリズムドラゴン》のモンスターが攻撃されたバトル終了時、そのターン中、君のセンターのモンスターの防御力+1000』はevent:allyBattleEnd（eventCard=defenderCard）+eventCardMatches{cardType:monster,attribute:プリズムドラゴン}+modifyStats{scope:self,zones:[center],filter:{cardType:monster},defense:1000,duration:turn}（選択不要の単一ゾーン適用=scope形式、対象0枚でも無害）。原文に『この能力は1ターンに1回だけ発動する』の限定句が無いため、limitは付けない（bf-x-bt01-0122は同型文だが1ターン1回付き=差異はrules原文通り）。grep自己検査: grantNullifyImmunity/modifyStats/nullifyImmune/eventCardMatches/allyBattleEnd(runFieldEventTriggers動的生成) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0023",
+      "no": "X-CP02/0023",
+      "name": "GA47：エフィンジャー",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "コスモドラグーン"
+      ],
+      "size": 3,
+      "power": 8000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■このカードが攻撃した時、君のデッキの上から１枚を公開する。公開したカードが《コスモドラグーン》なら、このカードをスタンドする。その後、公開したカードを君のデッキの下に置く。この能力は１ターンに１回だけ発動する。",
+        "『貫通』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0023-attack-reveal-stand",
+          "kind": "triggered",
+          "event": "attack",
+          "limit": {
+            "scope": "turn"
+          },
+          "script": [
+            {
+              "op": "revealTopCard",
+              "controller": "self"
+            },
+            {
+              "op": "standTarget",
+              "target": "$self",
+              "conditions": [
+                {
+                  "op": "revealedMatches",
+                  "filter": {
+                    "attribute": "コスモドラグーン"
+                  }
+                }
+              ]
+            },
+            {
+              "op": "putRevealedToDeckBottom"
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC1(reveal-gate・always型)。【コールコスト】putTopDeckToSoul(自ソウル)→payGauge(2)。『このカードが攻撃した時』=event:attack(実操作経路 runAttackDeclarationTriggers で発火する標準トリガ)。revealTopCard→standTarget{target:$self,conditions:[revealedMatches]}(一致時のみ自身スタンド。standTargetは対象を消費しないため常にputRevealedToDeckBottomで公開カードをデッキ下へ)。『1ターンに1回だけ発動する』=limit{scope:turn}(既定キー)。keywords=『貫通』『ソウルガード』。grep自己検査: putTopDeckToSoul/payGauge/revealTopCard/revealedMatches/standTarget/putRevealedToDeckBottom 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0024",
+      "no": "X-CP02/0024",
+      "name": "光晶竜 グ・ラーパ",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 3,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■このカードがセンターにいるなら、君のレフトとライトの《プリズムドラゴン》は相手のカードの効果で破壊されず、打撃力＋１！",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "grantDestroyImmunity",
+          "controller": "self",
+          "zoneIn": [
+            "left",
+            "right"
+          ],
+          "filter": {
+            "cardType": "monster",
+            "attribute": "プリズムドラゴン"
+          },
+          "from": {
+            "byEffect": true,
+            "byOpponent": true
+          },
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "center"
+              ]
+            }
+          ]
+        },
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "targetZones": [
+            "left",
+            "right"
+          ],
+          "filter": {
+            "cardType": "monster",
+            "attribute": "プリズムドラゴン"
+          },
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "center"
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "コールコストは原文順どおり putTopDeckToSoul(1)→payGauge(2)。『このカードがセンターにいるなら、君のレフトとライトの《プリズムドラゴン》は相手のカードの効果で破壊されず、打撃力＋1！』は2本のcontinuous entry（共にconditions:[sourceZoneIn(center)]でセンター自己ゲート）: (1) grantDestroyImmunity{controller:self, zoneIn:[left,right], filter:{cardType:monster, attribute:プリズムドラゴン}, from:{byEffect:true, byOpponent:true}}（bf-d-cbt-0032 アストライオス“風と星の生誕祭”『君のレフトとライトの《星》は破壊されない』と同型骨格にconditions+fromを追加。grantedDestroyImmunityBlocksはE-X3でconditions評価済＝正しく機能）。(2) modifyStats{controller:self, targetZones:[left,right], filter:{cardType:monster, attribute:プリズムドラゴン}, critical:1}（bf-x-sd02-0015クリスタル・マークのtargetZones用法踏襲。同ノートが明記する通りfilter.zoneではなくtargetZonesを使う＝FS1黙殺回避）。grep自己検査: grantDestroyImmunity(src/11:132,168)/modifyStats/sourceZoneIn/targetZones(src/05:827) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0025",
+      "no": "X-CP02/0025",
+      "name": "時を待つアトラ",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】君の手札１枚と君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■【対抗】【起動】ゲージ１を払ってよい。払ったら、そのターン中、君の場のカード全ての防御力＋1000！",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putHandToSoul",
+            "amount": 1
+          },
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0025-field-defense-buff",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "scope": "self",
+              "defense": 1000,
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "【コールコスト】は手札1枚+デッキ上1枚をソウルへ+ゲージ2=putHandToSoul{1}+putTopDeckToSoul{1}+payGauge{2}（3ステップとも既存cost op、3経路[canPay/pay/payWithSelection]実装済）。『2回攻撃』『ソウルガード』=keywords[doubleAttack,soulguard]。『【対抗】【起動】ゲージ1を払ってよい。払ったら、そのターン中、君の場のカード全ての防御力+1000』はfromHandOnly無し(場の起動能力=デフォルトでfield限定・bf-x-bt01-0042の_note踏襲)+timing:[counter,main]+cost:[payGauge:1]+effects:[modifyStats{scope:self,defense:1000,duration:turn}]（対象選択なし=カード全体へのscope適用、filterなし=モンスター/アイテム両対応）。『払ってよい』は起動能力自体が任意発動である慣例で表現（bf-x-bt01-0042 _note踏襲、追加のoptionalラップ不要）。grep自己検査: putHandToSoul/putTopDeckToSoul/payGauge/modifyStats 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0026",
+      "no": "X-CP02/0026",
+      "name": "大竜装機 トリプルバスター",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "竜装機"
+      ],
+      "size": 3,
+      "power": 5000,
+      "critical": 3,
+      "defense": 4000,
+      "rules": [
+        "■このカードが《ネオドラゴン》ソウルにあるなら、そのカードは攻撃力＋3000、打撃力＋１し、『貫通』を得る。",
+        "『星合体』"
+      ],
+      "soulContinuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "attribute": "ネオドラゴン"
+          },
+          "power": 3000,
+          "critical": 1
+        },
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "filter": {
+            "attribute": "ネオドラゴン"
+          }
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0026-star-merge",
+          "label": "星合体",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "星合体する《ネオドラゴン》",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ],
+      "_note": "soulContinuous modifyStats(filter:ネオドラゴン,既定でホスト自身のみ適用=bf-h-bt02-0043竜装機エルガーカノン型)+grantKeyword penetrate同filter。星合体は標準boilerplate(bf-x-ss02系22件と同型)。0075(DUP)はmergeが本体を複製。"
+    },
+    {
+      "id": "bf-x-cp02-0027",
+      "no": "X-CP02/0027",
+      "name": "黒晶竜 ルシアンブラック",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 3,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■このカードが登場した時、君のデッキの上から２枚をゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0027-enter-gauge",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            }
+          ]
+        }
+      ],
+      "_note": "skeletonに【コールコスト】行が無い＝無料コール（costs/callCost省略）。『このカードが登場した時、君のデッキの上から２枚をゲージに置く。』はevent:enter+putTopDeckToGauge(2)の単純定型。grep自己検査: putTopDeckToGauge(src/15:252) 実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0028",
+      "no": "X-CP02/0028",
+      "name": "ER75：バローズ",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "コスモドラグーン"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■このカードが攻撃した時、君のデッキの上から１枚を公開する。公開したカードが《コスモドラグーン》なら、そのカードをこのカードのソウルに入れる。そうでないなら、そのカードを君のデッキの下に置く。",
+        "『移動』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "move",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0028-attack-reveal-soul",
+          "kind": "triggered",
+          "event": "attack",
+          "script": [
+            {
+              "op": "revealTopCard",
+              "controller": "self"
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "revealedMatches",
+                "filter": {
+                  "attribute": "コスモドラグーン"
+                }
+              },
+              "then": [
+                {
+                  "op": "putTopDeckToSoul",
+                  "amount": 1
+                }
+              ],
+              "else": [
+                {
+                  "op": "putRevealedToDeckBottom"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC1(reveal-gate)。【コールコスト】putTopDeckToSoul(自ソウル)→payGauge(1)。『このカードが攻撃した時』=event:attack。原文に『この能力は1ターンに1回』の記載が無いため limit を付与しない(0023/0006との差異=原文通りの忠実実装。攻撃のたび毎回発動しうる)。一致時=公開カードをこのカードのソウルに入れる(putTopDeckToSoul(effect)はcontext.card=このカード自身のソウルへpeek済みの1枚を消費=『そのカードをこのカードのソウルに入れる』と一致)。不一致時=putRevealedToDeckBottom。keywords=『移動』『ソウルガード』。grep自己検査: putTopDeckToSoul(effect・src/15:261)/revealTopCard/revealedMatches/putRevealedToDeckBottom 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0029",
+      "no": "X-CP02/0029",
+      "name": "竜装機 ヴィーガー",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "竜装機"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■“ダブルアームビット”このカードが場の《ネオドラゴン》のソウルからドロップゾーンに置かれた時、君のデッキの上から２枚をゲージに置く。「ダブルアームビット」は１ターンに１回だけ発動する。",
+        "『星合体』（場のこのカードを、君の場の《ネオドラゴン》のソウルに入れる）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0029-double-arm-bit",
+          "label": "ダブルアームビット",
+          "kind": "triggered",
+          "event": "selfDroppedFromSoul",
+          "hostFilter": {
+            "cardType": "monster",
+            "attribute": "ネオドラゴン"
+          },
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xcp02-double-arm-bit"
+          }
+        },
+        {
+          "id": "bf-x-cp02-0029-star-merge",
+          "label": "星合体",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "星合体する《ネオドラゴン》",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC12(実装済): 『“ダブルアームビット”このカードが場の《ネオドラゴン》のソウルからドロップゾーンに置かれた時、君のデッキの上から2枚をゲージに置く。1ターンに1回』= abilities triggered event:selfDroppedFromSoul + hostFilter{cardType:monster,attribute:ネオドラゴン} + putTopDeckToGauge{amount:2} + limit{scope:turn,key:xcp02-double-arm-bit}。従来 selfDroppedFromSoul は faceDown(奇襲)札のみ発火(reconcileFaceDownSoulDrops が faceDown 札のみ処理)だったのを拡張: putCardsToSoulWithTrigger が『表向きソウル入り + selfDroppedFromSoul リスナー付き』の札にホストの公開スナップショット(__soulHost)を付け、reconcileFaceDownSoulDrops が __soulHost を持つドロップ札にも自己離脱誘発を配信するようにした(星合体=表向き経由でも発火)。後方互換: 既存 selfDroppedFromSoul は bf-x-bt01-0067 の1枚のみで requireFaceDown:true=表向き落下(wasFaceDown:false)では発火しない=挙動不変。表向きタグ付けは selfDroppedFromSoul リスナーを持つ札限定(オプトイン)。星合体本体は bf-x-cp02-0026 等と同型。0076(DUP)はmergeが本体を複製(§6 で id/limit.key を namespace)。"
+    },
+    {
+      "id": "bf-x-cp02-0030",
+      "no": "X-CP02/0030",
+      "name": "RF15：ヤング",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "コスモドラグーン"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■このカードのバトル終了時、場のこのカードを君のデッキの下に置いてよい。置いたら、君のデッキの上から２枚を見て、その中のカード好きな枚数を、デッキの下に好きな順番で置き、残りのカードをデッキの上に好きな順番で置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0030-battle-end-scry",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "optional": true,
+          "effects": [
+            {
+              "op": "returnSelfToDeckBottom"
+            },
+            {
+              "op": "lookTopSelectToBottomRestToTop",
+              "count": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp02-0031",
+      "no": "X-CP02/0031",
+      "name": "赤晶竜 タナット",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■君のセンターのモンスターは『貫通』を得る！"
+      ],
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "controller": "self",
+          "targetZones": [
+            "center"
+          ],
+          "filter": {
+            "cardType": "monster"
+          }
+        }
+      ],
+      "_note": "skeletonに【コールコスト】行が無い＝無料コール（costs/callCost省略）。0072（同名DUP）の本体。『君のセンターのモンスターは『貫通』を得る！』は continuous grantKeyword{keyword:penetrate, controller:self, targetZones:[center], filter:{cardType:monster}}。grantKeywordはcontinuous形でもhasKeyword側(src/18)がactiveContinuousEffects経由で参照する（src/18-keyword-alias.js付近:250-265）ためscript/effect版と同一op名で継続キーワード付与として機能。targetZonesはbf-x-sd02-0015等の前例通り。センター占有者が自分自身(0031自身がセンターにいる場合)も原文通り対象に含む（除外記述なし）。grep自己検査: grantKeyword(src/15:1462・continuousでも同op名をhasKeywordが参照)/targetZones 実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0032",
+      "no": "X-CP02/0032",
+      "name": "プリズム・キャンセラー",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターに《プリズムドラゴン》がいるなら使える。",
+        "■【対抗】その攻撃を無効化する。君がアイテムを装備しているなら、このカードは無効化されない。"
+      ],
+      "cannotBeNullified": {
+        "conditions": [
+          {
+            "op": "ownFieldCardExists",
+            "filter": {
+              "cardType": "item"
+            }
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0032-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "center"
+              ],
+              "filter": {
+                "cardType": "monster",
+                "attribute": "プリズムドラゴン"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ],
+      "_note": "『相手のターンの攻撃中、君のセンターに《プリズムドラゴン》がいるなら使える』はability.conditions:[pendingAttackDefenderIsSelf, ownFieldCardExists{zones:[center],filter:{cardType:monster,attribute:プリズムドラゴン}}]（bf-h-sd01-0013/bf-x-ss02-0005型の定型2条件）。【対抗】その攻撃を無効化する=nullifyAttack。『君がアイテムを装備しているなら、このカードは無効化されない』はcard-level cannotBeNullified:{conditions:[ownFieldCardExists{filter:{cardType:item}}]}（filter無しzones=グローバルzones定数がitemゾーンを含む=装備アイテム存在判定、bf-d-bt03-0094の同型『アイテムを装備しているなら』フィルタを流用、D-SD01太陽の盾型の条件付きcannotBeNullified）。0073はDUP(本体mechをそのまま複製=merge処理)。grep自己検査: pendingAttackDefenderIsSelf/ownFieldCardExists/nullifyAttack/cannotBeNullified(conditions分岐、src/07 cardCannotBeNullified) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0033",
+      "no": "X-CP02/0033",
+      "name": "スタージャック・デストラクション",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "星",
+        "破壊"
+      ],
+      "rules": [
+        "■君の場の《ネオドラゴン》が破壊された時に使える。",
+        "■【使用コスト】ライフ１を払う。",
+        "■【対抗】相手の場のモンスター１枚を破壊し、相手にダメージ１！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "life": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0033-destroyed-retaliate",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "lastDestroyedCardMatches",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "『君の場の《ネオドラゴン》が破壊された時に使える』は反応的タイミング条件ability.conditions:[lastDestroyedCardMatches{controller:self,filter:{cardType:monster,attribute:ネオドラゴン}}]（bf-d-bt04-0049『裁きの…』/bf-x-bt01-0111『デッドコピー』と同型の既存precedent＝card-levelのuseConditionsではなくability.conditions）。【使用コスト】ライフ1はcosts.cast+ability.cost。【対抗】『相手の場のモンスター1枚を破壊し、相手にダメージ1』はability.target(fieldCard,controller:opponent,filter:{cardType:monster})+effects:[destroy($target),dealDamage(player:opponent,amount:1)]（bf-d-eb01-0033型のtarget+effects直結パターン）。grep自己検査: lastDestroyedCardMatches(src/13:1526)/payLife(src/04:563)/destroy(src/02:144,246)/dealDamage(src/15:749) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0034",
+      "no": "X-CP02/0034",
+      "name": "コスモヒール・プロテクション",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいなくて、君の場に《コスモドラグーン》があるなら使える。",
+        "■【対抗】その攻撃を無効化する。その後、君のデッキの上から１枚を公開し、そのカードが《コスモドラグーン》なら、そのカードを手札に加え、君のライフを＋１！そうでないなら、そのカードを君のデッキの下に置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0034-counter-reveal",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "cardCount",
+              "pile": "field",
+              "filter": {
+                "attribute": "コスモドラグーン"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "revealTopCard",
+              "controller": "self"
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "revealedMatches",
+                "filter": {
+                  "attribute": "コスモドラグーン"
+                }
+              },
+              "then": [
+                {
+                  "op": "draw",
+                  "amount": 1
+                },
+                {
+                  "op": "gainLife",
+                  "amount": 1
+                }
+              ],
+              "else": [
+                {
+                  "op": "putRevealedToDeckBottom"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC1(reveal-gate)。使用条件『相手のターンの攻撃中、君のセンターにモンスターがいなくて、君の場に《コスモドラグーン》があるなら使える』= ability.conditions[ownCenterEmpty, pendingAttackDefenderIsSelf, cardCount{pile:field,filter:{attribute:コスモドラグーン},cmp:gte,amount:1}](再録元候補と同型のbf-d-sd01-0014『ドラゴンシールド 太陽の盾』の条件構成をそのまま踏襲・pendingAttackTargetIsは同型に無いため付けない)。【対抗】その攻撃を無効化する。その後 nullifyAttack→revealTopCard→ifCondition(revealedMatches)一致: draw(1)=公開カードを手札へ+gainLife(1) / 不一致: putRevealedToDeckBottom。costsは【使用コスト】記載が無いため無し。grep自己検査: ownCenterEmpty/pendingAttackDefenderIsSelf/cardCount/nullifyAttack/revealTopCard/revealedMatches/draw/gainLife/putRevealedToDeckBottom 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0035",
+      "no": "X-CP02/0035",
+      "name": "グリッターストーン",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "回復",
+        "ドロー"
+      ],
+      "rules": [
+        "■【使用コスト】君の場の《プリズムドラゴン》のモンスター１枚をドロップゾーンに置く。",
+        "■【対抗】君のライフを＋1し、カード１枚を引く。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "dropOwnMonster",
+            "amount": 1,
+            "filter": {
+              "attribute": "プリズムドラゴン"
+            }
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0035-counter-heal-draw",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "『使える』制限が原文に無い（rules原文通り、条件ゲート無し）。【使用コスト】君の場の《プリズムドラゴン》のモンスター1枚をドロップゾーンに置く=costs.cast:[dropOwnMonster{amount:1,filter:{attribute:プリズムドラゴン}}]（bf-d-bt03-0031/bf-d-bt04-0080型のcast purposeでの使用前例あり）。【対抗】君のライフ+1・カード1枚を引く=gainLife{1}+draw{1}。grep自己検査: dropOwnMonster/gainLife/draw 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0036",
+      "no": "X-CP02/0036",
+      "name": "星竜槍 ブラック・クロック",
+      "type": "item",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "コスモドラグーン",
+        "武器"
+      ],
+      "power": 4000,
+      "critical": 1,
+      "rules": [
+        "■【装備コスト】ライフ１を払う。",
+        "■【対抗】【起動】君のターン中、君の場の《コスモドラグーン》１枚を選び、ゲージ１を払ってよい、払ったら。君のデッキの上から１枚を公開する。公開したカードが《コスモドラグーン》なら、選んだカードをスタンドする。その後、公開したカードをデッキの下に置く。この能力は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "equipCost": {
+        "life": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0036-counter-activate-reveal-stand",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "attribute": "コスモドラグーン"
+            }
+          },
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          },
+          "script": [
+            {
+              "op": "revealTopCard",
+              "controller": "self"
+            },
+            {
+              "op": "standTarget",
+              "target": "$target",
+              "conditions": [
+                {
+                  "op": "revealedMatches",
+                  "filter": {
+                    "attribute": "コスモドラグーン"
+                  }
+                }
+              ]
+            },
+            {
+              "op": "putRevealedToDeckBottom"
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC1(reveal-gate・always型)。【装備コスト】payLife(1)+equipCost表示{life:1}。【対抗】【起動】君のターン中=ability.conditions:[turnOwnerIsSelf](bf-d-eb01-0012『ディミオスソード』の対抗起動+turnOwnerIsSelf型を踏襲)。『君の場の《コスモドラグーン》1枚を選び』=ability.target(controller:self,filter:{attribute:コスモドラグーン})。『ゲージ1を払ってよい、払ったら』=ability.cost(payGauge:1・活性化コストとして通常通り支払うことで「払ってよい」の任意性は能力自体の起動可否として表現。bf-h-eb03-0059/0035と同型の慣用句)。以降 revealTopCard→standTarget{target:$target,conditions:[revealedMatches]}(一致時のみ選んだ味方をスタンド)→putRevealedToDeckBottom(常時・standTargetは公開カードを消費しないため)。『1ターンに1回だけ使える』=limit{scope:turn}。VM検証は起動(main,turnOwnerIsSelf)経路のみを実操作(useCardAction)で通す(対抗(counter)は同一script・同一timing gateなのでtimingエントリ点が異なるだけで論理的に同値・別途対抗窓のセットアップは複雑化するため省略)。grep自己検査: turnOwnerIsSelf/revealTopCard/revealedMatches/standTarget/putRevealedToDeckBottom 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0037",
+      "no": "X-CP02/0037",
+      "name": "DGS スターダスト・マニューバ！",
+      "type": "impact",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "コスモドラグーン",
+        "火力"
+      ],
+      "rules": [
+        "■相手のライフが４以下で、君の場にサイズ２以上の《コスモドラグーン》がいるなら使える。",
+        "■【使用コスト】ゲージ２を払う。",
+        "■君のデッキの上から１枚を公開し、そのカードが《コスモドラグーン》なら、相手にダメージ４！その後、公開したカードをデッキの下に置く。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0037-reveal-damage",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "opponentLifeLte",
+              "amount": 4
+            },
+            {
+              "op": "ownFieldMonsterAttributeSizeGte",
+              "attribute": "コスモドラグーン",
+              "size": 2
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "script": [
+            {
+              "op": "revealTopCard",
+              "controller": "self"
+            },
+            {
+              "op": "dealDamage",
+              "amount": 4,
+              "player": "opponent",
+              "conditions": [
+                {
+                  "op": "revealedMatches",
+                  "filter": {
+                    "attribute": "コスモドラグーン"
+                  }
+                }
+              ]
+            },
+            {
+              "op": "putRevealedToDeckBottom"
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC1(reveal-gate・『一致なら相手にダメージ4／その後デッキ下』always型)。設計書の指示通り、既存の revealTopDamagePerMatchRestToBottom(ダメージ専用の複数枚集計op)は使わず、統一reveal-gate形(revealTopCard→dealDamage{conditions:[revealedMatches]}→putRevealedToDeckBottom)で実装。使用条件=ability.conditions[opponentLifeLte(4), ownFieldMonsterAttributeSizeGte(attribute:コスモドラグーン,size:2)]。【使用コスト】ゲージ2=costs.cast+castCost表示+ability.cost(bf-x-ss02-0024型に準拠し3箇所で明示)。kind:impact,timing:[final]は既存impact型カードの標準形(bf-x-ss02-0024参照)。grep自己検査: opponentLifeLte/ownFieldMonsterAttributeSizeGte/revealTopCard/dealDamage/revealedMatches/putRevealedToDeckBottom 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0038",
+      "no": "X-CP02/0038",
+      "name": "EX・ディメンジョン “ターミネイト・∞！”",
+      "type": "impactMonster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "size": 3,
+      "power": 9000,
+      "critical": 3,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】このカードを君の場のサイズ３の《ネオドラゴン》１枚の上に重ね、ゲージ２を払う。",
+        "■このカードが攻撃した時、このカードのソウル４枚をドロップゾーンに置いてよい。置いたら、相手の場のカード全てを破壊し、相手にダメージ４！！",
+        "『ソウルガード』"
+      ],
+      "callStack": {
+        "filter": {
+          "sizeIn": [
+            3
+          ],
+          "attribute": "ネオドラゴン"
+        }
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0038-attack-annihilate",
+          "kind": "triggered",
+          "event": "attack",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "sourceSoulMatchingCountGte",
+              "amount": 4
+            }
+          ],
+          "script": [
+            {
+              "op": "discardSelfSoul",
+              "amount": 4
+            },
+            {
+              "op": "destroy",
+              "scope": "opponent"
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 4
+            }
+          ]
+        }
+      ],
+      "_note": "【コールコスト】『このカードを君の場のサイズ3の《ネオドラゴン》1枚の上に重ね』は必須callStack(filter:{sizeIn:[3],attribute:ネオドラゴン}・optional無し=まで表記が無いため通常コール不可・スタック先必須)+payGauge2。攻撃時能力=optional:trueかつability条件sourceSoulMatchingCountGte(amount4)でソウル4枚未満なら発動不可自体をゲート(『してよい』の全部払い/払わないの二択をability optionalで表現)。discardSelfSoul(amount4)は条件保証によりちょうど4枚消費。scope:opponent の destroy=『相手の場のカード全てを破壊』。"
+    },
+    {
+      "id": "bf-x-cp02-0039",
+      "no": "X-CP02/0039",
+      "name": "流星機 アトアリザール",
+      "type": "monster",
+      "rarity": "",
+      "world": "レジェンドW",
+      "worlds": [
+        "レジェンドW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "星",
+        "竜装機"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■このカードがカード名に「ゾディアック」を含むモンスターのソウルにあるなら、君の場のカード全ての攻撃力＋1000、防御力＋1000！",
+        "『星合体』"
+      ],
+      "soulContinuous": [
+        {
+          "op": "modifyStats",
+          "fieldWide": true,
+          "filter": {},
+          "power": 1000,
+          "defense": 1000,
+          "conditions": [
+            {
+              "op": "hostMatches",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "ゾディアック"
+              }
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0039-star-combine",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "流星機 アトアリザール",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC7(実装済): 『カード名に「ゾディアック」を含むモンスターのソウルにあるなら、君の場のカード全ての攻撃力+1000防御力+1000』= soulContinuous modifyStats{fieldWide:true, filter:{}, power:1000, defense:1000, conditions:[hostMatches{cardType:monster,nameIncludes:ゾディアック}]}。continuousStatBonus の fieldWide ループ(src/05-stats.js)が continuousEffectAppliesFromSoul に host(ソウルを持つ場札)を渡すよう拡張し、条件コンテキストへ hostCard/hostOwner/hostZone を注入=hostMatches(src/13:966)がホスト名を判定できる。後方互換: soulContinuous の conditions で hostMatches を使う既存カードは0件(全DB走査)、唯一の fieldWide 使用 bf-d-eb02-0033 は conditions 無し=挙動不変。星合体本体(moveSelfToSelectedSoul)は bf-x-cp02-0026 等と同型。"
+    },
+    {
+      "id": "bf-x-cp02-0040",
+      "no": "X-CP02/0040",
+      "name": "マインドフェイカー",
+      "type": "spell",
+      "rarity": "",
+      "world": "レジェンドW",
+      "worlds": [
+        "レジェンドW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "星"
+      ],
+      "rules": [
+        "■次の２つから１つを選んで使う。",
+        "・君の場に《星》があるなら、そのターン中、相手の場のモンスター１枚の能力全てを無効化する。",
+        "・君の場に《ネオドラゴン》があるなら、君のドロップゾーンのカード１枚を君の場のモンスター１枚のソウルに入れる。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0040-mind-faker",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "マインドフェイカー",
+              "lead": "次の２つから１つを選んで使ってください。",
+              "options": [
+                {
+                  "key": "nullify",
+                  "label": "君の場に《星》があるなら、そのターン中、相手の場のモンスター１枚の能力全てを無効化する",
+                  "condition": {
+                    "op": "ownFieldCardExists",
+                    "filter": {
+                      "attribute": "星"
+                    }
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "t",
+                      "from": "field",
+                      "controller": "opponent",
+                      "filter": {
+                        "cardType": "monster"
+                      },
+                      "amount": 1,
+                      "require": true,
+                      "title": "マインドフェイカー",
+                      "lead": "そのターン中、能力を無効化する相手の場のモンスターを選んでください。"
+                    },
+                    {
+                      "op": "nullifySelectedAbilities",
+                      "var": "t"
+                    }
+                  ]
+                },
+                {
+                  "key": "soul",
+                  "label": "君の場に《ネオドラゴン》があるなら、君のドロップゾーンのカード１枚を君の場のモンスター１枚のソウルに入れる",
+                  "condition": {
+                    "op": "ownFieldCardExists",
+                    "filter": {
+                      "attribute": "ネオドラゴン"
+                    }
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "d",
+                      "from": "drop",
+                      "controller": "self",
+                      "filter": {},
+                      "amount": 1,
+                      "require": true,
+                      "title": "マインドフェイカー",
+                      "lead": "君の場のモンスターのソウルに入れる、ドロップゾーンのカードを選んでください。"
+                    },
+                    {
+                      "op": "selectCards",
+                      "var": "h",
+                      "from": "field",
+                      "controller": "self",
+                      "filter": {
+                        "cardType": "monster"
+                      },
+                      "amount": 1,
+                      "require": true,
+                      "title": "マインドフェイカー",
+                      "lead": "ソウルに入れる先の、君の場のモンスターを選んでください。"
+                    },
+                    {
+                      "op": "moveSelectedToSelectedSoul",
+                      "var": "d",
+                      "soulOfVar": "h"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC8(実装済): 第1分岐『君の場に《星》があるなら、そのターン中、相手の場のモンスター1枚の能力全てを無効化する』= selectCards(controller:opponent,cardType:monster,amount:1)で1枚選び→ nullifySelectedAbilities{var:t}。R9 の『既存 nullifyFieldAbilities/nullifyAbilities で確定・新op不要』は誤りだった: nullifyFieldAbilities(src/15)は『発動時点で filter 一致の全カード』を一括で state.turnNullifies へ積む一括无効化で単体選択と組み合わせられない(instanceVar は未読=相手の場のモンスター全てが対象になる過剰包含)。nullifySelectedAbilities(新op)は同じ state.turnNullifies 機構(isNullifiedByTurnEffect が consult・room/リプレイの JSON 往復で保持・clearTurnModifiers でクリア)を、選択された instance のみに限定して積む。既存カード0件=turnNullifies 常時空=挙動不変。分岐条件 ownFieldCardExists{attribute:星}。第2分岐(ソウルに入れる)は moveSelectedToSelectedSoul(bf-x-ss02-0019前例)で忠実実装。"
+    },
+    {
+      "id": "bf-x-cp02-0041",
+      "no": "X-CP02/0041",
+      "name": "酸晶竜 ガイムレット",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】君の場の《プリズムドラゴン》１枚以上全てをこのカードのソウルに入れ、ゲージ３を払う。",
+        "■このカードが攻撃された時、このカードのソウルが２枚以上あるなら、相手にダメージ１！",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "callConditions": [
+        {
+          "op": "cardCount",
+          "controller": "self",
+          "pile": "field",
+          "filter": {
+            "attribute": "プリズムドラゴン"
+          },
+          "cmp": "gte",
+          "amount": 1
+        }
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putOwnFieldCardsToSoul",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "プリズムドラゴン"
+            }
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0041-counter-damage",
+          "kind": "triggered",
+          "event": "attacked",
+          "conditions": [
+            {
+              "op": "sourceSoulCountGte",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "amount": 1,
+              "player": "opponent"
+            }
+          ]
+        }
+      ],
+      "_note": "『君の場の《プリズムドラゴン》１枚以上全てをこのカードのソウルに入れ』はputOwnFieldCardsToSoul{filter:{cardType:monster, attribute:プリズムドラゴン}}（bf-h-bt01-0016 無限ロボマセマティック『君の場の《カルテットファイブ》のモンスター全てをこのカードのソウルに入れる』と同型op）。putOwnFieldCardsToSoulのcanPayは候補数を検査しない（0枚でも支払い成立＝空振り）ため『1枚以上』の必須要件は同カード前例通りcallConditions:[cardCount(pile:field, filter:{attribute:プリズムドラゴン}, gte1)]で別途ゲート。コスト順は原文どおりsoul→gauge。『このカードが攻撃された時、このカードのソウルが２枚以上あるなら、相手にダメージ１！』はevent:attacked（接頭辞なし）+conditions:[sourceSoulCountGte(amount:2)]（src/13:952）+dealDamage(1,opponent)。原文に『1ターンに1回』表記が無いためlimit無し。grep自己検査: cardCount/putOwnFieldCardsToSoul(src/04:989,1737)/payGauge/sourceSoulCountGte(src/13:952)/dealDamage 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0042",
+      "no": "X-CP02/0042",
+      "name": "古竜装機 ジャイアント・フラグメント",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "竜装機"
+      ],
+      "size": 3,
+      "power": 3000,
+      "critical": 3,
+      "defense": 3000,
+      "rules": [
+        "■このカードがソウルにある《ネオドラゴン》の攻撃力＋1000！",
+        "■【起動】このカードが《ネオドラゴン》のソウルにあるなら、ゲージ１を払う。払ったら、そのターン中、そのカードは『貫通』を得る。さらに、そのカードのソウルに「古竜装機 ジャイアント・フラグメント」４枚があるなら、そのターン中、そのカードは『４回攻撃』を得る。",
+        "『星合体』"
+      ],
+      "soulContinuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "attribute": "ネオドラゴン"
+          },
+          "power": 1000
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "bf-x-cp02-0042-host-boost",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "hostMatches",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$host",
+              "keyword": "penetrate",
+              "duration": "turn"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$host",
+              "keyword": "quadrupleAttack",
+              "duration": "turn",
+              "conditions": [
+                {
+                  "op": "cardCount",
+                  "controller": "self",
+                  "pile": "soul",
+                  "filter": {
+                    "name": "古竜装機 ジャイアント・フラグメント"
+                  },
+                  "cmp": "gte",
+                  "amount": 4
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0042-star-merge",
+          "label": "星合体",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "星合体する《ネオドラゴン》",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ],
+      "_note": "1文目『ソウルにある《ネオドラゴン》の攻撃力+1000』=soulContinuous modifyStats(既定ホスト自身のみ、bf-h-bt02-0043型)。2文目soulAbilities activated(payGauge1)→$host に penetrate turn付与+『そのカードのソウルに“古竜装機 ジャイアント・フラグメント”4枚あれば』quadrupleAttack turn付与。カウントはcardCount{pile:soul,controller:self,filter:name一致}(軽微近似=自分の場の全モンスターのソウル合算であり厳密には『そのカード(host)自身のソウルのみ』ではない。既存engineにhostのソウルだけを見るcardCount pile相当が無いため=同時に複数の《ネオドラゴン》が本カードのコピーをソウルに積むレアケースでのみ乖離、実害小)。"
+    },
+    {
+      "id": "bf-x-cp02-0043",
+      "no": "X-CP02/0043",
+      "name": "菓晶竜 ナッツ",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【対抗】【起動】君の場の《プリズムドラゴン》のモンスター１枚を選び、ゲージ１を払い、ライフ１を払ってよい。払ったら、手札のこのカードを選んだカードのソウルに入れる。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0043-tosoul-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "プリズムドラゴン"
+            }
+          },
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "_note": "『【対抗】【起動】君の場の《プリズムドラゴン》のモンスター1枚を選び、ゲージ1を払い、ライフ1を払ってよい。払ったら、手札のこのカードを選んだカードのソウルに入れる』はbf-x-bt01-0042（『選び、手札のこのカードを捨て、ゲージ1を払ってよい。そうしたら、選んだカードをスタンドする』＝同一文法）を踏襲: fromHandOnly:true+timing:[counter,main]+ability-level target(プリズムドラゴンのモンスター、自陣)+cost:[payGauge:1,payLife:1]+effects:[moveSelfToTargetSoul{target:$target}]。『払ってよい』は起動能力自体が任意発動である慣例で表現（追加のoptionalラップ不要、0042/bf-d-td01-0004の_note踏襲）。moveSelfToTargetSoulは手札ソース対応済（bf-h-eb02-0022/0051のfromHandOnly版で確認済）。grep自己検査: moveSelfToTargetSoul(src/15:2139)/payGauge/payLife/fromHandOnly経路 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0044",
+      "no": "X-CP02/0044",
+      "name": "桃晶竜 タヴェル",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【起動】君の場にサイズ３の《プリズムドラゴン》のモンスターがいるなら、手札のこのカードを捨ててよい。捨てたら、君のライフを＋３！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0044-discard-life",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "プリズムドラゴン",
+                "sizeIn": [
+                  3
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 3
+            }
+          ]
+        }
+      ],
+      "_note": "『【起動】君の場にサイズ3の《プリズムドラゴン》のモンスターがいるなら、手札のこのカードを捨ててよい。捨てたら、君のライフを+3』はfromHandOnly:true+timing:[main]（対抗表記なし=main限定）+conditions:[ownFieldCardExists{filter:{cardType:monster,attribute:プリズムドラゴン,sizeIn:[3]}}]+effects:[gainLife{3}]。『手札のこのカードを捨てて』はcost配列不要（fromHandOnly使用時のuseHandAbilityActionがremoveSelectedFromHand→drop送りを自動処理、bf-x-bt01-0042の_note踏襲）。『捨ててよい』は起動能力自体が任意発動である慣例で表現。grep自己検査: ownFieldCardExists/gainLife/fromHandOnly経路 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0045",
+      "no": "X-CP02/0045",
+      "name": "AA12：ノートン",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "コスモドラグーン"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードが攻撃した時、君のデッキの上から１枚を公開する。公開したカードが《コスモドラグーン》なら、そのカードをゲージに置き、君のライフを＋１する。そうでないなら、そのカードを君のデッキの下に置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0045-attack-reveal-gauge-life",
+          "kind": "triggered",
+          "event": "attack",
+          "script": [
+            {
+              "op": "revealTopCard",
+              "controller": "self"
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "revealedMatches",
+                "filter": {
+                  "attribute": "コスモドラグーン"
+                }
+              },
+              "then": [
+                {
+                  "op": "putTopDeckToGauge",
+                  "amount": 1
+                },
+                {
+                  "op": "gainLife",
+                  "amount": 1
+                }
+              ],
+              "else": [
+                {
+                  "op": "putRevealedToDeckBottom"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC1(reveal-gate)。コールコスト記載無し(通常コール)。『このカードが攻撃した時』=event:attack。原文に『1ターンに1回』の記載が無いため limit 無し(0028と同様の忠実実装)。一致時=公開カードをゲージへ(putTopDeckToGauge(1)=peek済みの公開カード自体を消費)+gainLife(1)。不一致時=putRevealedToDeckBottom。grep自己検査: revealTopCard/revealedMatches/putTopDeckToGauge/gainLife/putRevealedToDeckBottom 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0046",
+      "no": "X-CP02/0046",
+      "name": "竜装機 ビガーブレイブ",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "竜装機"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードがソウルにある《ネオドラゴン》が１枚で攻撃しているなら、その攻撃は無効化されない。",
+        "■このカードがソウルにある《ネオドラゴン》が攻撃したバトル終了時、ソウルのこのカードをドロップゾーンに置く。",
+        "『星合体』"
+      ],
+      "soulContinuous": [
+        {
+          "op": "grantAttackResistance",
+          "effects": [
+            "nullify"
+          ],
+          "hostOnly": true,
+          "hostFilter": {
+            "cardType": "monster",
+            "attribute": "ネオドラゴン"
+          },
+          "conditions": [
+            {
+              "op": "attackingAlone"
+            }
+          ]
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "bf-x-cp02-0046-battle-end-drop",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "effects": [
+            {
+              "op": "dropSoulSourceCard"
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0046-star-merge",
+          "label": "星合体",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "星合体する《ネオドラゴン》",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ],
+      "_note": "1文目『このカードがソウルにある《ネオドラゴン》が1枚で攻撃しているなら、その攻撃は無効化されない』=soulContinuous grantAttackResistance{effects:[nullify],hostOnly:true,hostFilter:{cardType:monster,attribute:ネオドラゴン},conditions:[attackingAlone]}(bf-d-bt03-0038剣星機J・ギャラクシオンの原文ほぼ同型・E5拡張=applicableAttackResistancesがホストソウルのsoulContinuousを収集済み・実在確認済)。E-XC13(実装済): 2文目『このカードがソウルにある《ネオドラゴン》が攻撃したバトル終了時、ソウルのこのカードをドロップゾーンに置く』= soulAbilities triggered event:battleEnd + dropSoulSourceCard(新op)。queueBattleEndTriggers は攻撃者スロットにのみ battleEnd を配信するため『《ネオドラゴン》が攻撃した』の限定は自然に満たされる(追加条件不要)。runTriggeredAbilities は soulAbility 発火時 context.card=host・context.soulSourceCard=このソウル札(0046)を設定するので、dropSoulSourceCard が context.soulSourceCard をホストのソウルからドロップへ移し queueSoulCardDroppedTriggers で funnel を通す。dischargeSelfFromHostSoul は activated 用(context.hostCard 必須)でこの triggered 経路では不発のため対の op を新設。後方互換: soulAbilities+event:battleEnd の既存カードは0件・dropSoulSourceCall 使用も0件=挙動不変。"
+    },
+    {
+      "id": "bf-x-cp02-0047",
+      "no": "X-CP02/0047",
+      "name": "白晶竜 シュナブラン",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■場のこのカードがドロップゾーンに置かれた時、君のデッキの上から２枚をゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0047-drop-gauge",
+          "kind": "triggered",
+          "event": "movedToDrop",
+          "fromZones": [
+            "field"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            }
+          ]
+        }
+      ],
+      "_note": "『場のこのカードがドロップゾーンに置かれた時、君のデッキの上から2枚をゲージに置く』はevent:movedToDrop+fromZones:[field]（bf-d-cbt-0126の同一文言前例をそのまま踏襲）+effects:[putTopDeckToGauge{2}]。原文に限定句なし=limit無し。grep自己検査: movedToDrop(src/11:1095,1102)/putTopDeckToGauge 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0048",
+      "no": "X-CP02/0048",
+      "name": "A13：ベスター",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "コスモドラグーン"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■このカードが登場した時、君のデッキの上から３枚を見て、その中のカード好きな枚数を、デッキの下に好きな順番で置き、残りのカードをデッキの上に好きな順番で置く。",
+        "『移動』"
+      ],
+      "keywords": [
+        "move"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0048-enter-scry",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "lookTopSelectToBottomRestToTop",
+              "count": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp02-0049",
+      "no": "X-CP02/0049",
+      "name": "J15：ティプトリー",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "コスモドラグーン"
+      ],
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■このカードが登場した時、君のドロップゾーンの《コスモドラグーン》１枚までを君のデッキの上に置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0049-enter-recur",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "d",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "attribute": "コスモドラグーン"
+              },
+              "amount": 1,
+              "min": 0,
+              "max": 1,
+              "require": false,
+              "title": "J15：ティプトリー",
+              "lead": "デッキの上に置く、ドロップゾーンの《コスモドラグーン》を選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "d",
+              "to": "deck",
+              "require": false,
+              "log": "{cards}をデッキの上に置きました。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp02-0050",
+      "no": "X-CP02/0050",
+      "name": "白晶竜 ケールナー",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■このカードが登場した時、君の手札１枚を捨ててよい。捨てたら、カード１枚を引く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0050-enter-discard-draw",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "『このカードが登場した時、君の手札1枚を捨ててよい。捨てたら、カード1枚を引く』はkind:triggered,event:enter,optional:true+cost:[discardHand{1}]+effects:[draw{1}]（bf-d-cbt-0062/bf-d-cbt-0126型の『てよい。〜したら』optional+cost+effectsの定型パターン）。discardHandはcost opとして3経路[canPay/pay/payWithSelection]に実装済（対話選択で捨てるカードを選べる）。grep自己検査: discardHand(cost, src/04)/draw 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0051",
+      "no": "X-CP02/0051",
+      "name": "白晶竜 カリニャン",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■このカードが登場した時、君の手札２枚までをゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0051-enter-hand-gauge",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "g",
+              "from": "hand",
+              "controller": "self",
+              "amount": 2,
+              "min": 0,
+              "require": false,
+              "title": "白晶竜 カリニャン",
+              "lead": "ゲージに置く手札を２枚まで選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "g",
+              "to": "gauge",
+              "require": false
+            }
+          ]
+        }
+      ],
+      "_note": "『このカードが登場した時、君の手札2枚までをゲージに置く』は『てよい』を伴わない直接の『N枚まで』効果（0-2枚を自分で選ぶ）。moveHandToGauge（既存effect op）はchooseAndTakeMatchingCardsの既定min=amountで『まで』(0許容)を表現できないため不採用。かわりにscript selectCards{amount:2,min:0,require:false}+moveSelected{to:gauge,require:false}（『N枚まで』既存規約=SKILL.mdコストop『putDropToSoulはminで支払いゲート、ドロップの○○全てはamount大+min:0』と同型思想、bf-x-bt01-0031で確認済みの選択→行動パターン）。grep自己検査: selectCards/moveSelected(destination gauge対応, src/14:1387-1397) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0052",
+      "no": "X-CP02/0052",
+      "name": "プリズム・レリック",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "チャージ",
+        "ドロー"
+      ],
+      "rules": [
+        "■【使用コスト】君の手札のサイズ３の《プリズムドラゴン》１枚を捨てる。",
+        "■君のデッキの上から３枚をゲージに置き、君のライフを＋１し、カード１枚を引く。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "discardHand",
+            "amount": 1,
+            "filter": {
+              "cardType": "monster",
+              "attribute": "プリズムドラゴン",
+              "sizeIn": [
+                3
+              ]
+            }
+          }
+        ]
+      },
+      "castCost": {
+        "discard": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0052-gauge-life-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1,
+              "filter": {
+                "cardType": "monster",
+                "attribute": "プリズムドラゴン",
+                "sizeIn": [
+                  3
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 3
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "『君の手札のサイズ3の《プリズムドラゴン》1枚を捨てる』はcosts.cast:[discardHand{amount:1,filter:{cardType:monster,attribute:プリズムドラゴン,sizeIn:[3]}}]（discardHandはfilter対応済みコストop・src/04:539/927の2経路とも同一filter判定。size条件はスカラーsize禁止＝sizeIn:[3]で表現）。『デッキの上から3枚をゲージに置き、ライフ+1し、カード1枚を引く』はputTopDeckToGauge{3}+gainLife{1}+draw{1}（bf-x-sd01-0010『チャージ・ヒール』と同型の3op連結precedent）。grep自己検査: discardHand(cost,src/04:539,927)/putTopDeckToGauge(src/15:252)/gainLife(src/15:529)/draw(src/15) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0053",
+      "no": "X-CP02/0053",
+      "name": "コロイド・アーマー",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "強化"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■そのターン中、君の場の《プリズムドラゴン》のモンスター１枚は相手のセンターにモンスターがいても、相手を攻撃できる。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0053-through-center",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "プリズムドラゴン"
+            }
+          },
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "canAttackFighterThroughCenter",
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "『そのターン中、君の場の《プリズムドラゴン》のモンスター1枚は相手のセンターにモンスターがいても、相手を攻撃できる』は『潜影』相当のkeyword canAttackFighterThroughCenter（src/09-attack.js:165,277・src/12-render.js:950-953・src/18-tooltip-format.js:459）をability.target選択先へduration:turnでgrantKeyword（bf-d-eb01-0033型の完全precedent＝target+grantKeyword{duration:turn}+同キーワード）。canAttackWithCenter（アイテム自身がセンター占有下でも攻撃できる）とは別軸のキーワードなので混同しない（後者はモンスターがいてもアイテムが攻撃できる／前者は相手センターを迂回して本体攻撃できる）。grep自己検査: grantKeyword(src/14:2828 script許可/src/15:1462 効果本体)/canAttackFighterThroughCenter(src/09,12,18) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0054",
+      "no": "X-CP02/0054",
+      "name": "リバイバル・プリズム",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ゲット"
+      ],
+      "rules": [
+        "■君のドロップゾーンの《プリズムドラゴン》のモンスター１枚を手札に加える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0054-recur-hand",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "moveMatchingDropToHand",
+              "amount": 1,
+              "filter": {
+                "cardType": "monster",
+                "attribute": "プリズムドラゴン"
+              }
+            }
+          ]
+        }
+      ],
+      "_note": "raw原文に【使用コスト】行なし・使用条件行なし＝無償・無条件スペル（costsキー・conditionsキーとも省略）。『君のドロップゾーンの《プリズムドラゴン》のモンスター1枚を手札に加える』はmoveMatchingDropToHand{amount:1,filter:{cardType:monster,attribute:プリズムドラゴン}}（既存op・chooseAndTakeMatchingCardsで強制取得=amount以上あれば必ず1枚選ばせる、optional未指定=必須選択）。grep自己検査: moveMatchingDropToHand(src/14:2797許可リスト/src/15:860本体) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0055",
+      "no": "X-CP02/0055",
+      "name": "スペース・エージェント",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "チャージ"
+      ],
+      "rules": [
+        "■君の場に《コスモドラグーン》があるなら使える。",
+        "■君のデッキの上から３枚をゲージに置く。その後、君のデッキの上から１枚を見て、君のデッキの上か下に置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0055-gauge-scry",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "attribute": "コスモドラグーン"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 3
+            },
+            {
+              "op": "lookTopCardPlaceTopOrBottom"
+            }
+          ]
+        }
+      ],
+      "_note": "『君の場に《コスモドラグーン》があるなら使える』はability.conditions:[ownFieldCardExists{filter:{attribute:コスモドラグーン}}]（0017/0057と同型・cardType非限定）。raw原文に【使用コスト】行なし＝無償。『デッキの上から3枚をゲージに置く。その後、デッキの上から1枚を見て、上か下に置く』はputTopDeckToGauge{3}に続けてlookTopCardPlaceTopOrBottom（既存effect op・src/15:704、altTo未指定=通常のデッキ上/デッキ下二択）。lookTopCardPlaceTopOrBottomはisScriptEffectStep許可リスト対象外のためscriptではなくability.effects配列に直接置く（0030『RF15：ヤング』のreturnSelfToDeckBottom+lookTopSelectToBottomRestToTopと同じ『複数effectを直列effects配列に並べる』precedentを踏襲）。grep自己検査: ownFieldCardExists(src/13:1033)/putTopDeckToGauge(src/15:252)/lookTopCardPlaceTopOrBottom(src/15:704) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0056",
+      "no": "X-CP02/0056",
+      "name": "クリスタル・シャワー",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "破壊",
+        "回復"
+      ],
+      "rules": [
+        "■【対抗】相手の場のカード１枚のソウル１枚までをドロップゾーンに置き、君のライフを＋１！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0056-counter-soul-heal",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent"
+          },
+          "effects": [
+            {
+              "op": "dropTargetSoul",
+              "target": "$target",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "raw原文に【使用コスト】行なし＝無償の対抗スペル。『相手の場のカード1枚のソウル1枚までをドロップゾーンに置き、君のライフ+1』はability.target(fieldCard,controller:opponent,filter無し=モンスター/アイテム両対応)+effects:[dropTargetSoul{target:$target,amount:1}(『1枚まで』=amount指定で上限クランプ・0枚でもno-op安全、bf-d-bt04-0049型precedent),gainLife{1}]。grep自己検査: dropTargetSoul(src/14:2829許可リスト/src/15:1481本体)/gainLife(src/15:529) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0057",
+      "no": "X-CP02/0057",
+      "name": "ビビッド・ムーブ",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "移動"
+      ],
+      "rules": [
+        "■【対抗】君の場の《コスモドラグーン》１枚を手札に戻すか、デッキの上に置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0057-counter-bounce-or-top",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "m",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "attribute": "コスモドラグーン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "ビビッド・ムーブ",
+              "lead": "手札に戻すか、デッキの上に置く、君の場の《コスモドラグーン》を選んでください。"
+            },
+            {
+              "op": "chooseBranch",
+              "title": "ビビッド・ムーブ",
+              "lead": "選んだカードをどちらにしますか？",
+              "options": [
+                {
+                  "key": "hand",
+                  "label": "手札に戻す",
+                  "script": [
+                    {
+                      "op": "moveSelected",
+                      "var": "m",
+                      "to": "hand"
+                    }
+                  ]
+                },
+                {
+                  "key": "deck",
+                  "label": "デッキの上に置く",
+                  "script": [
+                    {
+                      "op": "moveSelected",
+                      "var": "m",
+                      "to": "deck"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "raw原文に【使用コスト】行なし＝無償の対抗スペル。『君の場の《コスモドラグーン》1枚を手札に戻すか、デッキの上に置く』はcardType非限定（0036星竜槍ブラック・クロック等コスモドラグーン属性アイテムも実在するためfilterはattributeのみ）のselectCards{var:m,controller:self,filter:{attribute:コスモドラグーン},amount:1,require:true}→chooseBranch(2択)→各分岐でmoveSelected{var:m,to:hand|deck}（moveScriptCardToDestinationのdeck分岐=player.deck.push=デッキ上端=『デッキの上』と規約一致、src/14:1387-1410付近）。grep自己検査: selectCards/chooseBranch(src/14:336)/moveSelected(src/14:321,988) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0058",
+      "no": "X-CP02/0058",
+      "name": "アディショナル・ジュエル",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "強化"
+      ],
+      "rules": [
+        "■【対抗】バトルしている《プリズムドラゴン》のモンスター１枚を選び、このバトル中、防御力＋5000し、『反撃』を与える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0058-counter-defense-buff",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "target",
+              "from": "field",
+              "controller": "any",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "プリズムドラゴン"
+              },
+              "onlyBattling": true,
+              "amount": 1,
+              "require": true,
+              "title": "アディショナル・ジュエル",
+              "lead": "バトルしている《プリズムドラゴン》のモンスターを選んでください。"
+            },
+            {
+              "op": "modifySelectedStats",
+              "var": "target",
+              "defense": 5000,
+              "duration": "battle"
+            },
+            {
+              "op": "grantKeywordSelected",
+              "var": "target",
+              "keyword": "counterattack",
+              "duration": "battle"
+            }
+          ]
+        }
+      ],
+      "_note": "raw原文に【使用コスト】行なし＝無償の対抗スペル。『バトルしている《プリズムドラゴン》のモンスター1枚を選び、このバトル中、防御力+5000し、反撃を与える』はselectCards{onlyBattling:true,controller:any,filter:{cardType:monster,attribute:プリズムドラゴン}}→modifySelectedStats{defense:5000,duration:battle}→grantKeywordSelected{keyword:counterattack,duration:battle}（bf-x-sd01-0011『サンダー×エナジー』と完全同型のprecedent＝原文が『君の』でコントローラ限定していないためcontroller:anyが正、filterで自然に絞られる）。『反撃』の効果説明カッコ書きはkeyword内蔵の定型文のためDSL側に別途表現不要。grep自己検査: onlyBattling(src/14:684)/modifySelectedStats(src/14:375)/grantKeywordSelected(src/14:354) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0059",
+      "no": "X-CP02/0059",
+      "name": "ファンタズム・カウンター",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "強化"
+      ],
+      "rules": [
+        "■【対抗】バトルしている《コスモドラグーン》のモンスター１枚を選び、このバトル中、攻撃力＋3000、防御力＋3000し、さらに『反撃』を与える！(『反撃』：このカードが攻撃された後、このカードが場にいるなら、このカードの攻撃力以下の防御力を持つ攻撃してきたモンスター１枚を破壊する）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0059-counter-power-buff",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "target",
+              "from": "field",
+              "controller": "any",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "コスモドラグーン"
+              },
+              "onlyBattling": true,
+              "amount": 1,
+              "require": true,
+              "title": "ファンタズム・カウンター",
+              "lead": "バトルしている《コスモドラグーン》のモンスターを選んでください。"
+            },
+            {
+              "op": "modifySelectedStats",
+              "var": "target",
+              "power": 3000,
+              "defense": 3000,
+              "duration": "battle"
+            },
+            {
+              "op": "grantKeywordSelected",
+              "var": "target",
+              "keyword": "counterattack",
+              "duration": "battle"
+            }
+          ]
+        }
+      ],
+      "_note": "raw原文に【使用コスト】行なし＝無償の対抗スペル。0058と同一パターン（bf-x-sd01-0011precedent）で属性違い＋攻撃力も+3000付与。『反撃』カッコ書き説明はkeyword定型文のため別表現不要。grep自己検査: selectCards/onlyBattling(src/14:684)/modifySelectedStats(src/14:375)/grantKeywordSelected(src/14:354) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0060",
+      "no": "X-CP02/0060",
+      "name": "スターオルタナティヴ",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "チャージ",
+        "強化"
+      ],
+      "rules": [
+        "■【使用コスト】ライフ１を払う。",
+        "■次の２つから１つを選んで使う。",
+        "・君のデッキの上から２枚をゲージに置く。",
+        "・君のドロップゾーンのカード１枚を君の場のモンスター１枚のソウルに入れる。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0060-star-alternative",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "スターオルタナティヴ",
+              "lead": "次の２つから１つを選んで使ってください。",
+              "options": [
+                {
+                  "key": "gauge",
+                  "label": "君のデッキの上から２枚をゲージに置く",
+                  "script": [
+                    {
+                      "op": "putTopDeckToGauge",
+                      "amount": 2
+                    }
+                  ]
+                },
+                {
+                  "key": "soul",
+                  "label": "君のドロップゾーンのカード１枚を君の場のモンスター１枚のソウルに入れる",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "d",
+                      "from": "drop",
+                      "controller": "self",
+                      "filter": {},
+                      "amount": 1,
+                      "require": true,
+                      "title": "スターオルタナティヴ",
+                      "lead": "君の場のモンスターのソウルに入れる、ドロップゾーンのカードを選んでください。"
+                    },
+                    {
+                      "op": "selectCards",
+                      "var": "h",
+                      "from": "field",
+                      "controller": "self",
+                      "filter": {
+                        "cardType": "monster"
+                      },
+                      "amount": 1,
+                      "require": true,
+                      "title": "スターオルタナティヴ",
+                      "lead": "ソウルに入れる先の、君の場のモンスターを選んでください。"
+                    },
+                    {
+                      "op": "moveSelectedToSelectedSoul",
+                      "var": "d",
+                      "soulOfVar": "h"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp02-0061",
+      "no": "X-CP02/0061",
+      "name": "ジュエリーチェスト",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "移動"
+      ],
+      "rules": [
+        "■相手のターン中に使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】場のサイズ１以下のモンスター全てを手札に戻す。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0061-counter-bounce-small",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "returnAllToHand",
+              "filter": {
+                "cardType": "monster",
+                "sizeLte": 1
+              }
+            }
+          ]
+        }
+      ],
+      "_note": "『相手のターン中に使える』はability.conditions:[turnOwnerIsOpponent]（src/13:864の既存条件）。【使用コスト】ゲージ1はcosts.cast+ability.cost。『場のサイズ1以下のモンスター全てを手札に戻す』はcontroller未指定=両陣営対象のreturnAllToHand{filter:{cardType:monster,sizeLte:1}}（src/15:1306、effect.controller省略時は自分/相手どちらも対象＝『場の』という原文表現と一致）。grep自己検査: turnOwnerIsOpponent(src/13:864)/payGauge(src/04:524)/returnAllToHand(src/14:2822許可リスト/src/15:1306本体) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0062",
+      "no": "X-CP02/0062",
+      "name": "コスモチャージ・プロテクション",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいなくて、君の場に《コスモドラグーン》があるなら使える。",
+        "■【対抗】その攻撃を無効化し、君のデッキの上から２枚を見て、その中の１枚をゲージに置き、１枚をデッキの上に置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0062-counter-gauge",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "cardCount",
+              "pile": "field",
+              "filter": {
+                "attribute": "コスモドラグーン"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "lookTopSelectToGaugeRestToTop",
+              "count": 2
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC14(実装済・忠実): 原文『その攻撃を無効化し、君のデッキの上から2枚を見て、その中の1枚をゲージに置き、1枚をデッキの上に置く』= nullifyAttack + lookTopSelectToGaugeRestToTop{count:2}(新op)。lookTopSelectToBottomRestToTop(src/15)の宛先違いの兄弟で、見た count 枚から選んだ1枚をゲージへ・残りを選んだ順でデッキ上へ戻す。秘匿: これは『公開』ではなく『見る』=owner のみ開示(promptSeat=context.owner・往復は該当席のみ・state.log にカード名を出さない=T13 精神。E-XC1 revealTopCard の両席公開とは逆)。当バッチのお題(コスモドラグーン reveal-gate)分類は誤りで本カードは属性一致判定を持たない別機構(0034 と同じ『防御魔法』カテゴリだが効果は無関係)。使用条件は0034 と同型(ownCenterEmpty/pendingAttackDefenderIsSelf/cardCount コスモドラグーン)。costs 記載無し。grep自己検査: ownCenterEmpty/pendingAttackDefenderIsSelf/cardCount/nullifyAttack/lookTopSelectToGaugeRestToTop 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0063",
+      "no": "X-CP02/0063",
+      "name": "プロトバリア",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "防御"
+      ],
+      "rules": [
+        "■君が攻撃されている攻撃中に使える。",
+        "■【対抗】その攻撃を無効化し、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0063-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp02-0064",
+      "no": "X-CP02/0064",
+      "name": "アースバリア",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "防御",
+        "回復"
+      ],
+      "rules": [
+        "■君が攻撃されている攻撃中に使える。",
+        "■【対抗】その攻撃を無効化し、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0064-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp02-0065",
+      "no": "X-CP02/0065",
+      "name": "星竜槍 ファーレンハイト",
+      "type": "item",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "コスモドラグーン",
+        "武器"
+      ],
+      "power": 5000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■このカードが攻撃した時、君のデッキの上から３枚を見て、君のデッキの上に好きな順番で置く。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "equipCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0065-attack-scry",
+          "kind": "triggered",
+          "event": "attack",
+          "script": [
+            {
+              "op": "reorderTopOrdered",
+              "count": 3
+            }
+          ]
+        }
+      ],
+      "_note": "【装備コスト】ゲージ1はcosts.equip（アイテムはability.cost非併記が既存precedent＝equipはcard直下costsのみで解決、bf-d-bt04-0003型）。『このカードが攻撃した時、君のデッキの上から3枚を見て、君のデッキの上に好きな順番で置く』はkind:triggered,event:attack（アイテム自身が装備先の空センターから攻撃した際に直接発火。bf-d-bt04-0003等item×event:attack precedent多数）+script:[reorderTopOrdered{count:3}]（target省略=既定self=『君のデッキ』、G4 D-EB01前例）。原文に『1ターンに1回』clause無し＝limit無し。grep自己検査: event:attack×item(src/07 runFieldEventTriggers/attack直接発火経路)/reorderTopOrdered(src/14:342) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0066",
+      "no": "X-CP02/0066",
+      "name": "紅玉球",
+      "type": "item",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン",
+        "防御",
+        "武器"
+      ],
+      "power": 0,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■【装備コスト】ゲージ１を払い、ライフ１を払う。",
+        "■このカードは君のセンターにモンスターがいても攻撃できる。",
+        "■このカードが攻撃した時、君のセンターに《プリズムドラゴン》がいるなら、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "equipCost": {
+        "gauge": 1,
+        "life": 1
+      },
+      "keywords": [
+        "canAttackWithCenter"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0066-attack-gauge",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "center"
+              ],
+              "filter": {
+                "cardType": "monster",
+                "attribute": "プリズムドラゴン"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "【装備コスト】ゲージ1+ライフ1はcosts.equip（アイテムはability.cost非併記）。『このカードは君のセンターにモンスターがいても攻撃できる』はkeyword canAttackWithCenter（card-level keywords配列。src/11-destroy-turn.js:31-37の判定対象）。『このカードが攻撃した時、君のセンターに《プリズムドラゴン》がいるなら、君のデッキの上から1枚をゲージに置く』はkind:triggered,event:attack+conditions:[ownFieldCardExists{zones:[center],filter:{cardType:monster,attribute:プリズムドラゴン}}]+effects:[putTopDeckToGauge{1}]。grep自己検査: canAttackWithCenter(src/11:35,src/18:458)/ownFieldCardExists(zones対応,src/13:1033)/putTopDeckToGauge(src/15:252) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0067",
+      "no": "X-CP02/0067",
+      "name": "ワイルド・ワイズ・トラップ！",
+      "type": "impact",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン",
+        "召喚"
+      ],
+      "rules": [
+        "■相手のターン中に使える。",
+        "■【使用コスト】ゲージ２を払う。",
+        "■【対抗】君のドロップゾーンのサイズ３の《プリズムドラゴン》１枚を、【コールコスト】を払ってコールし、相手にダメージ１！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0067-wild-wise-trap",
+          "kind": "impact",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "プリズムドラゴン",
+                "sizeIn": [
+                  3
+                ]
+              },
+              "amount": 1,
+              "require": true,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "ワイルド・ワイズ・トラップ！",
+              "lead": "【コールコスト】を払ってコールする、ドロップゾーンのサイズ３の《プリズムドラゴン》を選んでください。"
+            },
+            {
+              "op": "selectZone",
+              "var": "z",
+              "cardVar": "call",
+              "emptyOnly": true
+            },
+            {
+              "op": "payCardCostForSelection",
+              "var": "call",
+              "purpose": "call"
+            },
+            {
+              "op": "callSelected",
+              "var": "call",
+              "zoneVar": "z",
+              "resolveOnEnter": true
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp02-0068",
+      "no": "X-CP02/0068",
+      "name": "流星機 バイシャール",
+      "type": "monster",
+      "rarity": "",
+      "world": "レジェンドW",
+      "worlds": [
+        "レジェンドW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "星",
+        "竜装機"
+      ],
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■場のこのカードの能力は無効化されない。",
+        "■このカードがソウルにある《ネオドラゴン》と、その《ネオドラゴン》のソウルのカード全ては、能力を無効化されない。",
+        "『星合体』"
+      ],
+      "nullifyImmune": true,
+      "soulContinuous": [
+        {
+          "op": "grantNullifyImmunity",
+          "hostOnly": true,
+          "filter": {}
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0068-star-combine",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "流星機 バイシャール",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC9(実装済): 第1文『場のこのカードの能力は無効化されない』= nullifyImmune:true(on field・in soul 双方をカバー=isAbilitiesNullified 冒頭で即 false)。第2文のうちホスト保護『このカードがソウルにある《ネオドラゴン》(=ホスト)は能力を無効化されない』= soulContinuous grantNullifyImmunity{hostOnly:true}。cardProtectedFrom(card,'nullify')(src/05)に soulContinuousGrantsOp(card,'grantNullifyImmunity') の consult を追加配線(grantDestroyImmunity/preventReturnToHand と同型)。後方互換: soulContinuous grantNullifyImmunity を持つ既存カードは0件(全DB走査。grantNullifyImmunity を持つ11枚は全て『場の continuous』でこれは従来どおり grantedProtectionBlocks が処理)=挙動不変。isAbilitiesNullified からの再入は evaluatingNullifyProtection ガードで打ち切られる。【軽微近似(報告)】第2文の『そのネオドラゴンのソウルのカード全て』(=ホストの他のソウル札)の保護は未実装: ソウル在中カードは findFieldCardSlot が null でグラント判定経路(grantedProtectionBlocks/soulContinuousGrantsOp とも targetSlot 必須)に乗らない。0068 自身は nullifyImmune で保護済・ホストは E-XC9 で保護済のため、実害は『同じネオドラゴンのソウルに 0068 以外の第3の札が同居し、かつ相手が全体無効化を撃つ』稀なケースでのみ生じる(scope拡張は別op設計=見送り・報告のみ)。星合体本体は bf-x-cp02-0026 等と同型。"
+    },
+    {
+      "id": "bf-x-cp02-0069",
+      "no": "X-CP02/0069",
+      "name": "星神の刃 ヴィアラクテア",
+      "type": "item",
+      "rarity": "",
+      "world": "レジェンドW",
+      "worlds": [
+        "レジェンドW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "星",
+        "武器"
+      ],
+      "power": 3000,
+      "critical": 1,
+      "rules": [
+        "■【装備コスト】ゲージ１を払い、ライフ１を払う。",
+        "■このカードは君のセンターに《星》か《ネオドラゴン》のモンスターがいても、攻撃できる。",
+        "■このカードが攻撃した時、君の場にサイズ３のモンスターがいるなら、そのターン中、このカードは『２回攻撃』を得る。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "equipCost": {
+        "gauge": 1,
+        "life": 1
+      },
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "canAttackWithCenter",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "center"
+              ],
+              "filter": {
+                "attributeIn": [
+                  "星",
+                  "ネオドラゴン"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0069-attack-double",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "sizeGte": 3
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "doubleAttack",
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp02-0070",
+      "no": "X-CP02/0070",
+      "name": "超重力発生装置 グラビトン・ジェネレーター",
+      "type": "impact",
+      "rarity": "",
+      "world": "レジェンドW",
+      "worlds": [
+        "レジェンドW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "星"
+      ],
+      "rules": [
+        "■君の場にカード名に「ゾディアック」を含むモンスターがいるなら使える。",
+        "■【使用コスト】ゲージ２を払う。",
+        "■次の２つから１つを選んで使う。",
+        "・次の相手のスタートフェイズ中、相手の場のカード全てはスタンドできない。",
+        "・相手の場のレストしているカードの枚数＋１の数値分、相手にダメージ！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0070-graviton-generator",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "ゾディアック"
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "超重力発生装置 グラビトン・ジェネレーター",
+              "lead": "次の２つから１つを選んで使ってください。",
+              "options": [
+                {
+                  "key": "stand-lock",
+                  "label": "次の相手のスタートフェイズ中、相手の場のカード全てはスタンドできない",
+                  "script": [
+                    {
+                      "op": "preventStandNextTurn",
+                      "player": "opponent",
+                      "filter": {}
+                    }
+                  ]
+                },
+                {
+                  "key": "damage",
+                  "label": "相手の場のレストしているカードの枚数＋１の数値分、相手にダメージ",
+                  "script": [
+                    {
+                      "op": "dealDamage",
+                      "player": "opponent",
+                      "amountFrom": {
+                        "source": "fieldCardCount",
+                        "controller": "opponent",
+                        "filter": {
+                          "standing": false
+                        },
+                        "plus": 1
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC10(実装済): 第1分岐『次の相手のスタートフェイズ中、相手の場のカード全てはスタンドできない』= preventStandNextTurn{player:opponent, filter:{}}。src/15:1804 の既存 op が player+filter で場全体対応・意味論も正しく『次のスタートフェイズ』まで持続(preventStandOnce フラグを対象全カードへ・消費は src/11:1904 のスタートフェイズ)。isScriptEffectStep(src/14)の許可リストへ 'preventStandNextTurn' を1行追加し chooseBranch の option.script から使えるようにした。後方互換: preventStandNextTurn を script で使う既存カードは0件(全DB走査。使用は bf-h-eb03-0042 の abilities.effects のみ=script 経路に非依存)=挙動不変。第2分岐『相手の場のレストしているカードの枚数+1ダメージ』= dealDamage{amountFrom:fieldCardCount, controller:opponent, filter:{standing:false}, plus:1}(既存op)。"
+    },
+    {
+      "id": "bf-x-cp02-0071",
+      "no": "X-CP02/0071",
+      "name": "水晶の化身 アトラ",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 3,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ３を払う。",
+        "■このカードがセンターにいるなら、場のこのカードはカードの効果で破壊されない。",
+        "■相手のターン中、君が魔法を使った時、カード１枚を引く。この能力は１ターンに１回だけ発動する。",
+        "『ソウルガード』『反撃』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      },
+      "destroyImmunity": [
+        {
+          "from": {
+            "byEffect": true
+          },
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "center"
+              ]
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "soulguard",
+        "counterattack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0071-opponent-turn-spell-draw",
+          "kind": "triggered",
+          "event": "allySpellCast",
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp02-0072",
+      "no": "X-CP02/0072",
+      "name": "赤晶竜 タナット",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■君のセンターのモンスターは『貫通』を得る！"
+      ],
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "controller": "self",
+          "targetZones": [
+            "center"
+          ],
+          "filter": {
+            "cardType": "monster"
+          }
+        }
+      ],
+      "_note": "skeletonに【コールコスト】行が無い＝無料コール（costs/callCost省略）。0072（同名DUP）の本体。『君のセンターのモンスターは『貫通』を得る！』は continuous grantKeyword{keyword:penetrate, controller:self, targetZones:[center], filter:{cardType:monster}}。grantKeywordはcontinuous形でもhasKeyword側(src/18)がactiveContinuousEffects経由で参照する（src/18-keyword-alias.js付近:250-265）ためscript/effect版と同一op名で継続キーワード付与として機能。targetZonesはbf-x-sd02-0015等の前例通り。センター占有者が自分自身(0031自身がセンターにいる場合)も原文通り対象に含む（除外記述なし）。grep自己検査: grantKeyword(src/15:1462・continuousでも同op名をhasKeywordが参照)/targetZones 実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0073",
+      "no": "X-CP02/0073",
+      "name": "プリズム・キャンセラー",
+      "type": "spell",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターに《プリズムドラゴン》がいるなら使える。",
+        "■【対抗】その攻撃を無効化する。君がアイテムを装備しているなら、このカードは無効化されない。"
+      ],
+      "cannotBeNullified": {
+        "conditions": [
+          {
+            "op": "ownFieldCardExists",
+            "filter": {
+              "cardType": "item"
+            }
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0073-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "center"
+              ],
+              "filter": {
+                "cardType": "monster",
+                "attribute": "プリズムドラゴン"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ],
+      "_note": "『相手のターンの攻撃中、君のセンターに《プリズムドラゴン》がいるなら使える』はability.conditions:[pendingAttackDefenderIsSelf, ownFieldCardExists{zones:[center],filter:{cardType:monster,attribute:プリズムドラゴン}}]（bf-h-sd01-0013/bf-x-ss02-0005型の定型2条件）。【対抗】その攻撃を無効化する=nullifyAttack。『君がアイテムを装備しているなら、このカードは無効化されない』はcard-level cannotBeNullified:{conditions:[ownFieldCardExists{filter:{cardType:item}}]}（filter無しzones=グローバルzones定数がitemゾーンを含む=装備アイテム存在判定、bf-d-bt03-0094の同型『アイテムを装備しているなら』フィルタを流用、D-SD01太陽の盾型の条件付きcannotBeNullified）。0073はDUP(本体mechをそのまま複製=merge処理)。grep自己検査: pendingAttackDefenderIsSelf/ownFieldCardExists/nullifyAttack/cannotBeNullified(conditions分岐、src/07 cardCannotBeNullified) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp02-0074",
+      "no": "X-CP02/0074",
+      "name": "超銀河竜 ジャックナイフ",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】君のドロップゾーンのカード１枚をこのカードのソウルに入れ、ゲージ1を払う。",
+        "■【対抗】【起動】“超銀河翼”君のターン中、君のドロップゾーンのカード名に「ジャックナイフ」を含むモンスター１枚を【コールコスト】を払って、このカードの上に重ねてコールする。「超銀河翼」は１ターンに１回だけ使える。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putDropToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0074-cosmic-galaxy-wing",
+          "label": "超銀河翼",
+          "kind": "activated",
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "stack",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "ジャックナイフ"
+              },
+              "amount": 1,
+              "require": true,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "超銀河竜 ジャックナイフ",
+              "lead": "重ねてコールするドロップゾーンのカード名に「ジャックナイフ」を含むモンスターを選んでください。"
+            },
+            {
+              "op": "stackCallSelected",
+              "var": "stack",
+              "payCost": "call",
+              "resolveOnEnter": true
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xcp02-chougingayoku"
+          }
+        }
+      ],
+      "_note": "コールコスト『ドロップゾーンのカード1枚をソウルに入れ』=putDropToSoul(amount1,既定min=amount=1・カード種別制限なし)+payGauge1。C10: 『超銀河翼』=対抗起動・自ターン限定(turnOwnerIsSelf)・selectCards(from:drop,nameIncludes:ジャックナイフ)→stackCallSelected(payCost:call,zoneVar省略=自分自身の場所へ重ねる)。bf-h-eb04-0004超星護ジャックナイフ“SD”のself-stack型を踏襲(D-BT01/0020のzoneVar型は他モンスターへ重ねる場合用で本カードは不要)。named-once limit key=xcp02-chougingayoku(design §5)。"
+    },
+    {
+      "id": "bf-x-cp02-0075",
+      "no": "X-CP02/0075",
+      "name": "大竜装機 トリプルバスター",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "竜装機"
+      ],
+      "size": 3,
+      "power": 5000,
+      "critical": 3,
+      "defense": 4000,
+      "rules": [
+        "■このカードが《ネオドラゴン》ソウルにあるなら、そのカードは攻撃力＋3000、打撃力＋１し、『貫通』を得る。",
+        "『星合体』"
+      ],
+      "soulContinuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "attribute": "ネオドラゴン"
+          },
+          "power": 3000,
+          "critical": 1
+        },
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "filter": {
+            "attribute": "ネオドラゴン"
+          }
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0075-star-merge",
+          "label": "星合体",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "星合体する《ネオドラゴン》",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ],
+      "_note": "soulContinuous modifyStats(filter:ネオドラゴン,既定でホスト自身のみ適用=bf-h-bt02-0043竜装機エルガーカノン型)+grantKeyword penetrate同filter。星合体は標準boilerplate(bf-x-ss02系22件と同型)。0075(DUP)はmergeが本体を複製。"
+    },
+    {
+      "id": "bf-x-cp02-0076",
+      "no": "X-CP02/0076",
+      "name": "竜装機 ヴィーガー",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "竜装機"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■“ダブルアームビット”このカードが場の《ネオドラゴン》のソウルからドロップゾーンに置かれた時、君のデッキの上から２枚をゲージに置く。「ダブルアームビット」は１ターンに１回だけ発動する。",
+        "『星合体』（場のこのカードを、君の場の《ネオドラゴン》のソウルに入れる）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0076-double-arm-bit",
+          "label": "ダブルアームビット",
+          "kind": "triggered",
+          "event": "selfDroppedFromSoul",
+          "hostFilter": {
+            "cardType": "monster",
+            "attribute": "ネオドラゴン"
+          },
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xcp02-double-arm-bit"
+          }
+        },
+        {
+          "id": "bf-x-cp02-0076-star-merge",
+          "label": "星合体",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "星合体する《ネオドラゴン》",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC12(実装済): 『“ダブルアームビット”このカードが場の《ネオドラゴン》のソウルからドロップゾーンに置かれた時、君のデッキの上から2枚をゲージに置く。1ターンに1回』= abilities triggered event:selfDroppedFromSoul + hostFilter{cardType:monster,attribute:ネオドラゴン} + putTopDeckToGauge{amount:2} + limit{scope:turn,key:xcp02-double-arm-bit}。従来 selfDroppedFromSoul は faceDown(奇襲)札のみ発火(reconcileFaceDownSoulDrops が faceDown 札のみ処理)だったのを拡張: putCardsToSoulWithTrigger が『表向きソウル入り + selfDroppedFromSoul リスナー付き』の札にホストの公開スナップショット(__soulHost)を付け、reconcileFaceDownSoulDrops が __soulHost を持つドロップ札にも自己離脱誘発を配信するようにした(星合体=表向き経由でも発火)。後方互換: 既存 selfDroppedFromSoul は bf-x-bt01-0067 の1枚のみで requireFaceDown:true=表向き落下(wasFaceDown:false)では発火しない=挙動不変。表向きタグ付けは selfDroppedFromSoul リスナーを持つ札限定(オプトイン)。星合体本体は bf-x-cp02-0026 等と同型。0076(DUP)はmergeが本体を複製(§6 で id/limit.key を namespace)。"
+    },
+    {
+      "id": "bf-x-cp02-0077",
+      "no": "X-CP02/0077",
+      "name": "時空歪曲竜 ゾディアック “if”",
+      "type": "monster",
+      "rarity": "",
+      "world": "レジェンドW",
+      "worlds": [
+        "レジェンドW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "星",
+        "ネオドラゴン"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。その後、君のドロップゾーンのカード１枚をこのカードのソウルに入れる。",
+        "■君のフラッグが＜レジェンドＷ＞なら、このカードは『貫通』を得て、＜スタードラゴンＷ＞なら、このカードは『移動』を得る。",
+        "■【対抗】【起動】“グラビティレスト”相手の場のモンスターかアイテム１枚を選び、君の手札１枚を捨て、ゲージ１を払い、ライフ１を払ってよい。そうしたら、選んだカードをレストする。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putDropToSoul",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "flagNameIs",
+              "name": "レジェンドワールド"
+            }
+          ]
+        },
+        {
+          "op": "grantKeyword",
+          "keyword": "move",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "flagNameIs",
+              "name": "スタードラゴンワールド"
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0077-gravity-rest",
+          "label": "グラビティレスト",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "t",
+              "from": "field",
+              "controller": "opponent",
+              "filter": {
+                "cardTypeIn": [
+                  "monster",
+                  "item"
+                ]
+              },
+              "amount": 1,
+              "require": true,
+              "title": "グラビティレスト",
+              "lead": "レストにする、相手の場のモンスターかアイテムを選んでください。"
+            },
+            {
+              "op": "chooseBranch",
+              "title": "グラビティレスト",
+              "lead": "手札１枚を捨て、ゲージ１とライフ１を払って、選んだカードをレストにしますか？",
+              "options": [
+                {
+                  "key": "pay",
+                  "label": "手札１枚を捨て、ゲージ１とライフ１を払ってレストにする",
+                  "script": [
+                    {
+                      "op": "payCost",
+                      "cost": [
+                        {
+                          "op": "discardHand",
+                          "amount": 1
+                        },
+                        {
+                          "op": "payGauge",
+                          "amount": 1
+                        },
+                        {
+                          "op": "payLife",
+                          "amount": 1
+                        }
+                      ]
+                    },
+                    {
+                      "op": "restSelected",
+                      "var": "t"
+                    }
+                  ]
+                },
+                {
+                  "key": "skip",
+                  "label": "何もしない",
+                  "script": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp02-0078",
+      "no": "X-CP02/0078",
+      "name": "流星機 アトアリザール",
+      "type": "monster",
+      "rarity": "",
+      "world": "レジェンドW",
+      "worlds": [
+        "レジェンドW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "星",
+        "竜装機"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■このカードがカード名に「ゾディアック」を含むモンスターのソウルにあるなら、君の場のカード全ての攻撃力＋1000、防御力＋1000！",
+        "『星合体』"
+      ],
+      "soulContinuous": [
+        {
+          "op": "modifyStats",
+          "fieldWide": true,
+          "filter": {},
+          "power": 1000,
+          "defense": 1000,
+          "conditions": [
+            {
+              "op": "hostMatches",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "ゾディアック"
+              }
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0078-star-combine",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "流星機 アトアリザール",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC7(実装済): 『カード名に「ゾディアック」を含むモンスターのソウルにあるなら、君の場のカード全ての攻撃力+1000防御力+1000』= soulContinuous modifyStats{fieldWide:true, filter:{}, power:1000, defense:1000, conditions:[hostMatches{cardType:monster,nameIncludes:ゾディアック}]}。continuousStatBonus の fieldWide ループ(src/05-stats.js)が continuousEffectAppliesFromSoul に host(ソウルを持つ場札)を渡すよう拡張し、条件コンテキストへ hostCard/hostOwner/hostZone を注入=hostMatches(src/13:966)がホスト名を判定できる。後方互換: soulContinuous の conditions で hostMatches を使う既存カードは0件(全DB走査)、唯一の fieldWide 使用 bf-d-eb02-0033 は conditions 無し=挙動不変。星合体本体(moveSelfToSelectedSoul)は bf-x-cp02-0026 等と同型。"
+    },
+    {
+      "id": "bf-x-cp02-0079",
+      "no": "X-CP02/0079",
+      "name": "マインドフェイカー",
+      "type": "spell",
+      "rarity": "",
+      "world": "レジェンドW",
+      "worlds": [
+        "レジェンドW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "星"
+      ],
+      "rules": [
+        "■次の２つから１つを選んで使う。",
+        "・君の場に《星》があるなら、そのターン中、相手の場のモンスター１枚の能力全てを無効化する。",
+        "・君の場に《ネオドラゴン》があるなら、君のドロップゾーンのカード１枚を君の場のモンスター１枚のソウルに入れる。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0079-mind-faker",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "マインドフェイカー",
+              "lead": "次の２つから１つを選んで使ってください。",
+              "options": [
+                {
+                  "key": "nullify",
+                  "label": "君の場に《星》があるなら、そのターン中、相手の場のモンスター１枚の能力全てを無効化する",
+                  "condition": {
+                    "op": "ownFieldCardExists",
+                    "filter": {
+                      "attribute": "星"
+                    }
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "t",
+                      "from": "field",
+                      "controller": "opponent",
+                      "filter": {
+                        "cardType": "monster"
+                      },
+                      "amount": 1,
+                      "require": true,
+                      "title": "マインドフェイカー",
+                      "lead": "そのターン中、能力を無効化する相手の場のモンスターを選んでください。"
+                    },
+                    {
+                      "op": "nullifySelectedAbilities",
+                      "var": "t"
+                    }
+                  ]
+                },
+                {
+                  "key": "soul",
+                  "label": "君の場に《ネオドラゴン》があるなら、君のドロップゾーンのカード１枚を君の場のモンスター１枚のソウルに入れる",
+                  "condition": {
+                    "op": "ownFieldCardExists",
+                    "filter": {
+                      "attribute": "ネオドラゴン"
+                    }
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "d",
+                      "from": "drop",
+                      "controller": "self",
+                      "filter": {},
+                      "amount": 1,
+                      "require": true,
+                      "title": "マインドフェイカー",
+                      "lead": "君の場のモンスターのソウルに入れる、ドロップゾーンのカードを選んでください。"
+                    },
+                    {
+                      "op": "selectCards",
+                      "var": "h",
+                      "from": "field",
+                      "controller": "self",
+                      "filter": {
+                        "cardType": "monster"
+                      },
+                      "amount": 1,
+                      "require": true,
+                      "title": "マインドフェイカー",
+                      "lead": "ソウルに入れる先の、君の場のモンスターを選んでください。"
+                    },
+                    {
+                      "op": "moveSelectedToSelectedSoul",
+                      "var": "d",
+                      "soulOfVar": "h"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "E-XC8(実装済): 第1分岐『君の場に《星》があるなら、そのターン中、相手の場のモンスター1枚の能力全てを無効化する』= selectCards(controller:opponent,cardType:monster,amount:1)で1枚選び→ nullifySelectedAbilities{var:t}。R9 の『既存 nullifyFieldAbilities/nullifyAbilities で確定・新op不要』は誤りだった: nullifyFieldAbilities(src/15)は『発動時点で filter 一致の全カード』を一括で state.turnNullifies へ積む一括无効化で単体選択と組み合わせられない(instanceVar は未読=相手の場のモンスター全てが対象になる過剰包含)。nullifySelectedAbilities(新op)は同じ state.turnNullifies 機構(isNullifiedByTurnEffect が consult・room/リプレイの JSON 往復で保持・clearTurnModifiers でクリア)を、選択された instance のみに限定して積む。既存カード0件=turnNullifies 常時空=挙動不変。分岐条件 ownFieldCardExists{attribute:星}。第2分岐(ソウルに入れる)は moveSelectedToSelectedSoul(bf-x-ss02-0019前例)で忠実実装。"
+    },
+    {
+      "id": "bf-x-cp02-br01",
+      "no": "X-CP02/BR01",
+      "name": "水晶の化身 アトラ",
+      "type": "monster",
+      "rarity": "バディレア",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "プリズムドラゴン"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 3,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ３を払う。",
+        "■このカードがセンターにいるなら、場のこのカードはカードの効果で破壊されない。",
+        "■相手のターン中、君が魔法を使った時、カード１枚を引く。この能力は１ターンに１回だけ発動する。",
+        "『ソウルガード』『反撃』"
+      ],
+      "altArtOf": "bf-x-cp02-0071",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/XCP02_BR01_RGB.png",
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      },
+      "destroyImmunity": [
+        {
+          "from": {
+            "byEffect": true
+          },
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "center"
+              ]
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "soulguard",
+        "counterattack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0071-opponent-turn-spell-draw",
+          "kind": "triggered",
+          "event": "allySpellCast",
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp02-br02",
+      "no": "X-CP02/BR02",
+      "name": "超銀河竜 ジャックナイフ",
+      "type": "monster",
+      "rarity": "バディレア",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】君のドロップゾーンのカード１枚をこのカードのソウルに入れ、ゲージ1を払う。",
+        "■【対抗】【起動】“超銀河翼”君のターン中、君のドロップゾーンのカード名に「ジャックナイフ」を含むモンスター１枚を【コールコスト】を払って、このカードの上に重ねてコールする。「超銀河翼」は１ターンに１回だけ使える。",
+        "『ソウルガード』"
+      ],
+      "altArtOf": "bf-x-cp02-0074",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/XCP02_BR02_RGB.png",
+      "costs": {
+        "call": [
+          {
+            "op": "putDropToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0074-cosmic-galaxy-wing",
+          "label": "超銀河翼",
+          "kind": "activated",
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "stack",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "ジャックナイフ"
+              },
+              "amount": 1,
+              "require": true,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "超銀河竜 ジャックナイフ",
+              "lead": "重ねてコールするドロップゾーンのカード名に「ジャックナイフ」を含むモンスターを選んでください。"
+            },
+            {
+              "op": "stackCallSelected",
+              "var": "stack",
+              "payCost": "call",
+              "resolveOnEnter": true
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xcp02-chougingayoku"
+          }
+        }
+      ],
+      "_note": "コールコスト『ドロップゾーンのカード1枚をソウルに入れ』=putDropToSoul(amount1,既定min=amount=1・カード種別制限なし)+payGauge1。C10: 『超銀河翼』=対抗起動・自ターン限定(turnOwnerIsSelf)・selectCards(from:drop,nameIncludes:ジャックナイフ)→stackCallSelected(payCost:call,zoneVar省略=自分自身の場所へ重ねる)。bf-h-eb04-0004超星護ジャックナイフ“SD”のself-stack型を踏襲(D-BT01/0020のzoneVar型は他モンスターへ重ねる場合用で本カードは不要)。named-once limit key=xcp02-chougingayoku(design §5)。"
+    },
+    {
+      "id": "bf-x-cp02-br03",
+      "no": "X-CP02/BR03",
+      "name": "時空歪曲竜 ゾディアック “if”",
+      "type": "monster",
+      "rarity": "バディレア",
+      "world": "レジェンドW",
+      "worlds": [
+        "レジェンドW",
+        "スタードラゴンW"
+      ],
+      "attributes": [
+        "星",
+        "ネオドラゴン"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。その後、君のドロップゾーンのカード１枚をこのカードのソウルに入れる。",
+        "■君のフラッグが＜レジェンドＷ＞なら、このカードは『貫通』を得て、＜スタードラゴンＷ＞なら、このカードは『移動』を得る。",
+        "■【対抗】【起動】“グラビティレスト”相手の場のモンスターかアイテム１枚を選び、君の手札１枚を捨て、ゲージ１を払い、ライフ１を払ってよい。そうしたら、選んだカードをレストする。",
+        "『ソウルガード』"
+      ],
+      "altArtOf": "bf-x-cp02-0077",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/XCP02_BR03_RGB.png",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "putDropToSoul",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "flagNameIs",
+              "name": "レジェンドワールド"
+            }
+          ]
+        },
+        {
+          "op": "grantKeyword",
+          "keyword": "move",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "flagNameIs",
+              "name": "スタードラゴンワールド"
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp02-0077-gravity-rest",
+          "label": "グラビティレスト",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "t",
+              "from": "field",
+              "controller": "opponent",
+              "filter": {
+                "cardTypeIn": [
+                  "monster",
+                  "item"
+                ]
+              },
+              "amount": 1,
+              "require": true,
+              "title": "グラビティレスト",
+              "lead": "レストにする、相手の場のモンスターかアイテムを選んでください。"
+            },
+            {
+              "op": "chooseBranch",
+              "title": "グラビティレスト",
+              "lead": "手札１枚を捨て、ゲージ１とライフ１を払って、選んだカードをレストにしますか？",
+              "options": [
+                {
+                  "key": "pay",
+                  "label": "手札１枚を捨て、ゲージ１とライフ１を払ってレストにする",
+                  "script": [
+                    {
+                      "op": "payCost",
+                      "cost": [
+                        {
+                          "op": "discardHand",
+                          "amount": 1
+                        },
+                        {
+                          "op": "payGauge",
+                          "amount": 1
+                        },
+                        {
+                          "op": "payLife",
+                          "amount": 1
+                        }
+                      ]
+                    },
+                    {
+                      "op": "restSelected",
+                      "var": "t"
+                    }
+                  ]
+                },
+                {
+                  "key": "skip",
+                  "label": "何もしない",
+                  "script": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

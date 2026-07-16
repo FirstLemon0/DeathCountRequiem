@@ -1,0 +1,3169 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-x-ss02-radiant-vs-rengoku",
+    "name": "バッツ スペシャルシリーズ第２弾「レディアント・エヴォリューション」ＶＳ「断罪 煉獄騎士団」",
+    "kind": "スペシャルシリーズ",
+    "generation": "バッツ",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=59"
+  },
+  "cards": [
+    {
+      "id": "bf-x-ss02-0001",
+      "no": "X-SS02/0001",
+      "name": "英雄竜 ジャックナイフ",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】このカードを君の場のモンスター１枚の上に重ね、ゲージ１を払う。",
+        "■このカードが登場した時、君のデッキの上から１枚を見る。その後、そのカードをこのカードのソウルに入れるか、手札に加える。",
+        "『ソウルガード』"
+      ],
+      "callStack": {},
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0001-enter",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "lookTopSelectToSoulOrHand"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0002",
+      "no": "X-SS02/0002",
+      "name": "超光星竜 ジャックナイフ “ソル・アステール”",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】このカードを君の場のカード名に「ジャックナイフ」を含むモンスター１枚までの上に重ね、ゲージ１を払う。",
+        "■このカードがレフトかライトにいるなら、君が攻撃で受けるダメージを２減らす！",
+        "■相手のカードの効果で、このカードのソウルはドロップゾーンに置かれず、君の場のカードとソウル全ての能力は無効化されない。",
+        "『ソウルガード』"
+      ],
+      "callStack": {
+        "nameIncludes": "ジャックナイフ",
+        "optional": true
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "damageReceivedReduction",
+          "amount": 2,
+          "attackOnly": true,
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "right"
+              ]
+            }
+          ]
+        },
+        {
+          "op": "grantSoulDiscardImmunity",
+          "controller": "self",
+          "filter": {
+            "name": "超光星竜 ジャックナイフ “ソル・アステール”"
+          },
+          "from": {
+            "byEffect": true,
+            "byOpponent": true
+          }
+        },
+        {
+          "op": "grantNullifyImmunity",
+          "controller": "self",
+          "filter": {}
+        }
+      ],
+      "_note": "R6近似: 「君の場のカードとソウル全ての能力は無効化されない」のソウル分は grantNullifyImmunity(Z4/cardProtectedFrom, src/05-stats.js) が findFieldCardSlot(src/18-tooltip-format.js, player.field[zone]走査のみ)でしか判定しないためソウル内カードには適用が及ばない(grep実証、VM検証でも波及なしを確認)。場カード分(controller:self, filter:{})は忠実実装。ソウルのドロップ耐性(「このカードのソウルは…置かれず」)は自己限定のためfilter:{name:<完全一致名>}を使用(bf-d-cbt-0002 ゴッド・ヴォルティス型の前例踏襲)。"
+    },
+    {
+      "id": "bf-x-ss02-0003",
+      "no": "X-SS02/0003",
+      "name": "超星竜 ジャックナイフ “SD”",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■このカードが登場した時、君の場の《ネオドラゴン》１枚を選ぶ。君のデッキの上から３枚をドロップゾーンに置き、その中のモンスター１枚を選んだカードのソウルに入れる。",
+        "『ソウルガード』"
+      ],
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0003-enter",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "超星竜 ジャックナイフ “SD”",
+              "lead": "ソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveTopDeckToDrop",
+              "amount": 3
+            },
+            {
+              "op": "selectCards",
+              "var": "pick",
+              "from": "movedToDrop",
+              "filter": {
+                "cardType": "monster"
+              },
+              "amount": 1,
+              "allowEmpty": true,
+              "title": "超星竜 ジャックナイフ “SD”",
+              "lead": "ドロップに置いたカードの中からソウルに入れるモンスターを選んでください。"
+            },
+            {
+              "op": "moveSelectedToSelectedSoul",
+              "var": "pick",
+              "soulOfVar": "host",
+              "require": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0004",
+      "no": "X-SS02/0004",
+      "name": "竜装機 レディアント・フューエル",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "竜装機"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■“光核反応”このカードが場かドロップゾーンから、カード名に「ジャックナイフ」を含むカードのソウルに入った時、ライフ１を払ってよい。払ったら、君のデッキから、カード名に「アステール」を含むモンスター１枚までを手札に加え、デッキをシャッフルする。「光核反応」は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0004-koukaku-hannou",
+          "label": "光核反応",
+          "kind": "triggered",
+          "event": "enteredSoul",
+          "fromZones": [
+            "field",
+            "drop"
+          ],
+          "optional": true,
+          "conditions": [
+            {
+              "op": "hostMatches",
+              "filter": {
+                "nameIncludes": "ジャックナイフ"
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "searchDeckToHand",
+              "filter": {
+                "nameIncludes": "アステール",
+                "cardType": "monster"
+              },
+              "amount": 1,
+              "shuffle": true
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "shared": true,
+            "key": "xss02-光核反応"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0005",
+      "no": "X-SS02/0005",
+      "name": "スタージャック・ドッキング",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "星",
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】その攻撃を無効化し、君のドロップのカード１枚までを君の場の《ネオドラゴン》１枚のソウルに入れる。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0005-docking",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "selectCards",
+              "var": "pile",
+              "from": "drop",
+              "controller": "self",
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "スタージャック・ドッキング",
+              "lead": "自分の場の《ネオドラゴン》のソウルに入れるドロップゾーンのカードを1枚まで選んでください（入れなくてもよい）。"
+            },
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": false,
+              "title": "スタージャック・ドッキング",
+              "lead": "ソウルに入れる先の自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelectedToSelectedSoul",
+              "var": "pile",
+              "soulOfVar": "host",
+              "require": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0006",
+      "no": "X-SS02/0006",
+      "name": "超光星銃 リンケージ",
+      "type": "item",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "星",
+        "武器"
+      ],
+      "power": 3000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■【対抗】【起動】君の場のカード名に「ジャックナイフ」を含むモンスター１枚を選び、このカードをレストしてよい。レストしたら、選んだカードをスタンドする。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0006-linkage",
+          "label": "リンケージ",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "optional": true,
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "nameIncludes": "ジャックナイフ"
+            }
+          },
+          "conditions": [
+            {
+              "op": "sourceStanding"
+            }
+          ],
+          "effects": [
+            {
+              "op": "restSelf"
+            },
+            {
+              "op": "standTarget",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0007",
+      "no": "X-SS02/0007",
+      "name": "大竜装機 ソニックブラスト",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "竜装機"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードがソウルにある《ネオドラゴン》が攻撃した時、相手の場のカード１枚を選び、ゲージ１を払ってよい。払ったら、選んだカードを破壊する。",
+        "『星合体』（場のこのカードを、君の場の《ネオドラゴン》のソウルに入れる）"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0007-star-fusion",
+          "label": "星合体",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "ネオドラゴン"
+            }
+          },
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "bf-x-ss02-0007-soul-attack",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "targetMatches",
+              "ref": "$self",
+              "filter": {
+                "attribute": "ネオドラゴン"
+              }
+            }
+          ],
+          "optional": true,
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {}
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0008",
+      "no": "X-SS02/0008",
+      "name": "大竜装機 ザ・メインフォース",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "竜装機"
+      ],
+      "size": 3,
+      "power": 4000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■【対抗】【起動】“フォース・リベレート”このカードが《ネオドラゴン》のソウルにあるなら、ゲージ１を払ってよい。払ったら、そのターン中、次にその《ネオドラゴン》が破壊される場合、その《ネオドラゴン》を場に残す。「フォース・リベレート」は１ターンに１回だけ使える。",
+        "『星合体』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0008-star-merge",
+          "label": "星合体",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "bf-x-ss02-0008-force-liberate",
+          "label": "フォース・リベレート",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "hostMatches",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "setPreventNextDestroy",
+              "target": "$host",
+              "amount": 1,
+              "duration": "turn"
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0009",
+      "no": "X-SS02/0009",
+      "name": "超光星護 ジャックナイフ “アステール”",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】このカードを君の場のカード名に「ジャックナイフ」を含むモンスター１枚までの上に重ね、ゲージ１を払う。",
+        "■相手のターン中、このカードのソウルに《竜装機》があるなら、このカードは相手のカードの効果で破壊されない。",
+        "■相手のカードの効果で、君はダメージを受けず、君の場のアイテムは破壊されない。",
+        "『ソウルガード』"
+      ],
+      "callStack": {
+        "nameIncludes": "ジャックナイフ",
+        "optional": true
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "destroyImmunity": [
+        {
+          "from": {
+            "byEffect": true,
+            "byOpponent": true
+          },
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "sourceSoulHasAttribute",
+              "attribute": "竜装機"
+            }
+          ]
+        }
+      ],
+      "continuous": [
+        {
+          "op": "preventOpponentEffectDamage"
+        },
+        {
+          "op": "grantDestroyImmunity",
+          "controller": "self",
+          "filter": {
+            "cardType": "item"
+          },
+          "from": {
+            "byEffect": true,
+            "byOpponent": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0010",
+      "no": "X-SS02/0010",
+      "name": "超星護 ジャックナイフ",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが登場した時、君のドロップゾーンのモンスター１枚までを、このカードのソウルに入れる。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0010-enter-soul",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "soul",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster"
+              },
+              "min": 0,
+              "max": 1,
+              "require": false,
+              "title": "超星護 ジャックナイフでソウルに入れるモンスター",
+              "lead": "ドロップゾーンからこのカードのソウルに入れるモンスターを1枚まで選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "soul",
+              "to": "soul",
+              "require": false,
+              "log": "{cards}をソウルに入れました。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0011",
+      "no": "X-SS02/0011",
+      "name": "竜装機 フォーゲル",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "竜装機"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードが《ネオドラゴン》のソウルにあるなら、その《ネオドラゴン》は、『移動』を得る。（『移動』：お互いのアタックフェイズ開始時に、場のこのカードを空いている別のエリアに置いてよい）",
+        "『星合体』（場のこのカードを、君の場の《ネオドラゴン》のソウルに入れる）"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "soulContinuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "move",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "ネオドラゴン"
+          }
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0011-star-combine",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "ネオドラゴン"
+            }
+          },
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0012",
+      "no": "X-SS02/0012",
+      "name": "超源粒 クァンタムルーラー",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■“スターダスト・ブレイブ”このカードが登場した時、君の場にソウル１枚以上がある《ネオドラゴン》がいるなら、君のデッキの上から１枚をゲージに置き、カード１枚を引く。「スターダスト・ブレイブ」は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0012-stardust-brave",
+          "label": "スターダスト・ブレイブ",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "attribute": "ネオドラゴン",
+                "soulCountGte": 1
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "stardust-brave",
+            "shared": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0013",
+      "no": "X-SS02/0013",
+      "name": "竜装機 レディアント・スクード",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "竜装機"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 1,
+      "defense": 4000,
+      "rules": [
+        "■【対抗】【起動】“ディヴォーションウォール”相手のターンの攻撃中、ゲージ１を払い、《ネオドラゴン》のソウルにあるこのカードをドロップゾーンに置いてよい。そうしたら、その攻撃を無効化する。",
+        "■このカードがカード名に「ジャックナイフ」を含むカードのソウルにあるなら、君が“ディヴォーションウォール”で払うゲージの数値は１少なくなる。",
+        "『星合体』"
+      ],
+      "keywords": [],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0013-star-merge",
+          "label": "星合体",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "星合体する《ネオドラゴン》",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "bf-x-ss02-0013-devotion-wall",
+          "label": "ディヴォーションウォール",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "optional": true,
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "hostMatches",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              }
+            },
+            {
+              "op": "not",
+              "condition": {
+                "op": "hostMatches",
+                "filter": {
+                  "nameIncludes": "ジャックナイフ"
+                }
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "dischargeSelfFromHostSoul"
+            },
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ss02-0013-devotion-wall-jackknife",
+          "label": "ディヴォーションウォール",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "optional": true,
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "hostMatches",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン",
+                "nameIncludes": "ジャックナイフ"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dischargeSelfFromHostSoul"
+            },
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ],
+      "_note": "ゲージ割引（ジャックナイフ搭載時-1）はコスト時にhost文脈が無いため、host条件で分割した2能力（通常=ゲージ1/ジャックナイフ=0）で忠実化"
+    },
+    {
+      "id": "bf-x-ss02-0014",
+      "no": "X-SS02/0014",
+      "name": "竜装機 チャージャー",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "竜装機"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■“バリバリチャージ！”このカードが場かドロップゾーンから《ネオドラゴン》のソウルに入った時、ゲージ１を払ってよい。払ったら、カード１枚を引く。「バリバリチャージ！」は１ターンに１回だけ発動する。",
+        "『星合体』（場のこのカードを、君の場の《ネオドラゴン》のソウルに入れる）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0014-star-merge",
+          "label": "星合体",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "星合体する《ネオドラゴン》",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ss02-0014-bari-bari-charge",
+          "label": "バリバリチャージ！",
+          "kind": "triggered",
+          "event": "enteredSoul",
+          "fromZones": [
+            "field",
+            "drop"
+          ],
+          "optional": true,
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          },
+          "conditions": [
+            {
+              "op": "hostMatches",
+              "filter": {
+                "attribute": "ネオドラゴン"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0015",
+      "no": "X-SS02/0015",
+      "name": "竜装機 レディアント・アルマ",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "竜装機"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【起動】君のライフが６以下で、このカードが《ネオドラゴン》のソウルにあるなら、ゲージ１を払ってよい。払ったら、そのターン中、その《ネオドラゴン》は『２回攻撃』を得る。",
+        "『星合体』（場のこのカードを、君の場の《ネオドラゴン》のソウルに入れる）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0015-star-merge",
+          "label": "星合体",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "星合体する《ネオドラゴン》",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "bf-x-ss02-0015-soul-double-attack",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 6
+            },
+            {
+              "op": "hostMatches",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              }
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$host",
+              "keyword": "doubleAttack",
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0016",
+      "no": "X-SS02/0016",
+      "name": "超星竜 ルミナスブルー",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "size": 1,
+      "power": 1000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■君の場のカードのソウル１枚につき、このカードの攻撃力＋1000、防御力＋1000！",
+        "■このカードが攻撃した時、君のドロップゾーンのモンスター１枚を、君の場の《ネオドラゴン》１枚のソウルに入れてよい。",
+        "『ソウルガード』"
+      ],
+      "_note": "継続の『ソウル1枚につき+1000/+1000』はfieldSoulCount(H-BT04/0020プロヴィデンス前例)。攻撃時のドロップ→ネオドラゴンのソウルはbf-s-ub-c03-0010型（selectCards require:false→ifSelection→selectCards host→moveSelectedToSelectedSoul）。",
+      "keywords": [
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "amountFrom": {
+            "source": "fieldSoulCount",
+            "per": {
+              "power": 1000,
+              "defense": 1000
+            }
+          }
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0016-attack-soul",
+          "kind": "triggered",
+          "event": "attack",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "d",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster"
+              },
+              "amount": 1,
+              "require": false,
+              "title": "超星竜 ルミナスブルー",
+              "lead": "君の場の《ネオドラゴン》のソウルに入れる、ドロップゾーンのモンスターを選んでください（入れない場合は選択なし）。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "d",
+              "then": [
+                {
+                  "op": "selectCards",
+                  "var": "h",
+                  "from": "field",
+                  "controller": "self",
+                  "filter": {
+                    "cardType": "monster",
+                    "attribute": "ネオドラゴン"
+                  },
+                  "amount": 1,
+                  "require": true,
+                  "title": "超星竜 ルミナスブルー",
+                  "lead": "ソウルに入れる先の《ネオドラゴン》を選んでください。"
+                },
+                {
+                  "op": "moveSelectedToSelectedSoul",
+                  "var": "d",
+                  "soulOfVar": "h"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0017",
+      "no": "X-SS02/0017",
+      "name": "竜装機 ガーベルアンカー",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "竜装機"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■【対抗】【起動】相手が魔法を使った時、《ネオドラゴン》のソウルにあるこのカードをドロップゾーンに置き、ゲージ１とライフ１を払ってよい。そうしたら、相手が使ったその魔法を無効化する。",
+        "『星合体』（場のこのカードを、君の場の《ネオドラゴン》のソウルに入れる）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0017-star-merge",
+          "label": "星合体",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "host",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "require": true,
+              "title": "星合体する《ネオドラゴン》",
+              "lead": "このカードをソウルに入れる自分の場の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelfToSelectedSoul",
+              "var": "host"
+            }
+          ]
+        }
+      ],
+      "soulAbilities": [
+        {
+          "id": "bf-x-ss02-0017-nullify-spell",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "hostMatches",
+              "filter": {
+                "attribute": "ネオドラゴン"
+              }
+            },
+            {
+              "op": "pendingActionIsOpponent"
+            },
+            {
+              "op": "pendingActionCardType",
+              "cardType": "spell"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "dischargeSelfFromHostSoul"
+            },
+            {
+              "op": "nullifyPendingAction"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0018",
+      "no": "X-SS02/0018",
+      "name": "スタージャック・ブースト",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "チャージ",
+        "ドロー"
+      ],
+      "rules": [
+        "■君のライフが７以上なら使える。",
+        "■君のデッキの上から１枚をゲージに置き、カード１枚を引く。「スタージャック・ブースト」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0018-boost",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "not",
+              "condition": {
+                "op": "lifeLte",
+                "amount": 6
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-x-ss02-0018-boost"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0019",
+      "no": "X-SS02/0019",
+      "name": "スタージャック・リペア",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "チャージ"
+      ],
+      "rules": [
+        "■君の場にカード名に「ジャックナイフ」を含むカードがあるなら使える。",
+        "■君のデッキの上から１枚をゲージに置き、君のドロップゾーンのカード１枚を君の場の《ネオドラゴン》１枚のソウルに入れる。「スタージャック・リペア」は１ターンに１回だけ使える。"
+      ],
+      "_note": "使用条件はownFieldCardExists(nameIncludes ジャックナイフ)。効果は必須（『してよい』なし）。「1ターンに1回」はカード名限定の名前slug key(star-jack-repair)。",
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0019-repair",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "selectCards",
+              "var": "d",
+              "from": "drop",
+              "controller": "self",
+              "amount": 1,
+              "title": "スタージャック・リペア",
+              "lead": "君の場の《ネオドラゴン》のソウルに入れる、ドロップゾーンのカードを選んでください。"
+            },
+            {
+              "op": "selectCards",
+              "var": "h",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              },
+              "amount": 1,
+              "title": "スタージャック・リペア",
+              "lead": "ソウルに入れる先の《ネオドラゴン》を選んでください。"
+            },
+            {
+              "op": "moveSelectedToSelectedSoul",
+              "var": "d",
+              "soulOfVar": "h"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "star-jack-repair"
+          },
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "nameIncludes": "ジャックナイフ"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0020",
+      "no": "X-SS02/0020",
+      "name": "アースバリア",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "防御",
+        "回復"
+      ],
+      "rules": [
+        "■君が攻撃されている攻撃中に使える。",
+        "■【対抗】その攻撃を無効化し、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0020-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0021",
+      "no": "X-SS02/0021",
+      "name": "プロトバリア",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "防御"
+      ],
+      "rules": [
+        "■君が攻撃されている攻撃中に使える。",
+        "■【対抗】その攻撃を無効化し、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0021-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0022",
+      "no": "X-SS02/0022",
+      "name": "バーレカル・バレット",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "破壊"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】相手の場の防御力3000以下のモンスター１枚を破壊する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0022-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster",
+              "defenseLte": 3000
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0023",
+      "no": "X-SS02/0023",
+      "name": "超光星剣 プロヴィデンス",
+      "type": "item",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "光",
+        "武器"
+      ],
+      "power": 4000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■君の場のカード名に「ジャックナイフ」を含むモンスター全てに『移動』を与える。",
+        "■君の場のカードのソウル１枚につきこのカードの攻撃力＋1000！"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "move",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster",
+            "nameIncludes": "ジャックナイフ"
+          }
+        },
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "amountFrom": {
+            "source": "fieldSoulCount",
+            "per": {
+              "power": 1000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0024",
+      "no": "X-SS02/0024",
+      "name": "レディアント・パニッシャー!!",
+      "type": "impact",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "rules": [
+        "■お互いのセンターにモンスターがいなくて、君の場にサイズ２以上の《ネオドラゴン》がいるなら使える。",
+        "■【使用コスト】ゲージ３を払い、ライフ１を払う。",
+        "■相手にダメージ４！このカードは無効化されず、このカードのダメージは減らない。"
+      ],
+      "cannotBeNullified": true,
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 3,
+        "life": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0024-cast",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "bothCentersEmpty"
+            },
+            {
+              "op": "ownFieldMonsterAttributeSizeGte",
+              "attribute": "ネオドラゴン",
+              "size": 2
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 3
+            },
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 4,
+              "ignorePrevention": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0025",
+      "no": "X-SS02/0025",
+      "name": "スタードラゴンワールド",
+      "type": "flag",
+      "rarity": "デッキ商品",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "■君は＜スタードラゴンワールド＞と＜ジェネリック＞のカードを使える。"
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0026",
+      "no": "X-SS02/0026",
+      "name": "煉獄騎士団を束ねし者 ロード・ディミオス",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "白竜"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】君のドロップゾーンのカード名に「煉獄騎士団」を含むカード１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■【対抗】【起動】君のターン中、君の場のカード名に「煉獄騎士団」を含むモンスター１枚を破壊する。破壊したら、このカードをスタンドする。",
+        "『移動』『ソウルガード』"
+      ],
+      "keywords": [
+        "move",
+        "soulguard"
+      ],
+      "callCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "putDropToSoul",
+            "amount": 1,
+            "filter": {
+              "nameIncludes": "煉獄騎士団"
+            }
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0026-stand",
+          "kind": "activated",
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "cost": [
+            {
+              "op": "destroyOwnMonster",
+              "amount": 1,
+              "filter": {
+                "nameIncludes": "煉獄騎士団"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ]
+        }
+      ],
+      "_note": "【コールコスト】はputDropToSoul{amount:1,filter:{nameIncludes:\"煉獄騎士団\"}}（moveDropToSoulがfilter一致drop から自動選抜=プレイヤーがどの『煉獄騎士団』カードをソウルへ入れるか選べない・R6近似）＋payGauge:1（bf-x-bt01-0050型）。【対抗】【起動】はbf-d-bt02-0039/bt04-0105型（cost:destroyOwnMonster{filter:{nameIncludes:\"煉獄騎士団\"}}＋effects:standTarget $self）を踏襲しつつ、timingのみ[\"main\",\"counter\"]にした（原文が【対抗】【起動】＝bf-h-eb03-0001/bt05-0046と同じ両面表記。bt04-0105/bf-d-bt02-0039実装はtiming:[\"counter\"]のみで原文の【起動】を欠く既存の未実装差異と判断し、原文優先でmain+counter両方を採用）。excludeSourceは付与しない（原文に『このカード以外の』節が無く、このカード自身の名前にも『煉獄騎士団』を含むため対象になり得る=bf-h-eb04-0010と同型。自分自身を破壊した場合はstandTarget $selfが対象消失でno-opになるだけで実害なし）。"
+    },
+    {
+      "id": "bf-x-ss02-0027",
+      "no": "X-SS02/0027",
+      "name": "煉獄騎士団 デモンズレイピア・ドラゴン",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "白竜"
+      ],
+      "size": 1,
+      "power": 6000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■このカードが破壊された時、相手の場のカード１枚のソウル１枚をドロップゾーンに置くか、相手の場の魔法１枚を破壊する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0027-destroyed-modal",
+          "kind": "triggered",
+          "event": "destroyed",
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "煉獄騎士団 デモンズレイピア・ドラゴン",
+              "lead": "相手の場のカードのソウルをドロップゾーンに置くか、相手の場の魔法を破壊するか選んでください。",
+              "options": [
+                {
+                  "key": "soulDrop",
+                  "label": "相手の場のカード１枚のソウル１枚をドロップゾーンに置く",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "soulTarget",
+                      "from": "field",
+                      "controller": "opponent",
+                      "filter": {
+                        "soulCountGte": 1
+                      },
+                      "amount": 1,
+                      "allowEmpty": true,
+                      "emptyMessage": "相手の場にソウルを持つカードがないため、置き換えは行いません。",
+                      "title": "煉獄騎士団 デモンズレイピア・ドラゴン",
+                      "lead": "ソウルをドロップゾーンに置く相手の場のカードを１枚選んでください。"
+                    },
+                    {
+                      "op": "dropSelectedSoul",
+                      "var": "soulTarget",
+                      "amount": 1
+                    }
+                  ]
+                },
+                {
+                  "key": "destroySpell",
+                  "label": "相手の場の魔法１枚を破壊する",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "kill",
+                      "from": "field",
+                      "controller": "opponent",
+                      "filter": {
+                        "cardType": "spell"
+                      },
+                      "amount": 1,
+                      "allowEmpty": true,
+                      "emptyMessage": "相手の場に魔法がないため、破壊は行いません。",
+                      "title": "煉獄騎士団 デモンズレイピア・ドラゴン",
+                      "lead": "破壊する相手の場の魔法を１枚選んでください。"
+                    },
+                    {
+                      "op": "destroySelected",
+                      "var": "kill",
+                      "require": false
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "破壊時モーダルはbf-d-bt02-0073型のchooseBranch（selectCards allowEmpty+emptyMessage→dropSelectedSoul／selectCards allowEmpty+emptyMessage→destroySelected require:false）をそのまま踏襲し、controllerのみ原文『相手の場の』に合わせてopponent指定に変更。option.conditionは付けない=0073と同じで両分岐とも常に選択可能。対象0枚の分岐を選んでもselectCards allowEmptyでno-op（C9実測）。"
+    },
+    {
+      "id": "bf-x-ss02-0028",
+      "no": "X-SS02/0028",
+      "name": "煉獄騎士団 ニードルクロー・ドラゴン",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "白竜"
+      ],
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■アタックフェイズ中、このカードが破壊されてドロップゾーンに置かれる場合、このカードを手札に戻す。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0028-destroyed-return",
+          "kind": "triggered",
+          "event": "destroyed",
+          "conditions": [
+            {
+              "op": "phaseIs",
+              "phase": "attack"
+            }
+          ],
+          "effects": [
+            {
+              "op": "returnSelfToHand"
+            }
+          ]
+        }
+      ],
+      "_note": "『アタックフェイズ中、破壊されてドロップゾーンに置かれる場合、手札に戻す』はdestination置換ではなくSKILL.md既定のreturnSelfToHand（destroyed誘発・drop到達後にinstanceId検索で回収）。既存leaveFieldReplacement/destroyReplacementはdestination=hand化に非対応（DB全例が『場に残す』専用）のため代替せず。強制効果（『してよい』なし）でconditionsはphaseIs attackのみ。"
+    },
+    {
+      "id": "bf-x-ss02-0029",
+      "no": "X-SS02/0029",
+      "name": "我らが行くは血濡れの魔道",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】その攻撃を無効化し、君のドロップゾーンにカード名に「煉獄騎士団」を含むカードがあるなら、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0029-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "cardCount",
+                  "controller": "self",
+                  "pile": "drop",
+                  "filter": {
+                    "nameIncludes": "煉獄騎士団"
+                  },
+                  "cmp": "gte",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "『相手のターンの攻撃中、君のセンターにモンスターがいないなら使える』はbf-x-sd01-0012型（ability.conditionsにpendingAttackDefenderIsSelf+ownCenterEmpty＝card-levelのuseConditionsでなくability側で評価する確立慣例）。『無効化し、ドロップに煉獄騎士団があるならデッキ上1枚をゲージに』はnullifyAttack＋putTopDeckToGaugeにconditions:[cardCount pile:drop filter:{nameIncludes:\"煉獄騎士団\"} cmp:gte amount:1]（effect単位のconditionsゲート）。"
+    },
+    {
+      "id": "bf-x-ss02-0030",
+      "no": "X-SS02/0030",
+      "name": "煉獄騎士団団長の剣 ディミオスソード",
+      "type": "item",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "武器"
+      ],
+      "power": 3000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■君のターン中、君の場のカード名に「煉獄騎士団」を含むモンスターが破壊された時、カード１枚を引き、君の場の「煉獄騎士団」を含むカード１枚を、そのターン中、攻撃力＋3000！この能力は１ターンに１回だけ発動する。"
+      ],
+      "equipCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0030-fatal-buff",
+          "kind": "triggered",
+          "event": "allyDestroyed",
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "nameIncludes": "煉獄騎士団",
+                "cardType": "monster"
+              }
+            }
+          ],
+          "script": [
+            {
+              "op": "draw",
+              "amount": 1
+            },
+            {
+              "op": "selectCards",
+              "var": "buff",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "nameIncludes": "煉獄騎士団"
+              },
+              "amount": 1,
+              "allowEmpty": true,
+              "title": "煉獄騎士団団長の剣 ディミオスソード",
+              "lead": "攻撃力＋3000する君の場の「煉獄騎士団」を含むカードを１枚選んでください。"
+            },
+            {
+              "op": "modifySelectedStats",
+              "var": "buff",
+              "power": 3000,
+              "duration": "turn"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-x-ss02-0030-fatal-buff"
+          }
+        }
+      ],
+      "_note": "『君のターン中、君の場のカード名に「煉獄騎士団」を含むモンスターが破壊された時』はevent:allyDestroyed＋conditions:[turnOwnerIsSelf, eventCardMatches{nameIncludes:\"煉獄騎士団\",cardType:\"monster\"}]（bt05-0085＝0044フェイタルがitem×allyDestroyedを実証済の手本）。『カード１枚を引き』はscript先頭draw{amount:1}。バフ対象『君の場の「煉獄騎士団」を含むカード１枚』はcardType制限なし（このアイテム自身の名前にも『煉獄騎士団』を含むため自己バフも対象になり得る＝原文通り）。無名『この能力は１ターンに１回だけ発動する』はunnamed limit（shared無し・bt05-0085と同型のkeyのみ）。"
+    },
+    {
+      "id": "bf-x-ss02-0031",
+      "no": "X-SS02/0031",
+      "name": "ジェノサイド・パニッシャー!!",
+      "type": "impact",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rules": [
+        "■お互いのセンターにモンスターがいないなら使える。",
+        "■【使用コスト】ゲージ２を払う。",
+        "■次の２つから１つを選んで使う。",
+        "・相手のライフが３以下なら、相手にダメージ３！！",
+        "・【対抗】“カウンターファイナル！！”相手が必殺技を使った時に使える。君のドロップゾーンのカード名に「煉獄騎士団」を含むカードの種類分、相手にダメージ！！"
+      ],
+      "castCost": {
+        "gauge": 2
+      },
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0031-main",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "opponentLifeLte",
+              "amount": 3
+            },
+            {
+              "op": "bothCentersEmpty"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 3
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ss02-0031-counterfinal",
+          "kind": "impact",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "bothCentersEmpty"
+            },
+            {
+              "op": "pendingActionIsOpponent"
+            },
+            {
+              "op": "pendingActionKind",
+              "kind": "impact"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amountFrom": {
+                "source": "dropCount",
+                "controller": "self",
+                "filter": {
+                  "nameIncludes": "煉獄騎士団"
+                },
+                "distinct": "distinctByName"
+              }
+            }
+          ]
+        }
+      ],
+      "_note": "bt05-0053(=0045ディストーション・パニッシャー)型の2ability構成（main:timing final＋opponentLifeLte／counterfinal:timing counter＋pendingActionIsOpponent+pendingActionKind{kind:\"impact\"}）。両abilityにbothCentersEmptyとcastCostゲージ2をability.cost側で単課金（FIX7=非設置impactの課金はability.cost||costs.[purpose]のみ。costs.cast/castCostは表示・フォールバック用で二重課金にはならない）。counter分岐のダメージはE-ZA1採用（dropCount amountFromにdistinct:\"distinctByName\"＝ドロップの『煉獄騎士団』を含むカードの種類分）。main分岐はrules原文通りopponentLifeLteのみ（counterfinal側には無い＝原文が『相手のライフが3以下なら』を最初の分岐だけに書いているため付けない）。"
+    },
+    {
+      "id": "bf-x-ss02-0032",
+      "no": "X-SS02/0032",
+      "name": "煉獄騎士団 デスシックル “カルヴァーリ”",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "白竜"
+      ],
+      "size": 3,
+      "power": 9000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払い、ライフ１を払う。",
+        "■君の場に元々のサイズが２のカード名に「煉獄騎士団」を含むモンスターがいるなら、場のこのカードのサイズを２減らす。",
+        "■このカードが破壊された時、君のドロップゾーンのサイズ２以下のカード名に「煉獄騎士団」を含むモンスター１枚までを手札に加える。",
+        "『２回攻撃』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "size": -2,
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "煉獄騎士団",
+                "baseSize": 2
+              }
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0032-destroyed-recover",
+          "kind": "triggered",
+          "event": "destroyed",
+          "effects": [
+            {
+              "op": "moveMatchingDropToHand",
+              "amount": 1,
+              "optional": true,
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "煉獄騎士団",
+                "baseSizeLte": 2
+              }
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "doubleAttack"
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0033",
+      "no": "X-SS02/0033",
+      "name": "煉獄騎士団団長 ディミオスソード “インフェルノ”",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "白竜"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】このカードを君の場の元々のサイズが２以上のカード名に「煉獄騎士団」を含むモンスター１枚の上に重ね、ゲージ２を払う。",
+        "■【対抗】【起動】君のターン中、相手の場のサイズ２以下のモンスター１枚を選び、君の場のカード名に「煉獄騎士団」を含むモンスター１枚を破壊する。破壊したら、このカードをスタンドし、選んだカードを破壊する。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "callStack": {
+        "filter": {
+          "nameIncludes": "煉獄騎士団",
+          "baseSizeGte": 2
+        }
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0033-erase",
+          "kind": "activated",
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "oppTarget",
+              "from": "field",
+              "controller": "opponent",
+              "filter": {
+                "cardType": "monster",
+                "sizeLte": 2
+              },
+              "amount": 1,
+              "title": "ディミオスソード“インフェルノ”",
+              "lead": "破壊する相手の場のサイズ２以下のモンスターを１枚選んでください。"
+            },
+            {
+              "op": "selectCards",
+              "var": "sac",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "nameIncludes": "煉獄騎士団",
+                "cardType": "monster"
+              },
+              "amount": 1,
+              "allowEmpty": true,
+              "require": false,
+              "title": "ディミオスソード“インフェルノ”",
+              "lead": "破壊する君の場のカード名に「煉獄騎士団」を含むモンスターを１枚選んでください。"
+            },
+            {
+              "op": "destroySelected",
+              "var": "sac",
+              "require": false
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "standTarget",
+                  "target": "$self"
+                },
+                {
+                  "op": "destroySelected",
+                  "var": "oppTarget",
+                  "require": false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0034",
+      "no": "X-SS02/0034",
+      "name": "煉獄騎士団 ガイラムランス・ドラゴン",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "白竜"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■君のバディモンスターがカード名に「煉獄騎士団」を含むカードなら、このカードのサイズを１減らす！！！",
+        "■【対抗】【起動】君のターン中、君の場のこのカード以外のカード名に「煉獄騎士団」を含むモンスター１枚を破壊する。破壊したら、そのターン中、このカードの打撃力を＋１！この能力は１ターンに１回だけ使える。"
+      ],
+      "flavor": "-",
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0034-knights-buff",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "cost": [
+            {
+              "op": "destroyOwnMonster",
+              "amount": 1,
+              "excludeSource": true,
+              "filter": {
+                "nameIncludes": "煉獄騎士団"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "critical": 1,
+              "duration": "turn"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-x-ss02-0034-knights-buff"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0035",
+      "no": "X-SS02/0035",
+      "name": "煉獄騎士団団長 ディミオスソード・ドラゴン",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "白竜"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【対抗】【起動】君のターン中、君の場のこのカード以外のカード名に「煉獄騎士団」を含むモンスター１枚を破壊する。破壊したら、このカードをスタンドする。"
+      ],
+      "flavor": "久しいな、麗しの我が故郷よ。 そして、お別れだ。",
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0035-rengoku-stand",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "cost": [
+            {
+              "op": "destroyOwnMonster",
+              "amount": 1,
+              "excludeSource": true,
+              "filter": {
+                "nameIncludes": "煉獄騎士団"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0036",
+      "no": "X-SS02/0036",
+      "name": "煉獄騎士団 ヴェノムスパイク・ドラゴン",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "白竜"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■このカードがモンスターの効果で破壊された時、相手の場のモンスター１枚を選び、ゲージ１を払ってよい。払ったら、選んだモンスターを破壊する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0036-venomspike-destroy",
+          "kind": "triggered",
+          "event": "destroyed",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "eventDestroyCauseMatches",
+              "byEffect": true,
+              "sourceType": "monster"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0037",
+      "no": "X-SS02/0037",
+      "name": "煉獄騎士団 イレイザーハンド・ドラゴン",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "白竜"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■【起動】“アナザーハンド”君の場のこのカード以外のカード名に「煉獄騎士団」を含むカード１枚を破壊する。破壊したら、相手は手札１枚を選んで捨てる。“アナザーハンド”は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0037-another-hand",
+          "label": "アナザーハンド",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "sac",
+              "from": "field",
+              "controller": "self",
+              "excludeSource": true,
+              "filter": {
+                "nameIncludes": "煉獄騎士団"
+              },
+              "amount": 1,
+              "title": "アナザーハンド",
+              "lead": "破壊する君の場のこのカード以外のカード名に「煉獄騎士団」を含むカードを１枚選んでください。"
+            },
+            {
+              "op": "destroySelected",
+              "var": "sac",
+              "require": false
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "discardHand",
+                  "player": "opponent",
+                  "amount": 1
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "another-hand",
+            "shared": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0038",
+      "no": "X-SS02/0038",
+      "name": "煉獄騎士団 エヴィルグレイブ・ドラゴン",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "白竜"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■アタックフェイズ中、このカードがモンスターの効果で破壊された時、カード１枚を引く。"
+      ],
+      "flavor": "彼らが抱いた清き理想は、もうここには無い。",
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0038-destroyed-draw",
+          "kind": "triggered",
+          "event": "destroyed",
+          "conditions": [
+            {
+              "op": "phaseIs",
+              "phase": "attack"
+            },
+            {
+              "op": "eventDestroyCauseMatches",
+              "byEffect": true,
+              "sourceType": "monster"
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0039",
+      "no": "X-SS02/0039",
+      "name": "煉獄騎士団 アングリーハンド・ドラゴン",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "白竜"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■このカードがモンスターの効果で破壊された時、相手の場のアイテム１枚を選び、ゲージ１を払ってよい。払ったら、選んだアイテムを破壊する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0039-angry-hand",
+          "kind": "triggered",
+          "event": "destroyed",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "eventDestroyCauseMatches",
+              "byEffect": true,
+              "sourceType": "monster"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "item"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0040",
+      "no": "X-SS02/0040",
+      "name": "煉獄騎士よ、永遠なれ",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "ゲット"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ１を払い、君にダメージ１。",
+        "■君のドロップゾーンのカード名に「煉獄騎士団」を含むモンスター２枚までを手札に加える。"
+      ],
+      "flavor": "【煉獄秘話 其の肆】\n凱旋の時は来たれり。この旗の下に集え！救われぬ魂を宿した戦鬼、煉獄騎士よ！",
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 1,
+        "life": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0040-recover",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "moveMatchingDropToHand",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "煉獄騎士団"
+              },
+              "amount": 2,
+              "optional": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0041",
+      "no": "X-SS02/0041",
+      "name": "ドラゴンシールド 黒竜の盾",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜",
+        "防御"
+      ],
+      "rules": [
+        "■君がダメージを受ける時、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】そのダメージを０に減らし、君のライフを＋１する。"
+      ],
+      "flavor": "黒竜の盾は嘲りの盾。敵の攻撃をあざ笑う。",
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0041-black-dragon-shield",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "pendingAttackDefenderIsSelf"
+                },
+                {
+                  "op": "pendingActionResponderIsSelf"
+                }
+              ]
+            }
+          ],
+          "effects": [
+            {
+              "op": "preventNextDamage"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0042",
+      "no": "X-SS02/0042",
+      "name": "地獄の炎も、生ぬるい",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "ドロー"
+      ],
+      "rules": [
+        "■相手のターン中、君がダメージを受けた時に使える。",
+        "■【対抗】カード１枚を引く。君の場にカード名に「煉獄騎士団」を含むモンスターがいるなら、さらにカード１枚を引く。"
+      ],
+      "flavor": "【煉獄秘話 其の弐】\nドラゴンワールド最強の騎士団「煉獄騎士団」は、\n魔界の軍勢を蹴散らしながら、魔界門に突入。 その門を内側から封印した。",
+      "costs": {
+        "cast": []
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0042-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "cardCount",
+                  "controller": "self",
+                  "pile": "field",
+                  "filter": {
+                    "cardType": "monster",
+                    "nameIncludes": "煉獄騎士団"
+                  },
+                  "cmp": "gte",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0043",
+      "no": "X-SS02/0043",
+      "name": "その身を砕き、我を支えよ",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■君の場のカード名に「煉獄騎士団」を含むモンスターが効果で破壊された時、君のデッキの上から１枚をゲージに置く。",
+        "■君のライフが０になるなら、このカードをドロップゾーンに置き、君のデッキの上から１枚をドロップゾーンに置く。そのカードが魔法なら、君のライフは２になる！",
+        "■「その身を砕き、我を支えよ」は君の場に１枚だけ『設置』できる。"
+      ],
+      "flavor": "-",
+      "keywords": [
+        "set"
+      ],
+      "uniqueSet": true,
+      "lifeZeroReplacement": {
+        "zone": "drop",
+        "topDeckFilter": {
+          "cardType": "spell"
+        },
+        "life": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0043-rengoku-destroyed-gauge",
+          "kind": "triggered",
+          "event": "allyDestroyed",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "nameIncludes": "煉獄騎士団",
+                "cardType": "monster"
+              }
+            },
+            {
+              "op": "eventDestroyCauseMatches",
+              "byEffect": true
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0044",
+      "no": "X-SS02/0044",
+      "name": "煉獄剣 フェイタル",
+      "type": "item",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "武器"
+      ],
+      "power": 4000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■君の場のモンスターが破壊された時、そのターン中、このカードを打撃力＋１する。この能力は１ターンに１回だけ発動する。"
+      ],
+      "flavor": "フェイタル…「致命的」",
+      "equipCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0044-fatal-buff",
+          "kind": "triggered",
+          "event": "allyDestroyed",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "critical": 1,
+              "duration": "turn"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-x-ss02-0044-fatal-buff"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0045",
+      "no": "X-SS02/0045",
+      "name": "ディストーション・パニッシャー!!",
+      "type": "impact",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ４を払う。",
+        "■相手のライフが４以下で、君のセンターと相手のセンターにモンスターがいないなら次の２つから１つを選んで使う。",
+        "・相手にダメージ４！！",
+        "・【対抗】“カウンターファイナル！！”相手のファイナルフェイズ中に、相手が必殺技を使った時に使える。相手にダメージ４！！"
+      ],
+      "flavor": "歪め世界よ！ 時を巻き戻し、悲しみを消し去れ！",
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 4
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 4
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0045-main",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "opponentLifeLte",
+              "amount": 4
+            },
+            {
+              "op": "bothCentersEmpty"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 4
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 4
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ss02-0045-counterfinal",
+          "kind": "impact",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "opponentLifeLte",
+              "amount": 4
+            },
+            {
+              "op": "bothCentersEmpty"
+            },
+            {
+              "op": "pendingActionIsOpponent"
+            },
+            {
+              "op": "pendingActionKind",
+              "kind": "impact"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 4
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss02-0046",
+      "no": "X-SS02/0046",
+      "name": "煉獄騎士団団長 ディミオスソード “カオス・エクスキューション！”",
+      "type": "impactMonster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "白竜"
+      ],
+      "size": 2,
+      "power": 8000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】君の場の元々のサイズが２以上のカード名に「煉獄騎士団」を含むモンスター１枚を手札に戻し、ゲージ２を払う。",
+        "■このカードの攻撃で相手のモンスターを破壊した時、このカードをスタンドする。",
+        "■【対抗】【起動】君のターン中、君の場のこのカード以外のカード名に「煉獄騎士団」を含むモンスター１枚を破壊する。破壊したら、このカードをスタンドする。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          },
+          {
+            "op": "returnOwnFieldCardToHand",
+            "filter": {
+              "cardType": "monster",
+              "nameIncludes": "煉獄騎士団",
+              "baseSizeGte": 2
+            },
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss02-0046-destroy-by-attack-stand",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ss02-0046-erase-stand",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "excludeSource": true,
+            "filter": {
+              "cardType": "monster",
+              "nameIncludes": "煉獄騎士団"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "standTarget",
+              "target": "$self",
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "コールコストは returnOwnFieldCardToHand(filter: cardType monster + nameIncludes 煉獄騎士団 + baseSizeGte:2) ＋ payGauge2（H-EB04/0010のcallStack filterと同じキー構成）。callStackは無し（本カードは『重ねる』記述が無く空きゾーンへの通常コール）。対抗起動の破壊は、H-EB04/0010（同名キャラの再録先例）がdestroySelected+ifCondition(lastDestroySucceeded)を使っているが、destroySelectedはcontext.lastDestroyedを設定しないため、その組み合わせは事実上lastDestroySucceededが常にfalseになる（既存カードの潜在バグ・本パックでは踏襲しない）。かわりにability.target(type:fieldCard, excludeSource:true, filter)＋destroy{target:\"$target\"}を使い、destroy効果が正しくcontext.lastDestroyedを立てるようにした。対象がいない時はfieldAbilityUsableのtarget事前チェックでこの起動能力自体が選択肢に出ない（cardCount条件の重複指定は不要）。destroyByAttackトリガーのスタンドは対象カードを特定不要のため target:\"$self\" 直書き。"
+    },
+    {
+      "id": "bf-x-ss02-0047",
+      "no": "X-SS02/0047",
+      "name": "ダークネスドラゴンワールド",
+      "type": "flag",
+      "rarity": "デッキ商品",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "■君は＜ダークネスドラゴンワールド＞と＜ジェネリック＞のカードを使える。"
+      ]
+    }
+  ]
+}

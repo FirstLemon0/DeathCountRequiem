@@ -217,6 +217,7 @@
   }
 
   // ---- モーダル ----
+  // シリーズ区分チップは decksets.json の series 値と手動同期（新世代の製品を出したらここへ追加。現行: 無印/100/DDD/バッツ/神）。
 
   function ensureModal() {
     if (modalRoot) return modalRoot;
@@ -236,6 +237,7 @@
             <button type="button" class="dp-chip" data-value="無印">無印</button>
             <button type="button" class="dp-chip" data-value="100">100</button>
             <button type="button" class="dp-chip" data-value="DDD">DDD</button>
+            <button type="button" class="dp-chip" data-value="バッツ">バッツ</button>
             <button type="button" class="dp-chip" data-value="神">神</button>
           </div>
           <div class="dp-chip-row" data-filter="category">

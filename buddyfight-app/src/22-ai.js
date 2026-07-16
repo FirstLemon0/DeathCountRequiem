@@ -563,6 +563,13 @@ async function aiFinalStep(seat) {
           if (base.owner !== seat || !base.zone) continue;
           calls.push(aiCallAction(seat, card, base.zone, { stack: true, base }));
         }
+        // callStack.optional（「１枚まで」型）は重ねずに通常コールも可。重ね先が無くてもコールできる。
+        if (card.callStack.optional) {
+          for (const zone of fieldZones) {
+            if (player.field[zone]) continue;
+            calls.push(aiCallAction(seat, card, zone, {}));
+          }
+        }
         continue;
       }
       for (const zone of fieldZones) {
@@ -670,6 +677,17 @@ function aiEnumerateMainActions(seat) {
       for (const base of bases) {
         if (base.owner !== seat || !base.zone) continue;
         actions.push(aiCallAction(seat, card, base.zone, { stack: true, base }));
+      }
+      // callStack.optional（「１枚まで」型）は重ねずに空きエリアへの通常コールも可。
+      // 重ね先が無い/選ばない場合の経路を AI にも開く（callMonster 側の optional 分岐と対応）。
+      if (card.callStack.optional) {
+        for (const zone of fieldZones) {
+          if (player.field[zone]) continue;
+          actions.push(aiCallAction(seat, card, zone, {}));
+          if (buddyable) {
+            actions.push(aiCallAction(seat, card, zone, { buddy: true }));
+          }
+        }
       }
       continue;
     }

@@ -460,6 +460,38 @@ function continuousFieldCardStatValueAmount(effect, statKey, sourceOwner) {
   return visibleFieldStat(fieldCard, af.stat || "power") * per;
 }
 
+// E-XC6(X-CP01/0049 ガンズアーム): 継続 modifyStats の amountFrom:{source:"weaponCriticalSum"} 分。
+// 指定controller(既定self)の場のアイテムのうち filter 一致（例 nameIncludes:"拳"）の visible critical(打撃力)を
+// 合計 × per[statKey]。印字値ではなく visible を見るので、参照先アイテムの打撃力が可変バフされた時も追従する。
+// 再帰安全: 発生源自身(sourceCard)は既定で除外（excludeSource!==false）＝自己参照の無限再帰を防ぐ。参照先アイテムが
+// 同種の weaponCriticalSum を持たない限りサイクルは生じない（continuousFieldCardStatValueAmount と同注意）。
+function continuousWeaponCriticalSumAmount(effect, statKey, sourceOwner, sourceCard) {
+  if (effect.op !== "modifyStats" || effect.amountFrom?.source !== "weaponCriticalSum") {
+    return 0;
+  }
+  const af = effect.amountFrom;
+  const per = af.per?.[statKey] ?? 0;
+  if (!per) {
+    return 0;
+  }
+  const owner = af.controller === "opponent" ? 1 - sourceOwner : sourceOwner;
+  let sum = 0;
+  zones.forEach((zone) => {
+    const item = state.players[owner]?.field?.[zone];
+    if (!item || effectiveCardType(item) !== "item") {
+      return;
+    }
+    if (af.excludeSource !== false && item.instanceId === sourceCard?.instanceId) {
+      return;
+    }
+    if (!matchesCardFilter(item, af.filter || {})) {
+      return;
+    }
+    sum += visibleFieldStat(item, "critical");
+  });
+  return sum * per;
+}
+
 // Z1(S-UB-C03/0095): 継続 modifyStats の amountFrom:{source:"buddyZoneCount"} 分
 // （自分のバディゾーン裏向き枚数 × per[statKey]。max で上限）。continuousFieldSoulStatAmount と同形。
 function continuousBuddyZoneStatAmount(effect, statKey, player) {
@@ -524,6 +556,7 @@ function continuousStatBonus(card, statKey) {
       bonus += continuousFieldSoulStatAmount(effect, statKey, player);
       bonus += continuousFieldCardStatAmount(effect, statKey, slot.owner, sourceCard);
       bonus += continuousFieldCardStatValueAmount(effect, statKey, slot.owner); // E8(D-BT03/0031)
+      bonus += continuousWeaponCriticalSumAmount(effect, statKey, slot.owner, sourceCard); // E-XC6(X-CP01/0049)
     });
   });
   // Z1(S-UB-C03/0095): フラッグの継続効果。フラッグは zones 走査に乗らない（player.field ではなく
@@ -572,7 +605,8 @@ function continuousStatBonus(card, statKey) {
     if (effect.fieldWide) {
       return;
     }
-    if (!continuousEffectAppliesFromSoul(effect, card, sourceCard, slot.owner)) {
+    // 自己ソウルの soulContinuous は bearer(card) 自身がホスト＝E-XC7 で hostMatches が使えるよう渡す。
+    if (!continuousEffectAppliesFromSoul(effect, card, sourceCard, slot.owner, card)) {
       return;
     }
     if (effect.op === "modifyStats") {
@@ -596,7 +630,9 @@ function continuousStatBonus(card, statKey) {
         if (!effect.fieldWide || effect.op !== "modifyStats") {
           return;
         }
-        if (!continuousEffectAppliesFromSoul(effect, card, sourceCard, slot.owner)) {
+        // E-XC7(X-CP02/0039 アトアリザール): fieldWide の条件評価に host（ソウルを持つ場札）を渡し、
+        // hostMatches{nameIncludes:"ゾディアック"} 等でホスト名に応じて場全体バフを掛けられるようにする。
+        if (!continuousEffectAppliesFromSoul(effect, card, sourceCard, slot.owner, host)) {
           return;
         }
         bonus += effect[statKey] || 0;
@@ -664,7 +700,7 @@ function fieldHasFieldWideSoulBonus(player) {
   });
 }
 
-function continuousEffectAppliesFromSoul(effect, targetCard, sourceCard, owner) {
+function continuousEffectAppliesFromSoul(effect, targetCard, sourceCard, owner, hostCard) {
   if (isAbilitiesNullified(sourceCard)) {
     return false; // 能力無効化されたソウル内カードの付与は適用しない
   }
@@ -684,7 +720,16 @@ function continuousEffectAppliesFromSoul(effect, targetCard, sourceCard, owner) 
   // conditions: 場側 continuousEffectApplies と同仕様の条件ゲート（D-SD02 ストレングス
   // 「君のセンターにモンスターがいなくて〜」等）。owner はホストの持ち主（=「君」）。
   if (effect.conditions?.length) {
-    if (!checkCardConditions(effect.conditions, owner, { card: sourceCard, targetCard })) {
+    // E-XC7(X-CP02/0039 アトアリザール): hostMatches 等の「ソウルを持つホスト」を見る条件が効くよう、
+    // ホスト（fieldWide=場全体の各ホスト／自己ソウル=targetCard 自身の bearer）を条件コンテキストへ渡す。
+    // hostCard 未指定の呼び出し（後方互換）は従来どおり host 情報なし＝hostMatches は false のまま。
+    const conditionContext = { card: sourceCard, targetCard };
+    if (hostCard) {
+      conditionContext.hostCard = hostCard;
+      conditionContext.hostOwner = owner;
+      conditionContext.hostZone = findFieldCardSlot(hostCard)?.zone;
+    }
+    if (!checkCardConditions(effect.conditions, owner, conditionContext)) {
       return false;
     }
   }
@@ -718,7 +763,7 @@ function soulContinuousGrantsOp(card, op, causeCheck) {
         if ((!effect.controller || effect.controller === "self") && targetSlot.owner !== hostOwner) {
           return false;
         }
-        if (!continuousEffectAppliesFromSoul(effect, card, sourceCard, hostOwner)) {
+        if (!continuousEffectAppliesFromSoul(effect, card, sourceCard, hostOwner, host)) {
           return false;
         }
         return causeCheck ? causeCheck(effect) : true;
@@ -873,6 +918,14 @@ function cardProtectedFrom(card, kind, cause = {}) {
     return true;
   }
   if (turnProtectionBlocks(card, kind)) {
+    return true;
+  }
+  // E-XC9(X-CP02/0068 バイシャール): ソウル札の soulContinuous grantNullifyImmunity(hostOnly 等)による
+  // 能力無効化耐性。恒久 grant*Immunity は「場の継続」限定(grantedProtectionBlocks)なので、ソウル発の
+  // 付与は soulContinuousGrantsOp が担う（grantDestroyImmunity/preventReturnToHand と同じ配線）。
+  // isAbilitiesNullified からの再入は evaluatingNullifyProtection ガードで打ち切られる（無限再帰なし）。
+  // 既存カードで soulContinuous grantNullifyImmunity は0件＝turnNullifies/継続いずれの挙動も不変。
+  if (kind === "nullify" && soulContinuousGrantsOp(card, "grantNullifyImmunity")) {
     return true;
   }
   return false;

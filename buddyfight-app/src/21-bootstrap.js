@@ -445,6 +445,9 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     applyWinOnFighterDamage,
     // E-Y1/E-Y2(X-BT01 奇襲・movedToCenter)プローブ用に実経路関数を公開（_scratch/xbt01-probe.js）。
     moveFieldCard,
+    // E-XC4(X-CP01/0068 ギアーズランス)プローブ用: 効果起因/攻撃起因の両 reason で restedByEffect 放送の有無を実測
+    //（_scratch/xcp-probe.js）。restFieldCard は details.reason==="effect" のときだけ restedByEffect を放送する。
+    restFieldCard,
     specialCallOpportunityForCard,
     reconcileFaceDownSoulDrops,
     findAmbushOpportunity,

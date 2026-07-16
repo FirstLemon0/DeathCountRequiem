@@ -51,6 +51,10 @@ function validateDeckCodePayload(payload, opts) {
   const options = opts || {};
   const cardIds = options.cardIds instanceof Set ? options.cardIds : new Set(options.cardIds || []);
   const flagIds = options.flagIds instanceof Set ? options.flagIds : new Set(options.flagIds || []);
+  // E-XC3(X-CP01/0043 キャノンボール隊): deckUnlimitedCopies なカードIDの集合。ここに含まれるIDは同名投入上限が
+  // Infinity（4枚超を許容）。未指定＝空集合＝全カード従来どおり4枚上限（完全後方互換）。
+  const unlimitedCardIds =
+    options.unlimitedCardIds instanceof Set ? options.unlimitedCardIds : new Set(options.unlimitedCardIds || []);
 
   if (!payload || typeof payload !== "object") {
     return { ok: false, reason: "invalid payload" };
@@ -90,7 +94,8 @@ function validateDeckCodePayload(payload, opts) {
       return { ok: false, reason: `カードIDが重複しています: ${id}` };
     }
     const count = Number(countRaw);
-    if (!Number.isInteger(count) || count < 1 || count > 4) {
+    const maxCopies = unlimitedCardIds.has(id) ? Infinity : 4; // E-XC3: 無制限投入カードは上限なし
+    if (!Number.isInteger(count) || count < 1 || count > maxCopies) {
       return { ok: false, reason: `カード枚数が不正です: ${id}` };
     }
     seenIds.add(id);

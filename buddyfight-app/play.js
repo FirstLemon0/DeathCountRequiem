@@ -710,6 +710,15 @@
     const handCard = state?.players?.[mySeat()]?.hand?.find((c) => c.instanceId === instanceId);
     const callVia = (zone) => () => {
       if (handCard?.callStack) {
+        if (handCard.callStack.optional) {
+          // E-ZA4:「１枚まで の上に重ね」型は重ねるかどうかを選べる。「重ねずに」は effectTarget 無しで
+          // call を送る＝サーバ側 callMonster の optional 分岐が通常コールとして処理（ローカル版と同型）。
+          showMenu([
+            { label: "重ねてコール（対象を選ぶ）", run: () => startEffectTargeting(sel, "call", { callZone: zone }) },
+            { label: "重ねずにコール", run: () => sendAction("call", { selected: sel, callZone: zone }) },
+          ]);
+          return;
+        }
         startEffectTargeting(sel, "call", { callZone: zone });
         return;
       }

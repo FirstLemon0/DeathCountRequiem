@@ -873,17 +873,24 @@ function reconcileFaceDownSoulDrops() {
   }
   state.players.forEach((player, owner) => {
     (player?.drop || []).forEach((card) => {
-      if (!card || card.faceDown !== true) {
+      // 裏向き(奇襲)札、または E-XC12(X-CP02/0029) の表向き自己離脱リスナー付き札(__soulHost タグ)を処理する。
+      // どちらのタグも持たない通常のドロップ札は素通り（既存挙動不変）。
+      const wasFaceDown = card?.faceDown === true;
+      if (!card || (!wasFaceDown && !card.__soulHost)) {
         return;
       }
       const soulHost = card.__soulHost || null;
-      // 公開: ソウルを離れてドロップへ置かれたので裏向きは解ける（以後 viewFor でも伏せない）。
-      card.faceDown = false;
+      // 公開/タグ消し: ソウルを離れてドロップへ置かれたので裏向きは解ける（以後 viewFor でも伏せない）。
+      // 冪等: タグを消すので再走査でスキップされる。
+      if (wasFaceDown) {
+        card.faceDown = false;
+      }
       delete card.__soulHost;
-      // (b) 自己ドロップ誘発（0067）。requireFaceDown/hostFilter は queue 側で照合する。
-      queueSelfDroppedFromSoulTriggers(card, owner, { faceDown: true, host: soulHost });
-      // (a) 『奇襲』特殊コール権。
-      if (hasKeyword(card, "ambush")) {
+      // (b) 自己ドロップ誘発。requireFaceDown 付き(0067 奇襲)は表向き落下(wasFaceDown=false)では発火しない。
+      //     hostFilter は queue 側で __soulHost スナップショットと照合する。
+      queueSelfDroppedFromSoulTriggers(card, owner, { faceDown: wasFaceDown, host: soulHost });
+      // (a) 『奇襲』特殊コール権は裏向き札のみ（表向き通常ソウル札は対象外）。
+      if (wasFaceDown && hasKeyword(card, "ambush")) {
         recordAmbushOpportunity(card, owner);
       }
     });
@@ -1955,8 +1962,15 @@ function resolveLifeZeroReplacements() {
       const overlayCard = player.hand[handIndex];
       const rep = overlayCard.handLifeZeroReplacement;
       if (!rep.requireFlag || player.flag?.name === rep.requireFlag) {
+        const previousFlag = player.flag;
+        if (!stackPlayerFlag(player, rep.stackFlagId)) {
+          return; // フラッグ定義が引けない異常時は何も消費しない（従来はここで手札だけ消えていた）
+        }
         player.hand.splice(handIndex, 1); // 手札のこのカードをフラッグに重ねる（消費）
-        stackPlayerFlag(player, rep.stackFlagId);
+        // カード保存則: 差し替えフラッグ実体は重ねた0128の instanceId を引き継ぎ、旧フラッグ実体を下に重ねて
+        // 保持する（物理カードを消さない。soul ごと room/replay に直列化される。フザー card-conservation 対象）。
+        player.flag.instanceId = overlayCard.instanceId;
+        player.flag.soul = [previousFlag];
         if (rep.dropAllField) {
           zones.forEach((zone) => {
             if (player.field[zone]) {
@@ -1999,6 +2013,10 @@ function resolveLifeZeroReplacements() {
             addLog(`${player.name}の効果で${receiver.name}に${eff.amount || 0}ダメージ！`);
           } else if (eff.op === "gainLife") {
             player.life += eff.amount || 0;
+          } else if (eff.op === "draw") {
+            // E-XC16(X-CP01/0062 バディトゥギャザー！): 「かわりにライフは2になり、さらにカード1枚を引く」。
+            // drawCards 直呼び（同期経路の作法＝applyDamageToPlayer 等の非同期は使わない。誘発は内部で queue）。
+            drawCards(player, eff.amount || 1);
           }
         }
       }

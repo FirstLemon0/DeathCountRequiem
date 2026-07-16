@@ -1483,6 +1483,91 @@
       "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/pr_0331.png",
       "generation": "DDD",
       "_note": "公式レシピ201702_10用の単品収録（R9(A)裁定）。必殺モンスター（type:impactMonster・既存機構。コール制限は card.type 判定のみでカード固有フラグ不要）。原文にコール記載なし=無償コール(costs省略)。攻撃時トリガはevent:attack（runAttackDeclarationTriggersがattacker.card個体へ直接発火＝pendingAttackBySource等の自己確認条件は不要。D-EB01/0019と同型）。『手札2枚まで捨てて、捨てた枚数分引く』はdraw opがamountFromに非対応（drawはeffect.amountのみ参照）なためリゲル・オリオン(bf-h-bt01-giga-future.json/bf-d-bt03-horobose-daimaryu.json 前例)と同型のchooseBranch(0/1/2枚)分岐で枚数ごとに固定drawを充てる近似実装（属性制限なしの点のみリゲル・オリオンと異なる）。named-once「鬼童の策略」はlimit{scope:turn,key:'鬼童の策略',shared:true}。"
+    },
+    {
+      "id": "bf-pr-0341",
+      "no": "PR/0341",
+      "name": "ドラゴンフォース “相棒の型”",
+      "type": "item",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜",
+        "武器"
+      ],
+      "rarity": "PR",
+      "power": 5000,
+      "critical": 2,
+      "rules": [
+        "■『解放条件！』〔君のライフが６以下で、君の場にカード名に「バルドラゴン」を含むモンスターがいる〕",
+        "■【装備コスト】ゲージ２を払う。",
+        "■場のこのカードは破壊されず、手札に戻せず、能力は無効化されない。",
+        "■君の場の《太陽竜》のモンスターが攻撃した時、そのバトル中、そのモンスターの打撃力を＋２！！この能力はアタックフェイズとファイナルフェイズに１回ずつ発動する。"
+      ],
+      "equipConditions": [
+        {
+          "op": "lifeLte",
+          "amount": 6
+        },
+        {
+          "op": "ownFieldCardExists",
+          "filter": {
+            "nameIncludes": "バルドラゴン",
+            "cardType": "monster"
+          }
+        }
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-pr-0341-ally-taiyoryu-attack-crit-buff",
+          "kind": "triggered",
+          "event": "allyAttack",
+          "conditions": [
+            {
+              "op": "targetMatches",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "太陽竜"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "critical": 2,
+              "duration": "battle"
+            }
+          ],
+          "limit": {
+            "scope": "phase"
+          }
+        }
+      ],
+      "cannotBeNullified": true,
+      "cannotReturnToHand": true,
+      "destroyImmunity": [
+        {
+          "from": {
+            "byBattle": true
+          }
+        },
+        {
+          "from": {
+            "byEffect": true
+          }
+        }
+      ],
+      "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/pr_0341.png",
+      "generation": "バッツ",
+      "_note": "公式レシピ201705_4用の単品先行収録（R8裁定・D-SS01/0027・トラゴス前例）。型はbf-d-bt03-0001「ドラゴンフォース(ドラゴンワールド)」/bf-d-cbt-0104〜0106「ドラゴンフォース“○○の型”」の同一ファミリー(『解放条件！』太陽竜アイテム)を直接踏襲: ①equipConditions=lifeLte6+ownFieldCardExists{nameIncludes:バルドラゴン,cardType:monster}（bt03-0001と字面一致）。②costs.equip=[payGauge2]。③『場のこのカードは破壊されず、手札に戻せず、能力は無効化されない』の3耐性は同ファミリー全カード(bt03-0001/bt04-0003/ss03-0015/cbt-0104〜0106)共通の cannotBeNullified:true(能力無効化耐性としてこのファミリーが一貫して採用する形。汎用のnullifyImmuneはこのファミリーでは不使用)+cannotReturnToHand:true+destroyImmunity:[{from:{byBattle:true}},{from:{byEffect:true}}]（byBattle/byEffect両方＝bt03-0001と同一。『ファイナルフェイズ中にも攻撃できる』の記載が本カード原文に無いためcanAttackInFinalPhaseは付与しない）。④『君の場の《太陽竜》のモンスターが攻撃した時、そのバトル中、そのモンスターの打撃力を＋２。この能力はアタックフェイズとファイナルフェイズに１回ずつ発動する』はbf-d-bt01-0026「太陽拳 バルナックル」（同一文言『この能力はアタックフェイズとファイナルフェイズに１回ずつ発動する』を持つ直接前例）と同型: event:allyAttack(場全体ブロードキャスト)+conditions targetMatches{filter:{cardType:monster,attribute:太陽竜}}+effects modifyStats{target:$target,critical:2,duration:battle}+limit{scope:phase}。limit.scope:\"phase\"はフェイズ跨ぎで自動リセットされるため、アタックフェイズに1回・ファイナルフェイズに1回、計2回まで自然に許容する（isAbilityLimitUsed/markAbilityLimitのscope:\"phase\"分岐、src/15-ability-effects.js:2973/2991で実在確認）。当初案のphaseIs条件付き2アビリティ×各unnamed turn-limitより、この単一ability+limit.scope:phase形の方が0026で実戦績のある形であり誤差なく同じ発火回数を再現するため、R8裁定の実装意図（アタック/ファイナル各1回ずつ）を保ったままこちらを採用。grep自己検査: lifeLte/ownFieldCardExists/payGauge/targetMatches/modifyStats/cannotBeNullified/cannotReturnToHand/destroyImmunity 全実在確認。VM実操作経路検証は_scratch/pr0341-verify.jsで実施。"
     }
   ]
 }

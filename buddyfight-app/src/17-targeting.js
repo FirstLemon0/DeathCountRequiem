@@ -423,9 +423,15 @@ function matchesCardFilter(card, filter = {}, options = {}) {
   // findFieldCardSlot で対象自身の所有者を特定する（場外のカードは buddy 判定不能=false）。
   if (filter.buddy !== undefined) {
     const buddySlot = findFieldCardSlot(card);
+    // 場のカードは在場スロットで所有者を特定する。E-XC15(X-CP01/0061 バディカモン！): 場外(デッキ/手札)の
+    // カードは findFieldCardSlot が null になり従来は常に非バディ扱いだった。options.owner が渡されていれば
+    // その所有者の登録バディ名で判定してフォールバックする（searchDeckToHand{filter:{buddy:true}} 等で
+    // owner を明示した呼び出しのみ有効＝owner を渡さない既存呼び出しは従来どおり＝挙動不変）。
+    const buddyOwner = buddySlot ? buddySlot.owner : options.owner;
     const isBuddy =
-      Boolean(buddySlot) &&
-      (card.turnTreatAsBuddy || cardNames.includes(state.players[buddySlot.owner]?.buddy?.name));
+      buddyOwner !== undefined &&
+      buddyOwner !== null &&
+      (card.turnTreatAsBuddy || cardNames.includes(state.players[buddyOwner]?.buddy?.name));
     if (Boolean(filter.buddy) !== isBuddy) {
       return false;
     }

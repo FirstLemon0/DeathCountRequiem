@@ -667,6 +667,11 @@ function flagIsHomeForDeckAnyFlag(flag, card) {
 // 公式テキスト「君のフラッグが＜そのカードのワールド＞以外なら1枚」に対応（特殊フラッグは非ホーム＝1枚）。
 function cardCopyLimitForFlag(flag, card) {
   const base = 4;
+  // E-XC3(X-CP01/0043 キャノンボール隊):「デッキに何枚でも入れられる」＝同名投入上限 Infinity（フラッグ非依存）。
+  // 既存カードは deckUnlimitedCopies を持たない＝この分岐は0件で通常4枚均一のまま（オプトイン・後方互換）。
+  if (card?.deckUnlimitedCopies) {
+    return Infinity;
+  }
   const rule = card?.deckAnyFlag;
   if (!rule) {
     return base;
@@ -873,7 +878,7 @@ function createCardResult(card) {
         <strong>${escapeHtml(card.name)}</strong>
         <span class="meta-line">${escapeHtml(cardSummaryLine(card))}</span>
       </div>
-      <span class="meta-line">${count}${copyLimit != null ? " / " + copyLimit : ""}枚</span>
+      <span class="meta-line">${count}${copyLimit != null ? " / " + (copyLimit === Infinity ? "∞" : copyLimit) : ""}枚</span>
     </div>
     <div class="card-stat-grid">${cardStatHtml(card)}</div>
     <div class="meta-line">${escapeHtml(card.productName || "-")} / ${escapeHtml((card.attributes || []).join(" / ") || "-")}</div>
@@ -1108,6 +1113,10 @@ function shareCodeFlagIds() {
   flagIdAliases.forEach((_canonical, alias) => ids.add(alias));
   return ids;
 }
+// E-XC3(X-CP01/0043 キャノンボール隊): deckUnlimitedCopies なカードIDの集合（共有コード検証で4枚超を許容）。
+function shareCodeUnlimitedCardIds() {
+  return new Set(cards.filter((card) => card.deckUnlimitedCopies).map((card) => card.id));
+}
 
 // 共有コード文字列を decode（deck-code.js）→ validateDeckCodePayload（実在カード/フラッグ照合）まで通す共通処理。
 // URL の ?deck= と「共有コード取込」ボタンで共用する。戻り値 {ok:true, deck} | {ok:false, message}。
@@ -1125,6 +1134,7 @@ function readDeckShareCode(raw) {
   const result = validateDeckCodePayload(payload, {
     cardIds: shareCodeCardIds(),
     flagIds: shareCodeFlagIds(),
+    unlimitedCardIds: shareCodeUnlimitedCardIds(), // E-XC3
   });
   if (!result.ok) {
     return { ok: false, message: result.reason };

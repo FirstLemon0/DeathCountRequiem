@@ -289,6 +289,7 @@ async function getDeckValidationSets() {
   if (deckValidationCache) return deckValidationCache;
   const cardIds = new Set();
   const flagIds = new Set();
+  const unlimitedCardIds = new Set(); // E-XC3: deckUnlimitedCopies なカードID（同名4枚超を許容）
   const stripBom = (text) => text.replace(/^﻿/, "");
   try {
     const cardsets = JSON.parse(stripBom(fs.readFileSync(path.join(rootDir, "data", "cardsets.json"), "utf8")));
@@ -299,6 +300,7 @@ async function getDeckValidationSets() {
         for (const card of data.cards || []) {
           if (card.type === "flag" && card.deckable !== true) continue; // R7: deckable flag はデッキ投入可
           if (card.id) cardIds.add(card.id);
+          if (card.id && card.deckUnlimitedCopies) unlimitedCardIds.add(card.id); // E-XC3
         }
       } catch (error) {
         console.warn(`[user-store] カードセット読込失敗: ${set.file}: ${error.message}`);
@@ -316,7 +318,7 @@ async function getDeckValidationSets() {
   } catch (error) {
     console.warn(`[user-store] flags.json 読込失敗: ${error.message}`);
   }
-  deckValidationCache = { cardIds, flagIds };
+  deckValidationCache = { cardIds, flagIds, unlimitedCardIds };
   return deckValidationCache;
 }
 
@@ -964,8 +966,8 @@ async function handleApi(req, res, url) {
       sendJsonCors(res, 400, { error: `共有コードが不正です: ${error.message}` });
       return true;
     }
-    const { cardIds, flagIds } = await getDeckValidationSets();
-    const result = deckCode.validateDeckCodePayload(payload, { cardIds, flagIds });
+    const { cardIds, flagIds, unlimitedCardIds } = await getDeckValidationSets();
+    const result = deckCode.validateDeckCodePayload(payload, { cardIds, flagIds, unlimitedCardIds });
     if (!result.ok) {
       sendJsonCors(res, 400, { error: result.reason });
       return true;
@@ -1024,8 +1026,8 @@ async function handleApi(req, res, url) {
         sendJsonCors(res, 400, { error: `共有コードが不正です: ${error.message}` });
         return true;
       }
-      const { cardIds, flagIds } = await getDeckValidationSets();
-      const result = deckCode.validateDeckCodePayload(payload, { cardIds, flagIds });
+      const { cardIds, flagIds, unlimitedCardIds } = await getDeckValidationSets();
+      const result = deckCode.validateDeckCodePayload(payload, { cardIds, flagIds, unlimitedCardIds });
       if (!result.ok) {
         sendJsonCors(res, 400, { error: result.reason });
         return true;

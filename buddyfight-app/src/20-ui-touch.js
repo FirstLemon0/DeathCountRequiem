@@ -187,6 +187,18 @@ function handCardMenuLocal(instanceId) {
     // 重ねてコールする札(callStack)は、先に重ねる対象を盤面タップで選ばせてからコールする
     // （権威版の「効果対象タップ＋callZone」と同型）。
     if (card?.callStack && !elements.effectTarget.value && effectTargetCandidates(card).length > 0) {
+      if (card.callStack.optional) {
+        // E-ZA4:「１枚まで の上に重ね」型は重ねるかどうかをプレイヤーが選べる
+        //（バンテージ仮面の chooseHandAbility と同じ「処理の分離はダイアログで」方式）。
+        showActionMenu(
+          [
+            { label: "重ねてコール（対象を選ぶ）", run: () => startEffectTargeting({ type: "call", zone }) },
+            { label: "重ねずにコール", run: () => runNetworkMutation("コール", () => callMonster(zone)) },
+          ],
+          { onClose: clearLocalSelection },
+        );
+        return;
+      }
       startEffectTargeting({ type: "call", zone });
       return;
     }

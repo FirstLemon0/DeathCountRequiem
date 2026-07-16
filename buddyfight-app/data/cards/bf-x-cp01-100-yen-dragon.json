@@ -1,0 +1,5007 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-x-cp01-100-yen-dragon",
+    "name": "バッツ キャラクターパック第１弾「めっちゃ!! 100円ドラゴン」",
+    "kind": "キャラクターパック",
+    "generation": "バッツ",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=60"
+  },
+  "cards": [
+    {
+      "id": "bf-x-cp01-0001",
+      "no": "X-CP01/0001",
+      "name": "武装騎神 エネルゲイア",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "神"
+      ],
+      "size": 3,
+      "power": 10000,
+      "critical": 2,
+      "defense": 9000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から２枚をこのカードのソウルに入れ、ゲージ５を払う。",
+        "■アタックフェイズ中、相手の場のカード全ての能力を無効化する。この能力は無効化されない。",
+        "■このカードはレフトとライトに攻撃できず、このカードが１枚で攻撃しているバトル中、相手は【対抗】を使えない。",
+        "『移動』『２回攻撃』『ソウルガード』"
+      ],
+      "nullifyImmune": true,
+      "cannotAttackZones": [
+        "left",
+        "right"
+      ],
+      "keywords": [
+        "move",
+        "doubleAttack",
+        "soulguard"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 2
+          },
+          {
+            "op": "payGauge",
+            "amount": 5
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "nullifyAbilities",
+          "controller": "opponent",
+          "zones": [
+            "field",
+            "soul"
+          ],
+          "filter": {},
+          "conditions": [
+            {
+              "op": "phaseIs",
+              "phase": "attack"
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0001-solo-counterlock",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "attackingAlone"
+            }
+          ],
+          "effects": [
+            {
+              "op": "preventOpponentCounterThisTurn"
+            }
+          ]
+        }
+      ],
+      "_note": "C1(3節分解): (i)『アタックフェイズ中、相手の場のカード全ての能力を無効化する。この能力は無効化されない』は、当初設計案(nullifyFieldAbilities一発snapshot＋cannotBeNullified)ではなく、より精密な既存precedent bf-s-ub-c03-0024 はぴはぴアイドル諸星きらり（同一文言『お互いのアタックフェイズ中、相手の場のカード全ての能力を無効化する。この能力は無効化されない』）が使う continuous{op:nullifyAbilities, controller:opponent, zones:[field,soul], filter:{}, conditions:[phaseIs attack]} + card級 nullifyImmune:true を採用（isAbilitiesNullified src/05:101 が card.cannotBeNullified を一切読まず、card.nullifyImmune/cardProtectedFrom(nullify)のみを読むため、design.mdの cannotBeNullified 提案は実際にはトリガー能力を保護しない＝より正確な実装へ変更。cannotBeNullified はpendingAction＝【対抗】等で打ち消される宣言の保護用で本件と別機構）。継続版はアタックフェイズ中のみ真に有効＝turnNullifies一発snapshotよりも忠実（ファイナルフェイズへの越境が無い）。(ii)『レフトとライトに攻撃できず』=cannotAttackZones(cp01-0013/bf-h-sd01-0005等前例)。(iii)『1枚で攻撃しているバトル中、相手は対抗を使えない』=event:attack+conditions:[attackingAlone]+preventOpponentCounterThisTurn（D-EB03/0004型・『バトル中』→『そのターン中』はDB多数の既存忠実近似）。grep自己検査: nullifyAbilities(src/05:148)/nullifyImmune(src/05:102)/cannotAttackZones(src/multiple)/attackingAlone(src/13:836)/preventOpponentCounterThisTurn(bf-h-eb04/bf-d-eb03等) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0002",
+      "no": "X-CP01/0002",
+      "name": "爆竜一家の長 ヴォムヴォール",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■このカードが攻撃した時、相手の場のモンスターかアイテム１枚を破壊する。破壊したら、そのカードの打撃力分、相手にダメージ！",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0002-attack-destroy-damage",
+          "kind": "triggered",
+          "event": "attack",
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardTypeIn": [
+                "monster",
+                "item"
+              ]
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amountFrom": {
+                "source": "targetStat",
+                "stat": "critical"
+              },
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "『このカードが攻撃した時、相手の場のモンスターかアイテム1枚を破壊する。破壊したら、そのカードの打撃力分、相手にダメージ！』=event:attack+ability.target{fieldCard,controller:opponent,filter:{cardTypeIn:[monster,item]},allowMissingTarget:true}→effects:[destroy{target:$target}, dealDamage{amountFrom:{source:targetStat,stat:critical},conditions:[lastDestroySucceeded]}]。critical=打撃力（このDBのstat命名規約）。lastDestroySucceededはF1修正済で使用可（bf-d-bt02-todoroke-muteki-ryu.json同型・statのみsize→criticalに変更）。grep自己検査: destroy(src/15:1092)/dealDamage/targetStat(src/15:2653-2659)/lastDestroySucceeded 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0003",
+      "no": "X-CP01/0003",
+      "name": "不屈の暴虐竜 バッツ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 3,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■君のターン中、場のこのカードは破壊されない。",
+        "■このカードの攻撃で相手のモンスターを破壊した時、このカードをスタンドする。",
+        "■君のライフが４以下なら、このカードが１枚で攻撃している攻撃は無効化されない。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "destroyImmunity": [
+        {
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        },
+        {
+          "from": {
+            "byBattle": true
+          },
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        }
+      ],
+      "attackResistances": [
+        {
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 4
+            },
+            {
+              "op": "attackingAlone"
+            }
+          ],
+          "effects": [
+            "nullify"
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0003-destroyByAttack-stand",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ]
+        }
+      ],
+      "_note": "C3: (i)『君のターン中、場のこのカードは破壊されない』はカード級destroyImmunity 2エントリ分割(fromなし=効果破壊/from:{byBattle:true}=バトル破壊、各conditions:[turnOwnerIsSelf])＝bf-x-sd01-0001 復活の雷竜バッツ(同名『不屈』系バッツ)前例と同型。(ii)『このカードの攻撃で相手のモンスターを破壊した時、このカードをスタンドする』=event:destroyByAttack(src/10-battle-resolve.js:160、攻撃側カード自身へ直撃)+standTarget{target:$self}。(iii)『君のライフが4以下なら、このカードが1枚で攻撃している攻撃は無効化されない』=card級attackResistances[{conditions:[lifeLte(4),attackingAlone],effects:[nullify]}]（bf-x-bt01-0041前例と同型・filter省略=全nullify源に一致）。grep自己検査: destroyImmunity(src/11:173)/destroyByAttack(src/10:160)/standTarget(src/15:1578)/attackResistances(src/10:257-270)/lifeLte・attackingAlone(src/13) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0004",
+      "no": "X-CP01/0004",
+      "name": "歴戦の迅雷騎士団団長 コマンデュール・ファーネ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "金竜"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】君の場のモンスター１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■君の場のモンスター全ては『移動』を得る。",
+        "■君の場のカード名に「迅雷騎士団」を含むモンスターが攻撃した時、そのターン中、そのカードは『２回攻撃』を得る。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putSelectedOwnFieldCardsToSoul",
+            "filter": {
+              "cardType": "monster"
+            },
+            "min": 1,
+            "max": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "move",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster"
+          }
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0004-jinraikishidan-attack-double",
+          "kind": "triggered",
+          "event": "allyAttack",
+          "conditions": [
+            {
+              "op": "targetMatches",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "迅雷騎士団"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "doubleAttack",
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "①【コールコスト】『場のモンスター1枚をこのカードのソウルに入れ、ゲージ1を払う』=costs.call[putSelectedOwnFieldCardsToSoul{filter:cardType:monster,min:1,max:1},payGauge1]（bf-x-bt01-0052型）。②『君の場のモンスター全ては移動を得る』=continuous grantKeyword{keyword:move,controller:self,filter:{cardType:monster}}（bf-h-eb03-0040と同型）。③『君の場のカード名に「迅雷騎士団」を含むモンスターが攻撃した時、そのターン中2回攻撃』=event:allyAttack(場全体ブロードキャスト)+ability.conditions targetMatches{filter:{cardType:monster,nameIncludes:迅雷騎士団}}+effects grantKeyword{target:$target,keyword:doubleAttack,duration:turn}（bf-x-bt01-0053キング・ザ・ドミネーターと同型構文。0004自身の名にも「迅雷騎士団」を含むため自身の攻撃でも発火＝原文通り）。"
+    },
+    {
+      "id": "bf-x-cp01-0005",
+      "no": "X-CP01/0005",
+      "name": "紅蓮闘士 バルドラゴン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■君がアイテムを装備しているなら、君の場のモンスター全ては『貫通』を得る。",
+        "■このカードが攻撃した時、そのターン中、君の場のカード全ての攻撃力＋2000！",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster"
+          },
+          "keyword": "penetrate",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0005-attack-power-buff",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "modifyStats",
+              "scope": "self",
+              "power": 2000,
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp01-0006",
+      "no": "X-CP01/0006",
+      "name": "バッツ “SD”",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【起動】君のドロップゾーンのカード名に「バッツ」を含むサイズ２以上のモンスター１枚を選び、ゲージ１を払い、場のこのカードをドロップゾーンに置いてよい。そうしたら、選んだカードを【コールコスト】を払ってコールし、そのターン中、そのカードの攻撃力＋3000、打撃力＋１！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0006-sd-reanimate",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "batz",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "バッツ",
+                "sizeGte": 2
+              },
+              "amount": 1,
+              "min": 0,
+              "require": false,
+              "title": "バッツ“SD”",
+              "lead": "コールする、ドロップゾーンのカード名に「バッツ」を含むサイズ2以上のモンスターを選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "chooseBranch",
+              "title": "バッツ“SD”",
+              "lead": "ゲージ1を払って、場のこのカードをドロップゾーンに置き、選んだカードをコールしますか？",
+              "options": [
+                {
+                  "key": "pay",
+                  "label": "ゲージ1を払ってコールする",
+                  "script": [
+                    {
+                      "op": "payCost",
+                      "cost": [
+                        {
+                          "op": "payGauge",
+                          "amount": 1
+                        }
+                      ]
+                    },
+                    {
+                      "op": "dropSelf"
+                    },
+                    {
+                      "op": "callSelectedToEmptyZones",
+                      "var": "batz",
+                      "payCost": "call",
+                      "resolveOnEnter": true
+                    },
+                    {
+                      "op": "modifySelectedStats",
+                      "var": "batz",
+                      "power": 3000,
+                      "critical": 1,
+                      "duration": "turn"
+                    }
+                  ]
+                },
+                {
+                  "key": "skip",
+                  "label": "何もしない",
+                  "script": []
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "C2(自壊リアニメイト): 【起動】ドロップの『バッツ』含むサイズ2以上を選び、ゲージ1、場のこれをドロップに置いてよい。そうしたら選んだカードを【コールコスト】払ってコール＋攻撃力+3000打撃+1。X-BT01/0031 中忍 半月丸（同型『選び、コストを払い、自壊してよい。そうしたら…コール』文言）を忠実踏襲: selectCards(min:0,require:false)で候補を先に選び→chooseBranch(pay/skip)でゲージ1の可否確認込みの全体任意性を表現→pay分岐内でpayCost→dropSelf→callSelectedToEmptyZones{payCost:call}→modifySelectedStats。dropSelfをchooseBranchのpay分岐内だけに置くことで『払わない場合に自己犠牲だけ無駄になる』事故を回避（0031の_note記載パターンと同一）。「コールコスト」が印字されていない(コールコストの記載行が無い)=このカード自身は無償コール(costs省略)。grep自己検査: selectCards/chooseBranch/payCost/dropSelf/callSelectedToEmptyZones/modifySelectedStats 全実在確認（callSelectedToEmptyZones payCost:call=src/14:2615-2623、modifySelectedStats=src/14:1474、td07-0011型）。"
+    },
+    {
+      "id": "bf-x-cp01-0007",
+      "no": "X-CP01/0007",
+      "name": "雷帝軍の名の下に！",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "召喚"
+      ],
+      "rules": [
+        "■【使用コスト】ライフ２を払う。",
+        "■君のドロップゾーンの《雷帝軍》のモンスター２枚を選び、【コールコスト】を払って、別々のエリアにコールする。「雷帝軍の名の下に！」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payLife",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0007-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xcp01-raiteigun-no-na-no-moto-ni"
+          },
+          "script": [
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "cardCount",
+                "controller": "self",
+                "pile": "drop",
+                "filter": {
+                  "cardType": "monster",
+                  "attribute": "雷帝軍"
+                },
+                "cmp": "gte",
+                "amount": 2
+              },
+              "then": [
+                {
+                  "op": "selectCards",
+                  "var": "calls",
+                  "from": "drop",
+                  "controller": "self",
+                  "filter": {
+                    "cardType": "monster",
+                    "attribute": "雷帝軍"
+                  },
+                  "min": 2,
+                  "max": 2,
+                  "amount": 2,
+                  "canPayCost": "call",
+                  "require": false,
+                  "forceDialog": true,
+                  "title": "雷帝軍の名の下に！",
+                  "lead": "ドロップゾーンから《雷帝軍》のモンスターを2枚選んでください。"
+                },
+                {
+                  "op": "callSelectedToEmptyZones",
+                  "var": "calls",
+                  "payCost": "call",
+                  "resolveOnEnter": true,
+                  "require": false
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "『ドロップの《雷帝軍》モンスター2枚を選び、【コールコスト】を払って別々のエリアにコールする』はbf-d-bt01-0064「ホワッツァップ？」型（ifCondition{cardCount pile:drop cmp:gte amount:2}でガードした上でselectCards{min:2,max:2,canPayCost:call}→callSelectedToEmptyZones{payCost:call}）。named-once『「雷帝軍の名の下に！」は１ターンに１回だけ使える』は設計書§5に未掲載だがCP01/0061・0062と同型のカード名自己参照＝bare slugで命名（xcp01-raiteigun-no-na-no-moto-ni）。使用コストはFIX7に従いcosts.cast配列＋ability.cost二重明記（非設置スペルの必須パターン）。"
+    },
+    {
+      "id": "bf-x-cp01-0008",
+      "no": "X-CP01/0008",
+      "name": "ドラゴサクシード",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "チャージ",
+        "回復"
+      ],
+      "rules": [
+        "■【対抗】君の場のモンスター１枚を破壊する。破壊したら、君のライフを＋２し、そのモンスターのサイズ分、君のデッキの上からゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0008-counter-destroy-gauge",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "gainLife",
+              "amount": 2,
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amountFrom": {
+                "source": "targetStat",
+                "stat": "size"
+              },
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "『破壊する。破壊したら、ライフ＋２し、そのモンスターのサイズ分デッキ上からゲージに置く』はbf-x-bt01-0110（破砕充填）と同型: destroy→conditions:[lastDestroySucceeded]でゲート済みのgainLife/putTopDeckToGauge{amountFrom:{source:targetStat,stat:size}}（src/15:2615系）。対象は自分の場のモンスター（controller:self）で必須選択（『してよい』を伴わないため allowMissingTarget 無し）。grep自己検査: destroy/gainLife/putTopDeckToGauge/lastDestroySucceeded(src/13:1191)/targetStat(src/15:2615) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0009",
+      "no": "X-CP01/0009",
+      "name": "バルドラゴン “ダブル・バルバライズ・ブレード！”",
+      "type": "impactMonster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "size": 2,
+      "power": 11000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】君の場の《太陽竜》のモンスター１枚をこのカードのソウルに入れ、ゲージ３を払う。",
+        "■このカードが１枚で攻撃している攻撃は無効化されない。",
+        "■このカードが攻撃した時、相手の場のカード１枚を選び、君のドロップゾーンの《太陽竜》１枚を君のデッキの下に置いてよい。置いたら、選んだカードを破壊する。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putSelectedOwnFieldCardsToSoul",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "太陽竜"
+            },
+            "min": 1,
+            "max": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "attackResistances": [
+        {
+          "conditions": [
+            {
+              "op": "attackingAlone"
+            }
+          ],
+          "effects": [
+            "nullify"
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0009-attack-select-destroy",
+          "kind": "triggered",
+          "event": "attack",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "kill",
+              "from": "field",
+              "controller": "opponent",
+              "filter": {},
+              "amount": 1,
+              "require": true,
+              "title": "バルドラゴン “ダブル・バルバライズ・ブレード！”",
+              "lead": "相手の場のカードを1枚選んでください。"
+            },
+            {
+              "op": "selectCards",
+              "var": "back",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "attribute": "太陽竜"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "allowEmpty": true,
+              "title": "バルドラゴン “ダブル・バルバライズ・ブレード！”",
+              "lead": "君のドロップゾーンの《太陽竜》1枚までをデッキの下に置いてください（選ばなくてもよい）。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "back",
+              "then": [
+                {
+                  "op": "moveSelected",
+                  "var": "back",
+                  "to": "deckBottom"
+                },
+                {
+                  "op": "destroySelected",
+                  "var": "kill"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "コールコストはputSelectedOwnFieldCardsToSoul(filter:monster+太陽竜,min1,max1)+payGauge3（bf-d-bt04-0008と同型）。攻撃時能力はbf-x-ss01-0002（五角超竜大帝カイザードラム）の「相手カード選択→自ドロップ1枚をデッキ下に置いてよい→置いたら選択先を破壊」の script 順序をそのまま踏襲（selectCards kill必須1→selectCards back任意0-1→ifSelection back then[moveSelected deckBottom, destroySelected kill]）。attackResistancesはbf-d-bt03-0096と同型（conditions:[attackingAlone],effects:[nullify]）。grep自己検査: putSelectedOwnFieldCardsToSoul(src/04:642,1066,1789)/attackResistances(src/10:257,270,607)/attackingAlone(src/13:836)/selectCards from:field,drop/ifSelection/moveSelected to:deckBottom/destroySelected 全実在確認済み。"
+    },
+    {
+      "id": "bf-x-cp01-0010",
+      "no": "X-CP01/0010",
+      "name": "ドラムバンカー・ドラゴン “ドリル・ラム・バスターブレイク！”",
+      "type": "impactMonster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 2,
+      "power": 10000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】君の場のモンスター１枚をこのカードのソウルに入れ、ゲージ３を払う。",
+        "■このカードがセンターのモンスターを攻撃しているバトル中、相手は【対抗】を使えない。",
+        "■このカードが相手にダメージを与えた時、相手の場のカード全てを破壊する。",
+        "『貫通』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putSelectedOwnFieldCardsToSoul",
+            "filter": {
+              "cardType": "monster"
+            },
+            "min": 1,
+            "max": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0010-center-counterlock",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "preventOpponentCounterThisTurn",
+              "conditions": [
+                {
+                  "op": "pendingAttackTargetZone",
+                  "zone": "center"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "bf-x-cp01-0010-dealdamage-destroyall",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "effects": [
+            {
+              "op": "destroy",
+              "scope": "opponent"
+            }
+          ]
+        }
+      ],
+      "_note": "必殺モンスター（type:impactMonster はskeleton保持）。①【コールコスト】=0004と同型（ゲージ3）。②『このカードがセンターのモンスターを攻撃しているバトル中、相手は対抗を使えない』=event:attack(自己発火)+effects preventOpponentCounterThisTurn{conditions:[pendingAttackTargetZone{zone:center}]}（bf-d-eb03-0004型。conditionsはCONDITIONS_DEFERRED_TO_CONSUMER_OPSにより対抗使用時に再評価されるため『バトル中』が続く限り機能）。③『このカードが相手にダメージを与えた時、相手の場のカード全てを破壊する』=event:dealDamage(自己発火・接頭辞なし)+effects destroy{scope:opponent}（filter無指定=zones全域=モンスター/アイテム/設置すべて＝『カード全て』に一致。bf-h-eb02-0010-return型のdealDamage自己発火を踏襲）。"
+    },
+    {
+      "id": "bf-x-cp01-0011",
+      "no": "X-CP01/0011",
+      "name": "ラピッドマスター クレシェンテ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 3,
+      "power": 10000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■場のこのカードは相手のモンスターの効果で破壊されない。",
+        "『３回攻撃』（このカードは１ターンに２回、攻撃した後スタンドできる）"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "destroyImmunity": [
+        {
+          "from": {
+            "byEffect": true,
+            "byOpponent": true
+          }
+        }
+      ],
+      "keywords": [
+        "tripleAttack"
+      ],
+      "_note": "『場のこのカードは相手のモンスターの効果で破壊されない』はカード級destroyImmunity[{from:{byEffect:true,byOpponent:true}}]（bf-d-bt04-0050等の常時型前例と同型）。FD4近似（bf-d-cbt-0084の_note記載と同一根拠）: destroyImmunityBlocks(src/11:173)のfromはbyBattle/byEffect/byOpponentのみを判定し発生源の種別(モンスター/魔法/アイテム)を区別しない実装のため、原文『相手のモンスターの効果で』を『相手の効果で』(魔法/アイテム由来も含む)へ広げて実装。保護側に有利な過剰防御＝実害極小の意図的近似。『3回攻撃』=keywords:[tripleAttack](hasKeyword src/10:766 実在確認)。"
+    },
+    {
+      "id": "bf-x-cp01-0012",
+      "no": "X-CP01/0012",
+      "name": "氷竜族族長 アイシクル",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 3,
+      "power": 8000,
+      "critical": 3,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■君がアイテムを装備しているなら、このカードの打撃力＋１！！",
+        "『貫通』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "penetrate",
+        "soulguard"
+      ],
+      "_note": "【コールコスト】『デッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う』は原文の記述順どおりcosts.call=[putTopDeckToSoul(1), payGauge(1)]（bt03-0036型・順序が逆でも機能的に等価だが原文表記順に合わせた）。『アイテムを装備しているなら打撃力＋1』はbf-x-sd01-0002（騎竜隊長ケーゲル・バイド）完全一致前例をfilter:{sameInstanceAsSource:true}+conditions:[cardCount{pile:item,cmp:gte,amount:1}]で複製（『打撃力』=critical、SKILL.md既知落とし穴）。『貫通』『ソウルガード』は静的keywords配列。grep自己検査: putTopDeckToSoul/payGauge/modifyStats/cardCount/penetrate/soulguard 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0013",
+      "no": "X-CP01/0013",
+      "name": "黄金の竜騎王 ツタンカーメン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 2,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■【起動】相手の場のモンスター１枚を選び、手札の《竜騎士》１枚を捨ててよい。捨てたら、選んだカードを破壊する。",
+        "■このカードが攻撃した時、君のドロップゾーンに《竜騎士》５種類以上があるなら、カード１枚を引く。",
+        "『２回攻撃』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0013-discard-destroy",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "optional": true,
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1,
+              "filter": {
+                "attribute": "竜騎士"
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-cp01-0013-attack-draw",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "attribute": "竜騎士"
+              },
+              "distinct": "distinctByName",
+              "cmp": "gte",
+              "amount": 5
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "0013: 【起動】捨てたら破壊はbf-h-eb02-0013-destroy型（optional:true+cost discardHand{filter}+target fieldCard opponent monster+effects destroy $target）。攻撃時ドローはcardCount{pile:drop,distinct:distinctByName,attribute:竜騎士,cmp:gte,amount:5}（bf-d-bt02-0024型）。limit記載なし＝原文に「1ターンに1回」節が無いため付与せず。"
+    },
+    {
+      "id": "bf-x-cp01-0014",
+      "no": "X-CP01/0014",
+      "name": "英雄の魂 ジャックナイフ “スピリット”",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【対抗】【起動】手札のこのカードを、君の場のカード名に「ジャックナイフ」を含むカード１枚のソウルに入れる。入れたら、そのカードをスタンドする。",
+        "■このカードが君の場のカード名に「ジャックナイフ」を含むカードのソウルにあるなら、そのカードの攻撃力＋1000、防御力＋1000！！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0014-tosoul-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "nameIncludes": "ジャックナイフ"
+            }
+          },
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            },
+            {
+              "op": "standTarget",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "soulContinuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "nameIncludes": "ジャックナイフ"
+          },
+          "power": 1000,
+          "defense": 1000
+        }
+      ],
+      "_note": "『【対抗】【起動】手札のこのカードを、場のカード名に「ジャックナイフ」を含むカード１枚のソウルに入れる。入れたら、そのカードをスタンドする』はbf-d-td01-0004（鎧の番長 アンダー・ザ・堅）と同型: kind:activated+fromHandOnly:true+timing:[counter]（【対抗】【起動】併記＝counterのみ、bf-h-ss01-0027の【起動】単独＝timing:[main]との対比で確認済）+target(controller:self,filter:{nameIncludes:ジャックナイフ})+effects:[moveSelfToTargetSoul,standTarget]（同一target参照でホストをスタンド）。F4是正: 原文「…を含むカード１枚」（モンスターに限定しない）に合わせ target filter から cardType:monster を除去（soulContinuous 側の filter:{nameIncludes:ジャックナイフ} と統一・アイテム等のジャックナイフ札のソウルにも入れられる）。『このカードが「ジャックナイフ」を含むカードのソウルにあるなら、そのカードの攻撃力＋1000防御力＋1000』はbf-d-bt01-0076（剣星機 J・イグナイター）と同型のsoulContinuous（filter:{nameIncludes:ジャックナイフ}でホスト名判定）。moveSelfToTargetSoulは手札ソース対応済み(src/15:2177-2190)。grep自己検査: moveSelfToTargetSoul/standTarget/soulContinuous/modifyStats 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0015",
+      "no": "X-CP01/0015",
+      "name": "不死の竜騎公 ヴラド・ドラキュラ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】君の場の《竜騎士》１枚をソウルに入れ、ゲージ２を払う。",
+        "■このカードが攻撃した時、君のドロップゾーンに《竜騎士》２種類以上があるなら、そのターン中、このカードは『貫通』を得て、さらに、４種類以上があるなら、『２回攻撃』を得て、さらに、６種類以上があるなら、相手にダメージ１！",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putSelectedOwnFieldCardsToSoul",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "竜騎士"
+            },
+            "min": 1,
+            "max": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0015-attack-escalate",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "penetrate",
+              "duration": "turn",
+              "conditions": [
+                {
+                  "op": "cardCount",
+                  "controller": "self",
+                  "pile": "drop",
+                  "filter": {
+                    "attribute": "竜騎士"
+                  },
+                  "distinct": "distinctByName",
+                  "cmp": "gte",
+                  "amount": 2
+                }
+              ]
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "doubleAttack",
+              "duration": "turn",
+              "conditions": [
+                {
+                  "op": "cardCount",
+                  "controller": "self",
+                  "pile": "drop",
+                  "filter": {
+                    "attribute": "竜騎士"
+                  },
+                  "distinct": "distinctByName",
+                  "cmp": "gte",
+                  "amount": 4
+                }
+              ]
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "cardCount",
+                  "controller": "self",
+                  "pile": "drop",
+                  "filter": {
+                    "attribute": "竜騎士"
+                  },
+                  "distinct": "distinctByName",
+                  "cmp": "gte",
+                  "amount": 6
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "0015: コールコストはputSelectedOwnFieldCardsToSoul{min1,max1,filter:竜騎士monster}+payGauge2。攻撃時のカスケード(2/4/6種類)はcardCount distinctByNameを閾値別に3効果へ個別conditionsで付与（grantKeyword penetrate/doubleAttack はduration:turn必須、dealDamageは即時1回のみのためduration不要）。3効果は独立条件ゲートなので『さらに』の重ね掛け文意を維持（例: 6種類ならpenetrate+doubleAttack+damageの全部が成立）。"
+    },
+    {
+      "id": "bf-x-cp01-0016",
+      "no": "X-CP01/0016",
+      "name": "噂の壊し屋 メニー・クラック",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■このカードの攻撃で相手のモンスターを破壊した時、相手の場のアイテム１枚を破壊する。",
+        "『移動』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "move",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0016-destroyByAttack-destroy-item",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "item"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "_note": "『このカードの攻撃で相手のモンスターを破壊した時、相手の場のアイテム1枚を破壊する』=event:destroyByAttack+ability.target{fieldCard,controller:opponent,filter:{cardType:item},allowMissingTarget:true}→effects:[destroy{target:$target}]（bf-x-sd01-0001型と同構成）。grep自己検査: destroyByAttack(src/10:160)/destroy(src/15:1092) 実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0017",
+      "no": "X-CP01/0017",
+      "name": "太陽神の欠片 バルフランム",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■君の場に他の元々のサイズが３の《太陽竜》がいるなら、場のこのカードのサイズを２減らす。",
+        "■君の場の《太陽竜》のモンスター全ては、相手のカードの効果で、破壊されず、手札に戻せない。"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "size": -2,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "attribute": "太陽竜",
+                "baseSize": 3
+              },
+              "excludeSource": true,
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "op": "grantDestroyImmunity",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "太陽竜"
+          },
+          "from": {
+            "byEffect": true,
+            "byOpponent": true
+          }
+        },
+        {
+          "op": "preventReturnToHand",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "太陽竜"
+          }
+        }
+      ],
+      "_note": "サイズ減はmodifyStats(controller:self,filter:sameInstanceAsSource,size:-2)をcardCount(pile:field,filter:{attribute:太陽竜,baseSize:3},excludeSource:true,cmp:gte,amount:1)でゲート（baseSizeは印字サイズ参照・src/17:369）。『君の場の《太陽竜》のモンスター全ては、相手のカードの効果で、破壊されず、手札に戻せない』はgrantDestroyImmunity(from:{byEffect:true,byOpponent:true})+preventReturnToHand（既存bf-h-bt04-0067と同型）。F2是正: 原文「《太陽竜》のモンスター全て」に合わせ両filterに cardType:monster を追加（アイテム/呪文の《太陽竜》札は保護対象外）。preventReturnToHandは自分の効果由来の戻しも一律ブロックする既存DB共通の近似（byOpponent限定は非対応・bf-h-bt04-0067等の先例踏襲・先例では_note省略済みの確立済み挙動）。"
+    },
+    {
+      "id": "bf-x-cp01-0018",
+      "no": "X-CP01/0018",
+      "name": "太陽神の欠片 バルグロウ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■君が必殺モンスターを手札からコールする場合、【コールコスト】に書かれているゲージは２少なくなる。"
+      ],
+      "costReduction": [
+        {
+          "purpose": "call",
+          "filter": {
+            "cardType": "impactMonster"
+          },
+          "payOp": "payGauge",
+          "amount": 2
+        }
+      ],
+      "_note": "E-XC2(xcp-engine-notes.md)の結論通り、既存costReduction{purpose:call,filter:{cardType:impactMonster},payOp:payGauge,amount:2}がcallコスト経路(payCardCostWithSelection→cardCostSteps→adjustedCostSteps, src/04)にそのまま乗り新op不要（VM実測でも0071/xcp01-b6-verify.jsのimpactMonster手札コールでゲージ-2を確認）。軽微近似: 『必殺モンスターを手札からコールする場合』の『手札から』限定は表現不可（costReductionのpurpose:callは通常コール・効果コールの両方に一律適用され、コール元(手札/ドロップ等)を区別しない）。実害は「ドロップから【コールコスト】を払ってコールする」等の非手札経路にも同じ軽減が及ぶ点のみ（本製品内には該当カード無し・将来の必殺モンスター再コール系カードとの組み合わせで軽微な過剰軽減が生じ得る）。grep自己検査: costReduction(src/04:439-449) 実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0019",
+      "no": "X-CP01/0019",
+      "name": "ドラゴニック・チャージ “プラス”",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "チャージ"
+      ],
+      "rules": [
+        "■君のデッキの上から２枚をゲージに置く。さらに、君のライフが５以下なら、君のデッキの上から３枚をゲージに置く。「ドラゴニック・チャージ “プラス”」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0019-gauge",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 3,
+              "conditions": [
+                {
+                  "op": "lifeLte",
+                  "amount": 5
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xcp01-dragonic-charge-plus"
+          }
+        }
+      ],
+      "_note": "『デッキの上から２枚をゲージに置く。さらに、ライフが５以下なら、デッキの上から３枚をゲージに置く』はputTopDeckToGauge{amount:2}（無条件）+putTopDeckToGauge{amount:3,conditions:[lifeLte:5]}（このターン中ライフはputTopDeckToGauge自体では変動しないため、逐次条件評価でも原文通りの意味論＝ゲート順序の問題なし。0036とは異なりgainLife等でライフが変化する効果を挟まないため素朴なeffects[]で安全）。『「ドラゴニック・チャージ“プラス”」は１ターンに１回だけ使える』はbf-h-sd01-0010（ドラゴニック・ディレクティブ）型の自己名限定limit（F5是正: key は接頭辞統一で xcp01-dragonic-charge-plus）。grep自己検査: putTopDeckToGauge/lifeLte 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0020",
+      "no": "X-CP01/0020",
+      "name": "魔王轟竜波",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "破壊"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ２を払う。",
+        "■相手の場のモンスター全てを破壊し、破壊した枚数分、カードを引く。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0020-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroy",
+              "scope": "opponent",
+              "filter": {
+                "cardType": "monster"
+              }
+            },
+            {
+              "op": "draw",
+              "amountFrom": {
+                "source": "lastDestroyedCount"
+              }
+            }
+          ]
+        }
+      ],
+      "_note": "『相手の場のモンスター全てを破壊し、破壊した枚数分カードを引く』はdestroy{scope:opponent,filter:{cardType:monster}}→draw{amountFrom:{source:lastDestroyedCount}}。lastDestroyedCountはdealDamage向けに既存実装済み（bf-h-bt03-0020等）だが、drawはamountFromを未実装だったため、gainLife/putTopDeckToGauge/dealDamageと同形の1行拡張をsrc/15-ability-effects.jsのdraw opハンドラに追加した（既存呼び出しはeffect.amountFrom省略時は従来通りeffect.amount||1に完全一致＝後方互換）。新opの創作ではなく既存opへのamountFrom対応統一（sibling opsとの整合）。"
+    },
+    {
+      "id": "bf-x-cp01-0021",
+      "no": "X-CP01/0021",
+      "name": "ドラゴンシールド 刀竜の盾",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "黒竜",
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】その攻撃を無効化し、さらに、君の手札が１枚以下か、君のライフが２以下なら、カード１枚を引く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0021-counter-nullify-draw",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "draw",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "any",
+                  "conditions": [
+                    {
+                      "op": "cardCount",
+                      "controller": "self",
+                      "pile": "hand",
+                      "cmp": "lte",
+                      "amount": 1
+                    },
+                    {
+                      "op": "lifeLte",
+                      "amount": 2
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "『相手のターンの攻撃中、センターにモンスターがいないなら使える』+『【対抗】その攻撃を無効化』はbf-d-sd01-0014（ドラゴンシールド 太陽の盾）と同型：使えるタイミングをability.conditions:[ownCenterEmpty, pendingAttackDefenderIsSelf]で表現（card級useConditionsではなくability側、対抗spellの標準形）。『手札が１枚以下かライフが２以下なら、カード１枚を引く』はOR条件をchekCondition op:\"any\"（src/13:743、AND=op:\"all\"の鏡）で表現＋cardCount{pile:hand,cmp:lte,amount:1}。nullifyAttackは手札/ライフを変化させないためdraw側のconditions評価タイミングに問題なし。grep自己検査: nullifyAttack/draw/ownCenterEmpty/pendingAttackDefenderIsSelf/any/cardCount/lifeLte 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0022",
+      "no": "X-CP01/0022",
+      "name": "雷竜の大太刀",
+      "type": "item",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "武器"
+      ],
+      "power": 3000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払い、ライフ１を払う。",
+        "■君の場のモンスターが１枚で攻撃した時、そのターン中、このカードの攻撃力＋3000！",
+        "■このカードの攻撃で、相手のモンスターを破壊した時か相手にダメージを与えた時、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "equipCost": {
+        "gauge": 1,
+        "life": 1
+      },
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0022-ally-solo-attack-power",
+          "kind": "triggered",
+          "event": "allyAttack",
+          "conditions": [
+            {
+              "op": "attackingAlone"
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "power": 3000,
+              "duration": "turn"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-cp01-0022-destroy-gauge",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-x-cp01-0022-damage-gauge",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "『君の場のモンスターが1枚で攻撃した時』はallyAttack(bf-d-bt01-0026前例)+attackingAlone条件。『このカードの攻撃で破壊/ダメージ時ゲージ1』はbf-h-eb03-0016と完全同型（bare destroyByAttack/dealDamage、アイテム自身の攻撃に直接配信済み＝grep実証）。"
+    },
+    {
+      "id": "bf-x-cp01-0023",
+      "no": "X-CP01/0023",
+      "name": "超武装騎竜 ガルバニックホーン・ドラゴン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■【起動】君のドロップゾーンの＜ドラゴンＷ＞のサイズ３のモンスター１枚を選び、ゲージ１を払ってよい。払ったら、選んだカードを手札に加える。この能力は１ターンに１回だけ使える。",
+        "■“ガルバニックチャージ”このカードが攻撃した時、君のデッキの上から１枚をゲージに置く。",
+        "『２回攻撃』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0023-recycle",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "optional": true,
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          },
+          "effects": [
+            {
+              "op": "moveMatchingDropToHand",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ],
+                "world": "ドラゴンW"
+              },
+              "amount": 1,
+              "optional": true
+            }
+          ]
+        },
+        {
+          "id": "bf-x-cp01-0023-galvanic-charge",
+          "label": "ガルバニックチャージ",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "0023: 【起動】選び→ゲージ払ってよい→払ったら手札に、はbf-x-ss01-0033型（ability.optional:true+cost payGauge+effects moveMatchingDropToHand{filter,amount,optional:true}）に1ターン1回のlimitを加えた形。filterはsizeスカラー禁止のためsizeIn:[3]（厳守事項）。「ガルバニックチャージ」は原文に『1ターンに1回だけ発動する』節が無い単なる技名表記のためlimit key不要（labelのみ付与）。"
+    },
+    {
+      "id": "bf-x-cp01-0024",
+      "no": "X-CP01/0024",
+      "name": "第三代紅蓮闘王 暴乱のアグニ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■君がカード名に「拳」を含むカードを装備しているなら、このカードは『移動』と『貫通』を得る。",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "move",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "filter": {
+                "nameIncludes": "拳"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "filter": {
+                "nameIncludes": "拳"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "0024: 「君がカード名に『拳』を含むカードを装備しているなら」はcardCount{pile:item,filter:{nameIncludes:拳},cmp:gte,amount:1}（bf-h-bt01-0010型の既存条件）を2つのgrantKeyword(move/penetrate)へ複製。"
+    },
+    {
+      "id": "bf-x-cp01-0025",
+      "no": "X-CP01/0025",
+      "name": "山岳の竜騎王 ジェロニモ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士"
+      ],
+      "size": 3,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■【コールコスト】君の場の《竜騎士》１枚以上をこのカードのソウルに入れ、ゲージ３を払う",
+        "■君のドロップゾーンの《竜騎士》１種類につき、このカードの攻撃力＋1000、防御力＋1000！！",
+        "『移動』『２回攻撃』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putSelectedOwnFieldCardsToSoul",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "竜騎士"
+            },
+            "min": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "keywords": [
+        "move",
+        "doubleAttack",
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "amountFrom": {
+            "source": "dropAttributeCount",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "竜騎士"
+            },
+            "distinct": true,
+            "per": {
+              "power": 1000,
+              "defense": 1000
+            }
+          }
+        }
+      ],
+      "_note": "0025: コールコスト「君の場の《竜騎士》1枚以上」はputSelectedOwnFieldCardsToSoul{min:1}(max省略=上限なし=1枚以上)。「ドロップの《竜騎士》1種類につき+1000/+1000」はmodifyStats amountFrom{source:dropAttributeCount,distinct:true,per:{power,defense}}（bf-h-bt03-0041型のdistinct:true実例）。"
+    },
+    {
+      "id": "bf-x-cp01-0026",
+      "no": "X-CP01/0026",
+      "name": "朧ろげな記憶 バッツ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが攻撃したバトルの終了時、君がアイテムを装備しているなら、このカードをスタンドする。この能力は１ターンに１回だけ発動する。",
+        "■君のライフが４以下なら、このカードの打撃力＋２！！"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 2,
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 4
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0026-battleend-stand",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "item"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "『このカードが攻撃したバトルの終了時、君がアイテムを装備しているなら、このカードをスタンドする。この能力は1ターンに1回だけ発動する』=event:battleEnd(bf-h-eb03-0003型・攻撃側カード自身へ直撃)+conditions:[ownFieldCardExists{cardType:item}]+standTarget{target:$self}+limit:{scope:turn}（無名『この能力は1ターンに1回だけ発動する』＝bare limit）。『君のライフが4以下なら、このカードの打撃力+2』=continuous modifyStats{filter:sameInstanceAsSource,critical:2,conditions:[lifeLte(4)]}。grep自己検査: battleEnd(src/10)/ownFieldCardExists(src/13:1021)/standTarget(src/15:1578) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0027",
+      "no": "X-CP01/0027",
+      "name": "十頭斬りのオルソゴニオン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■このカードが攻撃した時、このカードの攻撃力以下の攻撃力を持つ、相手の場のモンスター１枚を破壊する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0027-attack-destroy-lte",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "destroyTargetLteSourceStat",
+              "stat": "power",
+              "controller": "opponent"
+            }
+          ]
+        }
+      ],
+      "_note": "『このカードが攻撃した時、このカードの攻撃力以下の攻撃力を持つ、相手の場のモンスター1枚を破壊する』=event:attack+effects:[destroyTargetLteSourceStat{stat:power,controller:opponent}]（D-BT01/0123前例のstatをpowerへ変更・opは自己完結で対象選択まで内包＝ability.target不要）。grep自己検査: destroyTargetLteSourceStat(src/15:1951) 実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0028",
+      "no": "X-CP01/0028",
+      "name": "太陽神の欠片 バルバーン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが登場した時、君のデッキの上から３枚を見て、その中の《太陽竜》のモンスター１枚までを手札に加え、残りのカードをドロップゾーンに置く。",
+        "『移動』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "move"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0028-enter-look-select",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "lookTopSelectToHandRestToBottom",
+              "count": 3,
+              "max": 1,
+              "filter": {
+                "cardType": "monster",
+                "attribute": "太陽竜"
+              },
+              "altTo": "drop"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp01-0029",
+      "no": "X-CP01/0029",
+      "name": "連撃魔道士 ラブク",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードはセンターにコールできない。",
+        "■このカードの攻撃で、相手のモンスターを破壊した時、そのターン中、このカードは『２回攻撃』を得る。"
+      ],
+      "cannotCallZones": [
+        "center"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0029-destroyByAttack-double",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "doubleAttack",
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "『このカードはセンターにコールできない』=cannotCallZones:[center](bf-h-sd01-0005等前例)。『このカードの攻撃で、相手のモンスターを破壊した時、そのターン中、このカードは2回攻撃を得る』=event:destroyByAttack+grantKeyword{target:$self,keyword:doubleAttack,duration:turn}。grep自己検査: cannotCallZones(bf-x-bt01-0025等)/destroyByAttack/grantKeyword 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0030",
+      "no": "X-CP01/0030",
+      "name": "紅蓮闘士 ロックバンカー・ドラゴン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードが登場した時、君がカード名に「拳」を含むカードを装備しているなら、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0030-enter-gauge",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "filter": {
+                "nameIncludes": "拳"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp01-0031",
+      "no": "X-CP01/0031",
+      "name": "名軍師 ファニング",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 3,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■君のターン中、君の場の《雷帝軍》のカード全ては相手のカードの効果でレストされず、手札に戻せない。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "grantRestImmunity",
+          "controller": "self",
+          "filter": {
+            "attribute": "雷帝軍"
+          },
+          "from": {
+            "byOpponent": true
+          },
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        },
+        {
+          "op": "preventReturnToHand",
+          "controller": "self",
+          "filter": {
+            "attribute": "雷帝軍"
+          },
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        }
+      ],
+      "_note": "『君のターン中、君の場の《雷帝軍》のカード全ては相手のカードの効果でレストされず、手札に戻せない』= continuous 2本。grantRestImmunity{controller:self,filter:{attribute:雷帝軍},from:{byOpponent:true},conditions:[turnOwnerIsSelf]}（Z4系・grantedProtectionBlocksがfromを判定＝bf-s-ub-c03系前例と同型）。preventReturnToHand{controller:self,filter:{attribute:雷帝軍},conditions:[turnOwnerIsSelf]}（bf-d-ss01-neo-dragonic-force.json前例と同型）は意図的にfromキーを付けていない: cannotReturnToHand(src/17:234)が呼ぶcontinuousEffectApplies(src/05:763)はeffect.fromを一切判定しない実装（grantedProtectionBlocks/destroyImmunityBlocksとは別レイヤ）ため、fromを書いても無効＝『相手の効果限定』は表現できず自分の効果による返却も等しくブロックする近似（既存DB全preventReturnToHand共通の制約・実害は皆無=自分から自分の雷帝軍を手札に戻す効果は本弾に無い）。grep自己検査: grantRestImmunity(src/05:844,PROTECTION_OP_BY_KIND)/preventReturnToHand(src/17:250)/continuousEffectApplies(src/05:763,fromキー不読を実証) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0032",
+      "no": "X-CP01/0032",
+      "name": "竜騎大帝 マクシミリアン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■“芸術の保護者”このカードが登場した時、君の場に他の《竜騎士》２枚以上があるなら、君の手札１枚を捨ててよい。捨てたら、カード２枚を引く。「芸術の保護者」は１ターンに１回だけ発動する。"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0032-geijutsu-no-hogosha",
+          "label": "芸術の保護者",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "attribute": "竜騎士"
+              },
+              "excludeSource": true,
+              "cmp": "gte",
+              "amount": 2
+            }
+          ],
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "shared": true,
+            "key": "xcp01-geijutsu-no-hogosha"
+          }
+        }
+      ],
+      "_note": "0032: コールコスト行なし=costs.call:[]+callCost:{gauge:0}（bf-x-ss01-0033慣例）。「登場した時、条件を満たすなら手札1枚を捨ててよい。捨てたら2枚引く」はability.optional:true+cost discardHand(bf-s-ub-c03-0010型)。条件『君の場に他の《竜騎士》2枚以上』はcardCount{excludeSource:true,cmp:gte,amount:2}。named-once限定キーは設計書§5指定のxcp01-geijutsu-no-hogosha（shared:true）。"
+    },
+    {
+      "id": "bf-x-cp01-0033",
+      "no": "X-CP01/0033",
+      "name": "騎竜 ロシナンテ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": [
+        "ドラゴンW",
+        "ダンジョンW"
+      ],
+      "attributes": [
+        "竜騎士",
+        "武装騎竜",
+        "騎士"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■【対抗】【起動】「騎竜 ロシナンテ」以外の、君の場の《竜騎士》か《騎士》のモンスター１枚を選び、ゲージ１を払ってよい。払ったら、手札か場のこのカードを、選んだカードのソウルに入れる。",
+        "■このカードが《竜騎士》か《騎士》のソウルにあるなら、そのカードの打撃力を＋１し、『ソウルガード』を得る。"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0033-soul-in-field",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "attributeIn": [
+                "竜騎士",
+                "騎士"
+              ],
+              "nameNot": "騎竜 ロシナンテ"
+            }
+          },
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-cp01-0033-soul-in-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "attributeIn": [
+                "竜騎士",
+                "騎士"
+              ],
+              "nameNot": "騎竜 ロシナンテ"
+            }
+          },
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "soulContinuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "attributeIn": [
+              "竜騎士",
+              "騎士"
+            ]
+          },
+          "critical": 1
+        },
+        {
+          "op": "grantKeyword",
+          "keyword": "soulguard",
+          "filter": {
+            "attributeIn": [
+              "竜騎士",
+              "騎士"
+            ]
+          }
+        }
+      ],
+      "_note": "0033: 多ワールド(ドラゴンW+ダンジョンW)はskeleton worlds[]METAのみでmech側対応不要(タスク指定)。「手札か場のこのカードを…選んだカードのソウルに入れる」はbf-d-cbt-0069型の2ability構成(counter+sourceZoneIn左中右／counter+fromHandOnly)をability.target+effects moveSelfToTargetSoulで簡潔化(bf-d-bt03-0038/0039のstar-combine型)。対象「『騎竜 ロシナンテ』以外」はfilter.nameNot(既存キー・完全一致除外、同名複数枚投入時も自分含め全ての同名を除外=原文どおり)。ソウル内効果(打撃力+1・ソウルガード)はsoulContinuous+filter.attributeIn(bf-h-td01-0006/0007型)。コールコスト行なし=costs.call:[]+callCost:{gauge:0}。"
+    },
+    {
+      "id": "bf-x-cp01-0034",
+      "no": "X-CP01/0034",
+      "name": "バーニング・ドラゴンJr.",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■このカードが他の《太陽竜》と連携攻撃したバトルの終了時、場のこのカードをドロップゾーンに置いてよい。置いたら、カード１枚を引く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0034-link-mark",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            },
+            {
+              "op": "pendingAttackIncludesOtherMatching",
+              "filter": {
+                "attribute": "太陽竜"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "xcp01-0034-linked",
+              "duration": "turn"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-cp01-0034-battleend-drop-draw",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "conditions": [
+            {
+              "op": "targetMatches",
+              "ref": "$self",
+              "filter": {
+                "keyword": "xcp01-0034-linked"
+              }
+            }
+          ],
+          "script": [
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "confirmPrompt",
+                "prompt": "場のこのカードをドロップゾーンに置きますか？"
+              },
+              "then": [
+                {
+                  "op": "dropSelf"
+                },
+                {
+                  "op": "draw",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "『他の《太陽竜》と連携攻撃したバトルの終了時』はbf-x-bt01-0057（メラエグゾースト・ドラゴン）の2能力橋渡し技法をそのまま踏襲: (a)event:attack+pendingAttackBySource+pendingAttackIncludesOtherMatching(filter:太陽竜)でリンク成立検知→一時マーカーkeyword(xcp01-0034-linked)をduration:turnで自身に付与、(b)event:battleEndでtargetMatches(ref:$self,filter:{keyword:...})により本体を解決。理由: queueBattleEndTriggers起動時点でstate.pendingAttackは既にclearPendingAttack済みのためpendingAttackBySource等はbattleEnd側で使えない（src/10-battle-resolve.js）。『場のこのカードをドロップゾーンに置いてよい。置いたら、カード1枚を引く』はconfirmPrompt(bf-d-eb01-0019前例)のthen内でdropSelf（『破壊』でなく『置く』のためdestroySelfでなくdropSelfを使用=dropFieldCardByRule・ソウルガード等を経由しないルール移動）+draw(1)。grep自己検査: pendingAttackBySource(src/13:1306)/pendingAttackIncludesOtherMatching(src/13:1345)/battleEnd(src/10:494,516,522)/targetMatches(src/13:839)/confirmPrompt(src/13:776)/dropSelf(src/15:941)/draw(src/15:223) 全実在確認済み。"
+    },
+    {
+      "id": "bf-x-cp01-0035",
+      "no": "X-CP01/0035",
+      "name": "小さな炎竜 リーネア",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードはセンターにしかコールできない。",
+        "■このカードのバトル終了時、このカードを君の手札に戻す！"
+      ],
+      "callZones": [
+        "center"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0035-battleend-return",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "includeDefender": true,
+          "effects": [
+            {
+              "op": "returnToHand",
+              "target": "$self"
+            }
+          ]
+        }
+      ],
+      "_note": "『このカードはセンターにしかコールできない』はbf-h-bt02-0042（超玄武 マトリクス）と同型のcallZones:[\"center\"]（cannotCallZonesの逆＝ホワイトリスト）。『バトル終了時、このカードを君の手札に戻す』はbf-h-eb02-0003（影雄 シュヴァルツ）と同型：event:battleEnd時点ではカードはまだ場にあるためreturnToHand{target:$self}を使用（destroyed後専用のreturnSelfToHandではない。SKILL.md既知落とし穴に該当する誤用を回避）。F3是正: 原文は無限定の「このカードのバトル終了時」＝攻撃・被攻撃どちらでも発火すべきだが、bare battleEnd は攻撃者スロットのみ配信（src/10 queueBattleEndTriggers）＝防御バトルで不発だった。includeDefender:true を付け、被攻撃側でも battleEnd を発火させる（既存 bare battleEnd 57件は本キー非保持＝挙動不変のオプトイン）。grep自己検査: callZones/battleEnd/returnToHand 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0036",
+      "no": "X-CP01/0036",
+      "name": "ドラゴンシールド 砂竜の盾",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "青竜",
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】その攻撃を無効化し、さらに、君のゲージが１枚以下なら、君のデッキの上から１枚をゲージに置き、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0036-counter-nullify-gauge-life",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            }
+          ],
+          "script": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "cardCount",
+                "controller": "self",
+                "pile": "gauge",
+                "cmp": "lte",
+                "amount": 1
+              },
+              "then": [
+                {
+                  "op": "putTopDeckToGauge",
+                  "amount": 1
+                },
+                {
+                  "op": "gainLife",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "0021と同型の使えるタイミング（ownCenterEmpty+pendingAttackDefenderIsSelf）。『その攻撃を無効化し、さらにゲージが１枚以下なら、デッキの上から１枚をゲージに置き、ライフを＋１する』は、gauge<=1をゲートにした2効果を『一度だけ評価して両方に適用』する必要がある（putTopDeckToGaugeでゲージが変化した後にgainLife側のconditionsを別途評価すると、境界値(ゲージ=1)で2つ目が不発になる逐次評価バグを誘発するため、effects[]の個別conditionsではなくscript:[nullifyAttack, ifCondition{...}]で一括分岐に変更＝ifConditionForScript(src/14:1096)は条件を1回だけ評価しthen配下をまとめて実行する。putTopDeckToGauge/gainLife/nullifyAttackはisScriptEffectStepホワイトリスト済み(src/14:2788,2791,2830)のためscript内で使用可）。grep自己検査: nullifyAttack/ifCondition/putTopDeckToGauge/gainLife/cardCount/ownCenterEmpty/pendingAttackDefenderIsSelf 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0037",
+      "no": "X-CP01/0037",
+      "name": "サンダー×フラッシュ",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍"
+      ],
+      "rules": [
+        "■君の場に《雷帝軍》のモンスターがいるなら使える。",
+        "■君の場の《雷帝軍》のモンスター１枚と、相手の場のカード１枚を選び、選んだカードを破壊する。"
+      ],
+      "useConditions": [
+        {
+          "op": "cardCount",
+          "controller": "self",
+          "pile": "field",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "雷帝軍"
+          },
+          "cmp": "gte",
+          "amount": 1
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0037-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "own",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "雷帝軍"
+              },
+              "min": 1,
+              "max": 1,
+              "amount": 1,
+              "require": true,
+              "title": "サンダー×フラッシュ",
+              "lead": "自分の場の《雷帝軍》のモンスターを1枚選んでください。"
+            },
+            {
+              "op": "selectCards",
+              "var": "foe",
+              "from": "field",
+              "controller": "opponent",
+              "filter": {},
+              "min": 1,
+              "max": 1,
+              "amount": 1,
+              "require": true,
+              "title": "サンダー×フラッシュ",
+              "lead": "相手の場のカードを1枚選んでください。"
+            },
+            {
+              "op": "destroySelected",
+              "var": "own"
+            },
+            {
+              "op": "destroySelected",
+              "var": "foe"
+            }
+          ]
+        }
+      ],
+      "_note": "『君の場の《雷帝軍》のモンスター1枚と、相手の場のカード1枚を選び、選んだカードを破壊する』は『選んだカード』が2つの選択対象を指す（両方破壊）と読み、selectCards(own)+selectCards(foe)+destroySelected×2で両方を破壊する自壊トレード型として実装（DB内に前例文言なし＝新規解釈だが直訳に忠実）。使用条件『君の場に《雷帝軍》のモンスターがいるなら使える』はuseConditions。無償スペル（【使用コスト】行なし＝costsキー省略、bf-x-sd01-0011サンダー×エナジー前例と同型）。DUP0073は同名別番号でmerge複製（起草不要）。"
+    },
+    {
+      "id": "bf-x-cp01-0038",
+      "no": "X-CP01/0038",
+      "name": "雷竜の短銃",
+      "type": "item",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "武器"
+      ],
+      "power": 5000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払い、ライフ１を払う。",
+        "■このカードの攻撃で、相手のモンスターを破壊した時か相手にダメージを与えた時、相手にダメージ１！"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0038-destroy-damage",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-x-cp01-0038-dealdamage-damage",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "【装備コスト】ゲージ１＋ライフ１はbf-x-bt01-0015（剛腕の破帽）と同型のcosts.equip=[payGauge(1),payLife(1)]。『このカードの攻撃で、相手のモンスターを破壊した時か相手にダメージを与えた時、相手にダメージ１』はbf-h-eb03-0016（百鬼槍 鬼崩し）と完全一致構造の武器アイテム前例：weapon item自身がplayer.field.item経由でセンター等に直接攻撃する場合、attacker.card=このアイテム自身となりevent:destroyByAttack/dealDamageがアイテム自身のabilitiesへ直接発火する（src/10-battle-resolve.js:160,720のrunTriggeredAbilities(attacker.card,...)。武器の直接攻撃はdeclareAttackWithFieldCard(zone:\"item\")経由、src/09-attack.js）。2 abilitiesに分割（同一攻撃で両方成立し得る仕様は原文通り・limit無し）。grep自己検査: payGauge/payLife/destroyByAttack/dealDamage 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0039",
+      "no": "X-CP01/0039",
+      "name": "迅雷騎士団旗",
+      "type": "item",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "武器"
+      ],
+      "power": 4000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■君の場のモンスターが『移動』した時、そのターン中、君の場のカード全ての攻撃力＋2000、防御力＋2000！"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0039-move-buff",
+          "kind": "triggered",
+          "event": "allyMove",
+          "effects": [
+            {
+              "op": "modifyStats",
+              "scope": "self",
+              "power": 2000,
+              "defense": 2000,
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "【装備コスト】ゲージ１はcosts.equip=[payGauge(1)]。『君の場のモンスターが『移動』した時、そのターン中、君の場のカード全ての攻撃力＋2000、防御力＋2000』はevent:allyMove（bf-d-bt03-0085・カッツヴァルケル・ドレイクと同型のフィールドイベント。原文に名称限定が無いため eventCardMatches 条件は付けない＝場の任意の自モンスターの『移動』で発火）→modifyStats{scope:self,power:2000,defense:2000,duration:turn}（filter省略＝『カード全て』＝モンスター/アイテム問わず自陣全体、collectFieldTargets/continuousStatBonusはscope:selfのみで自陣全カードにmatchesCardFilter(filter:{})で一致確認済、bf-d-bt04-0084等でfilter省略のscope付きmodifyStats前例あり）。grep自己検査: payGauge/allyMove/modifyStats 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0040",
+      "no": "X-CP01/0040",
+      "name": "紅蓮拳 ドラゴプラス",
+      "type": "item",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武器"
+      ],
+      "power": 4000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払い、ライフ１を払う。",
+        "■場のこのカードは相手のカードの効果で破壊されない。",
+        "■君の場のモンスター１枚につき、このカードの打撃力＋１！"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "destroyImmunity": [
+        {
+          "from": {
+            "byEffect": true,
+            "byOpponent": true
+          }
+        }
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "amountFrom": {
+            "source": "fieldCardCount",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster"
+            },
+            "per": {
+              "critical": 1
+            }
+          }
+        }
+      ],
+      "_note": "①【装備コスト】ゲージ1+ライフ1=costs.equip（bf-d-td01-0017型）。②『場のこのカードは相手のカードの効果で破壊されない』=destroyImmunity:[{from:{byEffect:true,byOpponent:true}}]（多数前例と同型・自分の効果/バトル破壊は従来通り通る）。③『君の場のモンスター1枚につき、このカードの打撃力+1』=continuous modifyStats{filter:sameInstanceAsSource,amountFrom:{source:fieldCardCount,controller:self,filter:{cardType:monster},per:{critical:1}}}（bf-d-eb01-0024型）。0079（DUP）はmergeが本体mechを複製。"
+    },
+    {
+      "id": "bf-x-cp01-0041",
+      "no": "X-CP01/0041",
+      "name": "剛炎の拳竜 ウォルガノス",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "size": 3,
+      "power": 8000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から２枚をこのカードのソウルに入れ、ゲージ３を払う。",
+        "『２回攻撃』（このカードは１ターンに１回、攻撃した後スタンドできる）",
+        "『ソウルガード』（このカードが場から離れる場合、ソウル１枚を捨てて場に残せる）"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 2
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "_note": "【コールコスト】『デッキの上から2枚をこのカードのソウルに入れ、ゲージ3を払う』=costs.call[putTopDeckToSoul{amount:2},payGauge3]。『2回攻撃』『ソウルガード』は印字キーワードそのままkeywords化（追加能力なし・全て印字キーワードの説明文）。"
+    },
+    {
+      "id": "bf-x-cp01-0042",
+      "no": "X-CP01/0042",
+      "name": "殲滅魔道士 ペイドス",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■このカードの攻撃で相手にダメージを与えた時、ゲージ２を払ってよい。払ったら、相手の場のモンスター全てを破壊する！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0042-dealdamage-destroy-all",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "optional": true,
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroy",
+              "scope": "opponent",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ]
+        }
+      ],
+      "_note": "『このカードの攻撃で相手にダメージを与えた時、ゲージ2を払ってよい。払ったら、相手の場のモンスター全てを破壊する！』=event:dealDamage(bf-x-bt01-0100型・攻撃側カード自身へ直撃)+ability.optional:true(runTriggeredAbilitiesがcanPay判定後にshould-use確認→optional時は使う/使わないダイアログ)+cost:[payGauge(2)]+effects:[destroy{scope:opponent,filter:{cardType:monster}}]（bf-x-bt01-0009型と同型destroy）。grep自己検査: dealDamageイベント(src/10:683-718)/destroy{scope}(bf-x-bt01-0009実例) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0043",
+      "no": "X-CP01/0043",
+      "name": "キャノンボール隊",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■「キャノンボール隊」はデッキに何枚でも入れられる！",
+        "■君のドロップゾーンに「キャノンボール隊」２枚以上があるなら、このカードの攻撃力＋2000！さらに、５枚以上があるなら、このカードの打撃力＋１！！",
+        "■このカードのバトル終了時、場のこのカードを破壊してよい。破壊したら、手札の「キャノンボール隊」１枚までをコールする。"
+      ],
+      "deckUnlimitedCopies": true,
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "power": 2000,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "name": "キャノンボール隊"
+              },
+              "cmp": "gte",
+              "amount": 2
+            }
+          ]
+        },
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "name": "キャノンボール隊"
+              },
+              "cmp": "gte",
+              "amount": 5
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0043-battleend-destroy-recall",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "includeDefender": true,
+          "optional": true,
+          "script": [
+            {
+              "op": "destroySelf"
+            },
+            {
+              "op": "selectCards",
+              "var": "recall",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "name": "キャノンボール隊"
+              },
+              "amount": 1,
+              "min": 0,
+              "require": false,
+              "canPayCost": "call",
+              "callable": true,
+              "title": "キャノンボール隊",
+              "lead": "コールする、手札の「キャノンボール隊」を1枚まで選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "recall",
+              "payCost": "call"
+            }
+          ]
+        }
+      ],
+      "_note": "C9(自壊連鎖)+E-XC3: 『「キャノンボール隊」はデッキに何枚でも入れられる！』=card級 deckUnlimitedCopies:true（E-XC3・engine-notes記載の5層一括実装を利用・builder cardCopyLimitForFlag/engine canUseCardForFlag/deck-code/server/validate_recommendは既に対応済のためカード側はフラグを立てるのみ）。『君のドロップゾーンに「キャノンボール隊」2枚以上/5枚以上』=continuous modifyStats×2(filter:sameInstanceAsSource,conditions:[cardCount{pile:drop,filter:{name:キャノンボール隊},cmp:gte,amount:2/5}])。『このカードのバトル終了時、場のこれを破壊してよい。破壊したら、手札の「キャノンボール隊」1枚までをコールする』=event:battleEnd+optional:true+script:[destroySelf→selectCards(hand,name一致,min:0,require:false,canPayCost:call)→callSelectedToEmptyZones{payCost:call}]。『破壊してよい』=destroy系（dropSelfではない）。連鎖はlimit不要（battleEndは同一バトルにつき1回のみ発火・再入なし）。F3是正: 原文は無限定の「このカードのバトル終了時」＝被攻撃側でも発火すべきだが bare battleEnd は攻撃者スロットのみ配信（src/10）＝防御バトルで不発だった。includeDefender:true を付け、被攻撃側でも battleEnd を発火させる（オプトイン・既存 bare battleEnd 57件は非保持で挙動不変）。デッキ無制限投入の実測（builder関数直呼び）は別途verifyスクリプトで実施。grep自己検査: deckUnlimitedCopies(builder.js:672)/destroySelf(src/15:988)/battleEnd/cardCount/callSelectedToEmptyZones 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0044",
+      "no": "X-CP01/0044",
+      "name": "回復魔道士 トーハ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 3,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが登場した時、君のライフを＋２！"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0044-enter-life",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp01-0045",
+      "no": "X-CP01/0045",
+      "name": "竜騎指令 ベルトラン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】君の場の《竜騎士》１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■君のドロップゾーンに《竜騎士》４種類以上があるなら、君の場の《竜騎士》全ての攻撃力＋2000、防御力＋2000！",
+        "『移動』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putSelectedOwnFieldCardsToSoul",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "竜騎士"
+            },
+            "min": 1,
+            "max": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "move",
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "竜騎士"
+          },
+          "power": 2000,
+          "defense": 2000,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "attribute": "竜騎士"
+              },
+              "distinct": "distinctByName",
+              "cmp": "gte",
+              "amount": 4
+            }
+          ]
+        }
+      ],
+      "_note": "0045: 「ドロップに《竜騎士》4種類以上あるなら、場の《竜騎士》全て+2000/+2000」はcontinuous modifyStats{controller:self,filter:{attribute:竜騎士},conditions:[cardCount distinct gte4]}（D-BT03/0007型のconditions付きcontinuous）。"
+    },
+    {
+      "id": "bf-x-cp01-0046",
+      "no": "X-CP01/0046",
+      "name": "孤高のジャギー",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 1,
+      "power": 7000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードはセンターにコールできない。"
+      ],
+      "cannotCallZones": [
+        "center"
+      ],
+      "_note": "『このカードはセンターにコールできない』はcannotCallZones:[\"center\"]（既存キー・多数前例）。他能力なし（rulesはこの1文のみ）。grep自己検査: cannotCallZones(src/03等) 実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0047",
+      "no": "X-CP01/0047",
+      "name": "迅雷騎士団 ブロードソード “ウィズシールド”",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "青竜"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードはセンターにコールできない。",
+        "■君の場のカード名に「迅雷騎士団」を含むカード全ては、相手のカードの効果で破壊されない。"
+      ],
+      "cannotCallZones": [
+        "center"
+      ],
+      "continuous": [
+        {
+          "op": "grantDestroyImmunity",
+          "controller": "self",
+          "filter": {
+            "nameIncludes": "迅雷騎士団"
+          },
+          "from": {
+            "byEffect": true,
+            "byOpponent": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp01-0048",
+      "no": "X-CP01/0048",
+      "name": "鏡の竜騎士 カラスコ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■このカードが攻撃した時、君のデッキの上から２枚をドロップゾーンに置く。その中にモンスターがあるなら、君のデッキの上から１枚をゲージに置き、君のライフを＋１！"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0048-attack-mill",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "moveTopDeckToDrop",
+              "amount": 2
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "milledContains",
+                  "filter": {
+                    "cardType": "monster"
+                  }
+                }
+              ]
+            },
+            {
+              "op": "gainLife",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "milledContains",
+                  "filter": {
+                    "cardType": "monster"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "0048: コールコスト行なし=costs.call:[]+callCost:{gauge:0}。「デッキ上2枚ドロップ→中にモンスターあればゲージ1+ライフ+1」はmoveTopDeckToDrop{amount:2}→putTopDeckToGauge/gainLife 各conditions:[milledContains{cardType:monster}]（bf-x-bt01-0083/bf-d-bt02-0106型・G1のcontext.milledを同一effects解決内で参照）。"
+    },
+    {
+      "id": "bf-x-cp01-0049",
+      "no": "X-CP01/0049",
+      "name": "紅蓮闘士 ガンズアーム・ドラゴン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 0,
+      "defense": 2000,
+      "rules": [
+        "■このカードの打撃力は、君が装備しているカード名に「拳」を含むアイテムの打撃力分増える！"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "amountFrom": {
+            "source": "weaponCriticalSum",
+            "filter": {
+              "nameIncludes": "拳"
+            },
+            "per": {
+              "critical": 1
+            }
+          }
+        }
+      ],
+      "_note": "E-XC6採用形そのまま（engine-notes記載DSL）。『このカードの打撃力は、君が装備しているカード名に「拳」を含むアイテムの打撃力分増える』=continuous modifyStats{filter:sameInstanceAsSource,amountFrom:{source:weaponCriticalSum,filter:{nameIncludes:拳},per:{critical:1}}}。装備アイテムのvisible critical合計を毎回参照するため0040/0079等の可変バフにも自動追従。コールコスト等の記載は原文に無し。"
+    },
+    {
+      "id": "bf-x-cp01-0050",
+      "no": "X-CP01/0050",
+      "name": "巨腕士 ブルブス",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 3,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが登場した時、そのターン中、このカードの打撃力＋１！"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0050-enter",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "critical": 1,
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp01-0051",
+      "no": "X-CP01/0051",
+      "name": "ライトキーパー・ドラゴン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■このカードが登場した時、君のドロップゾーンの《太陽竜》１枚を選び、ゲージ２を払ってよい。払ったら、選んだカードを手札に加える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0051-enter-recur",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "pick",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "attribute": "太陽竜"
+              },
+              "min": 1,
+              "max": 1,
+              "amount": 1,
+              "require": true,
+              "title": "ライトキーパー・ドラゴン",
+              "lead": "手札に加える、ドロップゾーンの《太陽竜》1枚を選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "pick",
+              "to": "hand"
+            }
+          ]
+        }
+      ],
+      "_note": "『1枚を選び、ゲージ2を払ってよい。払ったら、選んだカードを手札に加える』はability.optional:true+cost:[payGauge2]+script(selectCards from:drop→moveSelected to:hand)のDB既存イディオム（bf-d-bt02-0029/bf-h-eb04-0007と同型）。原文は選択→支払いの順だが、エンジンのoptional起動能力は宣言時に支払い可否を先に確定する構造のため『支払い可否を先に決め、その後で対象を選ぶ』という手順の入替えが起きる（結果は同一・DB全体で確立済みの標準近似・_note個別記載は先例で省略されているが明記）。"
+    },
+    {
+      "id": "bf-x-cp01-0052",
+      "no": "X-CP01/0052",
+      "name": "システミックコマンダー・ドラゴン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■君の場のカード名に「システミック」を含むカード全ては『貫通』を得る。",
+        "■君のドロップゾーンのカード名に「システミック」を含むカード１種類につき、君の場のモンスター全ての攻撃力＋1000、防御力＋1000！！"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "controller": "self",
+          "keyword": "penetrate",
+          "filter": {
+            "nameIncludes": "システミック"
+          }
+        },
+        {
+          "op": "modifyStats",
+          "filter": {
+            "cardType": "monster"
+          },
+          "amountFrom": {
+            "source": "dropAttributeCount",
+            "distinct": true,
+            "filter": {
+              "nameIncludes": "システミック"
+            },
+            "per": {
+              "power": 1000,
+              "defense": 1000
+            }
+          }
+        }
+      ],
+      "_note": "【コールコスト】ゲージ１はcosts.call=[payGauge(1)]。『場のカード名に「システミック」を含むカード全ては貫通を得る』はbf-d-eb02-0045（構築者 ビルディアン）と同型のcontinuous grantKeyword{controller:self,keyword:penetrate,filter:{nameIncludes:システミック}}（原文は『カード』でモンスター限定でないためcardType指定なし）。『ドロップゾーンのカード名に「システミック」を含むカード１種類につき、場のモンスター全ての攻撃力＋1000、防御力＋1000』はbf-d-cbt-0028（武の極致 デュエルズィーガー）のdropAttributeCount(distinct)型amountFromを、filter:{sameInstanceAsSource:true}（自己限定）ではなくfilter:{cardType:monster}（場のモンスター全て・controller指定なし=own-sideスキャンのみで越境しない、src/05-stats.js:536-561のcontinuousStatBonus own-side loop構造で確認済）に変更して複製。grep自己検査: payGauge/grantKeyword/penetrate/modifyStats/dropAttributeCount 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0053",
+      "no": "X-CP01/0053",
+      "name": "策士 サンジャオ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■君の場のカードの攻撃が無効化された時、君のデッキの上から１枚をゲージに置き、君のライフを＋１する。この能力は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0053-ally-attack-nullified",
+          "kind": "triggered",
+          "event": "allyAttackNullified",
+          "limit": {
+            "scope": "turn"
+          },
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "『君の場のカードの攻撃が無効化された時』はevent:allyAttackNullified（src/10 fireAllyAttackNullifiedTriggers＝攻撃側席の場全体へ配送。自己限定なし＝原文『君の場のカードの』の広い主語と一致）。無名『この能力は1ターンに1回だけ発動する』はunnamed limit{scope:turn}（ability id依拠）。無償モンスター（【コールコスト】行なし）。"
+    },
+    {
+      "id": "bf-x-cp01-0054",
+      "no": "X-CP01/0054",
+      "name": "偵察員 ファンファン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "『移動』（お互いのアタックフェイズ開始時に、場のこのカードを空いている別のエリアに置いてよい）"
+      ],
+      "keywords": [
+        "move"
+      ]
+    },
+    {
+      "id": "bf-x-cp01-0055",
+      "no": "X-CP01/0055",
+      "name": "衛生兵 ストライプ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■このカードが登場した時、君のドロップゾーンの《雷帝軍》のアイテム１枚までを手札に加える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0055-enter",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "moveMatchingDropToHand",
+              "filter": {
+                "cardType": "item",
+                "attribute": "雷帝軍"
+              },
+              "amount": 1,
+              "optional": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp01-0056",
+      "no": "X-CP01/0056",
+      "name": "迅雷騎士団 ドラゴ・アーチャー",
+      "ruby": "じんらいきしだん ドラゴ・アーチャー",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■このカードが登場した時、君の場にこのカード以外の、カード名に「迅雷騎士団」を含むカードがあるなら、カード１枚を引く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0056-enter-draw",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "ownFieldCardCountGte",
+              "filter": {
+                "nameIncludes": "迅雷騎士団"
+              },
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp01-0057",
+      "no": "X-CP01/0057",
+      "name": "支援魔道士 ヤイダ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 1,
+      "power": 1000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■君の場の《雷帝軍》全ての攻撃力＋3000！"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "attribute": "雷帝軍"
+          },
+          "power": 3000
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp01-0058",
+      "no": "X-CP01/0058",
+      "name": "ぶっとびスパイク",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■このカードが攻撃した時、そのターン中、君の場のカード１枚の攻撃力＋2000！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0058-attack-buff",
+          "kind": "triggered",
+          "event": "attack",
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "allowMissingTarget": true,
+            "filter": {}
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 2000,
+              "duration": "turn"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp01-0059",
+      "no": "X-CP01/0059",
+      "name": "心眼の竜騎士 ガリレオ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■【起動】君の場に他の《竜騎士》があるなら、君の場のカード１枚を選び、このカードをレストしてよい。レストしたら、そのターン中、選んだカードの攻撃力＋3000！"
+      ],
+      "costs": {
+        "call": []
+      },
+      "callCost": {
+        "gauge": 0
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0059-rest-buff",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "ownOtherFieldCardExists",
+              "filter": {
+                "attribute": "竜騎士"
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {}
+          },
+          "cost": [
+            {
+              "op": "restSource"
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 3000,
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "0059: コールコスト行なし=costs.call:[]+callCost:{gauge:0}。「他の《竜騎士》があるなら」はownOtherFieldCardExists(既存条件・自己除外込み)。「君の場のカード1枚を選び、このカードをレストしてよい。レストしたら…」はtarget選択+cost:[restSource]（bf-d-bt01-0108/bf-d-cbt-0089型。restSourceコストは既にレスト済みなら支払い不可を自動ガード=sourceStanding条件不要）。"
+    },
+    {
+      "id": "bf-x-cp01-0060",
+      "no": "X-CP01/0060",
+      "name": "知略の勝利",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "強化"
+      ],
+      "rules": [
+        "■君のライフが４以下なら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■そのターン中、君の場の《雷帝軍》全ての攻撃力＋3000、打撃力＋１！！"
+      ],
+      "useConditions": [
+        {
+          "op": "lifeLte",
+          "amount": 4
+        }
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0060-raitei-buff",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "scope": "self",
+              "filter": {
+                "attribute": "雷帝軍"
+              },
+              "power": 3000,
+              "critical": 1,
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "①『君のライフが4以下なら使える』=useConditions[lifeLte:4]。②【使用コスト】ゲージ1=costs.cast。③『そのターン中、君の場の《雷帝軍》全ての攻撃力+3000、打撃力+1』=kind:spell,timing:main,effects modifyStats{scope:self,filter:{attribute:雷帝軍},power:3000,critical:1,duration:turn}（bf-d-bt04-0084型）。F1是正: 原文「君の場の《雷帝軍》全て」（モンスターに限定しない＝アイテム0022/0038/0069も対象）に合わせ filter から cardType:monster を除去（同型 0057 ヤイダ continuous filter:{attribute:雷帝軍} と統一）。"
+    },
+    {
+      "id": "bf-x-cp01-0061",
+      "no": "X-CP01/0061",
+      "name": "バディカモン！",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ゲット"
+      ],
+      "rules": [
+        "■君のライフが３以下なら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■君のデッキから、君のバディモンスター１枚までを手札に加え、デッキをシャッフルする。「バディカモン！」は１ターンに１回だけ使える。"
+      ],
+      "useConditions": [
+        {
+          "op": "lifeLte",
+          "amount": 3
+        }
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0061-buddy-come-on",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "searchDeckToHand",
+              "filter": {
+                "cardType": "monster",
+                "buddy": true
+              },
+              "amount": 1,
+              "optional": true,
+              "shuffle": true
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xcp01-baddy-come-on"
+          }
+        }
+      ],
+      "_note": "①『君のライフが3以下なら使える』=useConditions[lifeLte:3]。②【使用コスト】ゲージ1=costs.cast。③『デッキから、君のバディモンスター1枚までを手札に加え、デッキをシャッフルする』=effects searchDeckToHand{filter:{cardType:monster,buddy:true},amount:1,optional:true,shuffle:true}。④『バディカモン！』は1ターン1回=limit{scope:turn,key:xcp01-baddy-come-on}（design §5表）。E-XC15(実装済): matchesCardFilter(src/17) の filter.buddy 判定は findFieldCardSlot(card) 必須で場外(デッキ/手札)のカードは常に非バディになる既存制約(SKILL.md 既知の罠)があり、このカードは『対象0件でシャッフルのみ』になっていた。修正: matchesCardFilter に options.owner フォールバックを追加し、findFieldCardSlot が null でも owner が渡されればその所有者の登録バディ名(state.players[owner].buddy.name)で判定するようにした上で、searchDeckToHand(src/15) が検索主 owner を渡すよう配線。後方互換: searchDeckToHand+filter.buddy を使う既存カードは0件・owner を渡さない既存 matchesCardFilter 呼び出しは従来どおり=挙動不変。DSL は filter:{cardType:monster,buddy:true}。"
+    },
+    {
+      "id": "bf-x-cp01-0062",
+      "no": "X-CP01/0062",
+      "name": "バディトゥギャザー！",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "回復"
+      ],
+      "rules": [
+        "■君の場にバディモンスターがいるなら使える。",
+        "■【使用コスト】ゲージ２を払う。",
+        "■【対抗】そのターン中、次に君のライフが０になるなら、かわりに君のライフは２になり、さらに、カード１枚を引く。「バディトゥギャザー！」は１回のファイトで１回だけ使える。"
+      ],
+      "useConditions": [
+        {
+          "op": "ownFieldHasBuddy"
+        }
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0062-baddy-together-safeguard",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "setLifeZeroSafeguard",
+              "life": 2,
+              "effects": [
+                {
+                  "op": "draw",
+                  "amount": 1
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "fight",
+            "key": "xcp01-baddy-together"
+          }
+        }
+      ],
+      "_note": "①『君の場にバディモンスターがいるなら使える』=useConditions[ownFieldHasBuddy]。②【使用コスト】ゲージ2=costs.cast＋ability.cost（bf-h-bt04-0090型の二重記載）。③『対抗 そのターン中、次に君のライフが0になるなら、かわりに君のライフは2になり、さらにカード1枚を引く』=kind:spell,timing:counter,effects setLifeZeroSafeguard{life:2, effects:[{op:draw,amount:1}]}（bf-h-bt04-0090「地獄還り」と同型＋消費時追加効果）。pendingAttackDefenderIsSelf条件は原文に『攻撃されている時』限定が無いため付けない。④『バディトゥギャザー！』は1回のファイトで1回=limit{scope:fight（design記載の{scope:game}は実装上のscope値では存在せず'fight'。normalizedAbilityLimitでscope値はturn/fight/phaseのみ）,key:xcp01-baddy-together}。E-XC16(実装済): 『さらにカード1枚を引く』を忠実化。safeguard消費側 resolveLifeZeroReplacements(src/11) の追加効果ディスパッチ束に `else if(eff.op===\"draw\") drawCards(player, eff.amount||1)` を1行追加（同期経路の作法維持）。後方互換: setLifeZeroSafeguard の effects に draw を持つ既存カードは0件（全DB走査）＝挙動不変。"
+    },
+    {
+      "id": "bf-x-cp01-0063",
+      "no": "X-CP01/0063",
+      "name": "ドラゴンシールド 火竜の盾",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "赤竜",
+        "防御"
+      ],
+      "rules": [
+        "■君のセンターにモンスターがいないなら使える。",
+        "■【使用コスト】君のデッキの上から３枚をドロップゾーンに置く。",
+        "■【対抗】そのターン中、次に君が受けるダメージを０に減らす。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "putTopDeckToDrop",
+            "amount": 3
+          }
+        ]
+      },
+      "useConditions": [
+        {
+          "op": "ownCenterEmpty"
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0063-counter-nodamage",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "effects": [
+            {
+              "op": "preventNextDamage",
+              "all": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp01-0064",
+      "no": "X-CP01/0064",
+      "name": "ドラゴンシールド 太陽の盾",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいなくて、君の場に《太陽竜》があるなら使える。",
+        "■【対抗】その攻撃を無効化し、君のデッキの上から１枚をゲージに置き、君のライフを＋１する。君の場に《太陽竜》２枚以上があるなら、このカードは無効化されない。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0064-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "cardCount",
+              "pile": "field",
+              "filter": {
+                "attribute": "太陽竜"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "cannotBeNullified": {
+        "conditions": [
+          {
+            "op": "cardCount",
+            "pile": "field",
+            "filter": {
+              "attribute": "太陽竜"
+            },
+            "cmp": "gte",
+            "amount": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "bf-x-cp01-0065",
+      "no": "X-CP01/0065",
+      "name": "サンダー×ドール",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "防御"
+      ],
+      "rules": [
+        "■【対抗】君の場の《雷帝軍》１枚を選ぶ。そのターン中、次にそのカードが破壊される場合、そのカードを場に残せる。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0065-counter-preserve",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "attribute": "雷帝軍"
+            }
+          },
+          "effects": [
+            {
+              "op": "setPreventNextDestroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "_note": "『次にそのカードが破壊される場合、そのカードを場に残せる』はsetPreventNextDestroy（bf-x-bt01-0047ブラッシュアッパー型）。対象は『君の場の《雷帝軍》1枚』でcardType制限なし（アイテムも含む属性フィルタのみ）。使用条件の記載なし＝useConditionsなし（無償対抗スペル）。"
+    },
+    {
+      "id": "bf-x-cp01-0066",
+      "no": "X-CP01/0066",
+      "name": "ドラゴ・ボンド",
+      "ruby": "ドラゴ・ボンド",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "金竜"
+      ],
+      "rules": [
+        "■君のセンターにモンスターがいないなら使える。",
+        "■【対抗】君の場のモンスター１枚を選ぶ。そのターン中、次にそのモンスターが破壊される場合、君のライフを＋２し、そのモンスターを場に残せる。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0066-bond",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "setPreventNextDestroy",
+              "target": "$target",
+              "amount": 1,
+              "gainLife": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp01-0067",
+      "no": "X-CP01/0067",
+      "name": "前列後退",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士",
+        "移動"
+      ],
+      "rules": [
+        "■ 『設置』（このカードは場に置いて使う）",
+        "■【対抗】【起動】相手のターン中、君の場の《竜騎士》のモンスター１枚を選び、ゲージ１を払ってよい。払ったら、選んだカードを手札に戻す。この能力は１ターンに１回だけ使える。",
+        "■「前列後退」は君の場に１枚だけ『設置』できる。"
+      ],
+      "costs": {},
+      "keywords": [
+        "set"
+      ],
+      "uniqueSet": true,
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0067-retreat",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "竜騎士"
+            }
+          },
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "returnToHand",
+              "target": "$target"
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "0067: 使用コスト行なし=costs:{}（多数の設置魔法慣例）。「相手のターン中…選び、ゲージ1を払ってよい。払ったら…手札に戻す。1ターンに1回」はtarget選択+cost:[payGauge(1)]+effects:[returnToHand]+limit:{scope:turn}、条件turnOwnerIsOpponent（bf-d-bt02-0045/bf-h-bt04-0112型のturnOwnerIsOpponent慣例）。「1枚だけ設置できる」はuniqueSet:true（bf-d-bt01-0080型）。"
+    },
+    {
+      "id": "bf-x-cp01-0068",
+      "no": "X-CP01/0068",
+      "name": "可変竜槍 ギアーズランス",
+      "type": "item",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士",
+        "武器"
+      ],
+      "power": 5000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払い、ライフ１を払う。",
+        "■君の場の《竜騎士》が、カードの効果でレストした時、そのターン中、このカードは『２回攻撃』を得る。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0068-ryukishi-rested-double",
+          "kind": "triggered",
+          "event": "allyRestedByEffect",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "attribute": "竜騎士"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "keyword": "doubleAttack",
+              "duration": "turn",
+              "target": "$self"
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "E-XC4採用形そのまま（engine-notes記載DSL）。①【装備コスト】ゲージ1+ライフ1=costs.equip。②『君の場の《竜騎士》が、カードの効果でレストした時、そのターン中、このカードは2回攻撃を得る』=event:allyRestedByEffect+conditions eventCardMatches{filter:{attribute:竜騎士}}+effects grantKeyword{keyword:doubleAttack,duration:turn,target:$self}（target=$selfはこのアイテム自身。攻撃宣言によるレスト(reason:attack)やターン開始のスタンド処理では発火しない=restFieldCardがdetails.reason==='effect'の時のみ放送）。limitはキー省略＝ability.id依拠の通常1ターン1回。"
+    },
+    {
+      "id": "bf-x-cp01-0069",
+      "no": "X-CP01/0069",
+      "name": "サンダー・オーブ",
+      "type": "item",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "武器"
+      ],
+      "power": 1000,
+      "critical": 2,
+      "rules": [
+        "■【起動】ゲージ１を払う。払ったら、そのターン中、君の場のカード全ての攻撃力＋2000！！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0069-activate-buff",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "scope": "self",
+              "filter": {},
+              "power": 2000,
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "raw原文に【装備コスト】行なし＝equipCost無償（bf-d-bt04-0096等の前例通りequipCost/costsキー省略）。【起動】ゲージ1払う。払ったら～は『1ターンに1回』の記載なし＝limitなし（bf-h-eb03-0059/bf-h-ss01-0018の無制限バースト起動と同型）。『君の場のカード全ての攻撃力+2000』はmodifyStats{scope:self,filter:{}}（bf-d-bt04-0084型のscope指定・全カード対象なのでfilter空）。"
+    },
+    {
+      "id": "bf-x-cp01-0070",
+      "no": "X-CP01/0070",
+      "name": "竜騎奥義 スピリットオーラ！",
+      "type": "impact",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "竜騎士"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ３を払う。",
+        "■相手の場のカードを君のドロップゾーンの《竜騎士》の数まで選ぶ。選んだカードを破壊し、破壊した枚数分相手にダメージ！！（同じカードは２回以上選べないので注意！）"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0070-impact",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 3
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "kill",
+              "from": "field",
+              "controller": "opponent",
+              "filter": {},
+              "min": 0,
+              "maxFrom": {
+                "source": "dropCount",
+                "controller": "self",
+                "filter": {
+                  "attribute": "竜騎士"
+                }
+              },
+              "require": false,
+              "allowEmpty": true,
+              "emptyMessage": "破壊できる相手の場のカードがありません。",
+              "title": "竜騎奥義 スピリットオーラ！で破壊する相手のカード",
+              "lead": "相手の場のカードを、君のドロップゾーンの《竜騎士》の数まで選んでください。"
+            },
+            {
+              "op": "destroySelected",
+              "var": "kill",
+              "require": false
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amountFrom": {
+                "source": "destroyedCount",
+                "var": "kill"
+              }
+            }
+          ]
+        }
+      ],
+      "_note": "①【使用コスト】ゲージ3=costs.cast＋ability.cost。②『相手の場のカードを君のドロップゾーンの《竜騎士》の数まで選ぶ。選んだカードを破壊し、破壊した枚数分相手にダメージ』=bf-h-bt03-0020（外道奥義 召雷暴神立！）と同型構文。selectCards{maxFrom:{source:dropCount,controller:self,filter:{attribute:竜騎士}}}→destroySelected→dealDamage{amountFrom:{source:destroyedCount,var:kill}}（『同じカードは2回以上選べない』はselectCards標準の重複選択不可でカバー済み・destroyedCountは破壊耐性で生き残った分を除外=忠実）。"
+    },
+    {
+      "id": "bf-x-cp01-0071",
+      "no": "X-CP01/0071",
+      "name": "咎を背負う者 バッツ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■君のターン中、場のこのカードは破壊されない。",
+        "■君のアタックフェイズ開始時、君のライフが４以下なら、君のデッキからサイズ１以下の《雷帝軍》のモンスター１枚までを、【コールコスト】を払ってコールし、デッキをシャッフルする。",
+        "『２回攻撃』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "destroyImmunity": [
+        {
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        },
+        {
+          "from": {
+            "byBattle": true
+          },
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0071-attackstart-call",
+          "kind": "triggered",
+          "event": "attackStart",
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "lifeLte",
+              "amount": 4
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "雷帝軍",
+                "sizeLte": 1
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "allowEmpty": true,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "咎を背負う者 バッツ",
+              "lead": "【コールコスト】を払ってコールする《雷帝軍》のサイズ１以下のモンスターを選んでください（選ばなくてもよい）。",
+              "emptyMessage": "コールできる《雷帝軍》のサイズ１以下のモンスターがデッキにありません。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "call",
+              "payCost": "call",
+              "chooseZones": true,
+              "resolveOnEnter": true,
+              "require": false
+            },
+            {
+              "op": "shuffleDeck",
+              "controller": "self"
+            }
+          ]
+        }
+      ],
+      "_note": "【コールコスト】ゲージ１はcosts.call=[payGauge(1)]。『君のターン中、場のこのカードは破壊されない』はbf-x-sd01-0001（復活の雷竜 バッツ）と同型のdestroyImmunity 2エントリ分割（fromなしconditions付き=効果破壊、from:{byBattle:true}conditions付き=バトル破壊、両方をturnOwnerIsSelfでゲート）。『アタックフェイズ開始時、ライフが４以下なら、デッキからサイズ１以下の《雷帝軍》のモンスター１枚までを【コールコスト】を払ってコールし、デッキをシャッフルする』はbf-x-ss01-0032（百鬼将 ヨモツゴズリュウ）と同型：event:attackStart（conditions:[turnOwnerIsSelf,lifeLte:4]・runPhaseStartTriggersは両プレイヤーの場を走査するためturnOwnerIsSelf必須、bf-x-sd01-0001の_noteと同じ注意点）+script:[selectCards{from:deck,min:0,max:1,require:false,allowEmpty:true,canPayCost:call,filter:{cardType:monster,attribute:雷帝軍,sizeLte:1}}, callSelectedToEmptyZones{payCost:call,chooseZones:true,resolveOnEnter:true,require:false}, shuffleDeck]。『２回攻撃』は静的keywords配列。0071はBR01(X-CP01/BR01)のbase＝merge時にmechごとクローンされる想定（本ファイルは0071 numbered分のみ）。grep自己検査: payGauge/destroyImmunity/turnOwnerIsSelf/attackStart/lifeLte/selectCards/callSelectedToEmptyZones/shuffleDeck/doubleAttack 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0072",
+      "no": "X-CP01/0072",
+      "name": "名軍師 ファニング",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 3,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■君のターン中、君の場の《雷帝軍》のカード全ては相手のカードの効果でレストされず、手札に戻せない。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "grantRestImmunity",
+          "controller": "self",
+          "filter": {
+            "attribute": "雷帝軍"
+          },
+          "from": {
+            "byOpponent": true
+          },
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        },
+        {
+          "op": "preventReturnToHand",
+          "controller": "self",
+          "filter": {
+            "attribute": "雷帝軍"
+          },
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        }
+      ],
+      "_note": "『君のターン中、君の場の《雷帝軍》のカード全ては相手のカードの効果でレストされず、手札に戻せない』= continuous 2本。grantRestImmunity{controller:self,filter:{attribute:雷帝軍},from:{byOpponent:true},conditions:[turnOwnerIsSelf]}（Z4系・grantedProtectionBlocksがfromを判定＝bf-s-ub-c03系前例と同型）。preventReturnToHand{controller:self,filter:{attribute:雷帝軍},conditions:[turnOwnerIsSelf]}（bf-d-ss01-neo-dragonic-force.json前例と同型）は意図的にfromキーを付けていない: cannotReturnToHand(src/17:234)が呼ぶcontinuousEffectApplies(src/05:763)はeffect.fromを一切判定しない実装（grantedProtectionBlocks/destroyImmunityBlocksとは別レイヤ）ため、fromを書いても無効＝『相手の効果限定』は表現できず自分の効果による返却も等しくブロックする近似（既存DB全preventReturnToHand共通の制約・実害は皆無=自分から自分の雷帝軍を手札に戻す効果は本弾に無い）。grep自己検査: grantRestImmunity(src/05:844,PROTECTION_OP_BY_KIND)/preventReturnToHand(src/17:250)/continuousEffectApplies(src/05:763,fromキー不読を実証) 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0073",
+      "no": "X-CP01/0073",
+      "name": "サンダー×フラッシュ",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍"
+      ],
+      "rules": [
+        "■君の場に《雷帝軍》のモンスターがいるなら使える。",
+        "■君の場の《雷帝軍》のモンスター１枚と、相手の場のカード１枚を選び、選んだカードを破壊する。"
+      ],
+      "useConditions": [
+        {
+          "op": "cardCount",
+          "controller": "self",
+          "pile": "field",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "雷帝軍"
+          },
+          "cmp": "gte",
+          "amount": 1
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0073-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "own",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "雷帝軍"
+              },
+              "min": 1,
+              "max": 1,
+              "amount": 1,
+              "require": true,
+              "title": "サンダー×フラッシュ",
+              "lead": "自分の場の《雷帝軍》のモンスターを1枚選んでください。"
+            },
+            {
+              "op": "selectCards",
+              "var": "foe",
+              "from": "field",
+              "controller": "opponent",
+              "filter": {},
+              "min": 1,
+              "max": 1,
+              "amount": 1,
+              "require": true,
+              "title": "サンダー×フラッシュ",
+              "lead": "相手の場のカードを1枚選んでください。"
+            },
+            {
+              "op": "destroySelected",
+              "var": "own"
+            },
+            {
+              "op": "destroySelected",
+              "var": "foe"
+            }
+          ]
+        }
+      ],
+      "_note": "『君の場の《雷帝軍》のモンスター1枚と、相手の場のカード1枚を選び、選んだカードを破壊する』は『選んだカード』が2つの選択対象を指す（両方破壊）と読み、selectCards(own)+selectCards(foe)+destroySelected×2で両方を破壊する自壊トレード型として実装（DB内に前例文言なし＝新規解釈だが直訳に忠実）。使用条件『君の場に《雷帝軍》のモンスターがいるなら使える』はuseConditions。無償スペル（【使用コスト】行なし＝costsキー省略、bf-x-sd01-0011サンダー×エナジー前例と同型）。DUP0073は同名別番号でmerge複製（起草不要）。"
+    },
+    {
+      "id": "bf-x-cp01-0074",
+      "no": "X-CP01/0074",
+      "name": "必殺の型 バルドラゴン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】ライフ１を払う。",
+        "■“バルドラゴンフォース！”このカードが登場した時、次の２つから１つを選んで使う。「バルドラゴンフォース！」は１ターンに１回だけ発動する。",
+        "・君のデッキの上から３枚をゲージに置く。",
+        "・君のデッキから《太陽竜》のアイテム１枚までを手札に加え、デッキをシャッフルする。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0074-baldragon-force",
+          "kind": "triggered",
+          "event": "enter",
+          "limit": {
+            "scope": "turn",
+            "key": "xcp01-baldragon-force"
+          },
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "バルドラゴンフォース！",
+              "lead": "次の２つから１つを選んで使ってください。",
+              "options": [
+                {
+                  "key": "gauge",
+                  "label": "君のデッキの上から３枚をゲージに置く。",
+                  "script": [
+                    {
+                      "op": "putTopDeckToGauge",
+                      "amount": 3
+                    }
+                  ]
+                },
+                {
+                  "key": "search",
+                  "label": "君のデッキから《太陽竜》のアイテム１枚までを手札に加え、デッキをシャッフルする。",
+                  "script": [
+                    {
+                      "op": "searchDeckToHand",
+                      "filter": {
+                        "cardType": "item",
+                        "attribute": "太陽竜"
+                      },
+                      "amount": 1,
+                      "optional": true,
+                      "shuffle": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "BR02別絵(X-CP01/BR02)のbase。①【コールコスト】ライフ1=costs.call[payLife:1]。②『“バルドラゴンフォース！”このカードが登場した時、次の2つから1つを選んで使う』=event:enter+script chooseBranch{options:[{gauge分岐},{search分岐}]}（bf-h-eb02-0002型構文。putTopDeckToGauge/searchDeckToHandは共にisScriptEffectStep許可リスト登録済＝新op不要）。③『1ターンに1回だけ発動する』=limit{scope:turn,key:xcp01-baldragon-force}（design §5表・bare slug）。"
+    },
+    {
+      "id": "bf-x-cp01-0075",
+      "no": "X-CP01/0075",
+      "name": "太陽神の欠片 バルバーン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが登場した時、君のデッキの上から３枚を見て、その中の《太陽竜》のモンスター１枚までを手札に加え、残りのカードをドロップゾーンに置く。",
+        "『移動』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "move"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0075-enter-look-select",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "lookTopSelectToHandRestToBottom",
+              "count": 3,
+              "max": 1,
+              "filter": {
+                "cardType": "monster",
+                "attribute": "太陽竜"
+              },
+              "altTo": "drop"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-cp01-0076",
+      "no": "X-CP01/0076",
+      "name": "バーニング・ドラゴンJr.",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■このカードが他の《太陽竜》と連携攻撃したバトルの終了時、場のこのカードをドロップゾーンに置いてよい。置いたら、カード１枚を引く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0076-link-mark",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            },
+            {
+              "op": "pendingAttackIncludesOtherMatching",
+              "filter": {
+                "attribute": "太陽竜"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "xcp01-0034-linked",
+              "duration": "turn"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-cp01-0076-battleend-drop-draw",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "conditions": [
+            {
+              "op": "targetMatches",
+              "ref": "$self",
+              "filter": {
+                "keyword": "xcp01-0034-linked"
+              }
+            }
+          ],
+          "script": [
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "confirmPrompt",
+                "prompt": "場のこのカードをドロップゾーンに置きますか？"
+              },
+              "then": [
+                {
+                  "op": "dropSelf"
+                },
+                {
+                  "op": "draw",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "『他の《太陽竜》と連携攻撃したバトルの終了時』はbf-x-bt01-0057（メラエグゾースト・ドラゴン）の2能力橋渡し技法をそのまま踏襲: (a)event:attack+pendingAttackBySource+pendingAttackIncludesOtherMatching(filter:太陽竜)でリンク成立検知→一時マーカーkeyword(xcp01-0034-linked)をduration:turnで自身に付与、(b)event:battleEndでtargetMatches(ref:$self,filter:{keyword:...})により本体を解決。理由: queueBattleEndTriggers起動時点でstate.pendingAttackは既にclearPendingAttack済みのためpendingAttackBySource等はbattleEnd側で使えない（src/10-battle-resolve.js）。『場のこのカードをドロップゾーンに置いてよい。置いたら、カード1枚を引く』はconfirmPrompt(bf-d-eb01-0019前例)のthen内でdropSelf（『破壊』でなく『置く』のためdestroySelfでなくdropSelfを使用=dropFieldCardByRule・ソウルガード等を経由しないルール移動）+draw(1)。grep自己検査: pendingAttackBySource(src/13:1306)/pendingAttackIncludesOtherMatching(src/13:1345)/battleEnd(src/10:494,516,522)/targetMatches(src/13:839)/confirmPrompt(src/13:776)/dropSelf(src/15:941)/draw(src/15:223) 全実在確認済み。"
+    },
+    {
+      "id": "bf-x-cp01-0077",
+      "no": "X-CP01/0077",
+      "name": "極限未来竜 ドラム・ザ・マキシマムフューチャー",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 2,
+      "power": 11000,
+      "critical": 3,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】このカードを君の場のカード名に「ドラム」を含むモンスター１枚までの上に重ね、ゲージ２を払う。",
+        "■君の場のアイテムは『貫通』を得る。",
+        "■このカードが君と連携攻撃しているなら、その攻撃は無効化されない。",
+        "『貫通』『ソウルガード』"
+      ],
+      "callStack": {
+        "nameIncludes": "ドラム",
+        "optional": true
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate",
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "controller": "self",
+          "filter": {
+            "cardType": "item"
+          }
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0077-link-unstoppable",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "pendingAttackIsLink"
+            }
+          ],
+          "effects": [
+            {
+              "op": "markPendingAttackUnstoppable",
+              "onlyNullify": true
+            }
+          ]
+        }
+      ],
+      "_note": "BR03別絵(X-CP01/BR03)のbase。①【コールコスト】『このカードを君の場のカード名に「ドラム」を含むモンスター1枚までの上に重ね、ゲージ2を払う』=callStack:{nameIncludes:ドラム,optional:true}（E-ZA4『まで』型・bf-x-ss02-0002型）+costs.call[payGauge:2]。②『君の場のアイテムは貫通を得る』=continuous grantKeyword{keyword:penetrate,controller:self,filter:{cardType:item}}。③『このカードが君と連携攻撃しているなら、その攻撃は無効化されない』=event:attack(自己発火・接頭辞なし)+conditions[pendingAttackIsLink]+effects markPendingAttackUnstoppable{onlyNullify:true}（src/15-ability-effects.js:1869-1873の実装コメントが直接『ドラム・ザ・フューチャー』=bf-h-bt01-0003を挙げる本カード直系の先例op。0077はダメージ減少耐性を伴わない『無効化されない』のみのためonlyNullify:trueで限定）。"
+    },
+    {
+      "id": "bf-x-cp01-0078",
+      "no": "X-CP01/0078",
+      "name": "ドラゴンシールド 砂竜の盾",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "青竜",
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】その攻撃を無効化し、さらに、君のゲージが１枚以下なら、君のデッキの上から１枚をゲージに置き、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0078-counter-nullify-gauge-life",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            }
+          ],
+          "script": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "cardCount",
+                "controller": "self",
+                "pile": "gauge",
+                "cmp": "lte",
+                "amount": 1
+              },
+              "then": [
+                {
+                  "op": "putTopDeckToGauge",
+                  "amount": 1
+                },
+                {
+                  "op": "gainLife",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "0021と同型の使えるタイミング（ownCenterEmpty+pendingAttackDefenderIsSelf）。『その攻撃を無効化し、さらにゲージが１枚以下なら、デッキの上から１枚をゲージに置き、ライフを＋１する』は、gauge<=1をゲートにした2効果を『一度だけ評価して両方に適用』する必要がある（putTopDeckToGaugeでゲージが変化した後にgainLife側のconditionsを別途評価すると、境界値(ゲージ=1)で2つ目が不発になる逐次評価バグを誘発するため、effects[]の個別conditionsではなくscript:[nullifyAttack, ifCondition{...}]で一括分岐に変更＝ifConditionForScript(src/14:1096)は条件を1回だけ評価しthen配下をまとめて実行する。putTopDeckToGauge/gainLife/nullifyAttackはisScriptEffectStepホワイトリスト済み(src/14:2788,2791,2830)のためscript内で使用可）。grep自己検査: nullifyAttack/ifCondition/putTopDeckToGauge/gainLife/cardCount/ownCenterEmpty/pendingAttackDefenderIsSelf 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-0079",
+      "no": "X-CP01/0079",
+      "name": "紅蓮拳 ドラゴプラス",
+      "type": "item",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武器"
+      ],
+      "power": 4000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払い、ライフ１を払う。",
+        "■場のこのカードは相手のカードの効果で破壊されない。",
+        "■君の場のモンスター１枚につき、このカードの打撃力＋１！"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "destroyImmunity": [
+        {
+          "from": {
+            "byEffect": true,
+            "byOpponent": true
+          }
+        }
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "amountFrom": {
+            "source": "fieldCardCount",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster"
+            },
+            "per": {
+              "critical": 1
+            }
+          }
+        }
+      ],
+      "_note": "①【装備コスト】ゲージ1+ライフ1=costs.equip（bf-d-td01-0017型）。②『場のこのカードは相手のカードの効果で破壊されない』=destroyImmunity:[{from:{byEffect:true,byOpponent:true}}]（多数前例と同型・自分の効果/バトル破壊は従来通り通る）。③『君の場のモンスター1枚につき、このカードの打撃力+1』=continuous modifyStats{filter:sameInstanceAsSource,amountFrom:{source:fieldCardCount,controller:self,filter:{cardType:monster},per:{critical:1}}}（bf-d-eb01-0024型）。0079（DUP）はmergeが本体mechを複製。"
+    },
+    {
+      "id": "bf-x-cp01-br01",
+      "no": "X-CP01/BR01",
+      "name": "咎を背負う者 バッツ",
+      "type": "monster",
+      "rarity": "バディレア",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■君のターン中、場のこのカードは破壊されない。",
+        "■君のアタックフェイズ開始時、君のライフが４以下なら、君のデッキからサイズ１以下の《雷帝軍》のモンスター１枚までを、【コールコスト】を払ってコールし、デッキをシャッフルする。",
+        "『２回攻撃』"
+      ],
+      "altArtOf": "bf-x-cp01-0071",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/XCP01_BR01_RGB.png",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "destroyImmunity": [
+        {
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        },
+        {
+          "from": {
+            "byBattle": true
+          },
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0071-attackstart-call",
+          "kind": "triggered",
+          "event": "attackStart",
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "lifeLte",
+              "amount": 4
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "雷帝軍",
+                "sizeLte": 1
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "allowEmpty": true,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "咎を背負う者 バッツ",
+              "lead": "【コールコスト】を払ってコールする《雷帝軍》のサイズ１以下のモンスターを選んでください（選ばなくてもよい）。",
+              "emptyMessage": "コールできる《雷帝軍》のサイズ１以下のモンスターがデッキにありません。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "call",
+              "payCost": "call",
+              "chooseZones": true,
+              "resolveOnEnter": true,
+              "require": false
+            },
+            {
+              "op": "shuffleDeck",
+              "controller": "self"
+            }
+          ]
+        }
+      ],
+      "_note": "【コールコスト】ゲージ１はcosts.call=[payGauge(1)]。『君のターン中、場のこのカードは破壊されない』はbf-x-sd01-0001（復活の雷竜 バッツ）と同型のdestroyImmunity 2エントリ分割（fromなしconditions付き=効果破壊、from:{byBattle:true}conditions付き=バトル破壊、両方をturnOwnerIsSelfでゲート）。『アタックフェイズ開始時、ライフが４以下なら、デッキからサイズ１以下の《雷帝軍》のモンスター１枚までを【コールコスト】を払ってコールし、デッキをシャッフルする』はbf-x-ss01-0032（百鬼将 ヨモツゴズリュウ）と同型：event:attackStart（conditions:[turnOwnerIsSelf,lifeLte:4]・runPhaseStartTriggersは両プレイヤーの場を走査するためturnOwnerIsSelf必須、bf-x-sd01-0001の_noteと同じ注意点）+script:[selectCards{from:deck,min:0,max:1,require:false,allowEmpty:true,canPayCost:call,filter:{cardType:monster,attribute:雷帝軍,sizeLte:1}}, callSelectedToEmptyZones{payCost:call,chooseZones:true,resolveOnEnter:true,require:false}, shuffleDeck]。『２回攻撃』は静的keywords配列。0071はBR01(X-CP01/BR01)のbase＝merge時にmechごとクローンされる想定（本ファイルは0071 numbered分のみ）。grep自己検査: payGauge/destroyImmunity/turnOwnerIsSelf/attackStart/lifeLte/selectCards/callSelectedToEmptyZones/shuffleDeck/doubleAttack 全実在確認。"
+    },
+    {
+      "id": "bf-x-cp01-br02",
+      "no": "X-CP01/BR02",
+      "name": "必殺の型 バルドラゴン",
+      "type": "monster",
+      "rarity": "バディレア",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】ライフ１を払う。",
+        "■“バルドラゴンフォース！”このカードが登場した時、次の２つから１つを選んで使う。「バルドラゴンフォース！」は１ターンに１回だけ発動する。",
+        "・君のデッキの上から３枚をゲージに置く。",
+        "・君のデッキから《太陽竜》のアイテム１枚までを手札に加え、デッキをシャッフルする。"
+      ],
+      "altArtOf": "bf-x-cp01-0074",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/XCP01_BR02_RGB.png",
+      "costs": {
+        "call": [
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0074-baldragon-force",
+          "kind": "triggered",
+          "event": "enter",
+          "limit": {
+            "scope": "turn",
+            "key": "xcp01-baldragon-force"
+          },
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "バルドラゴンフォース！",
+              "lead": "次の２つから１つを選んで使ってください。",
+              "options": [
+                {
+                  "key": "gauge",
+                  "label": "君のデッキの上から３枚をゲージに置く。",
+                  "script": [
+                    {
+                      "op": "putTopDeckToGauge",
+                      "amount": 3
+                    }
+                  ]
+                },
+                {
+                  "key": "search",
+                  "label": "君のデッキから《太陽竜》のアイテム１枚までを手札に加え、デッキをシャッフルする。",
+                  "script": [
+                    {
+                      "op": "searchDeckToHand",
+                      "filter": {
+                        "cardType": "item",
+                        "attribute": "太陽竜"
+                      },
+                      "amount": 1,
+                      "optional": true,
+                      "shuffle": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "BR02別絵(X-CP01/BR02)のbase。①【コールコスト】ライフ1=costs.call[payLife:1]。②『“バルドラゴンフォース！”このカードが登場した時、次の2つから1つを選んで使う』=event:enter+script chooseBranch{options:[{gauge分岐},{search分岐}]}（bf-h-eb02-0002型構文。putTopDeckToGauge/searchDeckToHandは共にisScriptEffectStep許可リスト登録済＝新op不要）。③『1ターンに1回だけ発動する』=limit{scope:turn,key:xcp01-baldragon-force}（design §5表・bare slug）。"
+    },
+    {
+      "id": "bf-x-cp01-br03",
+      "no": "X-CP01/BR03",
+      "name": "極限未来竜 ドラム・ザ・マキシマムフューチャー",
+      "type": "monster",
+      "rarity": "バディレア",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 2,
+      "power": 11000,
+      "critical": 3,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】このカードを君の場のカード名に「ドラム」を含むモンスター１枚までの上に重ね、ゲージ２を払う。",
+        "■君の場のアイテムは『貫通』を得る。",
+        "■このカードが君と連携攻撃しているなら、その攻撃は無効化されない。",
+        "『貫通』『ソウルガード』"
+      ],
+      "altArtOf": "bf-x-cp01-0077",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/XCP01_BR03_RGB.png",
+      "callStack": {
+        "nameIncludes": "ドラム",
+        "optional": true
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate",
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "controller": "self",
+          "filter": {
+            "cardType": "item"
+          }
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-cp01-0077-link-unstoppable",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "pendingAttackIsLink"
+            }
+          ],
+          "effects": [
+            {
+              "op": "markPendingAttackUnstoppable",
+              "onlyNullify": true
+            }
+          ]
+        }
+      ],
+      "_note": "BR03別絵(X-CP01/BR03)のbase。①【コールコスト】『このカードを君の場のカード名に「ドラム」を含むモンスター1枚までの上に重ね、ゲージ2を払う』=callStack:{nameIncludes:ドラム,optional:true}（E-ZA4『まで』型・bf-x-ss02-0002型）+costs.call[payGauge:2]。②『君の場のアイテムは貫通を得る』=continuous grantKeyword{keyword:penetrate,controller:self,filter:{cardType:item}}。③『このカードが君と連携攻撃しているなら、その攻撃は無効化されない』=event:attack(自己発火・接頭辞なし)+conditions[pendingAttackIsLink]+effects markPendingAttackUnstoppable{onlyNullify:true}（src/15-ability-effects.js:1869-1873の実装コメントが直接『ドラム・ザ・フューチャー』=bf-h-bt01-0003を挙げる本カード直系の先例op。0077はダメージ減少耐性を伴わない『無効化されない』のみのためonlyNullify:trueで限定）。"
+    }
+  ]
+}

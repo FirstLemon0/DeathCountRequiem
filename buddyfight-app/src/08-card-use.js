@@ -223,12 +223,19 @@ async function equipItem(selectedCard) {
     addLog(`${selectedCard.name}の装備条件を満たしていません。`);
     return;
   }
+  const deckBeforeCost = player.deck.length;
+  const lifeBeforeCost = player.life;
   const payment = await payCardCostWithSelection(player, selectedCard, "equip", selectedCard);
   if (!payment.ok) {
     addLog(payment.reason);
     return;
   }
   const card = removeSelectedFromHand();
+  // 非同期誘発レースで選択カードが手札を離れていたら宣言中止（callMonster と同型・fuzzer seed915）。
+  if (!card) {
+    addLog(`${selectedCard.name}が手札にないため、装備を中止しました。`);
+    return;
+  }
   // 装備も対抗確認を挟む（コール/呪文/起動能力と同様）。相手が対抗を使わなければ解決で装備が確定。
   beginPendingAction({
     kind: "equip",
@@ -239,6 +246,9 @@ async function equipItem(selectedCard) {
   });
   addLog(`${player.name}は${card.name}の装備を宣言しました。対抗確認を行ってください。`);
   render();
+  // 保存則: 装備コストの damageSelf 等でこの宣言と同時に決着した場合、pending を宙吊りにせず即着地させる
+  // （fuzzer 恒久漏れ・seed337/722「五角竜剣 王牙」「吸血剣 ブラッディフェイト」）。詳細は src/07 の同ヘルパー参照。
+  await resolveDeclarationIfGameEnded(deckBeforeCost, lifeBeforeCost, player);
 }
 
 async function arriveCard(selectedCard) {
@@ -256,6 +266,11 @@ async function arriveCard(selectedCard) {
     dropFieldCardByRule(player, "item");
   }
   const card = removeSelectedFromHand();
+  // 非同期誘発レースで選択カードが手札を離れていたら着任中止（callMonster と同型・fuzzer seed915）。
+  if (!card) {
+    addLog(`${selectedCard.name}が手札にないため、着任を中止しました。`);
+    return;
+  }
   card.currentType = "item";
   card.arrived = true;
   player.field.item = card;
@@ -371,12 +386,19 @@ async function castSetSpell(selectedCard) {
     addLog(`${selectedCard.name}はそのターン中は設置できません。`);
     return;
   }
+  const deckBeforeCost = player.deck.length;
+  const lifeBeforeCost = player.life;
   const payment = await payCardCostWithSelection(player, selectedCard, "cast", selectedCard);
   if (!payment.ok) {
     addLog(payment.reason);
     return;
   }
   const card = removeSelectedFromHand();
+  // 非同期誘発レースで選択カードが手札を離れていたら配置中止（callMonster と同型・fuzzer seed915）。
+  if (!card) {
+    addLog(`${selectedCard.name}が手札にないため、配置を中止しました。`);
+    return;
+  }
   beginPendingAction({
     kind: "setSpell",
     owner: state.active,
@@ -387,6 +409,9 @@ async function castSetSpell(selectedCard) {
   });
   addLog(`${player.name}は${card.name}の配置を宣言しました。対抗確認を行ってください。`);
   render();
+  // 保存則: 設置コストの putTopDeckToDrop 等でこの宣言と同時に決着した場合、pending を宙吊りにせず即着地させる
+  // （callMonster/equipItem と同型）。詳細は src/07 の resolveDeclarationIfGameEnded 参照。
+  await resolveDeclarationIfGameEnded(deckBeforeCost, lifeBeforeCost, player);
 }
 
 async function useCounterPlayCard(selectedCard) {
@@ -435,6 +460,11 @@ async function castOops(selectedCard) {
     return;
   }
   const card = removeSelectedFromHand();
+  // 非同期誘発レースで選択カードが手札を離れていたら使用中止（callMonster と同型・fuzzer seed915）。
+  if (!card) {
+    addLog(`${selectedCard.name}が手札にないため、使用を中止しました。`);
+    return;
+  }
   player.drop.push(card);
   if (state.pendingAttack || state.pendingAction) {
     markCounterUsed(owner, selectedCounterKind(card));

@@ -157,6 +157,8 @@ async function useHandAbilityAction(card, ability, options = {}) {
     abilityCostPurpose(ability),
     abilityCostSteps(card, ability),
   );
+  const deckBeforeCost = player.deck.length;
+  const lifeBeforeCost = player.life;
   const payment = await payStructuredCostWithSelection(player, costSteps, {
     sourceCard: card,
     selectedCard: card,
@@ -166,6 +168,11 @@ async function useHandAbilityAction(card, ability, options = {}) {
     return;
   }
   const usedCard = removeSelectedFromHand();
+  // 非同期誘発レースで選択カードが手札を離れていたら使用中止（callMonster と同型・fuzzer seed915）。
+  if (!usedCard) {
+    addLog(`${card.name}が手札にないため、使用を中止しました。`);
+    return;
+  }
   if (!options.counterTiming && ["spell", "impact"].includes(ability.kind)) {
     markAbilityLimit(owner, usedCard, ability);
     beginPendingAction({
@@ -179,6 +186,9 @@ async function useHandAbilityAction(card, ability, options = {}) {
     });
     addLog(`${player.name}は${usedCard.name}の使用を宣言しました。対抗確認を行ってください。`);
     render();
+    // 保存則: 使用コストの putTopDeckToDrop で山切れ／自傷でライフ0 等でこの宣言と同時に決着した場合、pending を
+    // 宙吊りにせず即着地させる（fuzzer 恒久漏れ・seed51「シャドウ・クルセイダー」）。詳細は src/07 の同ヘルパー参照。
+    await resolveDeclarationIfGameEnded(deckBeforeCost, lifeBeforeCost, player);
     return;
   }
   // 手札発動の起動能力（変身/搭乗の hand版 等、kind:"activated"）も宣言時に相手へ対抗機会を与える。
@@ -204,6 +214,8 @@ async function useHandAbilityAction(card, ability, options = {}) {
     });
     addLog(`${player.name}は${usedCard.name}の能力を宣言しました。対抗確認を行ってください。`);
     render();
+    // 保存則: 手札発動(変身/搭乗等)のコストでこの宣言と同時に決着した場合も pending を宙吊りにせず即着地させる。
+    await resolveDeclarationIfGameEnded(deckBeforeCost, lifeBeforeCost, player);
     return;
   }
   player.drop.push(usedCard);
@@ -877,6 +889,18 @@ function checkCondition(condition, owner, context = {}) {
   }
   if (condition.op === "opponentLifeLte") {
     return opponent.life <= condition.amount;
+  }
+  if (condition.op === "revealedMatches") {
+    // E-XC1(X-CP02 コスモドラグーン reveal-gate): 直前に revealTopCard で公開したカード(context.revealedCard)が
+    // filter に一致するか。script の ifCondition と effects[] の effect.conditions の両方に context 経由で届く
+    //（ifConditionForScript は checkCondition(cond, owner, context)、effect ゲートは checkCardConditions(...,{...context}) を通す）。
+    // 公開カードはデッキ上に残っている(peek)ので matchesCardFilter の属性/名称照合はゾーンに依存せず成立する。
+    return context.revealedCard ? matchesCardFilter(context.revealedCard, condition.filter || {}) : false;
+  }
+  if (condition.op === "ownLifeGreaterThanOpponent") {
+    // E-XC5(X-CP02/0013 ヴァルカン):「君のライフが相手より多いなら」＝self>opponent の厳密大なり（同値は不成立）。
+    // lifeDifferenceGte(opponent−self≥N＝相手優位方向)の鏡＝自優位方向。効果列途中の評価は直前増減を反映した現在値。
+    return player.life > opponent.life;
   }
   if (condition.op === "lifeDifferenceGte") {
     // E9(D-BT03/0013 餓狼深気功): 「相手のライフが君のライフより amount 以上多いなら」＝
