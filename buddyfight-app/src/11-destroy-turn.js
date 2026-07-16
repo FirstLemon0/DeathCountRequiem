@@ -1324,6 +1324,35 @@ function queueAllyDestroyedTriggers(card, owner, zone, cause = null) {
 
 // 「場のモンスターが手札/デッキに戻った時」の誘発（D・R・システム / 竜剣 ドラムソード等、場の他カードが反応）。
 // 復帰処理は同期関数のため、破壊/手札破棄の誘発と同じくマイクロタスクで非同期発火する。
+// E-XV6(X-UB02/0015 制服戦士 ドクターフリル): 「このカードが手札に戻った時」の**自己発火**イベント
+// （returnedToHand）。movedToDrop/discardedFromHand と同型＝戻ったカード自身の abilities へ直接
+// runTriggeredAbilities する（既存の allyCardReturned/monsterReturned 系は場全体ブロードキャストで、
+// 戻ったカード自身は放送時点で場に居らずリスナーになれない＝受け皿欠落の恒久解）。
+// fromZone: "field"（場→手札の全 funnel＝returnFieldTargetToHand / returnAllToHand）| "drop"
+// （returnSelfToHand のドロップ回収枝）。ability.fromZones（省略時は全ゾーン）で絞る（例
+// {event:"returnedToHand", fromZones:["field"]}＝「場から手札に戻った時」のみ）。
+// hasListener ゲート＝リスナーを持たない既存カード（DB 走査で使用0件＝機械実証）は一切 queue されず挙動不変。
+function queueReturnedToHandTriggers(card, owner, fromZone) {
+  const matches = (ability) =>
+    ability.kind === "triggered" &&
+    ability.event === "returnedToHand" &&
+    (!ability.fromZones || ability.fromZones.includes(fromZone));
+  if (!(card?.abilities || []).some(matches)) {
+    return;
+  }
+  queueTriggerMicrotask(
+    () =>
+      runTriggeredAbilities(card, "returnedToHand", {
+        card,
+        player: state.players[owner],
+        owner,
+        fromZone,
+        __abilityFilter: matches,
+      }),
+    { errorLabel: `${card.name}の手札復帰時能力の処理中にエラーが発生しました。` },
+  );
+}
+
 function queueMonsterReturnedTriggers(card, owner, zone, details = {}) {
   Promise.resolve()
     .then(async () => {

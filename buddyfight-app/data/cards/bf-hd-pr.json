@@ -1568,6 +1568,91 @@
       "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/pr_0341.png",
       "generation": "バッツ",
       "_note": "公式レシピ201705_4用の単品先行収録（R8裁定・D-SS01/0027・トラゴス前例）。型はbf-d-bt03-0001「ドラゴンフォース(ドラゴンワールド)」/bf-d-cbt-0104〜0106「ドラゴンフォース“○○の型”」の同一ファミリー(『解放条件！』太陽竜アイテム)を直接踏襲: ①equipConditions=lifeLte6+ownFieldCardExists{nameIncludes:バルドラゴン,cardType:monster}（bt03-0001と字面一致）。②costs.equip=[payGauge2]。③『場のこのカードは破壊されず、手札に戻せず、能力は無効化されない』の3耐性は同ファミリー全カード(bt03-0001/bt04-0003/ss03-0015/cbt-0104〜0106)共通の cannotBeNullified:true(能力無効化耐性としてこのファミリーが一貫して採用する形。汎用のnullifyImmuneはこのファミリーでは不使用)+cannotReturnToHand:true+destroyImmunity:[{from:{byBattle:true}},{from:{byEffect:true}}]（byBattle/byEffect両方＝bt03-0001と同一。『ファイナルフェイズ中にも攻撃できる』の記載が本カード原文に無いためcanAttackInFinalPhaseは付与しない）。④『君の場の《太陽竜》のモンスターが攻撃した時、そのバトル中、そのモンスターの打撃力を＋２。この能力はアタックフェイズとファイナルフェイズに１回ずつ発動する』はbf-d-bt01-0026「太陽拳 バルナックル」（同一文言『この能力はアタックフェイズとファイナルフェイズに１回ずつ発動する』を持つ直接前例）と同型: event:allyAttack(場全体ブロードキャスト)+conditions targetMatches{filter:{cardType:monster,attribute:太陽竜}}+effects modifyStats{target:$target,critical:2,duration:battle}+limit{scope:phase}。limit.scope:\"phase\"はフェイズ跨ぎで自動リセットされるため、アタックフェイズに1回・ファイナルフェイズに1回、計2回まで自然に許容する（isAbilityLimitUsed/markAbilityLimitのscope:\"phase\"分岐、src/15-ability-effects.js:2973/2991で実在確認）。当初案のphaseIs条件付き2アビリティ×各unnamed turn-limitより、この単一ability+limit.scope:phase形の方が0026で実戦績のある形であり誤差なく同じ発火回数を再現するため、R8裁定の実装意図（アタック/ファイナル各1回ずつ）を保ったままこちらを採用。grep自己検査: lifeLte/ownFieldCardExists/payGauge/targetMatches/modifyStats/cannotBeNullified/cannotReturnToHand/destroyImmunity 全実在確認。VM実操作経路検証は_scratch/pr0341-verify.jsで実施。"
+    },
+    {
+      "id": "bf-pr-0329",
+      "no": "PR/0329",
+      "name": "複製番竜 クリムゾン・アロガント",
+      "type": "impactMonster",
+      "world": "ダンジョンW",
+      "attributes": [
+        "Dエネミー",
+        "ドラゴン"
+      ],
+      "rarity": "PR",
+      "size": 3,
+      "power": 10000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ３を払い、君の場のモンスター１枚をこのカードのソウルに入れる。",
+        "■【対抗】【起動】ゲージ１を払い、手札のモンスター１枚を捨ててよい。そうしたら、相手の場のモンスター１枚を破壊する。この能力は１ターンに１回だけ使える。",
+        "『２回攻撃』『ソウルガード』『ライフリンク３』"
+      ],
+      "keywords": [
+        "doubleAttack",
+        "soulguard",
+        "lifeLink3"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          },
+          {
+            "op": "putSelectedOwnFieldCardsToSoul",
+            "filter": {
+              "cardType": "monster"
+            },
+            "min": 1,
+            "max": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-pr-0329-counter-discard-destroy",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "optional": true,
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "discardHand",
+              "amount": 1,
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "deckAnyFlag": true,
+      "imageUrl": "https://fc-buddyfight.com/cardlist/images/card/pr_0329.png",
+      "generation": "DDD",
+      "_note": "公式レシピ201706_11「ゼータデッキ」用の単品先行収録（X-UB02スライス統括裁定R10。PR/0341＝201705_4のX-CP前例と同型の先行収録方式。将来のX-PRスライスで本収録へ移設予定）。rulesは公式詳細ページ(cardlist/2697)の原文そのまま（＜＞疑似タグ無し）。世代はPR番号隣接のbf-pr-0330/0331（201702期・DDD）と同じDDD（複製/ジェムクローン系＝D-SS03 GBCB期のプロモ）。①【コールコスト】『ゲージ３を払い、君の場のモンスター１枚をこのカードのソウルに入れる』はbf-d-ss03-0021「複製竜神 リドルファントム」と字面完全一致の同型: costs.call=[payGauge3, putSelectedOwnFieldCardsToSoul{filter:{cardType:monster},min:1,max:1}]（ソウル行き先はコールされる当カード自身＝D-SS03設計C3実測済み。filter明示は0021の_note指示どおり非モンスター混入防止）。②【対抗】【起動】『ゲージ１を払い、手札のモンスター１枚を捨ててよい。そうしたら、相手の場のモンスター１枚を破壊する』はbf-d-bt02-0045「竜騎士 セキシュウサイ」（counter起動＋cost＋target破壊＋limit turn）とbf-d-cbt-0057「魔王の子 デリス・ハイロウ」（『〜してよい。そうしたら』＝両コストmandatory＋ability-level optional:true）の合成: kind:activated+timing:[counter]（abilityTimingIncludesにより自分メインフェイズでも使用可＝2018年6月以前ルール）、cost=[payGauge1, discardHand{amount:1,filter:{cardType:monster}}]（discardHandコストのfilterはsrc/04 canPayStructuredCost:561/payStructuredCost:952でmatchesCardFilter適用済＝『手札のモンスター』限定）、target:{fieldCard,controller:opponent,filter:{cardType:monster}}（allowMissingTarget無し＝破壊対象が居なければ使用不可・0045と同型）、無名『この能力は１ターンに１回だけ使える』=limit:{scope:turn}（key/shared無し・named-once規約）。③『２回攻撃』『ソウルガード』『ライフリンク３』=keywords[doubleAttack,soulguard,lifeLink3]（lifeLinkNはsrc/11 lifeLinkAmountの/^lifeLink\\d+$/で解釈）。④deckAnyFlag:trueはGBCB複製必殺ファミリー（bf-d-ss03-0021〜0025）のR5近似を踏襲: 公式には『複製模倣兵器 ジェムクローン(D-SS03/0028)がバディゾーンにあり君のフラッグがヒーローＷなら他ワールド必殺モンスターも使える』ソフトルールで201706_11（ヒーローワールド・ゼータデッキ）に投入されるが、エンジンはバディゾーン条件付き構築合法性を持たないため無条件許可の近似（soft rule・詳細は0021の_note）。⑤type:impactMonster＝必殺モンスター共通ゲート（自分のファイナルフェイズ限定コール・1ターン1枚＝src/07 impactMonsterCallAllowed）はカード固有記述不要の既存機構。grep自己検査: payGauge/putSelectedOwnFieldCardsToSoul(src/04:662,1086,1390,1809)/discardHand(src/04:559,947)/destroy/targetMatches系target/limit scope:turn/doubleAttack/soulguard/lifeLink3 全実在確認。VM実操作経路検証は_scratch/pr0329-verify.js（final限定コール・コスト課金・ソウル行き・counter起動破壊・limit・非モンスター捨て不可・lifeLink3）で実施。"
     }
   ]
 }

@@ -328,6 +328,12 @@ function matchesCardFilter(card, filter = {}, options = {}) {
   if (filter.world && !cardWorlds(card).includes(filter.world)) {
     return false;
   }
+  // E-XV2(X-UB02/0036 機甲符：GAIN ADVANTAGE): 「＜ヒーローＷ＞以外の必殺モンスター」= 世界名除外フィルタ。
+  // カードのいずれかのワールドが worldNotIn に含まれれば不一致（2ワールド持ちも片方が該当すれば除外）。
+  // filter.world（包含）の否定形。未指定なら素通り＝既存カード挙動不変（オプトイン）。
+  if (Array.isArray(filter.worldNotIn) && cardWorlds(card).some((w) => filter.worldNotIn.includes(w))) {
+    return false;
+  }
   if (filter.powerLte !== undefined && visiblePower(card) > filter.powerLte) {
     return false;
   }

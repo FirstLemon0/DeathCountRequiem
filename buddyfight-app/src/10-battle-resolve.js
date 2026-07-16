@@ -510,6 +510,16 @@ function finishPendingAttack(outcome = {}) {
         targetType: pending.targetType,
       });
     }
+    // E-XV7(X-UB01/0052 道化師 ダークフォックス・X-UB02/0004 ブレザーフリル): 攻撃側カードを eventCard に
+    // 「攻撃したバトルの終了時」を場全体へ放送する（attacker-side 誘発＝ally/opponentAttackerBattleEnd。
+    // 直上 E-X1 の defender-side ally/opponentBattleEnd の姉妹実装）。fighter 攻撃でも『バトル』は成立する
+    // ため targetType を問わず放送する。!nullified 経路のみ＝対抗で攻撃無効化されたバトルは非放送
+    // （従来の allyAttack 宣言時近似の乖離を解消する核）。連携攻撃は攻撃者ごとに配信。
+    queueAttackerBattleEndFieldTriggers(state.lastAttackOutcome.attackers || [], {
+      nullified: false,
+      targetOwner: pending.targetOwner,
+      targetType: pending.targetType,
+    });
   }
   clearPendingAttack(outcome);
 }
@@ -621,6 +631,50 @@ function queueBattleEndFieldTriggers(defenderOwner, defenderCard, defenderZone, 
   Promise.resolve()
     .then(async () => {
       await runFieldEventTriggers("battleEnd", defenderOwner, defenderCard, defenderZone, details);
+      render();
+    })
+    .catch((error) => {
+      console.error(error);
+      render();
+    });
+}
+
+// E-XV7(X-UB01/0052 道化師 ダークフォックス・X-UB02/0004 ブレザーフリル): 「君の場の《X》が攻撃したバトルの
+// 終了時」を場全体へブロードキャストする。直上 queueBattleEndFieldTriggers（E-X1＝被攻撃側視点の
+// ally/opponentBattleEnd）の姉妹実装で、こちらは**攻撃側カード**を eventCard に載せる。イベント名は別軸の
+// ally/opponentAttackerBattleEnd（runFieldEventTriggers("attackerBattleEnd", 攻撃者owner, ...) が capitalize 生成）＝
+// bare "battleEnd"（攻撃者スロットのカード自身・68リスナー）とも E-X1 とも非衝突（既存データにリスナー0件＝
+// grep 実証・挙動完全不変のオプトイン）。攻撃者の持ち主から見て ally=自軍が攻撃した／opponent=相手が攻撃した。
+// finishPendingAttack の !nullified 経路からのみ呼ぶ（無効化された攻撃は『バトル』が成立しない＝非放送。
+// 従来の event:allyAttack 宣言時近似が持っていた「無効化されても発動する」乖離を解消する）。
+// 連携攻撃は攻撃者スロットごとに1回ずつ配信（eventCard=各攻撃カード）。attackerSlots のカードは呼び出し時点の
+// 場札をクロージャで凍結する（E-X1 と同型＝state には積まない）。反撃等でバトル中に破壊された攻撃者は場に無く
+// null → その攻撃者分は放送しない（「場のそのカードを手札に戻す」等の消費側は場在が前提＝実害なしの近似）。
+function queueAttackerBattleEndFieldTriggers(attackerSlots, details = {}) {
+  const hasListener = [0, 1].some((playerIndex) =>
+    zones.some((zone) => {
+      const c = state.players[playerIndex]?.field?.[zone];
+      return (
+        cardHasTriggeredListener(c, "allyAttackerBattleEnd") ||
+        cardHasTriggeredListener(c, "opponentAttackerBattleEnd")
+      );
+    }),
+  );
+  if (!hasListener) {
+    return;
+  }
+  const frozen = (attackerSlots || [])
+    .map((slot) => ({ owner: slot.owner, zone: slot.zone, card: state.players[slot.owner]?.field?.[slot.zone] }))
+    .filter((slot) => slot.card);
+  if (frozen.length === 0) {
+    return;
+  }
+  Promise.resolve()
+    .then(async () => {
+      // 逐次 await（連携攻撃の複数配信で limit 記帳が並列に抜けないように＝runTriggeredAbilities の作法）。
+      for (const slot of frozen) {
+        await runFieldEventTriggers("attackerBattleEnd", slot.owner, slot.card, slot.zone, { ...details });
+      }
       render();
     })
     .catch((error) => {

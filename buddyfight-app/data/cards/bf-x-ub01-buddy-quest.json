@@ -4036,7 +4036,7 @@
         {
           "id": "bf-x-ub01-0052-battleend-trade",
           "kind": "triggered",
-          "event": "allyAttack",
+          "event": "allyAttackerBattleEnd",
           "conditions": [
             {
               "op": "eventCardMatches",
@@ -4102,7 +4102,7 @@
           ]
         }
       ],
-      "_note": "『【コールコスト】ゲージ1を払う』=costs.call:[payGauge:1]。『君の場の《髑髏武者》か《冒険者》が攻撃したバトルの終了時、相手の場のモンスター1枚を選び、君の場のモンスター1枚を破壊してよい。破壊したら、選んだカードのソウル1枚をドロップゾーンに置き、そのカードを破壊する』の忠実な『バトルの終了時』トリガーは本エンジンに存在しない: allyBattleEnd/opponentBattleEnd（queueBattleEndFieldTriggers, src/10:606）は**被攻撃側**視点の場イベント（bf-x-cp02-0004/0022の原文『攻撃され'た'バトル終了時』専用。X-SD02/0015前例）であり、『攻撃した側』の場全体向けbattleEndイベントは無い（bare\"battleEnd\"は攻撃者スロットのカード自身にしか発火せずbf-x-ub01-0052のような他カードには届かない）。よってbf-d-bt03-0055『フレイム・ドラゴンJr.』の確立近似を踏襲し、event:allyAttack（攻撃宣言時点・runFieldEventTriggers(\"attack\",attacker.owner,...)＝攻撃者owner視点でallyへ配送。src/09:440）+conditions:[eventCardMatches{filter:{cardType:monster,attributeIn:[髑髏武者,冒険者]}}]で近似（宣言時点＝相手の【対抗】でその攻撃が無効化された場合もこの能力自体は解決してしまう点が原文『バトルの終了時』と僅かに異なる近似。bf-d-bt03-0055と同型の乖離）。script は2段選択（opp:相手モンスター1枚・own:君のモンスター1枚min:0/require:false=『破壊してよい』）+destroySelected{var:own,require:false}+ifCondition{lastDestroySucceeded}then[dropSelectedSoul(opp)+destroySelected(opp)]（bf-x-ss02-0033『ディミオスソード“インフェルノ”』型のselect+optional destroy+ifCondition(lastDestroySucceeded)構成を転用。『破壊してよい。破壊したら』を要求選択min:0＋lastDestroySucceededゲートで表現）。1ターン回数制限の記載なし=limit未設定。grep自己検査: runFieldEventTriggers/allyAttack(src/09:440)/eventCardMatches/selectCards/destroySelected(src/14:1415)/lastDestroySucceeded(src/13:1212)/dropSelectedSoul 全実在確認。"
+      "_note": "『【コールコスト】ゲージ1を払う』=costs.call:[payGauge:1]。『君の場の《髑髏武者》か《冒険者》が攻撃したバトルの終了時、相手の場のモンスター1枚を選び、君の場のモンスター1枚を破壊してよい。破壊したら、選んだカードのソウル1枚をドロップゾーンに置き、そのカードを破壊する』=event:allyAttackerBattleEnd（E-XV7・X-UB02スライスで新設した攻撃側バトル終了の場ブロードキャスト。queueAttackerBattleEndFieldTriggers, src/10-battle-resolve.js が finishPendingAttack の !nullified 経路から攻撃者カードを eventCard に ally/opponentAttackerBattleEnd を配送＝E-X1 被攻撃側 ally/opponentBattleEnd の姉妹）+conditions:[eventCardMatches{filter:{cardType:monster,attributeIn:[髑髏武者,冒険者]}}]。旧実装は event:allyAttack（攻撃宣言時点）の確立近似で、相手の【対抗】で攻撃が無効化されても発動する乖離があった（E-XV7 で忠実イベントへ差し替え済み・無効化バトルでは発動しない・回帰 testXub01DarkFoxBattleEndTiming が固定）。script は2段選択（opp:相手モンスター1枚・own:君のモンスター1枚min:0/require:false=『破壊してよい』）+destroySelected{var:own,require:false}+ifCondition{lastDestroySucceeded}then[dropSelectedSoul(opp)+destroySelected(opp)]（bf-x-ss02-0033型のselect+optional destroy+ifCondition(lastDestroySucceeded)構成。『破壊してよい。破壊したら』を要求選択min:0＋lastDestroySucceededゲートで表現）。1ターン回数制限の記載なし=limit未設定。"
     },
     {
       "id": "bf-x-ub01-0053",

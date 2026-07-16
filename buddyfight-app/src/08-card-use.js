@@ -720,6 +720,9 @@ function returnFieldTargetToHand(target, sourceName = "効果", details = {}) {
   // 「場のモンスターが手札に戻った時」誘発（D・R・システム等）。発生源は既に場から外れている。
   // Z14(b)(S-UB-C03/0017): details.returnCause があれば伝播（「君のカードの効果で」判定用）。
   queueMonsterReturnedTriggers(returned, target.owner, target.zone, details);
+  // E-XV6(X-UB02/0015): 戻ったカード自身の「このカードが手札に戻った時」自己誘発（場→手札の単体 funnel。
+  // 効果 returnToHand/returnSelfToHand(場)・コスト returnPendingTargetToHand・破壊置換の手札戻しを全て被覆）。
+  queueReturnedToHandTriggers(returned, target.owner, "field");
   return returned;
 }
 

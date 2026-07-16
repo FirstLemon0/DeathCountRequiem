@@ -558,6 +558,25 @@ async function executeAbilityEffect(effect, context) {
     state.buddyCallDeclared = null;
     addLog(`${context.card?.name || "効果"}の効果でアタックフェイズを終了しました。`);
   }
+  if (effect.op === "skipToFinalPhase") {
+    // E-XV2(X-UB02/0036 機甲符：GAIN ADVANTAGE): メインフェイズを終了し、アタックフェイズを行わずに
+    // ファイナルフェイズへ移る（「メインフェイズを終了し、ファイナルフェイズを行う。アタックフェイズは行わない」）。
+    // 既存 endAttackPhase は「アタック中→final」（係属攻撃を解決してから遷移）、goFinalPhase は phase==="attack"
+    // 前提のため、いずれもメインからの前方ジャンプは扱えない。ここは goFinalPhase と同じ正規のフェイズ入場手順
+    // （transient 応答窓の失効・選択/リンク/バディ宣言のクリア・finalStart 誘発）でメイン→final を直接行う。
+    // fuzzer の ALLOWED_PHASE_TRANSITIONS には main>final が登録済み＝正規遷移（不変条件に抵触しない）。
+    // アタックフェイズを一切開かない（startAttackPhase を経ない）ので攻撃宣言も pendingAttack も生じない。
+    if (state.phase === "main" && !state.winner) {
+      expireTransientResponseWindows();
+      state.phase = "final";
+      state.selected = null;
+      state.counterHandOwner = null;
+      state.linkAttackers = [];
+      state.buddyCallDeclared = null;
+      addLog(`${context.card?.name || "効果"}の効果でアタックフェイズを行わず、ファイナルフェイズに移ります。`);
+      await runPhaseStartTriggers("finalStart", state.active);
+    }
+  }
   if (effect.op === "gainLife") {
     if (isLifeGainByEffectPrevented(state.players.indexOf(player))) {
       addLog(`${player.name}は効果でライフを回復できません。`);
@@ -960,7 +979,13 @@ async function executeAbilityEffect(effect, context) {
   }
   if (effect.op === "moveGaugeToDrop") {
     const receiver = effect.player === "opponent" ? opponent : player;
-    const amount = Math.min(effect.amount || 1, receiver.gauge.length);
+    // E-XV5(X-UB02/0068 フィジカル・フォーマット！): downTo 指定時は「ゲージが downTo 枚になるように置く」＝
+    // 超過分(gauge.length - downTo)だけドロップへ。downTo 以下なら no-op（「3枚以上なら2枚に」= downTo:2 と
+    // 自然に一致：2枚以下は動かさない）。downTo 未指定時は従来の固定 amount 挙動（既存カード不変・オプトイン）。
+    const amount =
+      effect.downTo !== undefined
+        ? Math.max(0, receiver.gauge.length - effect.downTo)
+        : Math.min(effect.amount || 1, receiver.gauge.length);
     const movedCards = receiver.gauge.splice(receiver.gauge.length - amount, amount);
     receiver.drop.push(...movedCards);
     if (movedCards.length > 0) {
@@ -1421,6 +1446,9 @@ async function executeAbilityEffect(effect, context) {
         // 積んで二重存在（カード複製）になる。既存の同型カード（H-EB02/0052等）の潜在バグも同時に解消。
         context.cardMoved = true;
         addLog(`${context.card.name}を手札に戻しました。`);
+        // E-XV6(X-UB02/0015): ドロップ回収枝の自己誘発（fromZone:"drop"）。fromZones:["field"] を指定した
+        // リスナー（0015）はここでは発火しない＝「場から手札に戻った時」限定が ability 側で選べる。
+        queueReturnedToHandTriggers(context.card, selfOwnerIndex, "drop");
       }
     }
   }
@@ -1489,6 +1517,9 @@ async function executeAbilityEffect(effect, context) {
       ownerPlayer.hand.push(returned);
       applyLifeLink(returned, candidate.owner);
       addLog(`${returned.name}を手札に戻しました。`);
+      // E-XV6(X-UB02/0015): 戻ったカード自身の「このカードが手札に戻った時」自己誘発（全戻し funnel。
+      // returnFieldTargetToHand を経ない直接 hand.push のため、ここでも queue する＝兄弟経路の取りこぼし防止）。
+      queueReturnedToHandTriggers(returned, candidate.owner, "field");
       allReturnedForTriggers.push({ card: returned, owner: candidate.owner, zone: candidate.zone });
       if (effectiveCardType(returned) === "monster") {
         returnedForTriggers.push({ card: returned, owner: candidate.owner, zone: candidate.zone });

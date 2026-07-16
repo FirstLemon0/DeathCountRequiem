@@ -1214,6 +1214,12 @@ function checkCondition(condition, owner, context = {}) {
     // 「破壊し、そうしたら…」の報酬効果を破壊成立時のみ実行するためのゲート。
     return Boolean(context.lastDestroyed);
   }
+  if (condition.op === "opponentCalledFromHand") {
+    // E-XV4(X-UB02/0059 エフゴ・アタック): 直前の opponentMayCallFromHand で相手が実際にコールを成立させたか。
+    // 「コールしたら、君はゲージ１を払ってよい。払ったら、このカードを手札に戻す」の後続分岐ゲート
+    // （lastDestroySucceeded と同じ context フラグ方式。辞退/候補なし/コスト不能なら false）。
+    return Boolean(context.opponentCalledFromHand);
+  }
   if (condition.op === "damageSourceLabelIs") {
     // opponentDamagedByEffect 誘発時、ダメージ発生源能力のラベル(“爆雷”等)一致を判定（爆雷連鎖）。
     return context.damageSourceLabel === condition.label;

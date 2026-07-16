@@ -339,6 +339,9 @@ async function executeAbilityScriptStep(step, context) {
   if (step.op === "moveSelectedToDeckBottomOrdered") {
     return moveSelectedToDeckBottomOrderedForScript(step, context);
   }
+  if (step.op === "moveSelectedToDeckTopOrdered") {
+    return moveSelectedToDeckTopOrderedForScript(step, context);
+  }
   if (step.op === "reorderTopOrdered") {
     return reorderTopOrderedForScript(step, context);
   }
@@ -421,6 +424,9 @@ async function executeAbilityScriptStep(step, context) {
   if (step.op === "callSelected") {
     return callSelectedForScript(step, context);
   }
+  if (step.op === "opponentMayCallFromHand") {
+    return opponentMayCallFromHandForScript(step, context);
+  }
   if (step.op === "callSelfFromHand") {
     return callSelfFromHandForScript(step, context);
   }
@@ -465,6 +471,9 @@ async function executeAbilityScriptStep(step, context) {
   }
   if (step.op === "lookTopSelectToSelectedSoulRestToBottom") {
     return lookTopSelectToSelectedSoulRestToBottomForScript(step, context);
+  }
+  if (step.op === "lookTopSelectToSelectedSoulRest") {
+    return lookTopSelectToSelectedSoulRestForScript(step, context);
   }
   if (step.op === "searchDeckToSelectedSoul") {
     return searchDeckToSelectedSoulForScript(step, context);
@@ -1315,6 +1324,58 @@ async function moveSelectedToDeckBottomOrderedForScript(step, context) {
   return true;
 }
 
+// E-XV3(X-UB02/0052 メガドロイド ラージャー): 選択した（ドロップ等の）カードを「デッキの上に好きな順番で置く」。
+// moveSelectedToDeckBottomOrdered の鏡（あちらは「下」＝unshift、こちらは「上」＝push）。デッキ向き規約は
+// reorderTopOrdered と同じ「top=末尾」＝ordered[0]（＝1番目に置くカード）を最上段にするため逆順で push する。
+// 選択の取り出しは moveSelectedToDeckBottomOrdered と共通の takeScriptSelectionCards（場/ドロップ/手札いずれからも可）。
+async function moveSelectedToDeckTopOrderedForScript(step, context) {
+  const selected = Array.isArray(step.vars)
+    ? step.vars.flatMap((varName) => scriptSelection({ var: varName }, context))
+    : scriptSelection(step, context);
+  const movedEntries = takeScriptSelectionCards(selected);
+  if (movedEntries.length === 0) {
+    return step.require === false ? true : { ok: false, reason: "no_selected_cards" };
+  }
+  const owner =
+    step.toOwner === "opponent" ? 1 - context.owner :
+    step.toOwner === "self" ? context.owner :
+    movedEntries[0]?.owner ?? context.owner;
+  const player = state.players[owner];
+  let remaining = [...movedEntries];
+  const ordered = [];
+  while (remaining.length > 0) {
+    const picked = await chooseCardEntries(remaining, {
+      title: step.title || `${context.card.name}のデッキ上順序`,
+      lead: `デッキの上から${ordered.length + 1}番目に置くカードを選んでください。`,
+      min: 1,
+      max: 1,
+      forceDialog: true,
+      promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
+      purpose: "scry",
+    });
+    const entry = picked?.[0];
+    if (!entry) {
+      // キャンセル時は取り出し済みカードを消失させない（元ゾーンには戻せないためデッキ上へ既定順で退避）。
+      for (let i = remaining.length - 1; i >= 0; i -= 1) {
+        player.deck.push(remaining[i].card);
+      }
+      return { ok: false, reason: "ordered_selection_cancelled" };
+    }
+    ordered.push(entry.card);
+    remaining = remaining.filter((candidate) => candidate.card.instanceId !== entry.card.instanceId);
+  }
+  // ordered[0] を最上段(末尾)にするため逆順 push（reorderTopOrdered と同規約）。
+  for (let i = ordered.length - 1; i >= 0; i -= 1) {
+    player.deck.push(ordered[i]);
+  }
+  if (step.log) {
+    addLog(step.log.replace("{cards}", ordered.map((card) => card.name).join("、")));
+  } else {
+    addLog(`${context.card?.name || "効果"}で${ordered.length}枚を${player.name}のデッキの上に置きました。`);
+  }
+  return true;
+}
+
 // G4(D-EB01/0025 スクルド): 「君か相手のデッキの上からN枚を見て、好きな順番で元のデッキの上に置く」。
 // moveSelectedToDeckBottomOrdered が「下」方向なのに対し、これは「上」方向（並べ替え）。デッキ上=末尾。
 // target: "self" | "opponent" | "choose"（既定 self。"choose" は能力主体がどちらのデッキか確認ダイアログで選ぶ）。
@@ -1753,6 +1814,85 @@ async function lookTopSelectToSelectedSoulRestToBottomForScript(step, context) {
     rest.forEach((card) => player.deck.unshift(card));
     if (rest.length > 0) {
       addLog(`残りの${rest.length}枚をデッキの下に置きました。`);
+    }
+  }
+  if (player.deck.length === 0) {
+    declareDeckLoss(player);
+  }
+  return true;
+}
+
+// E-XV1(X-UB02/0018 ブレイブマシン格納庫 / 0030 制服仕事人 アサシンフリル): 事前選択した「場のカード」(var/hostVar)
+// のソウルへ、デッキの上から count 枚を「見て」amount 枚まで入れ、残りを restTo（"gauge"|"drop"）へ置く。
+//   ・lookTopSelectToSelectedSoulRestToBottom（残り＝デッキ下 固定・表向き固定）の兄弟。相違点は
+//     (1) 残りの行き先が restTo で選べる（0018=ゲージ／0030=ドロップ）
+//     (2) faceChoice=true でソウルへ入れる各札を owner が表向き/裏向きで選べる（0030「表向きか裏向きで」）。
+//   ・「見る」＝秘匿（owner のみ開示・promptSeat=owner）。T13 精神で state.log に見たカード名は出さない
+//     （公開ソウル札＝表向きは既にソウルで両席可視になるので名前ログ可。裏向き＝秘匿はカード名を出さない。
+//      残りは行き先に依らず枚数のみログ＝lookTopSelectToSoulRestToDrop と同規約）。
+//   ・pop 中の宙吊り最小（既存 lookTop 系の作法）＝revealed をクロージャに保持し、選別後に即ソウル/ゲージ/ドロップへ移す。
+async function lookTopSelectToSelectedSoulRestForScript(step, context) {
+  const host = scriptSelection({ var: step.hostVar || step.var }, context)[0]?.card;
+  if (!host) {
+    return step.require === false ? true : { ok: false, reason: "no_soul_host" };
+  }
+  const player = state.players[step.controller === "opponent" ? 1 - context.owner : context.owner];
+  const owner = state.players.indexOf(player);
+  const count = step.count || 1;
+  const restTo = step.restTo === "gauge" ? "gauge" : "drop"; // 既定 drop（0030）。0018 は "gauge"。
+  const revealed = [];
+  for (let index = 0; index < count && player.deck.length > 0; index += 1) {
+    revealed.push(player.deck.pop());
+  }
+  if (revealed.length > 0) {
+    const wantMax = Math.min(step.amount || 1, revealed.length);
+    const picked = await chooseCardEntries(
+      revealed.map((card) => ({ card, owner })),
+      {
+        title: step.title || context.card?.name || "効果",
+        lead:
+          step.lead ||
+          `${host.name}のソウルに入れるカードを${wantMax}枚まで選んでください（残りは${restTo === "gauge" ? "ゲージ" : "ドロップゾーン"}へ）。`,
+        // 既定は min:0（「N枚まで」＝任意・0018）。minAmount 指定時のみ強制選択（「N枚を…入れ」＝0030）。
+        // 候補（見た枚数）が minAmount 未満なら wantMax でクランプ＝候補0なら上の if(revealed.length>0) で本ブロック自体に入らず空許可。
+        min: step.minAmount ? Math.min(step.minAmount, wantMax) : 0,
+        max: wantMax,
+        forceDialog: true,
+        promptSeat: owner, // 「見る」＝能力主体の席のみへ開示（秘匿・誤配送防止）
+        purpose: "search",
+      },
+    );
+    const toSoul = (picked || []).map((entry) => entry.card);
+    const soulSet = new Set(toSoul.map((card) => card.instanceId));
+    const rest = revealed.filter((card) => !soulSet.has(card.instanceId));
+    for (const soulCard of toSoul) {
+      // faceChoice=true（0030）: 表向き/裏向きを owner に確認。裏向き＝秘匿（markSoulCardsFaceDown＝viewFor が
+      //   所有者以外へ伏せる／ソウル→ドロップで公開時に解除）。faceChoice 未指定は表向き固定（0018）。
+      let faceDown = false;
+      if (step.faceChoice) {
+        faceDown = !(await confirmChoiceAsync(
+          owner,
+          `${context.card?.name || "効果"}: ${host.name}のソウルに表向きで入れますか？（いいえ＝裏向き）`,
+          { yesLabel: "表向き", noLabel: "裏向き", purpose: "search" },
+        ));
+      }
+      putCardsToSoulWithTrigger(host, owner, [soulCard], "deck", { faceDown });
+      addLog(
+        faceDown
+          ? `デッキの上から1枚を裏向きで${host.name}のソウルに入れました。`
+          : `${soulCard.name}を${host.name}のソウルに入れました。`,
+      );
+    }
+    if (rest.length > 0) {
+      if (restTo === "gauge") {
+        // ゲージは伏せ札（hidden pile）＝lookTopSelectToGaugeRestToTop と同様に gaugePlaced 誘発は起こさず枚数のみログ。
+        rest.forEach((card) => player.gauge.push(card));
+        addLog(`残りの${rest.length}枚をゲージに置きました。`);
+      } else {
+        // ドロップ（公開）へ。movedToDrop/deckMilled 誘発つき（lookTopSelectToSoulRestToDrop と同規約・枚数のみログ）。
+        putCardsToDropWithTrigger(player, owner, rest, "deck", { cause: makeEffectCause(context, owner) });
+        addLog(`残りの${rest.length}枚をドロップゾーンに置きました。`);
+      }
     }
   }
   if (player.deck.length === 0) {
@@ -2302,6 +2442,125 @@ async function callSelectedForScript(step, context) {
   if (step.resolveOnEnter) {
     await resolveOnEnter(calledCard, player, null, { byEffect: true, enterCauseCard: context.card });
   }
+  return true;
+}
+
+// E-XV4(X-UB02/0059 エフゴ・アタック): 発生源(君)の効果解決中に、相手が「手札のモンスター１枚を【コールコスト】を
+// 払ってコールしてよい」。相手席への往復プロンプト（辞退可・相手がコストを負担）で任意コールを開く。
+//   ・promptSeat は一貫して相手席(1 - context.owner)＝相手の手札候補・コール先が発生源側へ漏れない（秘匿）。
+//   ・成立時に context.opponentCalledFromHand=true を立てる（後続 ifCondition{op:"opponentCalledFromHand"} が
+//     「コールしたら、君はゲージ１を払ってよい。払ったら、このカードを手札に戻す」を chooseBranch+payCost+
+//     returnSelfToHand（既存 op・bf-h-pp01-0016 デストラップと同型）で分岐するためのフラグ。lastDestroyed と同作法）。
+//   ・辞退／候補なし／コスト不能／コール先なし はいずれも「呼ばれなかった」＝フラグは false のまま no-op。
+//   ・乱数不使用＝T13 非漏洩。往復は chooseCardEntries/confirmChoiceAsync/selectZone の既存 seam を通る＝
+//     リプレイ記録再生・room 復元で決定的（callSelectedForScript と同じ移動/課金/resolveOnEnter 経路）。
+async function opponentMayCallFromHandForScript(step, context) {
+  context.opponentCalledFromHand = context.opponentCalledFromHand || false;
+  const oppOwner = 1 - context.owner;
+  const opp = state.players[oppOwner];
+  // 手札の候補（filter・コール可能＝コールコストを支払えるカードに限る）。必殺モンスターの通常コール不可ゲート等も除外。
+  const candidateCards = (opp.hand || []).filter((card) => {
+    if (!matchesCardFilter(card, step.filter || {})) {
+      return false;
+    }
+    if (!impactMonsterCallAllowed(oppOwner, card)) {
+      return false; // 必殺モンスターは「1ターン1枚・自ファイナルのみ」＝相手ターンのこの窓では不可
+    }
+    if (turnCallRestrictionBlocks(oppOwner, card)) {
+      return false;
+    }
+    // 空きゾーンが1つも無ければ（全枠埋まり）コールできない。
+    if (!fieldZones.some((zone) => !opp.field[zone])) {
+      return false;
+    }
+    // コールコストを相手が実際に支払えるか（払えないカードは候補から除外＝辞退と同じ）。
+    if (step.payCost) {
+      const check = canPayCardCost(opp, card, step.payCost, card, { callFromZone: "hand" });
+      if (!check.ok) {
+        return false;
+      }
+    }
+    return true;
+  });
+  if (candidateCards.length === 0) {
+    addLog(`${state.players[context.owner].name}の効果: ${opp.name}はコールできるモンスターがいません。`);
+    return true; // フラグは false のまま
+  }
+  // (1) 相手に「コールするか」を確認（辞退可）。promptSeat=相手席。
+  const wantsCall = await confirmChoiceAsync(
+    oppOwner,
+    `${context.card?.name || "効果"}: 手札のモンスター1枚を【コールコスト】を払ってコールしますか？`,
+    { yesLabel: "コールする", noLabel: "コールしない", purpose: "call-optional" },
+  );
+  if (!wantsCall) {
+    addLog(`${opp.name}はコールしませんでした。`);
+    return true; // 辞退＝フラグ false
+  }
+  // (2) 相手がコールするカードを選ぶ。
+  const pickedCard = await chooseCardEntries(
+    candidateCards.map((card) => ({ card, owner: oppOwner, source: "hand", zone: "hand" })),
+    {
+      title: `${context.card?.name || "効果"}: コールするモンスター`,
+      lead: "手札からコールするモンスターを選んでください。",
+      min: 1,
+      max: 1,
+      forceDialog: true,
+      promptSeat: oppOwner,
+      purpose: "call",
+    },
+  );
+  const chosen = pickedCard?.[0]?.card;
+  if (!chosen) {
+    addLog(`${opp.name}はコールしませんでした。`);
+    return true;
+  }
+  // (3) コール先ゾーンを相手が選ぶ（空き枠のみ）。
+  const emptyZones = fieldZones.filter((zone) => !opp.field[zone]);
+  const zoneSel = await chooseCardEntries(
+    emptyZones.map((zone) => ({ card: chosen, zone, owner: oppOwner, note: `${zoneLabel(zone)}にコール` })),
+    {
+      title: `${chosen.name}のコール先`,
+      lead: "コールするエリアを選んでください。",
+      min: 1,
+      max: 1,
+      forceDialog: true,
+      promptSeat: oppOwner,
+      purpose: "call",
+    },
+  );
+  const zone = zoneSel?.[0]?.zone;
+  if (!zone || !fieldZones.includes(zone)) {
+    addLog(`${opp.name}はコールしませんでした。`);
+    return true;
+  }
+  // (4) 相手が【コールコスト】を支払う（払えなければ中断＝コールされず・フラグ false）。
+  if (step.payCost) {
+    const payment = await payCardCostWithSelection(opp, chosen, step.payCost, chosen, {
+      sourceCard: chosen,
+      callFromZone: "hand",
+    });
+    if (!payment.ok) {
+      addLog(payment.reason || `${opp.name}はコールコストを支払えませんでした。`);
+      return true;
+    }
+  }
+  // (5) 手札からカードを取り出して場へ置く（callSelectedForScript と同じ移動/上書き/サイズ/enter 経路）。
+  const handIndex = opp.hand.findIndex((card) => card.instanceId === chosen.instanceId);
+  if (handIndex < 0) {
+    return true; // 念のため（コスト支払いで手札が動いた等）
+  }
+  const [calledCard] = opp.hand.splice(handIndex, 1);
+  if (opp.field[zone]) {
+    dropFieldCardByRule(opp, zone);
+  }
+  opp.field[zone] = calledCard;
+  recordImpactMonsterCall(oppOwner, calledCard);
+  calledCard.enteredFromZone = "hand";
+  enforceSizeLimit(opp, zone);
+  addLog(`${opp.name}は${calledCard.name}を${zoneLabel(zone)}にコールしました。`);
+  // 効果コール＝登場時能力を解決（byEffect）。発生源(君のスペル)は cause ではない＝enterCauseCard 未指定。
+  await resolveOnEnter(calledCard, opp, null, { byEffect: true });
+  context.opponentCalledFromHand = true;
   return true;
 }
 
@@ -2895,6 +3154,7 @@ function isScriptEffectStep(step) {
     "nullifySelectedAbilities", // E-XC8(X-CP02/0040 マインドフェイカー): 選択1枚をそのターン中 能力無効化
     "dropSoulSourceCard", // E-XC13(X-CP02/0046 ビガーブレイブ): triggered soulAbility から発生源ソウル札をドロップへ
     "revealRandomHandThenBranch", // E-XU1(X-UB01/0057 パル子): 相手手札ランダム1枚公開＋種別分岐（effect版 src/15 へ委譲）
+    "skipToFinalPhase", // E-XV2(X-UB02/0036): メイン→ファイナルへスキップ（effect版 src/15 へ委譲。script からも使用可）
     "endFinalPhase",
   ].includes(step.op);
 }

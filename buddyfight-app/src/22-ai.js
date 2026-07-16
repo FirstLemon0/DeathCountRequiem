@@ -198,6 +198,20 @@ async function aiPump() {
         break; // 人間の入力待ち等。次の render で再開する
       }
     }
+    // 保存則（fuzzer seed302/685）: 決着(winner成立)でループを抜けた時、宣言直後で宙吊りのままの
+    // pendingAction が残っていると、その札（removeSelectedFromHand で手札から抜いた本体＋ソウル）が
+    // どのゾーンにも属さず物理消失する（終局後は pump も対抗UIも解決を回さない）。resolveDeclarationIfGameEnded
+    // は「このカードのコストで敗北条件を跨いだ」型を宣言時に拾うが、「別カードが先にデッキを0にした後に宣言し、
+    // その宣言のコスト検査で決着が判明」型は宣言時点で跨がないため拾えない。ここで正規ゾーンへ着地させる
+    // （魔法→ドロップ・コール→場・装備→アイテム枠等、既存の resolvePendingResolution 経路をそのまま使う）。
+    // 空デッキ前提の内部テストは pump を回さないためこの安全網の影響を受けない（挙動不変）。
+    if (state?.winner && state.pendingAction && !state.resolvingPending) {
+      try {
+        await resolvePendingResolution();
+      } catch (error) {
+        console.error("[AI] 終局時の宙吊り宣言の着地中に例外。", error);
+      }
+    }
   } finally {
     aiSession.running = false;
     try {

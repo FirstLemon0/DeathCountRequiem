@@ -385,6 +385,10 @@ async function callMonster(zone) {
 // （fuzzer 終局時保存則の恒久漏れ・seed12/337/51/722）。決着済みで対抗の意味が無いこの局面のみ、既存の
 // resolvePendingResolution 経路をそのまま使って着地させる（コール→場・装備→アイテム枠・魔法→解決後ドロップ等）。
 // 支払いで実際にデッキ/ライフがしきい値を跨いだ時だけ発火＝空デッキ前提テスト等の無変化ケースは従来どおり不変。
+// （このコスト以外の要因で既に敗北状態だった宣言＝別カードが先にデッキを0にした後の宣言は、宣言時点では
+//  deckBeforeCost が既に0で跨がないためここでは拾えない。決着でループを抜けた後の宙吊り札は aiPump 末尾の
+//  安全網が resolvePendingResolution で着地させる＝fuzzer seed302/685。空デッキ前提の内部テストは pump を
+//  回さないため影響を受けない。宣言時点で deck/life が既に0でも winner 未成立なら発火しない＝従来どおり不変。）
 async function resolveDeclarationIfGameEnded(deckBeforeCost, lifeBeforeCost, player) {
   if (
     state.winner &&

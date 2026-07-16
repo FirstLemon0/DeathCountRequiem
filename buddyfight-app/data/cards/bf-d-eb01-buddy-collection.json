@@ -844,7 +844,8 @@
      ]
     }
    ],
-   "_note": "コールコストは returnOwnFieldCardToHand(filter: cardType monster + nameIncludes 煉獄騎士団 + baseSizeGte:2) ＋ payGauge2（H-EB04/0010のcallStack filterと同じキー構成）。callStackは無し（本カードは『重ねる』記述が無く空きゾーンへの通常コール）。対抗起動の破壊は、H-EB04/0010（同名キャラの再録先例）がdestroySelected+ifCondition(lastDestroySucceeded)を使っているが、destroySelectedはcontext.lastDestroyedを設定しないため、その組み合わせは事実上lastDestroySucceededが常にfalseになる（既存カードの潜在バグ・本パックでは踏襲しない）。かわりにability.target(type:fieldCard, excludeSource:true, filter)＋destroy{target:\"$target\"}を使い、destroy効果が正しくcontext.lastDestroyedを立てるようにした。対象がいない時はfieldAbilityUsableのtarget事前チェックでこの起動能力自体が選択肢に出ない（cardCount条件の重複指定は不要）。destroyByAttackトリガーのスタンドは対象カードを特定不要のため target:\"$self\" 直書き。"
+   "deckAnyFlag": true,
+   "_note": "コールコストは returnOwnFieldCardToHand(filter: cardType monster + nameIncludes 煉獄騎士団 + baseSizeGte:2) ＋ payGauge2（H-EB04/0010のcallStack filterと同じキー構成）。callStackは無し（本カードは『重ねる』記述が無く空きゾーンへの通常コール）。対抗起動の破壊は、H-EB04/0010（同名キャラの再録先例）がdestroySelected+ifCondition(lastDestroySucceeded)を使っているが、destroySelectedはcontext.lastDestroyedを設定しないため、その組み合わせは事実上lastDestroySucceededが常にfalseになる（既存カードの潜在バグ・本パックでは踏襲しない）。かわりにability.target(type:fieldCard, excludeSource:true, filter)＋destroy{target:\"$target\"}を使い、destroy効果が正しくcontext.lastDestroyedを立てるようにした。対象がいない時はfieldAbilityUsableのtarget事前チェックでこの起動能力自体が選択肢に出ない（cardCount条件の重複指定は不要）。destroyByAttackトリガーのスタンドは対象カードを特定不要のため target:\"$self\" 直書き。deckAnyFlag:true追記(2026-07-16・201706_11対応): 公式レシピ201706_11「ゼータデッキ」（ヒーローワールド・ジェムクローンbuddy）が本カードのヒーローＷでの使用を実証。ジェムクローン構築緩和の soft rule 近似＝同パック0007のFD8/R5と同扱い（deckAnyFlag:true で全フラッグ構築可・mech/rules無変更）。"
   },
   {
    "id": "bf-d-eb01-0013",

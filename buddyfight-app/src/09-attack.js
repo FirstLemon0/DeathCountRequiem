@@ -218,6 +218,16 @@ async function performAttackDeclaration(attackers, targetValue, options = {}) {
   for (const attacker of attackers) {
     await restFieldCard(attacker.owner, attacker.zone, attacker.card, { reason: "attack" });
   }
+  // 攻撃者のレスト誘発、および直前バトルの遅延 battleEnd（queueBattleEndTriggers が Promise で切り離す
+  // detached microtask。上の await 境界で流れ込む）が、攻撃者/攻撃対象を場から除去して
+  // handleDestroyedDuringPending→clearPendingAttack を走らせると、この時点で state.pendingAttack は
+  // 既に null になり得る（例: H-PP01/0063 闇の貴公子 キルナイトの「バトル終了時、自身を手札に戻す」が
+  // 次の攻撃宣言のレスト待ちで解決するケース）。以降の宣言処理は targetLabel(pending) 等で pending を
+  // 参照するため、無効化された攻撃はここで安全に中断する（攻撃者は既にレスト済み＝宣言済み扱いで整合）。
+  if (!state.pendingAttack) {
+    render();
+    return false;
+  }
   const attackerNames = attackers.map((attacker) => attacker.card.name).join("、");
   state.phase = "defense";
   state.selected = null;
