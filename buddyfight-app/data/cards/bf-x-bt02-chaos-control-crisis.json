@@ -3612,6 +3612,14 @@
           "id": "bf-x-bt02-0052-ally-fairy-attack-nullified-stand",
           "kind": "triggered",
           "event": "allyAttackNullified",
+          "conditions": [
+            {
+              "op": "nullifiedAttackerMatches",
+              "filter": {
+                "attribute": "妖精"
+              }
+            }
+          ],
           "limit": {
             "scope": "turn"
           },
@@ -3623,7 +3631,7 @@
           ]
         }
       ],
-      "_note": "①【コールコスト】デッキ上1枚をソウルに入れ、ゲージ2=costs.call[putTopDeckToSoul(1),payGauge(2)]（標準形・多数前例）。②『君の場の《妖精》の攻撃が無効化された時、このカードをスタンドする。この能力は1ターンに1回だけ発動する』=kind:triggered,event:allyAttackNullified,limit:{scope:turn},effects:[standTarget{target:$self}]。【エンジン制約の発見・要報告】allyAttackNullifiedはfireAllyAttackNullifiedTriggers(src/10-battle-resolve.js:746-768)が無効化された攻撃側プレイヤーの場札全てへ一律発火するブロードキャストイベントで、発火時のcontextは{card,player,owner,zone}のみ＝どのカードが無効化された攻撃者だったかを示すcontext.attackersが含まれない（eventAttackersMatchはcontext.attackersを読むため、この配線が無いと常にfalseになり使えない。selfIsNullifiedAttacker/lastAttackNullifiedはstate.lastAttackOutcomeを直接読むが、いずれも『自分自身が無効化された攻撃者か』または『陣営(self/opponent)』のみの判定でカードfilter一致は評価しない）。つまり『無効化された攻撃者がfilter{attribute:妖精}に一致するか』を判定する条件opがDB・src双方に存在しない＝新op候補（例: nullifiedAttackerMatches{filter}、state.lastAttackOutcome.attackersの各slot{owner,zone}をstate.players[owner].field[zone]で解決してmatchesCardFilterする）。本バッチはsrc変更禁止のため新op創作はせず、conditions無しの広め近似（自分の場のどのカードの攻撃が無効化されてもスタンドする。bf-x-cp01-0053策士サンジャオ/pp01-0038デスルーラー ガルクハイトの既存無フィルタ版allyAttackNullifiedと同型）を採用した。実際のプレイでは《トイレ》/《妖精》アーキタイプ構築なら大半のモンスターが妖精属性のため実害は限定的だが、非妖精カードの攻撃無効化でも発動してしまう点は忠実性の逸脱＝要報告（過剰絞り込みではなく逆方向の広すぎ近似）。grep自己検査: putTopDeckToSoul/payGauge/allyAttackNullified(src/10-battle-resolve.js:761)/standTarget(src/15-ability-effects.js:1817,src/14-ability-script.js:3269) 全実在確認。"
+      "_note": "①【コールコスト】デッキ上1枚をソウルに入れ、ゲージ2=costs.call[putTopDeckToSoul(1),payGauge(2)]（標準形・多数前例）。②『君の場の《妖精》の攻撃が無効化された時、このカードをスタンドする。この能力は1ターンに1回だけ発動する』=kind:triggered,event:allyAttackNullified,limit:{scope:turn},effects:[standTarget{target:$self}]。【E-XB30で忠実化（2026-07-18・出荷済み挙動是正）】新設した条件op nullifiedAttackerMatches{filter:{attribute:妖精}}をconditionsに付与し、《妖精》の攻撃が無効化された時に限り発火するよう是正した。従来はエンジンに攻撃者filter判定opが無く、conditions無しの広め近似（自分の場のどのカードの攻撃が無効化されてもスタンド）だった。nullifiedAttackerMatchesはstate.lastAttackOutcome.attackers（無効化攻撃の攻撃側スロット{owner,zone}凍結）を場札へ解決しmatchesCardFilterで判定する（allyAttackNullifiedは攻撃側プレイヤーの場札のみへ配送＝「君の場の」限定は自然に満たされる）。grep自己検査: putTopDeckToSoul/payGauge/allyAttackNullified(src/10-battle-resolve.js)/standTarget/nullifiedAttackerMatches(src/13-abilities-core.js) 全実在確認。"
     },
     {
       "id": "bf-x-bt02-0053",

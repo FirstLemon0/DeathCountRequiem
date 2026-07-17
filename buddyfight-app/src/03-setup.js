@@ -334,6 +334,14 @@ function newGame(options = {}) {
     fightLimits: [{}, {}],
     monsterAttackForbidden: [false, false],
     monsterAttackForbiddenSources: [[], []],
+    // E-XB28(X-BT03/0102 逆天の黒死竜 アビゲール 逆天③): 席別のターンスキップ予約（消費型ワンショット）。
+    // scheduledTurnSkip[S] が真の間、S 席の次のターンは開始時に即終了する（ドロー/チャージ/行動なし）。
+    // scheduledAttackBan[S] が真なら S 席の次のターン開始時に fieldAttackBanThisTurn[S] を立てる（スキップ消費で予約）。
+    // fieldAttackBanThisTurn[S] は「このターン中、S 席の場のカード（モンスター/アイテム両方）は攻撃できない」。
+    // すべて JSON 直列化可（room/replay 往復）。既存対戦では全 false/null＝挙動不変。
+    scheduledTurnSkip: [null, null],
+    scheduledAttackBan: [false, false],
+    fieldAttackBanThisTurn: [false, false],
     damagePrevention: [[], []],
     // E-XB1(X-BT02/0113 アステリズム・エフェクト): 席別の「ファイトに敗北しない」保護。各席の配列に
     // { untilTurnStartOf, sinceTurnCount } を積む（JSON直列化のみで room/replay 往復・クロージャ無し）。

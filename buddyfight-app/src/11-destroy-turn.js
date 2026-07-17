@@ -8,6 +8,12 @@ function canDeclareAttack(attacker) {
     return false;
   }
   const player = state.players[attacker.owner];
+  // E-XB28(X-BT03/0102 逆天③): 「次の君のターン中、君の場のカードは攻撃できない」。ターンスキップ予約の消費時に
+  // 立つ、この席のこのターン限定・無条件の攻撃禁止（原文「場のカード」＝モンスター/アイテム両種が対象。
+  // ignore 系キーワードでも解除しない）。既存対戦では常に false＝素通り（後方互換）。
+  if (state.fieldAttackBanThisTurn?.[attacker.owner]) {
+    return false;
+  }
   if (
     state.monsterAttackForbidden?.[attacker.owner] &&
     effectiveCardType(attacker.card) === "monster"
@@ -872,6 +878,16 @@ function specialCallOpportunityMatches(event, owner, spec = {}) {
   if (spec.destroyerController === "opponent" && event.cause?.destroyerOwner === owner) {
     return false;
   }
+  // E-XB22(X-BT03/0111 PCM ギアゴッドVIII「君のセンターのモンスターが破壊された時」): 破壊が起きたゾーンの照合。
+  // recordSpecialCallOpportunity(816)が記録した event.destroyedZone を、spec.zone(単一)/spec.zoneIn(配列・既存の
+  // zone/zoneIn 作法)と突き合わせる。zone/zoneIn 未指定は全ゾーン許容＝既存カード(デュエルズィーガー系・
+  // temporaryCallOpportunityMatches 全9件は zone 無し)は挙動不変（後方互換）。
+  if (spec.zone && event.destroyedZone !== spec.zone) {
+    return false;
+  }
+  if (Array.isArray(spec.zoneIn) && !spec.zoneIn.includes(event.destroyedZone)) {
+    return false;
+  }
   return matchesCardFilter(event.destroyedCard, spec.filter || {});
 }
 
@@ -1061,7 +1077,14 @@ function expireTransientResponseWindows(options = {}) {
 }
 
 function queueDestroyedTriggers(card, owner, zone, cause = null) {
-  if (!(card.abilities || []).some((ability) => ability.kind === "triggered" && ability.event === "destroyed")) {
+  // E-XB25(R22): 早期リターンのガードは印字 abilities だけでなく一時付与 grantedTempAbilities も見る。
+  // runTriggeredAbilities は両方を走査する（src/14）のに、ここが card.abilities のみ参照していたため、
+  // 「破壊された時」の triggered が付与のみ（印字に destroyed 無し）のカードでは microtask が queue されず
+  // 発火しなかった（E-PR11 の完全性バグ。0071 ブラック・プロボックの破壊時「デッキ上→ゲージ＋ライフ+1」の直接原因）。
+  // 既存カードは grantedTempAbilities 未設定＝この項は常に空＝挙動不変（後方互換）。
+  const hasDestroyedTrigger = (abilities) =>
+    (abilities || []).some((ability) => ability.kind === "triggered" && ability.event === "destroyed");
+  if (!hasDestroyedTrigger(card.abilities) && !hasDestroyedTrigger(card.grantedTempAbilities)) {
     return;
   }
   Promise.resolve()
@@ -1216,6 +1239,44 @@ function queueSoulCardDroppedTriggers(hostCard, hostOwner, count = 1) {
       return runFieldEventTriggers("soulCardDropped", hostOwner, hostCard, slot.zone, { count });
     },
     { errorLabel: `${hostCard.name}のソウルがドロップに置かれた時の能力の処理中にエラーが発生しました。` },
+  );
+}
+
+// E-XB24(X-BT03/0019 エグゼキューション・グラウンド): 「君の《黒竜》にソウルが入った時」の場ブロードキャスト
+// （allySoulCardDropped の鏡）。ソウルが流入したホスト(hostCard)を eventCard として場全体へ
+// allySoulCardAdded / opponentSoulCardAdded を配送する。リスナーは eventCardMatches でホスト（黒竜等）を絞る。
+// 入ったソウル札は details.enteredSoulCard で運ぶ（主体は「ソウルを得たホスト」なので eventCard=host＝dropped 鏡と対称）。
+// ソウル流入の全経路（コスト put*ToSoul／効果 putTopDeckToSoul 等／script move soul・itemSoul／重ねコール stack／
+// soul 継承）から呼ぶ。funnel putCardsToSoulWithTrigger からも直接 .soul.push する各所からも呼ぶ（発火漏れ防止）。
+// listener 検出は cardHasTriggeredListener に統一（queueSoulCardDroppedTriggers と同型）。listener が無ければ
+// 何もしない＝既存カードに soulCardAdded リスナーは無く挙動完全不変（後方互換）。
+function queueSoulCardAddedTriggers(hostCard, hostOwner, count = 1, enteredSoulCard = null) {
+  if (!hostCard || count <= 0 || !Array.isArray(state?.players)) {
+    return;
+  }
+  const hasListener = state.players.some((player) =>
+    zones.some((zone) => {
+      const listener = player?.field?.[zone];
+      return (
+        cardHasTriggeredListener(listener, "allySoulCardAdded") ||
+        cardHasTriggeredListener(listener, "opponentSoulCardAdded")
+      );
+    }),
+  );
+  if (!hasListener) {
+    return;
+  }
+  queueTriggerMicrotask(
+    () => {
+      // 発火時再検証(TOCTOU): queue後の同期処理でホストが離場/差し替わっていたら不発（コール中の一時状態や
+      // 直後の破壊/差し替えとの競合を安全化。queueSoulCardDroppedTriggers と同型）。ホスト現在位置から配送する。
+      const slot = findFieldCardSlot(hostCard);
+      if (!slot) {
+        return;
+      }
+      return runFieldEventTriggers("soulCardAdded", slot.owner, hostCard, slot.zone, { count, enteredSoulCard });
+    },
+    { errorLabel: `${hostCard.name}のソウルに入った時の能力の処理中にエラーが発生しました。` },
   );
 }
 
@@ -1796,6 +1857,14 @@ async function endTurn() {
     addLog("ターン終了はファイナルフェイズの終了時に行います。");
     return;
   }
+  await finishAndAdvanceTurn();
+}
+
+// endTurn の本体（ターン終了処理→次ターンへ遷移→新ターン設定）。入口ガード(phase/winner/pending)は endTurn 側。
+// E-XB28(X-BT03/0102 逆天③): ターンスキップ予約の消費が「開始したターンを即終了して次へ」を表すため、
+// スキップ時はこの関数を末尾で再帰呼び出しする。予約は消費型ワンショット（消費前に null 化＝再帰は予約数=最大2席で
+// 必ず停止・無限延命/再帰スキップなし）。既存対戦では予約が常に空＝再帰せず従来と完全に同一（後方互換）。
+async function finishAndAdvanceTurn() {
   expireTransientResponseWindows();
   const endingOwner = state.active;
   await runPhaseStartTriggers("turnEnd", endingOwner);
@@ -1804,6 +1873,7 @@ async function endTurn() {
   clearTurnModifiers();
   state.monsterAttackForbidden = [false, false];
   state.monsterAttackForbiddenSources = [[], []];
+  state.fieldAttackBanThisTurn = [false, false]; // E-XB28: 「このターン中、場のカードは攻撃できない」を境界でクリア
   // 「そのターン中」限定のライフ0セーフガード（実は生きていた！）はターン終了で失効。
   state.players.forEach((player) => {
     player.lifeZeroSafeguard = null;
@@ -1861,6 +1931,28 @@ async function endTurn() {
   // 期限を判定し、失効した席がライフ0/デッキ0 のまま延命していればその場で敗北を確定させる（延命ループ防止）。
   expireLossPreventionForTurnStart();
   addLog(`${activePlayer().name}のターンです。`);
+  // E-XB28: 新しく開始した席に「攻撃禁止」予約があれば、このターンへ適用する（スキップ後に来る使用者のターン）。
+  // fieldAttackBanThisTurn は直上のクリア後に立てるため、このターン限定で効き、次のターン境界で失効する。
+  if (state.scheduledAttackBan?.[state.active]) {
+    state.scheduledAttackBan[state.active] = false;
+    state.fieldAttackBanThisTurn ||= [false, false];
+    state.fieldAttackBanThisTurn[state.active] = true;
+    addLog(`${activePlayer().name}の場のカードはこのターン攻撃できません。`);
+  }
+  // E-XB28: 新しく開始した席にターンスキップ予約があれば、そのターンを即終了して次へ（ドロー/チャージ/行動なし）。
+  const skipEntry = state.scheduledTurnSkip?.[state.active];
+  if (!state.winner && skipEntry) {
+    const skippedSeat = state.active;
+    state.scheduledTurnSkip[skippedSeat] = null; // 消費（ワンショット）
+    // 「次の君のターン中、君の場のカードは攻撃できない」＝スキップされた席の直後に来る使用者(schedulerSeat)の
+    // ターンへ攻撃禁止を予約する（この下の再帰で使用者ターンが設定される際に上の分岐で適用される）。
+    const schedulerSeat = Number.isInteger(skipEntry.schedulerSeat) ? skipEntry.schedulerSeat : 1 - skippedSeat;
+    state.scheduledAttackBan ||= [false, false];
+    state.scheduledAttackBan[schedulerSeat] = true;
+    addLog(`${state.players[skippedSeat].name}のターンは効果で開始時に終了しました。`);
+    await finishAndAdvanceTurn(); // スキップされたターンを即終了して次の席へ（再帰は消費で必ず停止）
+    return; // 再帰側が最終 render 済み
+  }
   render();
 }
 

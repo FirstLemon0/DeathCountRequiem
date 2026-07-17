@@ -352,6 +352,9 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     // E8(D-CBT/PR-0330): ターン内ミルカウンタ(state.turnDeckMilled)と deckMilledThisTurn 条件を
     // 実ミル経路（funnel/直接）で叩けるようプローブへ公開。
     queueDeckMilledTriggers,
+    // E-XB24(X-BT03/0019 エグゼキューション・グラウンド): 「君の《黒竜》にソウルが入った時」の場ブロードキャスト
+    // （allySoulCardAdded/opponentSoulCardAdded）を実経路で叩けるようプローブへ公開。
+    queueSoulCardAddedTriggers,
     putCardsToDropWithTrigger,
     // FE1(D-CBT/0090): 手札→ドロップの場ブロードキャスト（ally/opponentHandDiscarded）をプローブへ公開。
     queueHandDiscardedTriggers,
@@ -366,6 +369,9 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     returnFieldTargetToHand,
     getPendingAttackers,
     resolveAmountFrom,
+    // E-XB19(X-BT03/0096 斬魔闘気“縛”): target statThreshold（動的 stat しきい値）の候補絞り込みを実経路で叩くため公開。
+    // （E-XB21 の resolvePendingResolution はこの下で既公開。E-XB20 は runTriggeredAbilities で叩く）
+    targetCandidatesFromSpec,
     // E-XB14(X-CP03/0013 ヴィオローザ): 反撃破壊の destroyByCounterattack 発火を実経路で叩くため公開。
     resolveCounterattack,
     chargeAction,

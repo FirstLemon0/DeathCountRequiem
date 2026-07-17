@@ -708,13 +708,15 @@
           ],
           "limit": {
             "scope": "turn"
-          }
+          },
+          "allowMissingTarget": true
         }
       ],
       "keywords": [
         "penetrate",
         "soulguard"
-      ]
+      ],
+      "_note": " ／【E-XB20監査(x70スライス) 2026-07-17】原文の独立/保証部（「し、」・「〜まで」＋固定効果）に対し triggered の候補0件スキップで保証部まで不発だった潜在を、ability 直下 allowMissingTarget:true 付与で忠実化（エンジンは B1 従属型19件保護のため非対称を維持＝data 側修正が正）。"
     },
     {
       "id": "bf-d-bt03-0010",
@@ -6164,7 +6166,7 @@
         "■「アーマナイト・ビッグマミー」はデッキに何枚でも入れられる。",
         "■君の場のこのカード以外のカード名に「マミー」を含むモンスター１枚につき、このカードの打撃力を＋１！"
       ],
-      "_note": "E10で忠実化済み(engine-notes §E10): 「君の場のこのカード以外のカード名に「マミー」を含むモンスター１枚につき、このカードの打撃力を＋１」は継続 modifyStats{filter:{sameInstanceAsSource}, amountFrom:{source:'fieldCardCount', excludeSource:true, filter:{cardType:'monster', nameIncludes:'マミー'}, per:{critical:1}}}（src/05 continuousFieldCardStatAmount の excludeSource＝自分自身を数えない）。E4近似(R6)は維持: 「デッキに何枚でも入れられる」はbuilder表示のみ（4枚cap・cp01-0041ドラゴエナジー前例）。",
+      "_note": "E10で忠実化済み(engine-notes §E10): 「君の場のこのカード以外のカード名に「マミー」を含むモンスター１枚につき、このカードの打撃力を＋１」は継続 modifyStats{filter:{sameInstanceAsSource}, amountFrom:{source:'fieldCardCount', excludeSource:true, filter:{cardType:'monster', nameIncludes:'マミー'}, per:{critical:1}}}（src/05 continuousFieldCardStatAmount の excludeSource＝自分自身を数えない）。E4近似(R6)は維持: 「デッキに何枚でも入れられる」はbuilder表示のみ（4枚cap・cp01-0041ドラゴエナジー前例）。 ／【R12(x70スライス) retrofit 2026-07-17】「デッキに何枚でも入れられる」をdeckUnlimitedCopies:true で忠実化（実装当時は機構未存在の表示専用近似・E-XC3 全層配線済みのため付与）。",
       "continuous": [
         {
           "op": "modifyStats",
@@ -6184,7 +6186,8 @@
             }
           }
         }
-      ]
+      ],
+      "deckUnlimitedCopies": true
     },
     {
       "id": "bf-d-bt03-0092",
@@ -6233,7 +6236,8 @@
           ]
         }
       ],
-      "_note": "E4近似(R6): 「デッキに何枚でも入れられる」はbuilder表示のみ(builder 4枚cap・エンジン/builder改修0・既存cp01-0041ドラゴエナジーと同型)。"
+      "_note": "E4近似(R6): 「デッキに何枚でも入れられる」はbuilder表示のみ(builder 4枚cap・エンジン/builder改修0・既存cp01-0041ドラゴエナジーと同型)。 ／【R12(x70スライス) retrofit 2026-07-17】「デッキに何枚でも入れられる」をdeckUnlimitedCopies:true で忠実化（実装当時は機構未存在の表示専用近似・E-XC3 全層配線済みのため付与）。",
+      "deckUnlimitedCopies": true
     },
     {
       "id": "bf-d-bt03-0093",

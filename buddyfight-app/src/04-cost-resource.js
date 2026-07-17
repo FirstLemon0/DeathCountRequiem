@@ -61,7 +61,7 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
   // nonAttackOnly:true は攻撃以外のダメージ限定(マグナグレイス0011)、既定は全ダメージ(0056)。
   // byOpponent:true は相手席発のダメージ限定(X-UB01/0007 結晶魔王アトラ)＝options.sourceOwner を渡して判定）。
   if (!options.ignorePrevention) {
-    const cap = damageReceivedReductionFor(owner, Boolean(options.byAttack), remaining, options.sourceOwner);
+    const cap = damageReceivedReductionFor(owner, Boolean(options.byAttack), remaining, options.sourceOwner, options.sourceCard);
     if (cap) {
       const reduced = Math.max(0, remaining - cap.amount);
       if (reduced !== remaining) {
@@ -216,7 +216,9 @@ function openDamageReceivedCounterWindow(defender, damage, options = {}) {
 // nonAttackOnly:true は byAttack===false の時のみ適用（攻撃以外限定。マグナグレイス0011）。
 // attackOnly:true は byAttack===true の時のみ適用（攻撃限定。E-ZA2/X-SS02/0002 ソル・アステール）。既定は全ダメージ(0056)。
 // byOpponent:true は sourceOwner が相手席の時のみ適用（相手のカードの効果で受けるダメージ限定。X-UB01/0007 結晶魔王アトラ）。
-function damageReceivedReductionFor(owner, byAttack, incomingDamage = Infinity, sourceOwner = undefined) {
+// E-XB27(R24): sourceCardType（例 "monster"）はダメージ発生源カードの種別限定（「モンスターの効果で」X-BT03/0044）。
+// full:true は threshold 以上のダメージを 0 に減らす（軽減量=incomingDamage 相当＝全額。「N以上のダメージを0に減らす」）。
+function damageReceivedReductionFor(owner, byAttack, incomingDamage = Infinity, sourceOwner = undefined, sourceCard = undefined) {
   let best = null;
   zones.forEach((zone) => {
     const source = state.players[owner]?.field?.[zone];
@@ -249,9 +251,17 @@ function damageReceivedReductionFor(owner, byAttack, incomingDamage = Infinity, 
         return;
       }
       if (effect.threshold && incomingDamage < effect.threshold) {
-        return; // 「N以上のダメージを受ける場合」限定の軽減はN未満には効かない（0056）
+        return; // 「N以上のダメージを受ける場合」限定の軽減はN未満には効かない（0056／0044＝閾値未満は素通り）
       }
-      const amount = effect.amount || 0;
+      // E-XB27(X-BT03/0044 沈んだ海底遺跡): sourceCardType＝「モンスターの効果で」等、ダメージ発生源カードの
+      // 種別限定。発生源カードが無い（攻撃/コスト/ライフリンク等）か種別不一致なら適用しない（安全側）。
+      // 既存の damageReceivedReduction 使用カードは sourceCardType 非保持＝この分岐を踏まず挙動完全不変。
+      if (effect.sourceCardType && !(sourceCard && cardTypeMatches(sourceCard, effect.sourceCardType))) {
+        return;
+      }
+      // full:true は threshold 以上のダメージを 0 にする＝軽減量を incomingDamage 全額にする（「0に減らす」）。
+      // 既定は amount 分の部分軽減（従来）。incomingDamage 未供給時（Infinity）は full を適用できないため amount へフォールバック。
+      const amount = effect.full && Number.isFinite(incomingDamage) ? incomingDamage : effect.amount || 0;
       if (amount > 0 && (!best || amount > best.amount)) {
         best = { amount, source: source.name };
       }
@@ -511,6 +521,15 @@ function adjustedCostSteps(player, card, purpose, costSteps = [], options = {}) 
     });
     step.amount = Math.max(0, step.amount - count * (spec.per ?? 1));
   });
+  // E-XB16(X-BT03/0100 轟天雷槍): コストstepの動的自己軽減の amountFrom 版。「払うゲージは、このターン中、
+  // 君のカードが攻撃した回数分、少なくなる」＝reduceByAmountFrom:{source:"attacksThisTurn"}。reduceByFieldCount と
+  // 同じ「支払い量を減らす」枠で、削減量を resolveAmountFrom(src/15)で算出する（attacksThisTurn 等の context 非依存
+  // ソース向け。owner だけ渡す最小 context）。reduceByAmountFrom を持たない既存 step は素通り＝完全に後方互換。
+  steps.forEach((step) => {
+    if (!step.reduceByAmountFrom || (step.amount || 0) <= 0) return;
+    const reduce = Math.max(0, Math.round(resolveAmountFrom(step.reduceByAmountFrom, { owner: ownerIndex })));
+    step.amount = Math.max(0, step.amount - reduce);
+  });
   return steps.filter((step) => step.amount === undefined || step.amount > 0);
 }
 
@@ -560,7 +579,10 @@ function canPayStructuredCost(player, costSteps = [], context = {}) {
       const availableHand = player.hand.filter(
         (card) => card.instanceId !== selectedCard?.instanceId && matchesCardFilter(card, step.filter || {}),
       );
-      if (availableHand.length < amount) {
+      // E-XB31(X-SS04/0015 ラウドヴォイス): 「手札1枚以上を好きな枚数捨てる」= min/max 可変の discardHand。
+      // 最小支払い枚数は step.min ?? amount（putHandToSoul/putDropToSoul の既存 min イディオムと同型）。
+      // min 未指定の固定コスト（{op:"discardHand", amount:N}／amount 省略=1）は min=amount＝従来どおり完全不変。
+      if (availableHand.length < (step.min ?? amount)) {
         return { ok: false, reason: "コストで捨てる手札が足りません。" };
       }
     }
@@ -907,6 +929,7 @@ function moveCostEntriesToSoul(player, entries, sourceCard, faceDown = false) {
   if (movedCards.length > 0) {
     sourceCard.soul ||= [];
     sourceCard.soul.push(...movedCards);
+    queueSoulCardAddedTriggers(sourceCard, state.players.indexOf(player), movedCards.length, movedCards[0]); // E-XB24
     if (faceDown) {
       markSoulCardsFaceDown(movedCards, sourceCard); // E-Y1(奇襲): 「裏向きで」
     }
@@ -961,10 +984,13 @@ function payStructuredCost(player, costSteps = [], context = {}) {
           ({ card }) =>
             card.instanceId !== selectedCard?.instanceId && matchesCardFilter(card, step.filter || {}),
         );
+      // E-XB31: min/max 可変（putHandToSoul と同型）。固定コストは min=max=amount で従来どおり。
+      const minimum = step.min ?? amount;
+      const maximum = step.max ?? amount;
       const selected = chooseCostEntriesSync(candidates, {
-        amount,
-        min: amount,
-        max: amount,
+        amount: maximum,
+        min: minimum,
+        max: maximum,
         title: `${sourceCard?.name || "コスト"}で捨てる手札`,
       });
       discardHandCardsToDrop(player, removePileEntries(player.hand, selected || []), { byCost: true, sourceOwner: state.players.indexOf(player), sourceCard: context.sourceCard || null }); // E6: コスト起因
@@ -979,6 +1005,7 @@ function payStructuredCost(player, costSteps = [], context = {}) {
           sourceCard.soul ||= [];
           const moved = player.hand.splice(index, 1)[0];
           sourceCard.soul.push(moved);
+          queueSoulCardAddedTriggers(sourceCard, state.players.indexOf(player), 1, moved); // E-XB24
           if (step.faceDown) {
             markSoulCardsFaceDown([moved], sourceCard); // E-Y1(奇襲): 「裏向きで」
           }
@@ -1036,12 +1063,15 @@ function payStructuredCost(player, costSteps = [], context = {}) {
       // E3: 同期経路は対話不可のため allowMore の追加払いはせず最小量（amountFrom or 固定量）だけ払う近似
       //（末尾から pop＝好きな順の残差は非同期側と同じ）。固定量呼び出しは need===amount で完全に不変。
       const need = discardSoulToDeckBottomFloor(step, context);
+      const placed = [];
       for (let index = 0; index < need; index += 1) {
         const soulCard = sourceCard?.soul?.pop();
         if (soulCard) {
           player.deck.unshift(soulCard);
+          placed.push(soulCard);
         }
       }
+      queueDeckBottomPlacedTriggers(state.players.indexOf(player), placed); // E-XB18: コストでソウル→デッキ下
     }
     if (step.op === "dropSource") {
       const slot = findFieldCardSlot(sourceCard);
@@ -1133,12 +1163,16 @@ function payStructuredCost(player, costSteps = [], context = {}) {
     }
     if (step.op === "putDropToDeckBottom") {
       let moved = 0;
+      const placed = [];
       for (let index = player.drop.length - 1; index >= 0 && moved < amount; index -= 1) {
         if (matchesCardFilter(player.drop[index], step.filter || {})) {
-          player.deck.unshift(player.drop.splice(index, 1)[0]); // 配列先頭=デッキの下
+          const movedCard = player.drop.splice(index, 1)[0];
+          player.deck.unshift(movedCard); // 配列先頭=デッキの下
+          placed.push(movedCard);
           moved += 1;
         }
       }
+      queueDeckBottomPlacedTriggers(state.players.indexOf(player), placed); // E-XB18: コストでドロップ→デッキ下
       if (moved > 0) addLog(`${player.name}はコストでドロップの${moved}枚をデッキの下に置きました。`);
     }
     if (step.op === "putTopDeckToDrop") {
@@ -1211,6 +1245,12 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       continue;
     }
     const amount = step.amount || 1;
+    // E-XB31(X-SS04/0015 ラウドヴォイス): 「手札1枚以上を好きな枚数捨てる」= min/max 可変（putHandToSoul と同型）。
+    // min=step.min ?? amount／max=step.max ?? amount（候補数は chooseCardEntries が上限に丸める）。固定コスト
+    // （min/max 未指定）は min=max=amount＝従来の1択挙動と完全に不変。捨てた実枚数は下の適用フェイズで
+    // payment.discarded に積まれ、amountFrom:"costDiscardedCount"（「捨てた枚数分」）の解決へ伝播する。
+    const minimum = step.min ?? amount;
+    const maximum = step.max ?? amount;
     const candidates = player.hand
       .map((card, index) => ({ card, index }))
       .filter(
@@ -1221,15 +1261,18 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       );
     const selected = await chooseCardEntries(candidates, {
       title: `${context.sourceCard?.name || "コスト"}で捨てる手札`,
-      lead: `手札からコストで捨てるカードを${amount}枚選んでください。`,
-      min: amount,
-      max: amount,
+      lead:
+        minimum === maximum
+          ? `手札からコストで捨てるカードを${maximum}枚選んでください。`
+          : `手札からコストで捨てるカードを${minimum}～${maximum}枚選んでください。`,
+      min: minimum,
+      max: maximum,
       forceDialog: true,
       // 権威サーバ: コスト選択は支払い本人の席へ往復（未指定だと能動側へ誤配送＝相手手札候補が漏れる）。
       promptSeat: state.players.indexOf(player),
       purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
     });
-    if (!selected || selected.length < amount) {
+    if (!selected || selected.length < minimum) {
       return { ok: false, reason: "コストで捨てる手札を選んでください。" };
     }
     selected.forEach(({ card }) => reservedHandIds.add(card.instanceId));
@@ -1721,6 +1764,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       handToSoulStepIndex += 1;
       sourceCard.soul ||= [];
       sourceCard.soul.push(...movedCards);
+      queueSoulCardAddedTriggers(sourceCard, state.players.indexOf(player), movedCards.length, movedCards[0]); // E-XB24
       if (step.faceDown) {
         markSoulCardsFaceDown(movedCards, sourceCard); // E-Y1(奇襲): 「裏向きで」
       }
@@ -1781,6 +1825,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       maybeDropSetWhenSoulEmpty(sourceCard, state.players.indexOf(player)); // 設置のソウル切れ自壊（H-BT04/0025）
     }
     if (step.op === "discardSoulToDeckBottom") {
+      const placed = [];
       if (step.amountFrom || step.allowMore) {
         // E3: 対話選択した具体的なソウル札を、選んだ順にデッキ下へ積む（allowMore の追加払い込み）。
         const selected = soulToBottomSelections[soulToBottomStepIndex] || [];
@@ -1791,6 +1836,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
           if (idx >= 0) {
             const [moved] = soul.splice(idx, 1);
             player.deck.unshift(moved);
+            placed.push(moved);
           }
         });
       } else {
@@ -1798,9 +1844,11 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
           const soulCard = sourceCard?.soul?.pop();
           if (soulCard) {
             player.deck.unshift(soulCard);
+            placed.push(soulCard);
           }
         }
       }
+      queueDeckBottomPlacedTriggers(state.players.indexOf(player), placed); // E-XB18: コストでソウル→デッキ下
     }
     if (step.op === "dropSource") {
       const slot = findFieldCardSlot(sourceCard);
@@ -1849,12 +1897,16 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       const targets = dropToBottomSelections[dropToBottomStepIndex] || [];
       dropToBottomStepIndex += 1;
       // レビュー修正: 「選んだ順に下から積む」= 最初に選んだカードが最下になるよう逆順で unshift する。
+      const placed = [];
       [...targets].reverse().forEach((target) => {
         const dropIndex = player.drop.indexOf(target.card);
         if (dropIndex >= 0) {
-          player.deck.unshift(player.drop.splice(dropIndex, 1)[0]); // 配列先頭=デッキの下
+          const movedCard = player.drop.splice(dropIndex, 1)[0];
+          player.deck.unshift(movedCard); // 配列先頭=デッキの下
+          placed.push(movedCard);
         }
       });
+      queueDeckBottomPlacedTriggers(state.players.indexOf(player), placed); // E-XB18: コストでドロップ→デッキ下
       if (targets.length > 0) addLog(`${player.name}はコストでドロップの${targets.length}枚をデッキの下に置きました。`);
     }
     if (step.op === "putTopDeckToDrop") {
@@ -1964,6 +2016,9 @@ function moveTopDeckToSoul(player, card, amount = 1, faceDown = false) {
   for (let index = skipped.length - 1; index >= 0; index -= 1) {
     player.deck.push(skipped[index]); // 取り置いた自分自身をデッキ上（元位置）へ戻す
   }
+  if (moved.length > 0) {
+    queueSoulCardAddedTriggers(card, state.players.indexOf(player), moved.length, moved[0]); // E-XB24: コール時 put-top-deck-to-soul
+  }
   if (faceDown) {
     markSoulCardsFaceDown(moved, card); // E-Y1(奇襲): 「裏向きで」
   }
@@ -2030,6 +2085,7 @@ function moveSelectedFieldCardsToSoul(player, sourceCard, entries = []) {
   });
   if (moved.length > 0) {
     sourceCard.soul.push(...moved);
+    queueSoulCardAddedTriggers(sourceCard, state.players.indexOf(player), moved.length, moved[0]); // E-XB24
     addLog(`${moved.map((card) => card.name).join("、")}を${sourceCard.name}のソウルに入れました。`);
   }
   return moved;
@@ -2050,6 +2106,9 @@ function lookTopSelectToSoulRestToDrop(player, sourceCard, count = 1, amount = 1
   const toSoul = cards.filter((card) => soulSet.has(card.instanceId));
   const toDrop = cards.filter((card) => !soulSet.has(card.instanceId));
   sourceCard.soul.push(...toSoul);
+  if (toSoul.length > 0) {
+    queueSoulCardAddedTriggers(sourceCard, state.players.indexOf(player), toSoul.length, toSoul[0]); // E-XB24
+  }
   if (faceDown) {
     markSoulCardsFaceDown(toSoul, sourceCard); // FE3/E-Y1(奇襲): 「裏向きで」
   }
@@ -2107,6 +2166,7 @@ function putFieldCardToDeckBottom(player, zone) {
   }
   applyLifeLink(card, state.players.indexOf(player));
   player.deck.unshift(card);
+  queueDeckBottomPlacedTriggers(state.players.indexOf(player), [card]); // E-XB18: コストで場→デッキ下
   addLog(`${card.name}をコストでデッキの下に置きました。`);
   return card;
 }

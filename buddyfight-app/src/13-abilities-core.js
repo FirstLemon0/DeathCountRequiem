@@ -1464,6 +1464,29 @@ function checkCondition(condition, owner, context = {}) {
     const sourceSlot = findFieldCardSlot(context.card || getSelectedCard());
     return Boolean(sourceSlot && (outcome.attackers || []).some((slot) => sameSlot(slot, sourceSlot)));
   }
+  if (condition.op === "nullifiedAttackerMatches") {
+    // E-XB30(X-SS04/0033 第2能力・X-BT02/0052 忠実化): 「君の場の《妖精》の攻撃が無効化された時」等、無効化された
+    // 攻撃者にサブタイプ/ゾーン限定がある allyAttackNullified 誘発のゲート。allyAttackNullified は
+    // fireAllyAttackNullifiedTriggers(src/10)が無効化された攻撃側プレイヤーの場札全てへ一律配送するブロードキャストで、
+    // context には「どのカードが無効化された攻撃者か」の情報が乗らない（selfIsNullifiedAttacker は「自分自身が攻撃者か」・
+    // lastAttackNullified は陣営 self/opponent のみ判定でカード filter は評価しない）。ここでは直前の無効化攻撃の攻撃側
+    // スロット(state.lastAttackOutcome.attackers＝{owner,zone} 凍結)を場札へ解決し、filter/zone 一致の攻撃者が
+    // いるかを判定する。攻撃無効化ではカードは移動しない（nullifyPendingAttack が used=true にするのみ）ため、発火時点で
+    // スロットの札はなお攻撃者本人。zone=攻撃元ゾーン限定（0033「センターのモンスター」）・filter=カード条件一致
+    // （0052「《妖精》」）。allyAttackNullified は攻撃側の場札のみへ配送されるため attackers[].owner は必ず listener の
+    // owner＝「君の場の」限定は自然に満たされる（別途 owner ゲートは不要）。
+    const outcome = state.lastAttackOutcome;
+    if (!outcome?.nullified) {
+      return false;
+    }
+    return (outcome.attackers || []).some((slot) => {
+      if (condition.zone && slot.zone !== condition.zone) {
+        return false;
+      }
+      const attackerCard = state.players[slot.owner]?.field?.[slot.zone];
+      return Boolean(attackerCard && matchesCardFilter(attackerCard, condition.filter || {}));
+    });
+  }
   if (condition.op === "lastAttackNullified") {
     // E-Y5(X-BT01/0088 軍師の計略): 「(君の)攻撃が無効化されたバトルの終了時に使える」を、発生源スロット
     // 非依存で判定する（0088 は手札の対抗呪文＝findFieldCardSlot は常に偽のため selfIsNullifiedAttacker は使えない）。

@@ -44,6 +44,8 @@ function putCardsToSoulWithTrigger(hostCard, owner, cards, fromZone, options = {
     markFaceUpSoulSelfDropHost(cards, hostCard);
   }
   cards.forEach((soulCard) => queueEnteredSoulTriggers(soulCard, owner, fromZone, hostCard));
+  // E-XB24: ホスト側の「ソウルが入った時」場ブロードキャスト（funnel 経由の全 soul-in を一括で拾う）。
+  queueSoulCardAddedTriggers(hostCard, owner, cards.length, cards[0] || null);
 }
 
 // E-Y1(X-BT01 奇襲): ソウルに入れた cards を「裏向き」に印付けする共有ヘルパー。
@@ -620,17 +622,22 @@ async function executeAbilityEffect(effect, context) {
     }
   }
   if (effect.op === "gainLife") {
-    if (isLifeGainByEffectPrevented(state.players.indexOf(player))) {
-      addLog(`${player.name}は効果でライフを回復できません。`);
+    // E-XB26(R23): effect.player で回復対象を選べる（既定=従来どおり自分=player。sibling の setLife/draw と同規約
+    // ＝未指定は player＝挙動不変）。相手の場へ付与した triggered から「君（付与者）のライフ+1」を表すのに使う
+    // ―付与された能力は付与先（相手席）の視点で解決されるため、"opponent"（=付与者＝この解決の opponent 変数）を
+    // 回復させる（0071 ブラック・プロボックの破壊時/攻撃時「君のライフ+1」）。既存カードは player 未指定＝後方互換。
+    const recipient = effect.player === "opponent" ? opponent : player;
+    if (isLifeGainByEffectPrevented(state.players.indexOf(recipient))) {
+      addLog(`${recipient.name}は効果でライフを回復できません。`);
     } else {
       // amountFrom 対応（「破壊したモンスターのサイズ分回復」H-BT04/0015 等。dealDamage と同形）。
       const gained = effect.amountFrom ? resolveAmountFrom(effect.amountFrom, context) : effect.amount || 1;
-      player.life += gained;
+      recipient.life += gained;
       if (gained > 0) {
         // 可逆winner: 同一解決内で致死→回復が続いた場合（例: 緑竜の盾の無効化がヤミゲドウ“爆雷”を即時誘発→
         // 致死→直後の本効果ライフ+1）に勝敗を巻き戻す。ライフリンク相殺(src/11:1633)と同じ扱い。
         clearWinnerIfNoCurrentLoss();
-        await runFieldEventTriggers("lifeGained", state.players.indexOf(player));
+        await runFieldEventTriggers("lifeGained", state.players.indexOf(recipient));
       }
     }
   }
@@ -669,6 +676,7 @@ async function executeAbilityEffect(effect, context) {
       noteGaugePlaced(state.players.indexOf(player), rest.length); // E-XB12: 残りをゲージへ（funnel 非経由）
     } else {
       rest.forEach((c) => player.deck.unshift(c));
+      queueDeckBottomPlacedTriggers(state.players.indexOf(player), rest); // E-XB18: デッキ下流入
     }
     addLog(`${context.card.name}の効果でデッキの上${revealed.length}枚を見て${picked.length}枚を手札に加えました。`);
     // F4(D-SS03/0001): discardOnPick:N — 手札に加えた枚数が1以上のときのみ、解決後に手札N枚を選んで捨てる。
@@ -731,6 +739,7 @@ async function executeAbilityEffect(effect, context) {
       }
       // 下バッチ: 前から unshift（toBottom[0] が先に引く側・toBottom[末尾] が最下段）。
       toBottom.forEach((c) => player.deck.unshift(c));
+      queueDeckBottomPlacedTriggers(state.players.indexOf(player), toBottom); // E-XB18: デッキ下流入
       // 上バッチ: ordered[0] を最上段(末尾)にするため逆順 push（reorderTopOrdered と同規約）。
       for (let i = toTop.length - 1; i >= 0; i -= 1) player.deck.push(toTop[i]);
       addLog(`${context.card.name}の効果でデッキの上${revealed.length}枚を見て、${toBottom.length}枚をデッキの下に置きました。`);
@@ -813,6 +822,7 @@ async function executeAbilityEffect(effect, context) {
     addLog(`${context.card.name}の効果で${revealed.length}枚を公開し、${matched}枚一致。`);
     if (dmg > 0) applyDamageToPlayer(1 - context.owner, dmg, { sourceName: context.card?.name, sourceCard: context.card, sourceOwner: context.owner });
     revealed.forEach((c) => player.deck.unshift(c));
+    queueDeckBottomPlacedTriggers(state.players.indexOf(player), revealed); // E-XB18: デッキ下流入
   }
   if (effect.op === "revealTopCard") {
     // E-XC1(X-CP02 コスモドラグーン reveal-gate): 「君のデッキの上から1枚を公開する」。
@@ -861,6 +871,7 @@ async function executeAbilityEffect(effect, context) {
           addLog(`${state.players[bottomOwner]?.name || ""}は公開した${rc.name}をデッキの上に置きました。`);
         } else {
           deck.unshift(rc);
+          queueDeckBottomPlacedTriggers(bottomOwner, [rc]); // E-XB18: デッキ下流入（上戻し=deck.push 側は非発火）
           addLog(`${state.players[bottomOwner]?.name || ""}は公開した${rc.name}をデッキの下に置きました。`);
         }
       }
@@ -890,6 +901,7 @@ async function executeAbilityEffect(effect, context) {
         addLog(`${context.card?.name || "効果"}でデッキの1番上を見て、ドロップに置きました。`);
       } else {
         player.deck.unshift(top);
+        queueDeckBottomPlacedTriggers(state.players.indexOf(player), [top]); // E-XB18: デッキ下流入
         addLog(`${context.card?.name || "効果"}でデッキの1番上を見て、1番下に置きました。`);
       }
     }
@@ -1491,6 +1503,7 @@ async function executeAbilityEffect(effect, context) {
         // deck.pop() が山上のため unshift が最下段。
         removed.currentType = removed.baseType || removed.type;
         selfPlayer.deck.unshift(removed);
+        queueDeckBottomPlacedTriggers(state.players.indexOf(selfPlayer), [removed]); // E-XB18: デッキ下流入
         addLog(`${removed.name}を${context.hostCard.name}のソウルからデッキの下に置きました。`);
       } else {
         selfPlayer.drop.push(removed);
@@ -1532,6 +1545,7 @@ async function executeAbilityEffect(effect, context) {
       }
       card.currentType = card.baseType || card.type;
       selfPlayer.deck.unshift(card);
+      queueDeckBottomPlacedTriggers(state.players.indexOf(selfPlayer), [card]); // E-XB18: デッキ下流入
       addLog(`${card.name}をデッキの下に置きました。`);
     }
   }
@@ -2591,6 +2605,15 @@ async function executeAbilityEffect(effect, context) {
     state.monsterAttackForbiddenSources ||= [[], []];
     state.monsterAttackForbiddenSources[context.owner].push(effect.source || context.card?.name || "不明");
   }
+  if (effect.op === "scheduleOpponentTurnSkip") {
+    // E-XB28(X-BT03/0102 逆天③): 「次の相手のターン開始時、そのターンを終了する。次の君のターン中、君の場の
+    // カードは攻撃できない」。相手席へターンスキップを予約する（消費は endTurn の新ターン設定点）。schedulerSeat に
+    // 使用者席を記録し、スキップ消費時にその席の次ターンへ攻撃禁止を予約する（攻撃禁止の適用は使用者のターン開始時）。
+    const opponentSeat = 1 - context.owner;
+    state.scheduledTurnSkip ||= [null, null];
+    state.scheduledTurnSkip[opponentSeat] = { schedulerSeat: context.owner };
+    addLog(`次の${state.players[opponentSeat].name}のターンは開始時に終了します。`);
+  }
   if (["cancelRecentLifeLink", "cancelLifeLink"].includes(effect.op)) {
     // E5'(D-EB03/0043): matchVar（script var）/matchInstanceId で「直前に手札へ戻した/離場したそのカード」の
     // イベントに限定して取消せる（一致イベントが無ければ no-op＝LL非持ちを戻した時に無関係な同ターン
@@ -3053,6 +3076,18 @@ function resolveAmountFrom(spec, context) {
       .map((card) => visiblePower(card));
     return powers.length > 0 ? Math.max(...powers) : 0;
   }
+  if (spec.source === "itemStatMax") {
+    // E-XB19(X-BT03/0096 斬魔闘気“縛”): 指定controller(既定self)の場の全アイテム枠のうち最大の visible stat(既定critical)。
+    // 「君の場のアイテムの打撃力以下」= 複数アイテム(itemZones=item/item2..)時は最大値を閾値に（どれか1つのアイテム
+    // 以下＝最も許容的な読み）。weaponPowerMax（武器限定・power固定）の一般化で、全アイテム・stat可変・filter可。
+    // アイテム不在時は0（＝アイテムの打撃力が無い状態＝実質「打撃力0以下」しか通らない忠実な帰結）。
+    const owner = ownerOf(spec.controller || "self");
+    const stats = itemZones
+      .map((zone) => state.players[owner]?.field?.[zone])
+      .filter((card) => card && effectiveCardType(card) === "item" && (!spec.filter || matchesCardFilter(card, spec.filter)))
+      .map((card) => visibleFieldStat(card, spec.stat || "critical"));
+    return stats.length > 0 ? Math.max(...stats) : 0;
+  }
   if (spec.source === "dropCount") {
     const owner = ownerOf(spec.controller);
     const matched = (state.players[owner]?.drop || []).filter((card) => matchesCardFilter(card, spec.filter || {}));
@@ -3137,6 +3172,42 @@ function resolveAmountFrom(spec, context) {
     // G1(D-EB01/0019): 直前の moveTopDeckToDrop で「今回めくって置いた」カード(context.milled)のうち
     // filter に一致する枚数×per（「置いたその中の《髑髏武者》の枚数分ダメージ」）。
     const count = (context.milled || []).filter((card) => matchesCardFilter(card, spec.filter || {})).length;
+    return count * (spec.per ?? 1);
+  }
+  if (spec.source === "attacksThisTurn") {
+    // E-XB16(X-BT03/0026 灼熱地獄分岐・0100 轟天雷槍): このターン中に君のカードが攻撃した回数
+    //（state.attacksThisTurn＝グローバルの攻撃回数カウンタ。攻撃はターンプレイヤーのみが行うため、
+    // 自分の必殺技解決時点では「君のカードが攻撃した回数」と一致する＝条件op attacksThisTurnGte(Z7)と同じ根拠）。
+    // ターン開始(startTurn/src/11)で0にリセット・room 復元(JSON往復)後も state 常駐で保たれる。per/max 対応（既定 ×1）。
+    const count = state.attacksThisTurn || 0;
+    const capped = spec.max !== undefined ? Math.min(count, spec.max) : count;
+    return capped * (spec.per ?? 1);
+  }
+  if (spec.source === "distinctWorldCount") {
+    // E-XB17(X-TD03/0003 超雷星 レイトニング): 指定側(controller・既定self)の指定pile(既定field)の
+    // filter 一致カードの「ワールド名の種類数」。cardWorlds() で2ワールド持ちは両ワールドを算入（union）＝
+    // 条件op cardCount の distinct:"distinctByWorld"(src/13)と同ロジックの「量」版。pile/filter/max/per 対応。
+    const owner = ownerOf(spec.controller || "self");
+    const pl = state.players[owner];
+    const pile = spec.pile || "field";
+    let cards = [];
+    if (pile === "field") cards = zones.map((zone) => pl?.field?.[zone]).filter(Boolean);
+    else if (pile === "item") cards = equippedItems(pl);
+    else if (pile === "center") cards = pl?.field?.center ? [pl.field.center] : [];
+    else if (pile === "soul") cards = zones.flatMap((zone) => pl?.field?.[zone]?.soul || []);
+    else cards = pl?.[pile] || [];
+    const matched = cards.filter((card) => matchesCardFilter(card, spec.filter || {}));
+    const count = new Set(matched.flatMap((card) => cardWorlds(card))).size;
+    const capped = spec.max !== undefined ? Math.min(count, spec.max) : count;
+    return capped * (spec.per ?? 1);
+  }
+  if (spec.source === "costDiscardedCount") {
+    // E-XB31(X-SS04/0015 ラウドヴォイス): このカードの【使用コスト】で捨てた手札の枚数（「捨てた枚数分」）。
+    // E-PR6 の costDiscardedCards（payStructuredCostWithSelection の payment.discarded を宣言→解決の context へ
+    // 持ち越したコスト捨て札。条件op costDiscardedCardMatches が同ソースを読む）の「量」版。filter で捨て札を
+    // 絞れる（既定は全数）。per 乗数対応（既定1・負値可＝0015 は per:-3000/-1 で「攻撃力-3000・打撃力-1 ×枚数」を
+    // modifyStats の applyTo 別に2効果で表現）。捨て0枚（min:0 のコスト等）や未設定 context は0＝安全側。
+    const count = (context.costDiscardedCards || []).filter((c) => matchesCardFilter(c, spec.filter || {})).length;
     return count * (spec.per ?? 1);
   }
   return 0;

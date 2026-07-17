@@ -547,12 +547,19 @@ function getStackCallTarget(player, card) {
 function stackFieldCardAsSoul(player, zone, card) {
   const baseCard = player.field[zone];
   card.soul ||= [];
+  let added = 0;
   if (baseCard) {
-    card.soul.push(...(baseCard.soul || []));
+    const inherited = baseCard.soul || [];
+    card.soul.push(...inherited);
     baseCard.soul = [];
     card.soul.push(baseCard);
+    added = inherited.length + 1; // 継承ソウル＋重ね元本体
   }
   player.field[zone] = card;
+  // E-XB24: 重ねコール／ソウル継承でホスト(card)がソウルを得た＝「ソウルが入った時」ブロードキャスト。
+  if (added > 0) {
+    queueSoulCardAddedTriggers(card, state.players.indexOf(player), added, baseCard);
+  }
 }
 
 function enforceSizeLimit(player, latestZone) {
@@ -776,6 +783,41 @@ function queueDeckMilledTriggers(deckOwner, cards = [], cause = null) {
   Promise.resolve()
     .then(async () => {
       await runFieldEventTriggers("deckMilled", deckOwner, list[0], null, { count: list.length, millCause: cause });
+      render();
+    })
+    .catch((error) => {
+      console.error(error);
+      render();
+    });
+}
+
+// E-XB18(X-BT03/0023 日輪の御使い メラシエル "ソール・サルベーション"): 「君か相手のデッキの下にカードが
+// 置かれた時」の場ブロードキャスト。deckOwner=カードが置かれたデッキの所有者（リスナーから見て
+// ally=自分のデッキ／opponent=相手のデッキ。メラシエルは「君か相手の」＝ally/opponent の両リスナーで拾う）。
+// デッキ下への流入は単一 funnel に集約されていない（deck.unshift＝bottom は src/04 コスト支払い・src/14 script move
+// /順序付き下置き/トップ確認戻し・src/15 scry残り下置き/公開札下置き/自身下置き/ソウル退避下置き 等に分散）ため、
+// gaugePlaced/deckMilled と同型で「各流入点から呼ぶ」方式にする。同期経路（コスト支払い中等）からも安全なよう
+// microtask 発火・リスナー不在なら何もしない。既存カードに ally/opponentDeckBottomPlaced リスナーは無い＝
+// hasListener が常に偽＝既存挙動完全不変（後方互換）。cards は「置かれたカード群」（順序不問・count のみ配布）。
+function queueDeckBottomPlacedTriggers(deckOwner, cards = []) {
+  const list = Array.isArray(cards) ? cards.filter(Boolean) : [cards].filter(Boolean);
+  if (list.length === 0 || (deckOwner !== 0 && deckOwner !== 1)) {
+    return;
+  }
+  const hasListener = [0, 1].some((playerIndex) =>
+    zones.some((zone) => {
+      const c = state.players[playerIndex]?.field?.[zone];
+      return (
+        cardHasTriggeredListener(c, "allyDeckBottomPlaced") || cardHasTriggeredListener(c, "opponentDeckBottomPlaced")
+      );
+    }),
+  );
+  if (!hasListener) {
+    return;
+  }
+  Promise.resolve()
+    .then(async () => {
+      await runFieldEventTriggers("deckBottomPlaced", deckOwner, list[0], null, { count: list.length });
       render();
     })
     .catch((error) => {

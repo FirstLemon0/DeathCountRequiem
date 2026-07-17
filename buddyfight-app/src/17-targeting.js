@@ -162,7 +162,8 @@ function targetMatchesSpec(target, targetSpec, specOwner, context = {}) {
     }
     return (
       targetAllowedByAbility(target.card, context) &&
-      matchesTargetFilter(target.card, target.owner, target.zone, targetSpec.filter)
+      matchesTargetFilter(target.card, target.owner, target.zone, targetSpec.filter) &&
+      passesStatThreshold(target.card, targetSpec.statThreshold, specOwner, context)
     );
   }
   if (targetSpec.type === "battleCard") {
@@ -202,7 +203,8 @@ function targetCandidatesFromSpecForOwner(targetSpec, specOwner, context = {}) {
         (!targetSpec.controller ||
           (targetSpec.controller === "self" ? target.owner === specOwner : target.owner !== specOwner)) &&
         targetAllowedByAbility(target.card, context) &&
-        matchesTargetFilter(target.card, target.owner, target.zone, targetSpec.filter),
+        matchesTargetFilter(target.card, target.owner, target.zone, targetSpec.filter) &&
+        passesStatThreshold(target.card, targetSpec.statThreshold, specOwner, context),
     );
   }
   if (targetSpec.type === "fieldCard") {
@@ -216,7 +218,11 @@ function targetCandidatesFromSpecForOwner(targetSpec, specOwner, context = {}) {
       if (targetSpec.excludeSource && card.instanceId === context.card?.instanceId) {
         return false;
       }
-      return targetAllowedByAbility(card, context) && matchesTargetFilter(card, owner, zone, targetSpec.filter);
+      return (
+        targetAllowedByAbility(card, context) &&
+        matchesTargetFilter(card, owner, zone, targetSpec.filter) &&
+        passesStatThreshold(card, targetSpec.statThreshold, specOwner, context)
+      );
     });
   }
   return [];
@@ -274,6 +280,43 @@ function uniqueTargetEntries(targets) {
     seen.add(key);
     return true;
   });
+}
+
+// E-XB19(X-BT03/0096 斬魔闘気“縛”「君の場のアイテムの打撃力以下の、打撃力を持つ相手の場のカード1枚をレスト」):
+// 対象スペック(target)側の動的 stat しきい値。閾値がゲーム状態(自分のアイテムの打撃力)から決まる絞り込みは
+// 静的 filter(criticalLte 等)では表せないため、比較値を amountFrom(resolveAmountFrom)で都度算出する形に切り出す。
+// destroy{scope} 専用だった E11(targetStatLte・15-ability-effects.js)を、選択系(target 候補算出/検証)へ拡張した対。
+//   statThreshold: { stat:"critical", op:"lte"(既定)/"gte"/"lt"/"gt"/"eq", amountFrom:{...} | amount, requirePresent }
+// requirePresent:true は「その stat の印字値を持つカードのみ」(打撃力を持つ=モンスター/アイテム)に限定する
+// （visibleCritical は魔法でも0を返すため、印字フィールドで先にゲートしないと「0以下」で魔法が誤って通る）。
+// 未指定(statThreshold なし)は常に true＝完全後方互換（既存カードは全て statThreshold を持たない）。
+function passesStatThreshold(card, statThreshold, specOwner, context = {}) {
+  if (!statThreshold) {
+    return true;
+  }
+  const stat = statThreshold.stat || "critical";
+  if (statThreshold.requirePresent && card[stat] == null) {
+    return false;
+  }
+  const threshold =
+    statThreshold.amountFrom !== undefined
+      ? resolveAmountFrom(statThreshold.amountFrom, { ...context, owner: specOwner })
+      : statThreshold.amount ?? 0;
+  const value = visibleFieldStat(card, stat);
+  switch (statThreshold.op || "lte") {
+    case "lte":
+      return value <= threshold;
+    case "gte":
+      return value >= threshold;
+    case "lt":
+      return value < threshold;
+    case "gt":
+      return value > threshold;
+    case "eq":
+      return value === threshold;
+    default:
+      return true;
+  }
 }
 
 function matchesTargetFilter(card, owner, zone, filter = {}) {

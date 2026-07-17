@@ -215,6 +215,15 @@ function evaluateAbilitiesNullified(card, myOrder) {
           : true;
         if (!ownerOk) return false;
         if (e.zones && !e.zones.includes(location)) return false;
+        // E-XB23(X-BT03/0018 封じられし黒印竜 エルゴッド): opposingFront＝「このカードの前の相手のモンスター」限定
+        // の無効化。発生源(src=nullifierOwner側の zone)の正面（ミラー列: 左↔右/中央↔中央）に在る相手側の
+        // 場札1枚だけを無効化する（continuousEffectApplies の opposingFront と同じ oppositeFieldZone 対応付け）。
+        // 盤面位置のみを読む純粋判定＝isAbilitiesNullified の statMemo スコープ（盤面不変な1パス）内で結果は一定＝
+        // メモ健全（前面カードの入替は次の最外評価＝新パスでメモが捨てられ再計算される）。位置は保護グラフの
+        // 再入(taint)とは独立で、cut 判定に影響しない。ソウル内カード(slot 無し)は正面を持たないため対象外。
+        if (e.opposingFront) {
+          if (!slot || slot.owner === nullifierOwner || slot.zone !== oppositeFieldZone(zone)) return false;
+        }
         if (e.filter && Object.keys(e.filter).length && !matchesCardFilter(card, e.filter)) return false;
         if (e.conditions && !checkCardConditions(e.conditions, nullifierOwner, { card: src, zone })) return false;
         // Z10(S-UB-C03/0089): battleOpponentOnly は「このカードとバトルしている相手」限定の無効化。
@@ -523,6 +532,40 @@ function continuousFieldCardStatValueAmount(effect, statKey, sourceOwner) {
   return visibleFieldStat(fieldCard, af.stat || "power") * per;
 }
 
+// E-XB29(X-SS04/0005 雷晶竜 アトラ 継続②): 継続 modifyStats の amountFrom:{source:"distinctWorldCount"} 分。
+// 「君の場のカードのワールド名の種類分、攻撃力+1000、防御力+1000」= 指定側(controller・既定self)の指定pile
+// (既定field)の filter 一致カードの「ワールド名の種類数」× per[statKey]。効果op側 resolveAmountFrom の
+// distinctWorldCount（E-XB17・src/15）と同ロジックの「継続」版で、cardWorlds() により2ワールド持ちは両ワールドを
+// union 算入する（条件op cardCount の distinct:"distinctByWorld" と同根拠）。pile は field/item/center/soul/
+// その他(player[pile]=drop等)に対応し、max/filter も受理。per は継続側の作法どおり per:{power,defense,critical}
+// のstat別オブジェクト（他の継続 amountFrom ヘルパーと同一）。amountFrom 非保持／別source の既存継続は per が
+// 引けず 0 加算＝完全に挙動不変（distinctWorldCount を継続で使う既存カードは0件＝後方互換）。
+function continuousDistinctWorldCountAmount(effect, statKey, sourceOwner) {
+  if (effect.op !== "modifyStats" || effect.amountFrom?.source !== "distinctWorldCount") {
+    return 0;
+  }
+  const af = effect.amountFrom;
+  const per = af.per?.[statKey] ?? 0;
+  if (!per) {
+    return 0;
+  }
+  const owner = af.controller === "opponent" ? 1 - sourceOwner : sourceOwner;
+  const pl = state.players[owner];
+  const pile = af.pile || "field";
+  let cards = [];
+  if (pile === "field") cards = zones.map((zone) => pl?.field?.[zone]).filter(Boolean);
+  else if (pile === "item") cards = equippedItems(pl);
+  else if (pile === "center") cards = pl?.field?.center ? [pl.field.center] : [];
+  else if (pile === "soul") cards = zones.flatMap((zone) => pl?.field?.[zone]?.soul || []);
+  else cards = pl?.[pile] || [];
+  const matched = cards.filter((card) => matchesCardFilter(card, af.filter || {}));
+  let count = new Set(matched.flatMap((card) => cardWorlds(card))).size;
+  if (af.max !== undefined) {
+    count = Math.min(count, af.max);
+  }
+  return count * per;
+}
+
 // E-XC6(X-CP01/0049 ガンズアーム): 継続 modifyStats の amountFrom:{source:"weaponCriticalSum"} 分。
 // 指定controller(既定self)の場のアイテムのうち filter 一致（例 nameIncludes:"拳"）の visible critical(打撃力)を
 // 合計 × per[statKey]。印字値ではなく visible を見るので、参照先アイテムの打撃力が可変バフされた時も追従する。
@@ -599,7 +642,8 @@ function continuousModifyStatsAmountFrom(effect, statKey, player, sourceCard, so
     continuousFieldSoulStatAmount(effect, statKey, player) +
     continuousFieldCardStatAmount(effect, statKey, sourceOwner, sourceCard) +
     continuousFieldCardStatValueAmount(effect, statKey, sourceOwner) + // E8(D-BT03/0031)
-    continuousWeaponCriticalSumAmount(effect, statKey, sourceOwner, sourceCard) // E-XC6(X-CP01/0049)
+    continuousWeaponCriticalSumAmount(effect, statKey, sourceOwner, sourceCard) + // E-XC6(X-CP01/0049)
+    continuousDistinctWorldCountAmount(effect, statKey, sourceOwner) // E-XB29(X-SS04/0005)
   );
 }
 

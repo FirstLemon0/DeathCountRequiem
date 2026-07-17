@@ -1427,6 +1427,7 @@ async function moveSelectedToDeckBottomOrderedForScript(step, context) {
     remaining = remaining.filter((candidate) => candidate.card.instanceId !== entry.card.instanceId);
   }
   player.deck.unshift(...ordered);
+  queueDeckBottomPlacedTriggers(owner, ordered); // E-XB18: 選択カードをデッキ下（順序付き）
   if (step.log) {
     addLog(step.log.replace("{cards}", ordered.map((card) => card.name).join("、")));
   }
@@ -1565,15 +1566,18 @@ function moveScriptCardToDestination(card, destination, owner, context) {
     player.deck.push(card);
   } else if (destination === "deckBottom") {
     player.deck.unshift(card);
+    queueDeckBottomPlacedTriggers(owner, [card]); // E-XB18: script move の deckBottom 宛先
   } else if (destination === "soul") {
     context.card.soul ||= [];
     context.card.soul.push(card);
+    queueSoulCardAddedTriggers(context.card, owner, 1, card); // E-XB24
   } else if (destination === "itemSoul") {
     // 君のアイテムのソウルに入れる（アーマナイト・カーリーの“修羅降臨の儀”）
     const item = player.field.item;
     if (item) {
       item.soul ||= [];
       item.soul.push(card);
+      queueSoulCardAddedTriggers(item, owner, 1, card); // E-XB24
     } else {
       player.hand.push(card);
     }
@@ -1979,6 +1983,9 @@ function putTopDeckToSelectedSoulForScript(step, context) {
       moved.push(card);
     }
   }
+  if (moved.length > 0) {
+    queueSoulCardAddedTriggers(host, state.players.indexOf(player), moved.length, moved[0]); // E-XB24
+  }
   if (step.faceDown) {
     markSoulCardsFaceDown(moved, host); // E-Y1(奇襲): 「裏向きで」
   }
@@ -2027,6 +2034,7 @@ async function lookTopSelectToSelectedSoulRestToBottomForScript(step, context) {
     if (toSoul.length > 0) {
       host.soul ||= [];
       host.soul.push(...toSoul);
+      queueSoulCardAddedTriggers(host, owner, toSoul.length, toSoul[0]); // E-XB24
       if (step.faceDown) {
         markSoulCardsFaceDown(toSoul, host); // E-Y1(奇襲): 「裏向きで」（秘匿・名前を伏せる）
       }
@@ -2038,6 +2046,7 @@ async function lookTopSelectToSelectedSoulRestToBottomForScript(step, context) {
     }
     // 残りをデッキの下へ（top=末尾/pop・bottom=先頭/unshift。「好きな順」は unshift 順で近似）。
     rest.forEach((card) => player.deck.unshift(card));
+    queueDeckBottomPlacedTriggers(owner, rest); // E-XB18: scry 残りをデッキ下
     if (rest.length > 0) {
       addLog(`残りの${rest.length}枚をデッキの下に置きました。`);
     }
@@ -2157,6 +2166,7 @@ async function searchDeckToSelectedSoulForScript(step, context) {
       if (deckIndex >= 0) {
         player.deck.splice(deckIndex, 1);
         host.soul.push(entry.card);
+        queueSoulCardAddedTriggers(host, state.players.indexOf(player), 1, entry.card); // E-XB24
         if (step.faceDown) {
           markSoulCardsFaceDown([entry.card], host); // E-Y1(奇襲): 「裏向きで」
           // 裏向きは表情報(カード名)を log に出さない（秘匿）。
@@ -2193,11 +2203,23 @@ function takeSelfFromDropOrField(context) {
 
 // このカード自身を持ち主のゲージに置く（暗黒葬「このカードをゲージに置く」等）。
 function putSelfToGaugeForScript(step, context) {
-  const card = takeSelfFromDropOrField(context);
+  let card = takeSelfFromDropOrField(context);
   if (!card) {
-    return true;
+    // R17(E-XB21): メインフェイズ魔法/必殺技の解決中(resolvePendingSpell 07-actions-turn.js)は、カードが
+    // action.card に保持されていて drop にも field にも無い。従来はここで静かに不発し、カードがゲージではなく
+    // 解決後の自動ドロップ積み(07:1148-1150)でドロップへ落ちていた（出荷済み bf-h-eb01-0056 暗黒葬・
+    // X-BT03/0024 ヘブンズ・ギフトが同症状）。保持中の自身をゲージへ移し、cardMoved で二重積み/ドロップ落ちを
+    // 抑止する（returnSelfToHand(15:1573-1576)/moveSelfToSelectedSoul(14) と同型のフォールバック）。
+    card = context.card;
+    if (!card) {
+      return true;
+    }
   }
-  context.player.gauge.push(card);
+  const selfPlayer = context.player || state.players[context.owner];
+  selfPlayer.gauge.push(card);
+  // 自身移動系は解決後の二重ドロップ積みを防ぐため常に cardMoved を立てる（moveSelfToSelectedSoul と同作法。
+  // 【対抗】即時解決経路(card は drop 経由)でも既にゲージへ移した後なので false のままより安全）。
+  context.cardMoved = true;
   queueGaugePlacedTriggers(context.owner, [card]);
   if (step.log !== false) {
     addLog(`${card.name}をゲージに置きました。`);
@@ -2459,6 +2481,7 @@ async function useTopDeckCardIfMatchesElseBottomForScript(step, context) {
   }
   if (!matchesCardFilter(topCard, step.filter || {})) {
     player.deck.unshift(topCard);
+    queueDeckBottomPlacedTriggers(owner, [topCard]); // E-XB18: トップ確認→デッキ下戻し
     addLog(`${context.card.name}で確認した${topCard.name}をデッキの下に置きました。`);
     return true;
   }
@@ -2475,6 +2498,7 @@ async function useTopDeckCardIfMatchesElseBottomForScript(step, context) {
   );
   if (!ability) {
     player.deck.unshift(topCard);
+    queueDeckBottomPlacedTriggers(owner, [topCard]); // E-XB18: トップ確認→デッキ下戻し
     addLog(`${context.card.name}で確認した${topCard.name}は現在使えないためデッキの下に置きました。`);
     return true;
   }
@@ -2482,6 +2506,7 @@ async function useTopDeckCardIfMatchesElseBottomForScript(step, context) {
     const useIt = await confirmChoiceAsync(owner, `${topCard.name}を使いますか？`, { yesLabel: "使う", noLabel: "使わない", purpose: "use-optional" });
     if (!useIt) {
       player.deck.unshift(topCard);
+      queueDeckBottomPlacedTriggers(owner, [topCard]); // E-XB18: トップ確認→デッキ下戻し
       addLog(`${context.card.name}で公開した${topCard.name}を使わずデッキの下に置きました。`);
       return true;
     }
@@ -2489,6 +2514,7 @@ async function useTopDeckCardIfMatchesElseBottomForScript(step, context) {
   const target = ability.target ? await chooseAbilityTarget(topCard, ability, owner) : null;
   if (ability.target && !target) {
     player.deck.unshift(topCard);
+    queueDeckBottomPlacedTriggers(owner, [topCard]); // E-XB18: トップ確認→デッキ下戻し
     return { ok: false, reason: "top_deck_ability_missing_target" };
   }
   const topContext = {
@@ -3380,6 +3406,7 @@ function isScriptEffectStep(step) {
     "moveSelfToTargetSoul",
     "dropEventCard",
     "preventOwnMonsterAttacksThisTurn",
+    "scheduleOpponentTurnSkip", // E-XB28(X-BT03/0102 逆天③): script 経由でも使えるよう許可（effect版 src/15 に委譲）
     "cancelRecentLifeLink",
     "cancelLifeLink",
     "cancelCallOpportunityLifeLink",

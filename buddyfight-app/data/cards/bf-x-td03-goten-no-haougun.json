@@ -1,0 +1,944 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-x-td03-goten-no-haougun",
+    "name": "バッツ トライアルデッキ第3弾「轟天の覇王軍」",
+    "kind": "トライアルデッキ",
+    "generation": "バッツ",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=71"
+  },
+  "cards": [
+    {
+      "id": "bf-x-td03-0001",
+      "no": "X-TD03/0001",
+      "name": "逆天の雷竜 バールバッツ",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■君のターン中、場のこのカードは破壊されない。",
+        "■『逆天』〔君のアタックフェイズ中、ゲージ１を払う〕君の場の《雷帝軍》１枚とこのカードをスタンドする。（『逆天』はファイト中に１回だけ使える。この能力は無効化されず、『逆天』に対して、相手は【対抗】できない）",
+        "『２回攻撃』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "destroyImmunity": [
+        {
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        },
+        {
+          "from": {
+            "byBattle": true
+          },
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td03-0001-reversal",
+          "label": "逆天",
+          "kind": "activated",
+          "keyword": "reversal",
+          "timing": [
+            "attack"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "phaseIs",
+              "phase": "attack"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "attribute": "雷帝軍"
+            }
+          },
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$target"
+            },
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ],
+          "limit": {
+            "scope": "fight",
+            "key": "reversal"
+          }
+        }
+      ],
+      "_note": "逆天の雷竜 バールバッツ（バディモンスター）。【コールコスト】ゲージ1=costs.call:[payGauge{amount:1}]。『君のターン中、場のこのカードは破壊されない』=destroyImmunity 2エントリ分割（fromなしconditions:[turnOwnerIsSelf]=効果破壊保護／from:{byBattle:true}conditions:[turnOwnerIsSelf]=バトル破壊保護）、bf-x-bt01-reborn-of-satan.json X-BT01/0114魔王竜バッツ・bf-x-sd01-gourai-maoryu.json X-SD01/0001復活の雷竜バッツと完全同型（rulings.md統括メモにも記載済みの確立2エントリ形）。『『逆天』〔君のアタックフェイズ中、ゲージ1を払う〕君の場の《雷帝軍》1枚とこのカードをスタンドする。（『逆天』はファイト中に1回だけ使える。この能力は無効化されず、『逆天』に対して、相手は【対抗】できない）』はR9裁定どおり括弧ありprint-literal=keyword:\"reversal\"機構を使用: data/README.md「## 逆天」節・bf-hd-pr.json PR/0430黄金雷帝バールバッツ（同系列バッツの完全同型テキスト前例。統括修正でlabel:逆天付与済み）を直接踏襲: kind:activated,keyword:\"reversal\",label:\"逆天\",timing:[attack]（原文『君のアタックフェイズ中』限定）,conditions:[turnOwnerIsSelf,phaseIs{phase:attack}]（PR/0430と同型の明示ガード）,cost:[payGauge{amount:1}]（PR/0430と異なりdiscardHandは無く原文どおりゲージ1のみ）,target:{fieldCard,controller:self,filter:{attribute:雷帝軍}}（『君の場の《雷帝軍》1枚』。このカード自身も雷帝軍属性を持つため候補に含まれ得るが、bf-x-ub01-buddy-quest.json X-UB01/0004轟雷の勇者牙王『選んだカードとこのカードをスタンドする』のtarget:{attribute:冒険者}（excludeSource無し）と同型に倣いexcludeSourceは付けない＝自分自身を選んでも二重スタンドは冪等で実害なし）,effects:[standTarget{target:$target},standTarget{target:$self}]（X-UB01/0004と同一の『選んだカードとこのカードをスタンドする』標準形）,limit:{scope:fight,key:\"reversal\"}（keyword:\"reversal\"の既定と同値だがPR/0430同様に明示）。『2回攻撃』=keywords:[doubleAttack]。『この能力は無効化されず、対抗できない』の扱いはPR/0430の既存確立見解を踏襲: 後半（相手は対抗できない）はkind:activatedの場発動アクションがstate.pendingAction/pendingAttackのカウンターウィンドウを経由しないため対抗が発生しうるケース自体が無く自然に成立済み（新規実装不要）。前半（能力が無効化されない）は本エンジンにアビリティ単位のnullify免疫フラグが無く未実装（本カードは他に保護すべき能力を持たないため過剰にはならないが、原文スコープとの差は残る近似として報告・PR/0430と同一の既知ギャップ）。grep自己検査: payGauge(src/04-cost-resource.js:553,955,1716)/destroyImmunity 2エントリ分割(src/11-destroy-turn.js、X-BT01/0114実例)/keyword:\"reversal\"判定(src/13-abilities-core.js:707 isFieldActivatedAbility)/turnOwnerIsSelf・phaseIs(src/13-abilities-core.js:882,909)/target+filter.attribute(src/17-targeting.js)/standTarget(src/15-ability-effects.js:1922)/limit.key独立記帳(src/15-ability-effects.js:3286-3291 normalizedAbilityLimit)/doubleAttackエイリアス(src/18-tooltip-format.js) 全実在確認。VM実測(x70-b14-verify.js test0001): (a)callMonster実経路でゲージ1課金の上コールされる、(b)君のターン中は効果破壊・バトル破壊のいずれからも破壊されない（相手ターン中は破壊される）、(c)君のアタックフェイズ中にuseFieldAbilityAction実経路で逆天を使用するとゲージ1を払い、選んだ場の《雷帝軍》1枚と自分自身の両方がスタンドする（自分自身しか場にいない場合は自分自身を選んで冪等にスタンド）、(d)同一ファイト内で2回目は起動できない（fight-limit key:reversal消費）、(e)君のメインフェイズ中は起動できない（phaseIs不成立）ことを確認。"
+    },
+    {
+      "id": "bf-x-td03-0002",
+      "no": "X-TD03/0002",
+      "name": "破壊雷公 ガタストル",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード",
+        "雷帝軍"
+      ],
+      "size": 3,
+      "power": 8000,
+      "critical": 3,
+      "defense": 8000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から２枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■【起動】相手の場のモンスター１枚を選び、このカードのソウル１枚をドロップゾーンに置いてよい。置いたら、選んだカードを破壊する。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 2
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td03-0002-activated-soul-destroy",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "optional": true,
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "cost": [
+            {
+              "op": "discardSoul",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "_note": "破壊雷公 ガタストル。【コールコスト】『君のデッキの上から2枚をこのカードのソウルに入れ、ゲージ2を払う』=costs.call:[putTopDeckToSoul{amount:2},payGauge{amount:2}]（多数前例の標準op、原文記載順どおり）。『【起動】相手の場のモンスター1枚を選び、このカードのソウル1枚をドロップゾーンに置いてよい。置いたら、選んだカードを破壊する』はbf-x-bt02-chaos-control-crisis.json X-BT02/0033 C・デルトボルドの『【対抗】【起動】相手の場のアイテムか魔法1枚を選び、このカードのソウル1枚をドロップゾーンに置いてよい。置いたら、選んだカードを破壊する』と完全同型骨格（filterのみカードタイプ差替）。本カードは『【対抗】』印字が無く『【起動】』単独のためtiming:[main]（対抗タグ無しの素の【起動】＝main限定の確立慣例）: kind:activated,timing:[main],optional:true（X-BT02/0033準拠の装飾フラグとして付与。runTriggeredAbilities専用のshouldUseOptionalAbilityゲートはkind:triggered限定でありkind:activatedのuseFieldAbilityAction経路では一切参照されない=grep確認済み。discardSoulコスト自体もsoul配列末尾を機械的に払うのみで対話選択・途中辞退の分岐を持たない=src/04-cost-resource.js:1031-1039）,target:{fieldCard,controller:opponent,filter:{cardType:monster}},cost:[discardSoul{amount:1}]（発生源自身のソウルを払うコスト、X-BT02/0033・bf-d-eb02-super-hero-wars-z.json D-EB02/0011ガイテンオウと同型）,effects:[destroy{target:$target}]。原文『選び、…置いてよい。置いたら…』の任意性は、この起動能力そのものを宣言するか否か（useCardActionを呼ぶか否か）に集約される＝宣言すれば target選択→discardSoul(1)→destroyが機械的に一直線に解決する（X-BT02/0033の_note記載の既存解釈をそのまま踏襲・宣言後に『やっぱりソウルを払わない』とコストのみ辞退する中間分岐は本エンジンに存在しない）。『ソウルガード』=keywords:[soulguard]。grep自己検査: putTopDeckToSoul(src/04-cost-resource.js:610,1022,1777)/payGauge(src/04-cost-resource.js:553,955,1716)/kind:activated+timing:[main](src/13-abilities-core.js:706-707 isFieldActivatedAbility)/ability.optionalがkind:activated経路(useFieldAbilityAction,src/13-abilities-core.js:275-345)で未参照であること・shouldUseOptionalAbilityがrunTriggeredAbilities専用(src/14-ability-script.js:69,87,176)であることを確認/target+filter.cardType(src/17-targeting.js)/discardSoul cost(src/04-cost-resource.js:626,1031-1039,1786)/destroy target(src/15-ability-effects.js:1358) 全実在確認。VM実測(x70-b14-verify.js test0002): (a)callMonster実経路でデッキ上2枚がソウルへ+ゲージ2課金、(b)useCardAction(field起動)実経路で相手の場のモンスター1枚を選び宣言すると、ソウル1枚が機械的にドロップへ置かれ選んだ相手モンスターが破壊される、(c)この起動能力自体を宣言しなければ（useCardActionを呼ばなければ）当然ソウルも減らず相手モンスターも無事なことを確認。"
+    },
+    {
+      "id": "bf-x-td03-0003",
+      "no": "X-TD03/0003",
+      "name": "超雷星 レイトニング",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "スタードラゴンW",
+      "attributes": [
+        "ネオドラゴン",
+        "雷帝軍"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■このカードが攻撃した時、君の場のカードのワールド名の種類分、君のデッキの上からゲージに置く。",
+        "『移動』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "move",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td03-0003-attack-worldcount-gauge",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amountFrom": {
+                "source": "distinctWorldCount"
+              }
+            }
+          ]
+        }
+      ],
+      "_note": "超雷星 レイトニング。R3(rulings.md)で本カードが担当と裁定されたE-XB17 amountFrom distinctWorldCount（実装済み）を使用。【コールコスト】『君のデッキの上から1枚をこのカードのソウルに入れ、ゲージ1を払う』=costs.call:[putTopDeckToSoul{amount:1},payGauge{amount:1}]（標準op）。『このカードが攻撃した時、君の場のカードのワールド名の種類分、君のデッキの上からゲージに置く』=event:attack（攻撃した本カード自身へ直撃、runAttackDeclarationTriggersがattacker.cardへ`attack`を配信=src/09-attack.js:456-457）+effects:[putTopDeckToGauge{amountFrom:{source:distinctWorldCount}}]。distinctWorldCountはE-XB17（src/15-ability-effects.js:3158-3174）で新設済みの amountFrom source: controller既定self・pile既定field・filter未指定=場の全カードを対象にcardWorlds()のunionでワールド名の種類数を算出（条件opのcardCount distinct:distinctByWorld(src/13-abilities-core.js:854)と同一ロジックの『量』版、コメントに本カード0003が根拠として明記済み）。putTopDeckToGaugeはamountFrom対応済み(src/15-ability-effects.js:290-297、『0058:ドロップに置いた枚数分』等と同型の動的枚数指定)。『移動』『ソウルガード』=keywords:[move,soulguard]。grep自己検査: putTopDeckToSoul/payGauge(src/04-cost-resource.js)/event:attack配信元runAttackDeclarationTriggers(src/09-attack.js:454-458)/putTopDeckToGauge+amountFrom(src/15-ability-effects.js:290-297)/resolveAmountFrom source:distinctWorldCount(src/15-ability-effects.js:3158-3174、E-XB17実体)/move・soulguardエイリアス(src/18-tooltip-format.js) 全実在確認。VM実測(x70-b14-verify.js test0003): (a)callMonster実経路でデッキ上1枚がソウルへ+ゲージ1課金、(b)performAttackDeclaration実経路でこのカードが攻撃すると、場のカードのワールド名の種類数（このカード自身1枚のみなら1種類、他ワールドの味方を加えると2種類・3種類…）に応じてデッキの上からその枚数分がゲージへ置かれることを確認。"
+    },
+    {
+      "id": "bf-x-td03-0004",
+      "no": "X-TD03/0004",
+      "name": "聖剣竜 セイントホーリーソード・ドラゴン",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■君の場に他の元々のサイズが２以上の《雷帝軍》がいるなら、場のこのカードのサイズを２減らす。",
+        "■このカードのバトル終了時、君が《雷帝軍》のアイテムを装備しているなら、場のこのカードを手札に戻してよい。"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "size": -2,
+          "conditions": [
+            {
+              "op": "ownOtherFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "雷帝軍",
+                "baseSizeGte": 2
+              }
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td03-0004-battleend-return",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "includeDefender": true,
+          "optional": true,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "filter": {
+                "attribute": "雷帝軍"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "returnToHand",
+              "target": "$self"
+            }
+          ]
+        }
+      ],
+      "_note": "聖剣竜 セイントホーリーソード・ドラゴン。コールコスト行なし＝costsキー省略（無償コール）。『君の場に他の元々のサイズが2以上の《雷帝軍》がいるなら、場のこのカードのサイズを2減らす』=continuous:[modifyStats{controller:self,filter:{sameInstanceAsSource:true},size:-2,conditions:[ownOtherFieldCardExists{filter:{cardType:monster,attribute:雷帝軍,baseSizeGte:2}}]}]（bf-x-cp03-100-yen-darkness-dragon.json X-CP03/0024魔神将ガストゥラの『君の場に他の元々のサイズが2以上の《深淵》のモンスターがいるなら、場のこのカードのサイズを3減らす』と完全同型骨格。『他の』=ownOtherFieldCardExists（自分自身を候補から除外、src/13-abilities-core.js:1149）、『元々のサイズ』=baseSizeGte（印字サイズ、src/17-targeting.js:382、effectiveSize再入回避））。『このカードのバトル終了時、君が《雷帝軍》のアイテムを装備しているなら、場のこのカードを手札に戻してよい』=event:battleEnd,includeDefender:true（bare battleEndは攻撃者スロットのみ配信のため、防御側でも発火するようincludeDefender:trueを明示。bf-x-ub02-hero-wars-new-generations.json X-UB02/0027・0010型の確立idiom）+optional:true（『戻してよい』の任意性、X-UB02/0010骸の影シュヴァルツと同型）+conditions:[cardCount{controller:self,pile:item,filter:{attribute:雷帝軍},cmp:gte,amount:1}]（『《雷帝軍》のアイテムを装備しているなら』、bf-d-bt04-kagayake-super-sun-dragon.json D-BT04/0005型のcardCount pile:item+filter.attribute標準形）+effects:[returnToHand{target:$self}]（event:battleEnd時点ではカードはまだ場にある＝destroyed後専用のreturnSelfToHandではなくreturnToHandを使う、SKILL.md既知の落とし穴どおり）。grep自己検査: modifyStats size+sameInstanceAsSource+conditions(src/05-stats.js、src/15-ability-effects.js)/ownOtherFieldCardExists(src/13-abilities-core.js:1149-1157)/baseSizeGte(src/17-targeting.js:382)/battleEnd+includeDefender配信(src/10-battle-resolve.js:600-633)/ability.optional(src/14-ability-script.js)/cardCount pile:item+filter.attribute(src/13-abilities-core.js:822-863)/returnToHand(src/15-ability-effects.js:1471) 全実在確認。VM実測(x70-b14-verify.js test0004): (a)場に他に元サイズ2以上の《雷帝軍》がいるとこのカードのサイズが2減る（自分自身しかいない・他が元サイズ1以下なら変化なし）、(b)君が《雷帝軍》のアイテムを装備している状態でこのカードのバトル終了時に『使う』を選ぶと手札に戻る、装備していなければ能力そのものが不成立で場に残る、装備していても『戻さない』を選べば場に残る、(c)防御側として被弾したバトル終了時もincludeDefenderにより同様に発火することを確認。"
+    },
+    {
+      "id": "bf-x-td03-0005",
+      "no": "X-TD03/0005",
+      "name": "暴雷 アーマナイト・オーガー",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "デンジャーW",
+      "attributes": [
+        "アーマナイト",
+        "雷帝軍"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■君のライフが４以下か、君の場のカードのワールド名が２種類以上なら、このカードの打撃力＋２！",
+        "『貫通』"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 2,
+          "conditions": [
+            {
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "lifeLte",
+                  "amount": 4
+                },
+                {
+                  "op": "cardCount",
+                  "controller": "self",
+                  "pile": "field",
+                  "distinct": "distinctByWorld",
+                  "cmp": "gte",
+                  "amount": 2
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "penetrate"
+      ],
+      "_note": "暴雷 アーマナイト・オーガー。コールコスト行なし＝costsキー省略（無償コール）。『君のライフが4以下か、君の場のカードのワールド名が2種類以上なら、このカードの打撃力＋2！』=continuous:[modifyStats{controller:self,filter:{sameInstanceAsSource:true},critical:2,conditions:[any{conditions:[lifeLte{amount:4},cardCount{controller:self,pile:field,distinct:distinctByWorld,cmp:gte,amount:2}]}]}]（OR条件はcondition op:\"any\"で表現、src/13-abilities-core.js:770実在＝bf-x-bt03-0012厳正の杖ファビュラス・ロッド型の確立パターン。distinctByWorldはpile:field明示で_scratch/x70-slice/mech-X70-B1.json 0010秘密工作の同一slice内前例と同型。打撃力=critical、条件はライフ／場のワールド種類数のいずれも本カード自身のステータスではないため自己ステ閾値continuous grantKeywordの無限再帰回避idiom(kind:\"passive\")は不要）。『貫通』=keywords:[penetrate]。grep自己検査: any条件(src/13-abilities-core.js:770-780)/lifeLte(src/13-abilities-core.js:909-912)/cardCount distinctByWorld pile:field(src/13-abilities-core.js:822-863,854)/modifyStats continuous+sameInstanceAsSource(src/05-stats.js)/penetrateエイリアス(src/18-tooltip-format.js) 全実在確認。VM実測(x70-b14-verify.js test0005): (a)ライフ5かつ場のワールドが1種類のみ（このカード単独）では打撃力の増加なし、(b)ライフ4以下になると打撃力+2、(c)ライフ5のままでも場のワールドが2種類以上になると打撃力+2（いずれか一方で発動するOR条件）、(d)『貫通』を持つことを確認。"
+    },
+    {
+      "id": "bf-x-td03-0006",
+      "no": "X-TD03/0006",
+      "name": "RD エレキパドル",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ヒーローW",
+      "attributes": [
+        "ヒーロー",
+        "雷帝軍"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■君の場のカードのワールド名が２種類以上なら、このカードの攻撃力＋5000！",
+        "『移動』"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "power": 5000,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "distinct": "distinctByWorld",
+              "cmp": "gte",
+              "amount": 2
+            }
+          ]
+        }
+      ],
+      "keywords": [
+        "move"
+      ],
+      "_note": "RD エレキパドル。コールコスト行なし＝costsキー省略（無償コール）。『君の場のカードのワールド名が2種類以上なら、このカードの攻撃力＋5000！』=continuous:[modifyStats{controller:self,filter:{sameInstanceAsSource:true},power:5000,conditions:[cardCount{controller:self,pile:field,distinct:distinctByWorld,cmp:gte,amount:2}]}]（bf-hd-pr.json PR/0461変幻自在のウェイビーの『君のドロップゾーンのワールド名が3種類以上なら、このカードの攻撃力＋3000、打撃力＋1』と同型骨格をpile:field・power単独へ調整。攻撃力=power/打撃力=criticalの鉄則どおりpowerのみ指定）。『移動』=keywords:[move]。grep自己検査: cardCount distinctByWorld pile:field(src/13-abilities-core.js:822-863,854)/modifyStats continuous power+sameInstanceAsSource(src/05-stats.js、bf-pr-0461実例)/moveエイリアス(src/18-tooltip-format.js) 全実在確認。VM実測(x70-b14-verify.js test0006): (a)場のワールドが1種類のみ（このカード単独）では攻撃力の増加なし、(b)他ワールドの味方が場に加わりワールド2種類以上になると攻撃力+5000、(c)『移動』を持つことを確認。"
+    },
+    {
+      "id": "bf-x-td03-0007",
+      "no": "X-TD03/0007",
+      "name": "雷戦士 オッカー・グレイザー",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダンジョンW",
+      "attributes": [
+        "冒険者",
+        "チームGM",
+        "雷帝軍"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードが登場した時、君のデッキの上から１枚をゲージに置く。",
+        "■君の場のカードのワールド名が２種類以上なら、このカードは『貫通』を得る！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td03-0007-enter-gauge",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "keyword": "penetrate",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "distinct": "distinctByWorld",
+              "cmp": "gte",
+              "amount": 2
+            }
+          ]
+        }
+      ],
+      "_note": "雷戦士 オッカー・グレイザー。コールコスト行なし＝costsキー省略（無償コール）。『このカードが登場した時、君のデッキの上から1枚をゲージに置く』=event:enter+effects:[putTopDeckToGauge{amount:1}]（標準op）。『君の場のカードのワールド名が2種類以上なら、このカードは『貫通』を得る！』=continuous:[grantKeyword{controller:self,filter:{sameInstanceAsSource:true},keyword:penetrate,conditions:[cardCount{controller:self,pile:field,distinct:distinctByWorld,cmp:gte,amount:2}]}]（_scratch/x70-slice/mech-X70-B1.json 0001の『自ライフ4以下で貫通を得る』grantKeyword continuous+conditions型と同型骨格をdistinctByWorld条件へ差替。条件は場のワールド種類数であり本カード自身のステータスではないため、自己ステ閾値continuous grantKeywordの無限再帰回避idiom(kind:\"passive\")は不要）。grep自己検査: event:enter(src/07-actions-turn.js)/putTopDeckToGauge(src/15-ability-effects.js:290)/grantKeyword continuous(src/18-tooltip-format.js:258-264 hasKeyword経由でcontinuousEffectApplies判定、src/05-stats.js:860 continuousEffectApplies)/cardCount distinctByWorld pile:field(src/13-abilities-core.js:822-863,854)/penetrateエイリアス(src/18-tooltip-format.js) 全実在確認。VM実測(x70-b14-verify.js test0007): (a)callMonster実経路（無償）で登場時にデッキ上1枚がゲージへ、(b)場のワールドが1種類のみ（このカード単独）では『貫通』を持たない、(c)他ワールドの味方が場に加わりワールド2種類以上になると『貫通』を得ることを確認。"
+    },
+    {
+      "id": "bf-x-td03-0008",
+      "no": "X-TD03/0008",
+      "name": "雷星 サンダー・プロキオン",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "レジェンドW",
+      "attributes": [
+        "星",
+        "雷帝軍"
+      ],
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■君の場のカードのワールド名が２種類以上なら、このカードの打撃力＋２！"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 2,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "distinct": "distinctByWorld",
+              "cmp": "gte",
+              "amount": 2
+            }
+          ]
+        }
+      ],
+      "_note": "雷星 サンダー・プロキオン。コールコスト行なし＝costsキー省略（無償コール）。『君の場のカードのワールド名が2種類以上なら、このカードの打撃力＋2！』=continuous:[modifyStats{controller:self,filter:{sameInstanceAsSource:true},critical:2,conditions:[cardCount{controller:self,pile:field,distinct:distinctByWorld,cmp:gte,amount:2}]}]（0006 RDエレキパドルと同一distinctByWorld gate、打撃力=criticalの鉄則どおりcriticalのみ指定）。追加キーワード記載なし＝keywordsキー省略。grep自己検査: cardCount distinctByWorld pile:field(src/13-abilities-core.js:822-863,854)/modifyStats continuous critical+sameInstanceAsSource(src/05-stats.js) 全実在確認。VM実測(x70-b14-verify.js test0008): (a)場のワールドが1種類のみ（このカード単独）では打撃力の増加なし、(b)他ワールドの味方が場に加わりワールド2種類以上になると打撃力+2することを確認。"
+    },
+    {
+      "id": "bf-x-td03-0009",
+      "no": "X-TD03/0009",
+      "name": "ナイスサンダー！",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "雷帝軍",
+        "チャージ",
+        "ドロー"
+      ],
+      "rules": [
+        "■次の２つから１つを選んで使う。「ナイスサンダー！」は１ターンに１回だけ使える。",
+        "・君のデッキの上から２枚をゲージに置く。",
+        "・君のライフが４以下なら、カード２枚を引く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td03-0009-nice-thunder",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "ナイスサンダー！",
+              "lead": "次の２つから１つを選んで使ってください。",
+              "options": [
+                {
+                  "key": "charge",
+                  "label": "君のデッキの上から２枚をゲージに置く",
+                  "script": [
+                    {
+                      "op": "putTopDeckToGauge",
+                      "amount": 2
+                    }
+                  ]
+                },
+                {
+                  "key": "draw",
+                  "label": "君のライフが４以下なら、カード２枚を引く",
+                  "condition": {
+                    "op": "lifeLte",
+                    "amount": 4
+                  },
+                  "script": [
+                    {
+                      "op": "draw",
+                      "amount": 2
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "ナイスサンダー！。使用コスト行なし＝costsキー省略。『次の２つから１つを選んで使う。「ナイスサンダー！」は１ターンに１回だけ使える。・君のデッキの上から２枚をゲージに置く。・君のライフが４以下なら、カード２枚を引く。』=kind:spell,timing:[main],script:[chooseBranch{title,lead,options:[{key:charge,script:[putTopDeckToGauge{amount:2}]},{key:draw,condition:{op:lifeLte,amount:4},script:[draw{amount:2}]}]}],limit:{scope:turn}（bf-h-eb04-buddy-allstars.json H-EB04/0027水王の秘術＝『次の２つから１つを選んで使う。「水王の秘術」は１ターンに１回だけ使える』の直接前例と完全同型骨格。片方の分岐にのみ条件が付く形はoption.conditionで表現＝chooseBranchForScriptがoption.conditionを満たさない選択肢を候補から除外する仕様＝src/14-ability-script.js:1272-1277実在。named-once『ナイスサンダー！』はkind:spellの手札発動＝isHandCastLimitAbilityによりインスタンス分離をスキップするためshared明記不要・bareキーなしでability id由来の既定キーを使う簡素形＝H-EB04/0027と同型で採用）。grep自己検査: chooseBranch(src/14-ability-script.js:348,1272)/option.condition評価(src/14-ability-script.js:1274)/putTopDeckToGauge(src/15-ability-effects.js:290)/lifeLte(src/13-abilities-core.js:912)/draw(src/15-ability-effects.js:261)/limit.scope:turn(src/15-ability-effects.js:3267-3319) 全実在確認。VM実測: x70-b15-verify.js test0009参照（A: useCardAction実経路でchooseBranch「charge」を選ぶとデッキ上2枚がゲージへ、B: ライフ5では「draw」選択肢が候補から除外されchargeしか選べない、C: ライフ4では「draw」も選択可能でカード2枚引く、D: 1ターンに1回のため同ターン2回目の使用不可）。"
+    },
+    {
+      "id": "bf-x-td03-0010",
+      "no": "X-TD03/0010",
+      "name": "ブラックボルト・リング",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "強化"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ２を払う。",
+        "■【対抗】君の場のモンスター１枚をスタンドし、そのターン中、攻撃力＋3000！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-td03-0010-black-bolt-ring",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$target"
+            },
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 3000,
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "ブラックボルト・リング。『【使用コスト】ゲージ２を払う。』=costs.cast:[payGauge{amount:2}]+ability.cost同型複製（FIX7）。『【対抗】君の場のモンスター１枚をスタンドし、そのターン中、攻撃力＋3000！』=kind:spell,timing:[counter],target:{fieldCard,controller:self,filter:{cardType:monster}},effects:[standTarget{target:$target},modifyStats{target:$target,power:3000,duration:turn}]（bf-d-eb02-super-hero-wars-z.json D-EB02/0024私こそ悪を切り裂く一輪のバラ＝『君の場のカード名に「バンテージ仮面」を含むカード１枚をスタンドし、そのターン中、そのカードを攻撃力＋2000…』のstandTarget+modifyStats併用と同型骨格。対象未存在時はtargetCandidatesFromSpecForOwnerが0件でability自体が不成立＝mandatory selectのためallowMissingTarget付与なし）。grep自己検査: payGauge(src/04-cost-resource.js)/target+filter.cardType(src/17-targeting.js)/standTarget(src/15-ability-effects.js:1922)/modifyStats target+duration:turn(src/15-ability-effects.js:1677-1693) 全実在確認。VM実測: x70-b15-verify.js test0010参照（A: 使用コストゲージ2課金、B: 対抗窓でuseCardAction実経路により選んだ自場モンスターがスタンドし攻撃力+3000、C: 場にモンスターが無ければ使用不可）。"
+    },
+    {
+      "id": "bf-x-td03-0011",
+      "no": "X-TD03/0011",
+      "name": "忍法 電光の舞",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "カタナW",
+      "attributes": [
+        "雷帝軍",
+        "忍法"
+      ],
+      "rules": [
+        "■【対抗】相手の場のサイズ１以下のモンスター１枚を破壊する。破壊したら、君の場のカードのワールド名が２種類以上なら、相手にダメージ１！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td03-0011-ninpo-denkou-no-mai",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster",
+              "sizeLte": 1
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                },
+                {
+                  "op": "cardCount",
+                  "controller": "self",
+                  "pile": "field",
+                  "distinct": "distinctByWorld",
+                  "cmp": "gte",
+                  "amount": 2
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "忍法 電光の舞。使用コスト行なし＝costsキー省略。『【対抗】相手の場のサイズ１以下のモンスター１枚を破壊する。破壊したら、君の場のカードのワールド名が２種類以上なら、相手にダメージ１！』=kind:spell,timing:[counter],target:{fieldCard,controller:opponent,filter:{cardType:monster,sizeLte:1}},effects:[destroy{target:$target},dealDamage{player:opponent,amount:1,conditions:[lastDestroySucceeded,cardCount{controller:self,pile:field,distinct:distinctByWorld,cmp:gte,amount:2}]}]（bf-x-td01-zetsumei-no-kokuryu.json X-TD01/0001宣告の黒死竜アビゲール＝『相手の場のモンスター１枚を破壊する。破壊したら、〜』のdestroy+lastDestroySucceededゲート型を踏襲し、後続条件にdistinctByWorld枚数条件を追加合成。distinctByWorldはcardCount条件として既存実装済み=src/13-abilities-core.js:854、pile:field併用はmech-X70-B1.json 0010秘密工作で確立済み前例）。grep自己検査: target+filter.sizeLte(src/17-targeting.js)/destroy target(src/15-ability-effects.js:1358-1410)/lastDestroySucceeded(src/13-abilities-core.js:1296-1299)/dealDamage+effect.conditions(src/15-ability-effects.js:920,252-258)/cardCount distinctByWorld(src/13-abilities-core.js:822-868,854) 全実在確認。VM実測: x70-b15-verify.js test0011参照（A: 対抗窓でuseCardAction実経路により相手のサイズ1以下モンスターが破壊される、B: 破壊後、自場のワールドが1種類のみならダメージ無し、C: 2種類以上ならダメージ1、D: 対象がサイズ2以上のみだと使用不可）。"
+    },
+    {
+      "id": "bf-x-td03-0012",
+      "no": "X-TD03/0012",
+      "name": "カミナリ印の壺",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ダンジョンW",
+      "attributes": [
+        "雷帝軍",
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】その攻撃を無効化する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td03-0012-kaminari-jirushi-no-tsubo",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ],
+      "_note": "カミナリ印の壺。使用コスト行なし＝costsキー省略。『相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。■【対抗】その攻撃を無効化する。』=kind:spell,timing:[counter],conditions:[pendingAttackDefenderIsSelf,ownCenterEmpty],effects:[nullifyAttack]（bf-x-bt01-reborn-of-satan.json X-BT01/0098鬼道おぼろ幻舞＝一字一句同一のrules文言と完全同型。pendingAttackDefenderIsSelfで防御側限定、ownCenterEmptyでセンター空を判定）。grep自己検査: pendingAttackDefenderIsSelf(src/13-abilities-core.js:1578)/ownCenterEmpty(src/13-abilities-core.js:1023)/nullifyAttack(src/15-ability-effects.js:2221) 全実在確認。VM実測: x70-b15-verify.js test0012参照（A: 相手の攻撃中・自センター空なら対抗使用可でその攻撃を無効化、B: 自センターにモンスターがいると使用不可、C: 自分が攻撃側では使用不可）。"
+    },
+    {
+      "id": "bf-x-td03-0013",
+      "no": "X-TD03/0013",
+      "name": "本気で来いよ！",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ヒーローW",
+      "attributes": [
+        "雷帝軍",
+        "防御"
+      ],
+      "rules": [
+        "■君が攻撃されている攻撃中に使える。",
+        "■【対抗】その攻撃を無効化し、君のライフを＋１！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td03-0013-honki-de-koiyo",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "本気で来いよ！。使用コスト行なし＝costsキー省略。『君が攻撃されている攻撃中に使える。■【対抗】その攻撃を無効化し、君のライフを＋１！』=kind:spell,timing:[counter],conditions:[pendingAttackDefenderIsSelf,pendingAttackTargetIs{targetType:fighter}],effects:[nullifyAttack,gainLife{amount:1}]（bf-x-ss02-radiant-vs-rengoku.json X-SS02/0020アースバリア＝『君が攻撃されている攻撃中に使える。【対抗】その攻撃を無効化し、君のライフを＋１する。』と一字一句同一のrules文言・完全同型）。grep自己検査: pendingAttackDefenderIsSelf(src/13-abilities-core.js:1578)/pendingAttackTargetIs(src/13-abilities-core.js:1550-1557)/nullifyAttack(src/15-ability-effects.js:2221)/gainLife(src/15-ability-effects.js:622) 全実在確認。VM実測: x70-b15-verify.js test0013参照（A: 自分（ファイター本体）が攻撃されている対抗窓で使用可・攻撃無効化＆ライフ+1、B: 攻撃対象が場のモンスターの時は使用不可、C: 自分が攻撃側では使用不可）。"
+    },
+    {
+      "id": "bf-x-td03-0014",
+      "no": "X-TD03/0014",
+      "name": "雷神降ろし 土雷",
+      "type": "item",
+      "rarity": "デッキ商品",
+      "world": "デンジャーW",
+      "attributes": [
+        "雷帝軍",
+        "武器"
+      ],
+      "power": 5000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払い、ライフ1を払う。",
+        "■このカードが攻撃した時、そのターン中、君の場のモンスターかアイテム１枚は『貫通』を得る。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-td03-0014-raijin-oroshi-doraikazuchi",
+          "kind": "triggered",
+          "event": "attack",
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardTypeIn": [
+                "monster",
+                "item"
+              ]
+            }
+          },
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "penetrate",
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "雷神降ろし 土雷。【装備コスト】『ゲージ１を払い、ライフ1を払う』=costs.equip:[payGauge{amount:1},payLife{amount:1}]（原文記載順どおり）。『このカードが攻撃した時、そのターン中、君の場のモンスターかアイテム１枚は『貫通』を得る。』=kind:triggered,event:attack,target:{fieldCard,controller:self,filter:{cardTypeIn:[monster,item]}},effects:[grantKeyword{target:$target,keyword:penetrate,duration:turn}]（event:attackはrunAttackDeclarationTriggersがattacker.card単位で発火する唯一の呼び出し元＝アイテム自身が攻撃者(武器攻撃)の時にこのカード自身のabilitiesが直接走査される。bt03-dododo-adventure.json BT03/0043勇者の剣ソマーソード等item型event:attack前例と同型。cardTypeIn:[monster,item]の複数cardType許容フィルタキーはsrc/17-targeting.js:324に実在。対象はモンスターかアイテムいずれか1枚の選択式のため単一filterでcardType/cardTypeInどちらでも成立し得る候補を包含）。grep自己検査: costs.equip payGauge/payLife(src/04-cost-resource.js)/event:attack配線(src/09-attack.js:455-460 runAttackDeclarationTriggers)/target filter.cardTypeIn(src/17-targeting.js:324)/grantKeyword target(src/15-ability-effects.js:1765) 全実在確認。VM実測: x70-b15-verify.js test0014参照（A: 装備コストゲージ1+ライフ1課金、B: このカード（アイテム自身）が攻撃した時に選んだ自場のモンスターかアイテム1枚が『貫通』を得る、C: 選択候補にこのカード自身（アイテム）も含まれる）。"
+    },
+    {
+      "id": "bf-x-td03-0015",
+      "no": "X-TD03/0015",
+      "name": "雷帝剣 ドラグレア",
+      "type": "item",
+      "rarity": "デッキ商品",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "武器"
+      ],
+      "power": 2000,
+      "critical": 2,
+      "rules": [
+        "■君のアタックフェイズ開始時、君の場のカードのワールド名が２種類以上なら、そのターン中、君の場のモンスター１枚の打撃力＋１！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td03-0015-raitei-ken-doragurea",
+          "kind": "triggered",
+          "event": "attackStart",
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "distinct": "distinctByWorld",
+              "cmp": "gte",
+              "amount": 2
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "critical": 1,
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "雷帝剣 ドラグレア。装備コスト行なし＝costsキー省略（無償装備。data/cards多数前例＝X-BT02/0043ターコイズ・マーク等）。『君のアタックフェイズ開始時、君の場のカードのワールド名が２種類以上なら、そのターン中、君の場のモンスター１枚の打撃力＋１！』=kind:triggered,event:attackStart,conditions:[turnOwnerIsSelf,cardCount{controller:self,pile:field,distinct:distinctByWorld,cmp:gte,amount:2}],target:{fieldCard,controller:self,filter:{cardType:monster}},effects:[modifyStats{target:$target,critical:1,duration:turn}]（bf-x-sd01-gourai-maoryu.json X-SD01/0001復活の雷竜バッツ＝event:attackStart+conditions:[turnOwnerIsSelf,...]の確立イディオム＝runPhaseStartTriggersが両プレイヤーの場を走査するためturnOwnerIsSelf必須。ワールド判定はdistinctByWorld cardCount(src/13-abilities-core.js:854、B1 0001/0010で確立済み)）。grep自己検査: turnOwnerIsSelf(src/13-abilities-core.js:900-903近傍)/cardCount distinctByWorld(src/13-abilities-core.js:822-868,854)/event:attackStart配線(runPhaseStartTriggers)/target filter.cardType(src/17-targeting.js)/modifyStats target+duration:turn(src/15-ability-effects.js:1677-1693) 全実在確認。VM実測: x70-b15-verify.js test0015参照（A: 自分のアタックフェイズ開始時、場のワールドが1種類のみなら打撃力上昇なし、B: 2種類以上なら選んだ自場モンスター1枚の打撃力+1、C: 相手のアタックフェイズ開始時はturnOwnerIsSelf不成立で発動しない）。"
+    },
+    {
+      "id": "bf-x-td03-0016",
+      "no": "X-TD03/0016",
+      "name": "轟天雷拳 爆滅×天衝！",
+      "type": "impact",
+      "rarity": "デッキ商品",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍"
+      ],
+      "rules": [
+        "■君の場に《雷帝軍》２枚以上があるなら使える。",
+        "■【使用コスト】ゲージ２を払う。",
+        "■相手の場のモンスター全てを破壊し、相手にダメージ２！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-td03-0016-goten-raiken-bakumetsu-tenshou",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "attribute": "雷帝軍"
+              },
+              "cmp": "gte",
+              "amount": 2
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroyAll",
+              "controller": "opponent",
+              "filter": {
+                "cardType": "monster"
+              }
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 2
+            }
+          ]
+        }
+      ],
+      "_note": "轟天雷拳 爆滅×天衝！。『君の場に《雷帝軍》２枚以上があるなら使える。』=ability.conditions:[cardCount{controller:self,pile:field,filter:{attribute:雷帝軍},cmp:gte,amount:2}]（『枚』＝実枚数のためdistinct指定なし。同名2枚でも成立）。『【使用コスト】ゲージ２を払う。』=costs.cast:[payGauge{amount:2}]+ability.cost同型複製（FIX7）。『相手の場のモンスター全てを破壊し、相手にダメージ２！』=kind:impact,timing:[final],effects:[destroyAll{controller:opponent,filter:{cardType:monster}},dealDamage{player:opponent,amount:2}]（bf-h-bt01-giga-future.json H-BT01/0030漢気全開！怒竜爆炎掌＝『相手の場のモンスター全てを破壊し、相手にダメージ２！』と一字一句同一のrules文言・完全同型）。grep自己検査: cardCount filter.attribute(src/13-abilities-core.js:822-868)/payGauge(src/04-cost-resource.js)/destroyAll(src/15-ability-effects.js:1415、bf-h-bt01-giga-future.json実カード実装で確立済み)/dealDamage(src/15-ability-effects.js:920) 全実在確認。VM実測: x70-b15-verify.js test0016参照（A: 場の《雷帝軍》が1枚以下では使用不可、B: 2枚以上で使用可・使用コストゲージ2課金、C: 相手の場のモンスター全てが破壊されアイテム/魔法は対象外で残る、D: 相手にダメージ2）。"
+    },
+    {
+      "id": "bf-x-td03-0017",
+      "no": "X-TD03/0017",
+      "name": "竜牙雷帝",
+      "type": "flag",
+      "rarity": "デッキ商品",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "■君は《雷帝軍》のカードを使える。",
+        "■君の最初の手札は７枚、ゲージは１枚、ライフは11になる！"
+      ]
+    }
+  ]
+}
