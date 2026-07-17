@@ -1,0 +1,690 @@
+{
+ "schemaVersion": 1,
+ "product": {
+  "id": "bf-cr-bakushou-wdeck",
+  "name": "バディファイト爆勝ＷデッキBOOK",
+  "kind": "PRカード",
+  "generation": "無印",
+  "source": "https://fc-buddyfight.com/cardlist/"
+ },
+ "cards": [
+  {
+   "id": "bf-cr-0016",
+   "no": "CR/0016",
+   "name": "悪霊団長 キマリス",
+   "type": "monster",
+   "world": "マジックW",
+   "attributes": [
+    "72柱",
+    "芸術"
+   ],
+   "rarity": "PR",
+   "size": 2,
+   "power": 6000,
+   "critical": 2,
+   "defense": 7000,
+   "rules": [
+    "■【コールコスト】ゲージ２を払う。"
+   ],
+   "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/cr_0016.png",
+   "costs": {
+    "call": [
+     {
+      "op": "payGauge",
+      "amount": 2
+     }
+    ]
+   }
+  },
+  {
+   "id": "bf-cr-0017",
+   "no": "CR/0017",
+   "name": "タフだぜ！アスモダイ",
+   "type": "monster",
+   "world": "マジックW",
+   "attributes": [
+    "72柱"
+   ],
+   "rarity": "PR",
+   "size": 2,
+   "power": 5000,
+   "critical": 2,
+   "defense": 1000,
+   "rules": [
+    "■【コールコスト】ゲージ３を払い、君のデッキの上から１枚をこのカードのソウルに入れる。",
+    "■このカードが登場した時、君の手札１枚を捨ててよい。捨てたら、相手の場のモンスター１枚を破壊し、相手の場のモンスター１枚を手札に戻す！",
+    "『ソウルガード』"
+   ],
+   "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/cr_0017.png",
+   "costs": {
+    "call": [
+     {
+      "op": "payGauge",
+      "amount": 3
+     },
+     {
+      "op": "putTopDeckToSoul",
+      "amount": 1
+     }
+    ]
+   },
+   "keywords": [
+    "soulguard"
+   ],
+   "abilities": [
+    {
+     "id": "bf-cr-0017-enter",
+     "kind": "triggered",
+     "event": "enter",
+     "script": [
+      {
+       "op": "selectCards",
+       "var": "d",
+       "from": "hand",
+       "controller": "self",
+       "amount": 1,
+       "min": 0,
+       "require": false,
+       "title": "タフだぜ！アスモダイ",
+       "lead": "捨てる手札1枚までを選んでください（選ばなくてもよい）。"
+      },
+      {
+       "op": "ifSelection",
+       "var": "d",
+       "then": [
+        {
+         "op": "moveSelected",
+         "var": "d",
+         "to": "drop"
+        },
+        {
+         "op": "selectCards",
+         "var": "kill",
+         "from": "field",
+         "controller": "opponent",
+         "filter": {
+          "cardType": "monster"
+         },
+         "amount": 1,
+         "title": "タフだぜ！アスモダイ",
+         "lead": "破壊する相手の場のモンスターを1枚選んでください。"
+        },
+        {
+         "op": "destroySelected",
+         "var": "kill"
+        },
+        {
+         "op": "selectCards",
+         "var": "bounce",
+         "from": "field",
+         "controller": "opponent",
+         "filter": {
+          "cardType": "monster"
+         },
+         "amount": 1,
+         "title": "タフだぜ！アスモダイ",
+         "lead": "手札に戻す相手の場のモンスターを1枚選んでください。"
+        },
+        {
+         "op": "moveSelected",
+         "var": "bounce",
+         "to": "hand"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "_note": "【コールコスト】『ゲージ3を払い、君のデッキの上から1枚をこのカードのソウルに入れる』=costs.call:[payGauge3, putTopDeckToSoul1]（bf-h-bt01-0011型）。『登場した時、手札1枚を捨ててよい。捨てたら、相手の場のモンスター1枚を破壊し、相手の場のモンスター1枚を手札に戻す』=event:enter+script[selectCards(hand,min:0,require:false)→ifSelection→moveSelected(drop)→selectCards(field,opponent,monster)→destroySelected→selectCards(field,opponent,monster)→moveSelected(to:hand)]（bf-h-pp01-0036の任意discard→ifSelection型を踏襲、破壊と手札戻しを別変数で連続選択=同名カードを2回選べない自然な順次選択）。『ソウルガード』=keywords:[soulguard]。grep自己検査: putTopDeckToSoul(src/04)/selectCards・ifSelection・moveSelected・destroySelected(src/14)/soulguard(src/18 keywordAliases) 全実在確認。"
+  },
+  {
+   "id": "bf-cr-0018",
+   "no": "CR/0018",
+   "name": "怒りの堕天使 ベレト",
+   "type": "monster",
+   "world": "マジックW",
+   "attributes": [
+    "72柱"
+   ],
+   "rarity": "PR",
+   "size": 2,
+   "power": 4000,
+   "critical": 3,
+   "defense": 3000,
+   "rules": [
+    "能力なし。"
+   ],
+   "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/cr_0018.png"
+  },
+  {
+   "id": "bf-cr-0019",
+   "no": "CR/0019",
+   "name": "爆炎掌のケンジ",
+   "type": "monster",
+   "world": "マジックW",
+   "attributes": [
+    "魔術師",
+    "火力"
+   ],
+   "rarity": "PR",
+   "size": 1,
+   "power": 4000,
+   "critical": 2,
+   "defense": 1000,
+   "rules": [
+    "能力なし。"
+   ],
+   "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/cr_0019.png"
+  },
+  {
+   "id": "bf-cr-0020",
+   "no": "CR/0020",
+   "name": "風の癒し手 リスペル",
+   "type": "monster",
+   "world": "マジックW",
+   "attributes": [
+    "魔術師"
+   ],
+   "rarity": "PR",
+   "size": 1,
+   "power": 4000,
+   "critical": 1,
+   "defense": 4000,
+   "rules": [
+    "■【コールコスト】ゲージ１を払う。",
+    "■このカードが登場した時、君のライフを＋１する。"
+   ],
+   "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/cr_0020.png",
+   "costs": {
+    "call": [
+     {
+      "op": "payGauge",
+      "amount": 1
+     }
+    ]
+   },
+   "abilities": [
+    {
+     "id": "bf-cr-0020-enter-life",
+     "kind": "triggered",
+     "event": "enter",
+     "effects": [
+      {
+       "op": "gainLife",
+       "amount": 1
+      }
+     ]
+    }
+   ],
+   "_note": "『登場した時、君のライフを+1する』=event:enter+effects:gainLife{amount:1}（td05-0001 豪族忍者百地丹波と同型）。grep自己検査: gainLife(src/15) 実在確認。"
+  },
+  {
+   "id": "bf-cr-0021",
+   "no": "CR/0021",
+   "name": "ウープス！",
+   "type": "spell",
+   "world": "マジックW",
+   "attributes": [
+    "魔力"
+   ],
+   "rarity": "PR",
+   "rules": [
+    "■【使用コスト】ゲージ２を払う。",
+    "■【対抗】場のモンスターかアイテムか魔法１枚を、持ち主の手札に戻す。"
+   ],
+   "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/cr_0021.png",
+   "costs": {
+    "cast": [
+     {
+      "op": "payGauge",
+      "amount": 2
+     }
+    ]
+   },
+   "abilities": [
+    {
+     "id": "bf-cr-0021-oops-counter",
+     "kind": "spell",
+     "timing": [
+      "counter"
+     ],
+     "cost": [
+      {
+       "op": "payGauge",
+       "amount": 2
+      }
+     ],
+     "target": {
+      "type": "fieldCard"
+     },
+     "effects": [
+      {
+       "op": "returnToHand",
+       "target": "$target"
+      }
+     ]
+    }
+   ],
+   "castCost": {
+    "gauge": 2
+   }
+  },
+  {
+   "id": "bf-cr-0022",
+   "no": "CR/0022",
+   "name": "ソロモンの盾",
+   "type": "spell",
+   "world": "マジックW",
+   "attributes": [
+    "魔力",
+    "防御"
+   ],
+   "rarity": "PR",
+   "rules": [
+    "■相手のターンの攻撃中に使える。",
+    "■【対抗】その攻撃が連携攻撃でないなら、無効化する。"
+   ],
+   "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/cr_0022.png",
+   "abilities": [
+    {
+     "id": "bf-cr-0022-solomon-shield-counter",
+     "kind": "spell",
+     "timing": [
+      "counter"
+     ],
+     "conditions": [
+      {
+       "op": "pendingAttackDefenderIsSelf"
+      },
+      {
+       "op": "pendingAttackNotLink"
+      }
+     ],
+     "effects": [
+      {
+       "op": "nullifyAttack"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bf-cr-0023",
+   "no": "CR/0023",
+   "name": "ド・ガイタ・クラッシュナックル！",
+   "type": "impact",
+   "world": "マジックW",
+   "attributes": [
+    "火力"
+   ],
+   "rarity": "PR",
+   "rules": [
+    "■【使用コスト】ゲージ３を払う。",
+    "■君の場に《魔術師》がいるなら使える。",
+    "■相手の場のモンスター全てを破壊するか、相手にダメージ２！"
+   ],
+   "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/cr_0023_w.png",
+   "costs": {
+    "cast": [
+     {
+      "op": "payGauge",
+      "amount": 3
+     }
+    ]
+   },
+   "abilities": [
+    {
+     "id": "bf-cr-0023-bt02-0052-choice",
+     "kind": "impact",
+     "conditions": [
+      {
+       "op": "ownFieldHasAttribute",
+       "attribute": "魔術師"
+      }
+     ],
+     "cost": [
+      {
+       "op": "payGauge",
+       "amount": 3
+      }
+     ],
+     "script": [
+      {
+       "op": "chooseBranch",
+       "title": "大魔法 デビルズロッケンロール",
+       "lead": "解決する効果を選んでください。",
+       "options": [
+        {
+         "key": "destroy",
+         "label": "相手モンスター全破壊",
+         "script": [
+          {
+           "op": "destroyAll",
+           "controller": "opponent",
+           "filter": {
+            "cardType": "monster"
+           }
+          }
+         ]
+        },
+        {
+         "key": "damage",
+         "label": "相手にダメージ２",
+         "script": [
+          {
+           "op": "dealDamage",
+           "player": "opponent",
+           "amount": 2
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "castCost": {
+    "gauge": 3
+   },
+   "ruby": "ド・ガイタ・クラッシュナックル！"
+  },
+  {
+   "id": "bf-cr-0024",
+   "no": "CR/0024",
+   "name": "マジックワールド",
+   "type": "flag",
+   "world": "-",
+   "attributes": [],
+   "rarity": "PR",
+   "rules": [
+    "■君は＜マジックワールド＞と＜ジェネリック＞のカードを使える。"
+   ],
+   "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/cr_0024.png"
+  },
+  {
+   "id": "bf-cr-0025",
+   "no": "CR/0025",
+   "name": "アーマナイト・ケルベロス “１００００”",
+   "type": "monster",
+   "world": "デンジャーW",
+   "attributes": [
+    "アーマナイト"
+   ],
+   "rarity": "PR",
+   "size": 2,
+   "power": 10000,
+   "critical": 3,
+   "defense": 7000,
+   "rules": [
+    "■【コールコスト】ゲージ１を払う。",
+    "■このカードはレフトにしかコールできない。"
+   ],
+   "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/cr_0025.png",
+   "costs": {
+    "call": [
+     {
+      "op": "payGauge",
+      "amount": 1
+     }
+    ]
+   },
+   "callZones": [
+    "left"
+   ],
+   "_note": "『このカードはレフトにしかコールできない』=callZones:[\"left\"]（bf-h-bt02-0071 超白虎アキシオンと同型）。grep自己検査: callZones(src/07-actions-turn.js:327)実在確認。"
+  },
+  {
+   "id": "bf-cr-0026",
+   "no": "CR/0026",
+   "name": "アーマナイト・ミノタウロス",
+   "type": "monster",
+   "world": "デンジャーW",
+   "attributes": [
+    "アーマナイト"
+   ],
+   "rarity": "PR",
+   "size": 2,
+   "power": 5000,
+   "critical": 3,
+   "defense": 5000,
+   "rules": [
+    "能力なし。"
+   ],
+   "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/cr_0026.png"
+  },
+  {
+   "id": "bf-cr-0027",
+   "no": "CR/0027",
+   "name": "飛翔竜 シルフィド",
+   "type": "monster",
+   "world": "デンジャーW",
+   "attributes": [
+    "デュエルドラゴン"
+   ],
+   "rarity": "PR",
+   "size": 1,
+   "power": 5000,
+   "critical": 2,
+   "defense": 3000,
+   "rules": [
+    "能力なし。"
+   ],
+   "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/cr_0027.png"
+  },
+  {
+   "id": "bf-cr-0028",
+   "no": "CR/0028",
+   "name": "アーマナイト・ポーラベアー",
+   "type": "monster",
+   "world": "デンジャーW",
+   "attributes": [
+    "アーマナイト"
+   ],
+   "rarity": "PR",
+   "size": 1,
+   "power": 3000,
+   "critical": 2,
+   "defense": 5000,
+   "rules": [
+    "能力なし。"
+   ],
+   "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/cr_0028.png",
+   "ruby": "アーマナイト・ポーラベアー"
+  },
+  {
+   "id": "bf-cr-0029",
+   "no": "CR/0029",
+   "name": "アーマナイト・コブラ",
+   "type": "monster",
+   "world": "デンジャーW",
+   "attributes": [
+    "アーマナイト"
+   ],
+   "rarity": "PR",
+   "size": 0,
+   "power": 2000,
+   "critical": 2,
+   "defense": 2000,
+   "rules": [
+    "■【コールコスト】ゲージ１を払う。"
+   ],
+   "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/cr_0029.png",
+   "costs": {
+    "call": [
+     {
+      "op": "payGauge",
+      "amount": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": "bf-cr-0030",
+   "no": "CR/0030",
+   "name": "天地撃滅斬",
+   "type": "spell",
+   "world": "デンジャーW",
+   "attributes": [
+    "闘気",
+    "破壊"
+   ],
+   "rarity": "PR",
+   "rules": [
+    "■【使用コスト】ゲージ２を払う。",
+    "■君のセンターにモンスターがいないなら使える。",
+    "■場のモンスター１枚を破壊する！"
+   ],
+   "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/cr_0030.png",
+   "costs": {
+    "cast": [
+     {
+      "op": "payGauge",
+      "amount": 2
+     }
+    ]
+   },
+   "abilities": [
+    {
+     "id": "bf-cr-0030-tenchi-gekimezuzan-cast",
+     "kind": "spell",
+     "timing": [
+      "main"
+     ],
+     "cost": [
+      {
+       "op": "payGauge",
+       "amount": 2
+      }
+     ],
+     "target": {
+      "type": "fieldCard",
+      "filter": {
+       "cardType": "monster"
+      }
+     },
+     "conditions": [
+      {
+       "op": "ownCenterEmpty"
+      }
+     ],
+     "effects": [
+      {
+       "op": "destroy",
+       "target": "$target"
+      }
+     ]
+    }
+   ],
+   "castCost": {
+    "gauge": 2
+   }
+  },
+  {
+   "id": "bf-cr-0031",
+   "no": "CR/0031",
+   "name": "滅槍 岩抉り",
+   "type": "item",
+   "world": "デンジャーW",
+   "attributes": [
+    "闘気",
+    "武器"
+   ],
+   "rarity": "PR",
+   "power": 3000,
+   "critical": 2,
+   "rules": [
+    "能力なし。"
+   ],
+   "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/cr_0031.png"
+  },
+  {
+   "id": "bf-cr-0032",
+   "no": "CR/0032",
+   "name": "怒裏留バンカー!!",
+   "type": "impact",
+   "world": "デンジャーW",
+   "attributes": [
+    "闘気"
+   ],
+   "rarity": "PR",
+   "rules": [
+    "■【使用コスト】ゲージ２を払う。",
+    "■君のセンターにモンスターがいないなら使える。",
+    "■そのターン、君の場の《武器》１枚を、攻撃力＋4000、打撃力＋２し、『貫通』を与える。その《武器》が【スタンド】しているなら、その《武器》で攻撃する。"
+   ],
+   "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/cr_0032_w.png",
+   "costs": {
+    "cast": [
+     {
+      "op": "payGauge",
+      "amount": 2
+     }
+    ]
+   },
+   "abilities": [
+    {
+     "id": "bf-cr-0032-drill-bunker-cast",
+     "kind": "impact",
+     "timing": [
+      "final"
+     ],
+     "cost": [
+      {
+       "op": "payGauge",
+       "amount": 2
+      }
+     ],
+     "conditions": [
+      {
+       "op": "ownCenterEmpty"
+      }
+     ],
+     "target": {
+      "type": "fieldCard",
+      "controller": "self",
+      "filter": {
+       "cardType": "item",
+       "attribute": "武器"
+      }
+     },
+     "effects": [
+      {
+       "op": "modifyStats",
+       "target": "$target",
+       "power": 4000,
+       "critical": 2,
+       "duration": "turn"
+      },
+      {
+       "op": "grantKeyword",
+       "target": "$target",
+       "keyword": "penetrate",
+       "duration": "turn"
+      },
+      {
+       "op": "declareAttackWithTarget",
+       "target": "$target"
+      }
+     ]
+    }
+   ],
+   "castCost": {
+    "gauge": 2
+   },
+   "_note": "S1再録の公式テキスト＝BT01/S012（究極レア・bt01-s012）と同文。クローン破棄し独自DSLへ再実装（統合レビューF1）。使用ゲートは『君のセンターにモンスターがいないなら使える』＝ownCenterEmptyのみ（スタンドは使用前提ではない）。効果：君の場の《武器》1枚に攻撃力+4000/打撃力+2（modifyStats）＋『貫通』付与（grantKeyword penetrate）、その《武器》が【スタンド】しているなら攻撃（declareAttackWithTarget）。攻撃はdeclareAttackWithFieldCardのrequireStanding既定（src/09:258）でレスト中は不発＝『スタンドしているなら』を満たす（standTargetは行わない＝bt01-s012と完全同型）。採用元TD02/0015(drill-bunker)は別プリント別テキスト（『センターにモンスターがいなくて、《武器》がスタンドしているなら使える』＝スタンドが使用条件・攻撃節なし）につき現状維持。grep自己検査: ownCenterEmpty(src/13)・payGauge(src/04)・modifyStats/grantKeyword/declareAttackWithTarget(src/15) 全実在確認。"
+  },
+  {
+   "id": "bf-cr-0033",
+   "no": "CR/0033",
+   "name": "デンジャーワールド",
+   "type": "flag",
+   "world": "-",
+   "attributes": [],
+   "rarity": "PR",
+   "rules": [
+    "■君は＜デンジャーワールド＞と＜ジェネリック＞のカードを使える。"
+   ],
+   "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/cr_0033.png"
+  }
+ ]
+}

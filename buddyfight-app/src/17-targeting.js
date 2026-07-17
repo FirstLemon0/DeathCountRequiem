@@ -485,10 +485,6 @@ function matchesCardFilter(card, filter = {}, options = {}) {
   return true;
 }
 
-function matchingCardsFromPile(pile, filter = {}) {
-  return (pile || []).filter((card) => matchesCardFilter(card, filter));
-}
-
 function takeMatchingCards(pile, filter = {}, amount = 1, excludedCard = null) {
   const movedCards = [];
   for (let index = pile.length - 1; index >= 0 && movedCards.length < amount; index -= 1) {

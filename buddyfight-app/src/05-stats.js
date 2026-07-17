@@ -520,6 +520,26 @@ function continuousEffectAppliesForFlag(effect, targetCard, owner) {
   return matchesCardFilter(targetCard, effect.filter || {});
 }
 
+// E-PR4(PR/0223 竜装機シュレディンガー): 継続 modifyStats の amountFrom:{source:...} 系
+// （ドロップ属性枚数・ソウル枚数/合計・自サイズ・場のソウル/カード枚数・場のカードstat・武器打撃力合計）の
+// 動的算出ヘルパー群を1関数へ集約する。従来は場カード継続(continuousStatBonus の own-side ループ)だけが
+// これらを個別に呼んでいたため、ソウル内カードの soulContinuous の modifyStats はリテラル値しか読めず
+// 「ドロップの同名枚数分＋1000」のような動的スケーリングを表現できなかった。ここへ集約して soul 側でも
+// 同じ amountFrom 解決を使えるよう配線する。各ヘルパーは effect.op / amountFrom.source を自己ゲートし、
+// 該当しなければ0を返す＝amountFrom を持たない既存 soulContinuous（一竜当千・竜装機系 等16枚。DB走査で
+// amountFrom 使用0件確認済み）の挙動は完全不変（加算0）。sourceOwner は発生源カードの所有者席。
+function continuousModifyStatsAmountFrom(effect, statKey, player, sourceCard, sourceOwner) {
+  return (
+    continuousDropStatAmount(effect, statKey, player) +
+    continuousSoulStatAmount(effect, statKey, sourceCard) +
+    continuousSelfSizeAmount(effect, statKey, sourceCard) + // X11a(D-BT01/0059)
+    continuousFieldSoulStatAmount(effect, statKey, player) +
+    continuousFieldCardStatAmount(effect, statKey, sourceOwner, sourceCard) +
+    continuousFieldCardStatValueAmount(effect, statKey, sourceOwner) + // E8(D-BT03/0031)
+    continuousWeaponCriticalSumAmount(effect, statKey, sourceOwner, sourceCard) // E-XC6(X-CP01/0049)
+  );
+}
+
 // 場・ソウルの継続 modifyStats（定数 by と amountFrom:dropAttributeCount/soulCount/soulStatSum）から statKey の合計補正値を算出。
 function continuousStatBonus(card, statKey) {
   const slot = findFieldCardSlot(card);
@@ -550,13 +570,9 @@ function continuousStatBonus(card, statKey) {
       if (effect.op === "modifyStats") {
         bonus += effect[statKey] || 0;
       }
-      bonus += continuousDropStatAmount(effect, statKey, player);
-      bonus += continuousSoulStatAmount(effect, statKey, sourceCard);
-      bonus += continuousSelfSizeAmount(effect, statKey, sourceCard); // X11a(D-BT01/0059)
-      bonus += continuousFieldSoulStatAmount(effect, statKey, player);
-      bonus += continuousFieldCardStatAmount(effect, statKey, slot.owner, sourceCard);
-      bonus += continuousFieldCardStatValueAmount(effect, statKey, slot.owner); // E8(D-BT03/0031)
-      bonus += continuousWeaponCriticalSumAmount(effect, statKey, slot.owner, sourceCard); // E-XC6(X-CP01/0049)
+      // amountFrom 系(dropAttributeCount/soulCount/soulStatSum/selfSize/fieldSoulCount/fieldCardCount/
+      // fieldCardStat/weaponCriticalSum)を統一解決。E-PR4 でソウル側と共通のヘルパーへ集約した（挙動不変）。
+      bonus += continuousModifyStatsAmountFrom(effect, statKey, player, sourceCard, slot.owner);
     });
   });
   // Z1(S-UB-C03/0095): フラッグの継続効果。フラッグは zones 走査に乗らない（player.field ではなく
@@ -612,6 +628,10 @@ function continuousStatBonus(card, statKey) {
     if (effect.op === "modifyStats") {
       bonus += effect[statKey] || 0;
     }
+    // E-PR4(PR/0223 竜装機シュレディンガー): soulContinuous の modifyStats も amountFrom を動的解決する
+    // （「君のドロップの同名枚数分＋1000」等）。player はホスト(card)の所有者＝dropAttributeCount は
+    // 「君のドロップ」を数える。amountFrom 非保持の既存 soulContinuous は加算0で挙動不変。
+    bonus += continuousModifyStatsAmountFrom(effect, statKey, player, sourceCard, slot.owner);
   });
   // F2(D-EB02/0033 リリックオーバー): soulContinuous の modifyStats{fieldWide:true} は、ホスト自身
   // だけでなく「ホストのコントローラーの場全体」（filter適用）に乗る（「君の場の〜全て」型）。
@@ -636,6 +656,8 @@ function continuousStatBonus(card, statKey) {
           return;
         }
         bonus += effect[statKey] || 0;
+        // E-PR4: 場全体型(fieldWide)の soulContinuous modifyStats も amountFrom を動的解決する。
+        bonus += continuousModifyStatsAmountFrom(effect, statKey, player, sourceCard, slot.owner);
       });
     });
   }
@@ -886,6 +908,32 @@ function standRestrictedNow(card) {
 }
 
 // ==========================================================================
+// E-PR1(PR/0075 アーマナイト・ハティー): 「相手の場のカードは連携攻撃できない」。
+// 場札の continuous/turnContinuous op:"restrictLinkAttack" を live 走査し、対象カードが連携攻撃の
+// 攻撃者に加われるか（＝連携の一員になれるか）を判定する。既存の cannotBeLinkAttacked/
+// fighterCannotBeLinkAttacked は「連携攻撃“されない”」＝防御側の抑止で方向が逆。こちらは攻撃側の
+// 「連携攻撃“できない”」＝攻撃者としての参加を禁じる（単独攻撃は許可＝呼び出し側が attackers.length>1 の
+// ときだけ問う）。発生源が場を離れれば走査で見つからず自動解除（continuousEffectApplies 委譲・持続フラグは
+// 持たない consult 型）。controller/filter/conditions のスコープ判定は continuousEffectApplies に委譲
+// （controller:"opponent"＝相手の場のカード限定・filter:{}＝モンスター/アイテム問わず全カード）。能力無効化
+// された発生源は activeContinuousEffects と continuousEffectApplies(isAbilitiesNullified) の二重で除外される。
+// 既存カードは restrictLinkAttack op を持たない＝場に該当継続が無ければ常に false（高速パス・波及ゼロ）。
+// ==========================================================================
+function linkAttackRestricted(card) {
+  if (!card || !findFieldCardSlot(card)) {
+    return false;
+  }
+  return state.players.some((player) =>
+    zones.some((zone) => {
+      const source = player.field[zone];
+      return activeContinuousEffects(source).some(
+        (e) => e.op === "restrictLinkAttack" && continuousEffectApplies(e, card, source),
+      );
+    }),
+  );
+}
+
+// ==========================================================================
 // Z4(S-UB-C03): 第三者付与型の耐性ゲート拡張（レスト/ソウル破棄/能力無効化/ステータス減少/ターン限定）。
 // 既存の破壊(grantedDestroyImmunityBlocks)/手札戻し(preventReturnToHand)ゲートとは独立レイヤで、
 // 同型のパターン（場の継続 grant*Immunity を controller/zoneIn/filter/conditions/from で判定）を
@@ -908,10 +956,16 @@ function grantedProtectionBlocks(card, kind, cause) {
   if (!targetSlot) {
     return false;
   }
-  return state.players.some((player, sourceOwner) =>
-    zones.some((zone) => {
-      const source = player.field[zone];
-      return activeContinuousEffects(source).some((e) => {
+  return state.players.some((player, sourceOwner) => {
+    // 継続の発生源: 場のモンスター(zones)＋フラッグ(player.flag)。フラッグ発の grantNullifyImmunity
+    // （the-chaos「サイズ30以上のモンスターは能力を無効化されない」等）は player.flag に実体があり
+    // zones 走査に乗らないため明示的に加える。既存フラッグは grant*Immunity 継続を持たない＝後方互換。
+    const sources = zones.map((zone) => ({ source: player.field[zone], zone }));
+    if (player.flag?.type === "flag") {
+      sources.push({ source: player.flag, zone: null });
+    }
+    return sources.some(({ source, zone }) =>
+      activeContinuousEffects(source).some((e) => {
         if (e.op !== op) return false;
         if (e.controller === "self" && targetSlot.owner !== sourceOwner) return false;
         if (e.controller === "opponent" && targetSlot.owner === sourceOwner) return false;
@@ -924,9 +978,9 @@ function grantedProtectionBlocks(card, kind, cause) {
           if (e.from.byOpponent && !cause.byOpponent) return false;
         }
         return true;
-      });
-    }),
-  );
+      }),
+    );
+  });
 }
 
 // Z4(e): 【対抗】等でそのターン(または複数ターン)限定に付与される保護（state.turnProtections）。

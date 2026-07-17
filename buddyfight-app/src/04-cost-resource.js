@@ -598,11 +598,21 @@ function canPayStructuredCost(player, costSteps = [], context = {}) {
         return { ok: false, reason: "Life Link to cancel was not found." };
       }
     }
-    if (step.op === "putTopDeckToSoul" && player.deck.length < amount) {
-      return { ok: false, reason: "ソウルに入れるデッキ枚数が足りません。" };
+    if (step.op === "putTopDeckToSoul") {
+      // 発生源自身（ドロップ/デッキから重ねコール中の selectedCard）はソウルにできないので勘定から除く
+      // （putHandToSoul/putCardToSoul と同じ selectedCard 除外・支払い側 moveTopDeckToSoul と一致）。
+      const availableDeck = player.deck.filter((card) => card.instanceId !== selectedCard?.instanceId).length;
+      if (availableDeck < amount) {
+        return { ok: false, reason: "ソウルに入れるデッキ枚数が足りません。" };
+      }
     }
-    if (step.op === "putDropToSoul" && matchingCardsFromPile(player.drop, step.filter).length < (step.min ?? amount)) {
-      return { ok: false, reason: "ソウルに入れるドロップのカードが足りません。" };
+    if (step.op === "putDropToSoul") {
+      const availableDrop = player.drop.filter(
+        (card) => card.instanceId !== selectedCard?.instanceId && matchesCardFilter(card, step.filter || {}),
+      );
+      if (availableDrop.length < (step.min ?? amount)) {
+        return { ok: false, reason: "ソウルに入れるドロップのカードが足りません。" };
+      }
     }
     if (step.op === "discardSoul" && (context.sourceCard?.soul?.length || 0) < amount) {
       return { ok: false, reason: "ソウルが足りません。" };
@@ -1939,12 +1949,20 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
 function moveTopDeckToSoul(player, card, amount = 1, faceDown = false) {
   card.soul ||= [];
   const moved = [];
-  for (let index = 0; index < amount; index += 1) {
+  // カードは自分自身のソウルにできない。デッキから重ねコール/コール中に、まだデッキに居る発生源が
+  // デッキトップとして拾われる自食い＝孤児化を防ぐ（取り置いてデッキ上へ戻す。moveDropToSoul と対称）。
+  const skipped = [];
+  while (moved.length < amount && player.deck.length > 0) {
     const soulCard = player.deck.pop();
-    if (soulCard) {
-      card.soul.push(soulCard);
-      moved.push(soulCard);
+    if (soulCard.instanceId === card.instanceId) {
+      skipped.push(soulCard);
+      continue;
     }
+    card.soul.push(soulCard);
+    moved.push(soulCard);
+  }
+  for (let index = skipped.length - 1; index >= 0; index -= 1) {
+    player.deck.push(skipped[index]); // 取り置いた自分自身をデッキ上（元位置）へ戻す
   }
   if (faceDown) {
     markSoulCardsFaceDown(moved, card); // E-Y1(奇襲): 「裏向きで」
@@ -1971,7 +1989,10 @@ function moveTopDeckToGauge(player, amount = 1) {
 
 function moveDropToSoul(player, card, amount = 1, filter = {}) {
   card.soul ||= [];
-  const movedCards = takeMatchingCards(player.drop, filter, amount);
+  // カードは自分自身のソウルにできない。ドロップから重ねコール/コール中に、まだドロップに居る発生源（card）を
+  // コスト札として拾う自食い（card.soul に card 自身が入り、以後の取り出しで見失う孤児化）を防ぐため
+  // excludedCard=card で自身を候補から除外する（moveFieldCardsToSoul と同じ不変条件）。
+  const movedCards = takeMatchingCards(player.drop, filter, amount, card);
   if (movedCards.length > 0) {
     putCardsToSoulWithTrigger(card, state.players.indexOf(player), movedCards, "drop");
     addLog(`${movedCards.map((soulCard) => soulCard.name).join("、")}を${card.name}のソウルに入れました。`);

@@ -290,6 +290,7 @@ async function getDeckValidationSets() {
   const cardIds = new Set();
   const flagIds = new Set();
   const unlimitedCardIds = new Set(); // E-XC3: deckUnlimitedCopies なカードID（同名4枚超を許容）
+  const limitCardMeta = []; // E-PR10(limitWith): buildLimitGroups 用の {id,name,limitWith}
   const stripBom = (text) => text.replace(/^﻿/, "");
   try {
     const cardsets = JSON.parse(stripBom(fs.readFileSync(path.join(rootDir, "data", "cardsets.json"), "utf8")));
@@ -301,6 +302,7 @@ async function getDeckValidationSets() {
           if (card.type === "flag" && card.deckable !== true) continue; // R7: deckable flag はデッキ投入可
           if (card.id) cardIds.add(card.id);
           if (card.id && card.deckUnlimitedCopies) unlimitedCardIds.add(card.id); // E-XC3
+          if (card.id) limitCardMeta.push({ id: card.id, name: card.name, limitWith: card.limitWith }); // E-PR10
         }
       } catch (error) {
         console.warn(`[user-store] カードセット読込失敗: ${set.file}: ${error.message}`);
@@ -318,7 +320,9 @@ async function getDeckValidationSets() {
   } catch (error) {
     console.warn(`[user-store] flags.json 読込失敗: ${error.message}`);
   }
-  deckValidationCache = { cardIds, flagIds, unlimitedCardIds };
+  // E-PR10(limitWith): id→グループ名の写像（limitWith 皆無なら null＝グループ制約なし＝後方互換）。
+  const limitGroups = deckCode.buildLimitGroups(limitCardMeta);
+  deckValidationCache = { cardIds, flagIds, unlimitedCardIds, limitGroups };
   return deckValidationCache;
 }
 
@@ -966,8 +970,8 @@ async function handleApi(req, res, url) {
       sendJsonCors(res, 400, { error: `共有コードが不正です: ${error.message}` });
       return true;
     }
-    const { cardIds, flagIds, unlimitedCardIds } = await getDeckValidationSets();
-    const result = deckCode.validateDeckCodePayload(payload, { cardIds, flagIds, unlimitedCardIds });
+    const { cardIds, flagIds, unlimitedCardIds, limitGroups } = await getDeckValidationSets();
+    const result = deckCode.validateDeckCodePayload(payload, { cardIds, flagIds, unlimitedCardIds, limitGroups });
     if (!result.ok) {
       sendJsonCors(res, 400, { error: result.reason });
       return true;
@@ -1026,8 +1030,8 @@ async function handleApi(req, res, url) {
         sendJsonCors(res, 400, { error: `共有コードが不正です: ${error.message}` });
         return true;
       }
-      const { cardIds, flagIds, unlimitedCardIds } = await getDeckValidationSets();
-      const result = deckCode.validateDeckCodePayload(payload, { cardIds, flagIds, unlimitedCardIds });
+      const { cardIds, flagIds, unlimitedCardIds, limitGroups } = await getDeckValidationSets();
+      const result = deckCode.validateDeckCodePayload(payload, { cardIds, flagIds, unlimitedCardIds, limitGroups });
       if (!result.ok) {
         sendJsonCors(res, 400, { error: result.reason });
         return true;

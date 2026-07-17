@@ -508,9 +508,9 @@ function validateDeck(deck) {
     "バディ: モンスターまたは必殺モンスター1枚",
   );
 
-  const overLimitNames = cardNameCounts()
-    .map((entry) => ({ ...entry, limit: cardCopyLimitForFlag(flag, entry.card) }))
-    .filter((entry) => entry.count > entry.limit)
+  // E-PR10(PR/0343等 limitWith): 「『A』と『B』は合わせて4枚まで」のグループ集計を含む投入上限チェック。
+  // limitWith を1枚も含まないデッキでは従来の同名合算＋先頭カード上限と1バイトも変わらない（deckLimitOverages 参照）。
+  const overLimitNames = deckLimitOverages(currentDeck.recipe, findCard, flag)
     .map((entry) => `${entry.name} ${entry.count}枚(上限${entry.limit})`);
   addValidation(
     items,
@@ -542,19 +542,84 @@ function addValidation(items, ok, message) {
   items.push({ level: ok ? "ok" : "error", message });
 }
 
-function cardNameCounts() {
-  const counts = new Map();
-  currentDeck.recipe.forEach(([id, count]) => {
-    const card = findCard(id);
-    const name = card?.name || id;
-    const prev = counts.get(name) || { count: 0, card };
-    counts.set(name, { count: prev.count + count, card: prev.card || card });
+// ---- デッキ投入上限（同名合算 / PR/0343等 limitWith グループ）--------------------------------
+// E-PR10 limitWith: 「『A』と『B』は合わせてN枚までデッキに入れられる」というデッキ構築制約カード用の汎用キー。
+// カードは投入上限の「グループ名」を、自分の name ではなく limitWith の値で数える。
+//   グループ名 = card.limitWith || card.name（|| id はカード不明時の保険）。
+// PR側カードだけが limitWith を持ち、本流側（竜気百倍 等）は無改変。limitWith を1枚も持たないカード
+// プールでは、下記はすべて従来の「同名合算＋先頭カード上限」と等価に退化する（後方互換：バイト単位で不変）。
+
+function limitGroupKeyOf(card, id) {
+  return (card && card.limitWith) || (card && card.name) || id;
+}
+
+// カードリストから「投入上限グループとして連結されている名前」の集合（＝存在する limitWith 値の集合）。
+// 空集合なら limitWith 連結なし＝全カード従来どおり（グループ=同名のみ・上限=先頭カード）。
+function limitLinkedKeysFrom(cardList) {
+  const keys = new Set();
+  for (const card of cardList || []) {
+    if (card && card.limitWith) keys.add(card.limitWith);
+  }
+  return keys;
+}
+
+// カードプール(cards)由来の連結キー集合。追加ボタン等、デッキ外も含めた判定に使う。
+function limitLinkedGroupKeys() {
+  return limitLinkedKeysFrom(cards);
+}
+
+// グループの投入上限。limitWith 連結グループはグループ内カードの cardCopyLimitForFlag の最小値
+// （現行19枚は全て通常4枚どうしなので観測差は無いが、deckAnyFlag 併用時の将来安全のため最小）。
+// 非連結（通常/同名合算）は従来どおり先頭カードの上限＝バイト単位で不変。
+function groupCopyLimitFor(flag, group, linkedKeys) {
+  if (linkedKeys && linkedKeys.has(group.name) && group.cards.length) {
+    return group.cards.reduce((min, c) => Math.min(min, cardCopyLimitForFlag(flag, c)), Infinity);
+  }
+  return cardCopyLimitForFlag(flag, group.first);
+}
+
+// デッキの投入上限超過グループを返す純粋関数（テスト用にグローバル公開）。
+//   recipe = [[id,count],...] / lookup = (id)=>card|undefined / flag = フラッグカード
+//   戻り値 = 上限超過グループ [{name, count, limit}]（name＝グループ名＝limitWith||name）。
+// limitWith を1枚も含まない recipe では、旧 cardNameCounts＋先頭カード上限（entry.card）と完全に等価
+// （グループ名・列挙順・上限・超過判定・メッセージ文字列すべて不変）。
+function deckLimitOverages(recipe, lookup, flag) {
+  const linkedKeys = limitLinkedKeysFrom((recipe || []).map(([id]) => lookup(id)));
+  const groups = new Map();
+  (recipe || []).forEach(([id, count]) => {
+    const card = lookup(id);
+    const key = limitGroupKeyOf(card, id);
+    const group = groups.get(key) || { name: key, count: 0, first: undefined, cards: [] };
+    group.count += Number(count || 0);
+    if (card) {
+      if (!group.first) group.first = card; // 旧 cardNameCounts の `prev.card || card`（先頭の非nullカード）と同義
+      if (!group.cards.includes(card)) group.cards.push(card);
+    }
+    groups.set(key, group);
   });
-  return [...counts.entries()].map(([name, value]) => ({
-    name,
-    count: value.count,
-    card: value.card,
-  }));
+  const over = [];
+  groups.forEach((group) => {
+    const limit = groupCopyLimitFor(flag, group, linkedKeys);
+    if (group.count > limit) over.push({ name: group.name, count: group.count, limit });
+  });
+  return over;
+}
+
+// 追加ボタン用: 指定グループ名のデッキ内合計枚数と、グループ上限（デッキ内カード＋追加候補カードの最小上限）。
+function deckGroupCount(groupKey) {
+  return currentDeck.recipe.reduce((total, [id, count]) => {
+    return limitGroupKeyOf(findCard(id), id) === groupKey ? total + Number(count || 0) : total;
+  }, 0);
+}
+function deckGroupCopyLimit(flag, groupKey, selfCard) {
+  let limit = cardCopyLimitForFlag(flag, selfCard);
+  currentDeck.recipe.forEach(([id]) => {
+    const c = findCard(id);
+    if (c && limitGroupKeyOf(c, id) === groupKey) {
+      limit = Math.min(limit, cardCopyLimitForFlag(flag, c));
+    }
+  });
+  return limit;
 }
 
 function unusableCardsForFlag(flag) {
@@ -867,8 +932,17 @@ function builderCardImgError(img) {
 function createCardResult(card) {
   const flag = findCard(currentDeck.flag);
   // FB1: deckable フラッグ(0128)は通常カード同様に同名上限(4)の対象。開始フラッグ専用の type:flag は上限なし(null)。
-  const copyLimit = card.type === "flag" && !card.deckable ? null : cardCopyLimitForFlag(flag, card);
-  const count = deckCardCount(card.id);
+  // E-PR10(limitWith): 連結グループのカードは、自IDの枚数ではなくグループ合計 vs グループ上限で判定する。
+  // limitWith を1枚も含まないプールでは linked=false のまま＝従来どおり自IDの枚数・カード上限（バイト単位で不変）。
+  const isFlagOnly = card.type === "flag" && !card.deckable;
+  const groupKey = limitGroupKeyOf(card, card.id);
+  const linked = !isFlagOnly && limitLinkedGroupKeys().has(groupKey);
+  const copyLimit = isFlagOnly
+    ? null
+    : linked
+      ? deckGroupCopyLimit(flag, groupKey, card)
+      : cardCopyLimitForFlag(flag, card);
+  const count = linked ? deckGroupCount(groupKey) : deckCardCount(card.id);
   const node = document.createElement("article");
   node.className = "builder-card";
   node.innerHTML = `
@@ -890,9 +964,11 @@ function createCardResult(card) {
   addButton.type = "button";
   addButton.textContent = "追加";
   // FB1: deckable フラッグ(0128)はデッキ投入可（上限内なら追加可）。それ以外の type:flag は追加不可。
-  addButton.disabled = (card.type === "flag" && !card.deckable) || (copyLimit != null && count >= copyLimit);
+  addButton.disabled = isFlagOnly || (copyLimit != null && count >= copyLimit);
   if (copyLimit != null && count >= copyLimit) {
-    addButton.title = `同名カードの上限 ${copyLimit} 枚に達しています`;
+    addButton.title = linked
+      ? `『${groupKey}』と合わせて上限 ${copyLimit} 枚に達しています`
+      : `同名カードの上限 ${copyLimit} 枚に達しています`;
   }
   addButton.dataset.focusKey = "res-add-" + card.id;
   addButton.addEventListener("click", () => {
@@ -1135,6 +1211,9 @@ function readDeckShareCode(raw) {
     cardIds: shareCodeCardIds(),
     flagIds: shareCodeFlagIds(),
     unlimitedCardIds: shareCodeUnlimitedCardIds(), // E-XC3
+    // E-PR10(limitWith): id→グループ名の写像（deck-code.js）。limitWith 皆無なら null＝従来どおり。
+    // deck-code.js 未読込のスタンドアロン検証環境でも落ちないよう typeof ガード。
+    limitGroups: typeof buildLimitGroups === "function" ? buildLimitGroups(cards) : undefined,
   });
   if (!result.ok) {
     return { ok: false, message: result.reason };

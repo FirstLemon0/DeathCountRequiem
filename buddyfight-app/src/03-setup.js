@@ -111,11 +111,29 @@ function createCard(templateId) {
 // D-EB03/E1: カードの全ワールドを返す。2ワールド持ちカード（DB初・D-EB03 の6枚）は
 // primary の world 文字列に加えて worlds:[w1,w2] を持つ。従来の単一ワールドカード（worlds 無し）は
 // [world] にフォールバックするので、既存2,000枚超は完全に挙動不変（完全後方互換）。
+// E-PR15(PR/0461 「変幻自在のウェイビー」): ターン限定の追加ワールド名（card.turnWorlds・素の文字列配列で
+// state 常駐）を静的ワールドに合流（重複除去）する。turnWorlds は現状どのカードも印字せず、gainTemporaryWorldFromVar
+// が場のカードへ動的に積むのみ。未設定（既存全カード）は静的分をそのまま返す＝返り値がバイト単位で従来一致
+// （完全後方互換）。filter.world / worldNotIn（src/17）・distinctByWorld 集計（src/13）など cardWorlds() 経由の
+// 全読者が自動で新ワールドを拾う。掃除は clearTurnModifiers（src/11）/resetLeftFieldCardState（src/08）。
 function cardWorlds(card) {
-  if (card && Array.isArray(card.worlds) && card.worlds.length) {
-    return card.worlds;
+  const base =
+    card && Array.isArray(card.worlds) && card.worlds.length
+      ? card.worlds
+      : card && card.world
+        ? [card.world]
+        : [];
+  const extra = card && Array.isArray(card.turnWorlds) ? card.turnWorlds : null;
+  if (!extra || extra.length === 0) {
+    return base; // 追加ワールド無し＝従来と完全に同じ配列（既存カードは常にこの分岐）
   }
-  return card && card.world ? [card.world] : [];
+  const merged = [...base];
+  for (const world of extra) {
+    if (world && !merged.includes(world)) {
+      merged.push(world);
+    }
+  }
+  return merged;
 }
 
 function canUseCardForFlag(player, card) {
@@ -318,6 +336,9 @@ function newGame(options = {}) {
     turnDamageEvents: [],
     destroyedEventWindow: null,
     destroyedCardsThisTurn: [[], []],
+    // E-PR16(PR/0470): このターン中に「効果で」スタンドしたカードの owner別 instanceId 履歴
+    // （queueStandTriggers で記帳・clearTurnModifiers でリセット・standedByEffectThisTurnMatches が参照）。
+    standedByEffectThisTurn: [[], []],
     enteredEventWindow: null,
     extraTurnOwner: null,
     winner: null,

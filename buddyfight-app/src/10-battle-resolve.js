@@ -273,6 +273,16 @@ function applicableAttackResistances(attackers = []) {
         entries.push(entry);
       }
     });
+    // E-PR12(PR/0381): grantTemporaryAttackResistanceSelected でそのターン中だけ付与された攻撃耐性
+    // (card.grantedTempAttackResistances)も印字 attackResistances と同型で走査する。素の DSL で state 常駐
+    //（クロージャ無し・直列化往復可）。掃除は clearTurnModifiers/resetLeftFieldCardState が turnKeywords と同寿命で行う。
+    // 既存カードは未設定＝この forEach は空＝挙動不変（後方互換）。
+    (card?.grantedTempAttackResistances || []).forEach((entry) => {
+      const owner = atk.owner ?? findFieldCardSlot(card)?.owner ?? state.active;
+      if (!entry.conditions || checkCardConditions(entry.conditions, owner, { card, zone: atk.zone })) {
+        entries.push(entry);
+      }
+    });
     // 場の別カードの継続 grantAttackResistance からも付与（0080: 拳アイテムが1枚で攻撃なら無効化されない）。
     if (!card) {
       return;

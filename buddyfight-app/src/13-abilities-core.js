@@ -182,6 +182,8 @@ async function useHandAbilityAction(card, ability, options = {}) {
       card: usedCard,
       ability,
       phase: state.phase,
+      // E-PR6(PR/0281 ルア・ノヴァ): 使用コストで捨てたカードを解決時の条件(costDiscardedCardMatches)へ渡す。
+      costDiscardedCards: payment.discarded || [],
       effectTargetValue: target ? encodeTarget(target.owner, target.zone) : elements.effectTarget.value,
     });
     addLog(`${player.name}は${usedCard.name}の使用を宣言しました。対抗確認を行ってください。`);
@@ -210,6 +212,7 @@ async function useHandAbilityAction(card, ability, options = {}) {
       ability,
       phase: state.phase,
       fromHand: true,
+      costDiscardedCards: payment.discarded || [], // E-PR6: 手札発動起動能力でも使用コストの捨て札を解決へ伝播
       effectTargetValue: target ? encodeTarget(target.owner, target.zone) : elements.effectTarget.value,
     });
     addLog(`${player.name}は${usedCard.name}の能力を宣言しました。対抗確認を行ってください。`);
@@ -231,6 +234,7 @@ async function useHandAbilityAction(card, ability, options = {}) {
     player,
     owner,
     target,
+    costDiscardedCards: payment.discarded || [], // E-PR6: 即時解決経路（対抗窓を挟まない）でも捨て札を渡す
   };
   const bodyResult = await executeAbilityBody(context);
   // callSelfFromHand(手札の自身コール)を含む能力で、スクリプトが中断(コール先選択キャンセル等)し
@@ -812,19 +816,24 @@ function checkCondition(condition, owner, context = {}) {
     const amount = condition.amount ?? 1;
     // 指定プレイヤー群のカードを1配列に集めフィルタ後の枚数を返す（複数側渡すと合算＝both 意味論）。
     const countForSides = (sideList) => {
-      let cards = [];
+      let matched = [];
       sideList.forEach((pl) => {
         if (!pl) return;
+        let cards = [];
         if (pile === "field") cards.push(...zones.map((z) => pl.field[z]).filter(Boolean), ...phantomFieldMonsters(pl));
         else if (pile === "item") cards.push(...equippedItems(pl)); // 複数装備を全てカウント（「アイテム2枚装備なら」0042等）
         else if (pile === "center") { if (pl.field[pile]) cards.push(pl.field[pile]); }
         else if (pile === "soul") cards.push(...zones.flatMap((z) => pl.field[z]?.soul || []));
         else cards.push(...(pl[pile] || []));
+        if (condition.excludeSource && context.card) {
+          cards = cards.filter((c) => c.instanceId !== context.card.instanceId);
+        }
+        // E-PR3: filter.buddy を場外(ドロップ/手札/デッキ/ゲージ)でも判定できるよう pile 所有者を渡す
+        // （E-XC15 と同型。both/either はここで側ごとに正しい所有者で照合。field/soul/center は
+        //  findFieldCardSlot で所有者特定できるため owner は無視＝挙動不変）。
+        const plOwner = state.players.indexOf(pl);
+        matched.push(...cards.filter((c) => matchesCardFilter(c, condition.filter || {}, { owner: plOwner })));
       });
-      if (condition.excludeSource && context.card) {
-        cards = cards.filter((c) => c.instanceId !== context.card.instanceId);
-      }
-      const matched = cards.filter((c) => matchesCardFilter(c, condition.filter || {}));
       if (condition.distinct === "distinctByName") {
         return new Set(matched.map((c) => c.name)).size;
       }
@@ -916,6 +925,34 @@ function checkCondition(condition, owner, context = {}) {
     // (相手ライフ − 自ライフ) >= amount の相対差分条件（owner基準。既存 lifeLte/opponentLifeLte は
     // 固定値比較のみで差分は表現不可だった）。効果列の途中で評価される場合は直前の増減を反映した現在値。
     return opponent.life - player.life >= (condition.amount ?? 1);
+  }
+  if (condition.op === "pileCountDifferenceGte") {
+    // E-PR5(PR/0332 キラーオーダー): 「相手の<pile>が君の<pile>より amount 以上多いなら」＝
+    // (相手の pile 枚数 − 自分の pile 枚数) >= amount。lifeDifferenceGte（直上）の pile 汎化で、向き
+    // (opponent − self)・命名(…DifferenceGte)を踏襲する。pile 既定 gauge。filter 指定時は両側とも一致
+    // カードのみ数える（cardCount と同じ pile 解決・matchesCardFilter）。効果列の途中で評価される場合は
+    // 直前の増減を反映した現在値（「2枚ゲージに置く。さらに〜多いなら」の後段ゲート）。既存カードはこの op を
+    // 持たない＝挙動不変（新規 op・DB使用は PR/0332 のみ）。
+    const diffPile = condition.pile || "gauge";
+    const countPile = (pl) => {
+      if (!pl) return 0;
+      let cards;
+      if (diffPile === "field") cards = [...zones.map((z) => pl.field[z]).filter(Boolean), ...phantomFieldMonsters(pl)];
+      else if (diffPile === "item") cards = equippedItems(pl);
+      else if (diffPile === "center") cards = pl.field.center ? [pl.field.center] : [];
+      else if (diffPile === "soul") cards = zones.flatMap((z) => pl.field[z]?.soul || []);
+      else cards = pl[diffPile] || [];
+      return condition.filter ? cards.filter((c) => matchesCardFilter(c, condition.filter)).length : cards.length;
+    };
+    return countPile(opponent) - countPile(player) >= (condition.amount ?? 1);
+  }
+  if (condition.op === "costDiscardedCardMatches") {
+    // E-PR6(PR/0281 ルア・ノヴァ): 「このカードの【使用コスト】で捨てたカードが filter に一致するなら」。
+    // useHandAbilityAction が payStructuredCostWithSelection の payment.discarded を context.costDiscardedCards
+    // として伝播する（宣言→対抗窓→解決を跨ぐため pendingAction 経由でも保持）。1枚でも一致すれば真（some）。
+    // 捨てたカードはドロップに在るが matchesCardFilter は在ゾーン非依存で world/属性等を照合する。
+    // 既存カードはこの op を持たない＝挙動不変（新規 op・DB使用は PR/0281 のみ）。
+    return (context.costDiscardedCards || []).some((c) => matchesCardFilter(c, condition.filter || {}));
   }
   if (condition.op === "deckMilledThisTurn") {
     // E8(D-CBT/PR-0330 追撃者 アビゲール):「このターン中、<deckOwner>のデッキのカードがドロップに
@@ -1269,6 +1306,24 @@ function checkCondition(condition, owner, context = {}) {
     ).length;
     return matched >= condition.amount;
   }
+  if (condition.op === "standedByEffectThisTurnMatches") {
+    // E-PR16(PR/0470 ボーナス節): このターン中に controller 側の場のカードが「効果で」スタンドしたか。
+    // destroyedThisTurnMatchingCountGte の sibling。記帳は queueStandTriggers(src/07)＝効果スタンド専用経路
+    // （通常のターン開始スタンド/多回攻撃スタンドは含まれない）。原文「相手の場のカードが〜」に忠実なよう、
+    // 記帳した instanceId が現在も controller の場に在るものだけを数える（場を離れたカードは対象外）。
+    // filter 省略時は種別不問（PR/0470 は controller だけを見る）。amount 省略時は1枚以上。
+    const idx = condition.controller === "opponent" ? 1 - owner : owner;
+    const ids = state.standedByEffectThisTurn?.[idx] || [];
+    if (ids.length === 0) {
+      return false;
+    }
+    const controllerPlayer = state.players[idx];
+    const matched = zones
+      .map((zone) => controllerPlayer?.field?.[zone])
+      .filter((card) => card && ids.includes(card.instanceId) && matchesCardFilter(card, condition.filter || {}))
+      .length;
+    return matched >= (condition.amount || 1);
+  }
   if (condition.op === "isFirstBattleEndWindow") {
     // 「(相手のターン中、)1回目のバトル終了時に使える」(ヴァイシュタッツ 0095) の近似。
     // アプリの対抗ウィンドウはバトル解決前(pendingAttack中)のため、1回目のバトル(attacksThisTurn===1)の
@@ -1380,6 +1435,31 @@ function checkCondition(condition, owner, context = {}) {
     return (outcome.attackers || []).some((slot) =>
       controller === "opponent" ? slot.owner !== owner : slot.owner === owner,
     );
+  }
+  if (condition.op === "lastAttackTargetMatches") {
+    // E-PR13(PR/0382 使用タイミング「君のセンターのモンスターが攻撃されたバトルの終了時に使える」):
+    // 直前に解決したバトルの被攻撃側(state.lastAttackOutcome.targetOwner/targetZone)を owner/zone で判定する。
+    // lastAttackNullified(E-Y5/0088)と同系統・同窓管理: lastAttackOutcome は次の攻撃解決で必ず上書きされ、
+    // turnCount で同ターンに限定する（攻撃無しでターンを跨いで真のまま残らない）。useConditions から使う。
+    const outcome = state.lastAttackOutcome;
+    if (!outcome || outcome.turnCount !== state.turnCount) {
+      return false;
+    }
+    // owner: 被攻撃側の陣営（self=owner の被攻撃・opponent=相手の被攻撃）。fighter 攻撃(targetZone=null)は
+    // zone 指定で自然に外れる。owner 未指定は陣営不問。
+    if (condition.owner === "self" && outcome.targetOwner !== owner) {
+      return false;
+    }
+    if (condition.owner === "opponent" && outcome.targetOwner === owner) {
+      return false;
+    }
+    if (condition.zone && outcome.targetZone !== condition.zone) {
+      return false;
+    }
+    if (Array.isArray(condition.zoneIn) && !condition.zoneIn.includes(outcome.targetZone)) {
+      return false;
+    }
+    return true;
   }
   if (condition.op === "pendingAttackIncludesOtherMatching") {
     const sourceSlot = findFieldCardSlot(context.card || getSelectedCard());

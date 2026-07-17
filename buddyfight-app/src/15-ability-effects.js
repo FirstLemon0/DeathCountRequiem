@@ -404,6 +404,28 @@ async function executeAbilityEffect(effect, context) {
       declareDeckLoss(searcher); // レビュー修正: サーチでデッキ0枚もデッキ切れ敗北の対象
     }
   }
+  if (effect.op === "moveDeckBottomToHand") {
+    // E-PR2(PR/0166 想刻騎竜 メモリー・グレイブ): 「君のデッキの１番下のカード１枚を手札に加える」。
+    // デッキ向き規約: top=末尾（pop/push）／bottom=先頭（shift/unshift）。returnSelfToDeckBottom の
+    // 「unshift=最下」(このファイル 1398 付近)と対称で、山下の読み出しは deck.shift()（deck[0]）。
+    // 「加える」は選ばず自動取得＝伏せ札のまま手札へ入るため、カード名は addLog しない
+    //（state.log は viewFor で伏せられず両席・観戦者へ配信されるので、名前を出すと秘匿情報が漏れる。
+    //  自分で選ぶ公開サーチの searchDeckToHand が名前を出すのとは非対称）。
+    // デッキ0枚は no-op（「引く」ではなく「加える」なのでデッキ切れ敗北判定はしない）。
+    const receiver = effect.player === "opponent" ? opponent : player;
+    const amount = effect.amount || 1;
+    let moved = 0;
+    for (let i = 0; i < amount; i += 1) {
+      if (receiver.deck.length === 0) {
+        break;
+      }
+      receiver.hand.push(receiver.deck.shift());
+      moved += 1;
+    }
+    if (moved > 0) {
+      addLog(`${receiver.name}はデッキの1番下のカードを手札に加えました。`);
+    }
+  }
   if (effect.op === "restrictCallThisTurn") {
     // X6(D-BT01/0064): 「そのターン中、君は（allowFilter に一致するカード）以外のモンスターをコールできない」。
     // 魔法など場に残らないカードからのターン限定コール制限（isCallRestricted が参照・clearTurnModifiers で解除）。
@@ -797,9 +819,28 @@ async function executeAbilityEffect(effect, context) {
       const deck = state.players[bottomOwner]?.deck || [];
       const idx = deck.indexOf(rc);
       if (idx >= 0) {
+        // PR/0311 超勇者 アルスグランデ（S5統合レビュー F4）: chooseTopOrBottom:true で「デッキの上か下に置く」の
+        // 上/下選択を提供する（既定=フラグ無しは従来通り常に下＝後方互換・X-CP01/02 コスモドラグーン等は不変）。
+        // ・公開札は revealTopCard の peek でデッキ上に残るため idx>=0 で必ず見つかる＝ここに来る＝非コール経路のみ。
+        //   コール成立時は callSelectedToEmptyZones が公開札をデッキから取り出し済み＝idx<0 でこの分岐に入らない
+        //   ＝「コール成立時は走らない」no-op ガードを維持し、次の（未公開の）カードを誤って覗く事故を起こさない。
+        // ・取り出してから confirm を待つ（lookTopCardPlaceTopOrBottom の pop→confirm と同型。await 中に別札を触らない）。
         deck.splice(idx, 1);
-        deck.unshift(rc);
-        addLog(`${state.players[bottomOwner]?.name || ""}は公開した${rc.name}をデッキの下に置きました。`);
+        let toTop = false;
+        if (effect.chooseTopOrBottom) {
+          toTop = await confirmChoiceAsync(
+            bottomOwner,
+            `${context.card?.name || "効果"}: 公開した${rc.name}をデッキの1番上か1番下のどちらに置きますか？`,
+            { yesLabel: "1番上に置く", noLabel: "1番下に置く", purpose: "scry" },
+          );
+        }
+        if (toTop) {
+          deck.push(rc);
+          addLog(`${state.players[bottomOwner]?.name || ""}は公開した${rc.name}をデッキの上に置きました。`);
+        } else {
+          deck.unshift(rc);
+          addLog(`${state.players[bottomOwner]?.name || ""}は公開した${rc.name}をデッキの下に置きました。`);
+        }
       }
     }
     context.revealedCard = null;
@@ -940,6 +981,7 @@ async function executeAbilityEffect(effect, context) {
       lead: `手札から捨てるカードを${amount}枚選んでください。`,
       // 権威サーバ: 捨てる本人(receiver=自分 or 相手)の席へ往復（相手手札候補が能動側へ漏れない）。
       promptSeat: state.players.indexOf(receiver),
+      owner: state.players.indexOf(receiver), // E-PR3: filter.buddy を手札でも所有者判定できるよう伝播
     });
     discardHandCardsToDrop(receiver, movedCards, makeEffectCause(context, state.players.indexOf(receiver))); // E6
     if (movedCards.length > 0) {
@@ -952,6 +994,7 @@ async function executeAbilityEffect(effect, context) {
       title: `${context.card.name}でゲージに置くカード`,
       lead: `手札から条件を満たすカードを${amount}枚選んでください。`,
       promptSeat: state.players.indexOf(player),
+      owner: state.players.indexOf(player), // E-PR3: filter.buddy を手札でも所有者判定できるよう伝播
     });
     player.gauge.push(...movedCards);
     if (movedCards.length > 0) {
@@ -967,6 +1010,7 @@ async function executeAbilityEffect(effect, context) {
       title: `${context.card.name}で手札に加えるカード`,
       lead: `ドロップゾーンから条件を満たすカードを${amount}枚選んでください。`,
       promptSeat: state.players.indexOf(player),
+      owner: state.players.indexOf(player), // E-PR3: filter.buddy をドロップでも所有者判定できるよう伝播
     };
     if (effect.optional) {
       selectOptions.min = 0;
@@ -1172,6 +1216,16 @@ async function executeAbilityEffect(effect, context) {
     state.drawBans = state.drawBans.filter((entry) => entry.owner !== targetOwner);
     state.drawBans.push({ owner: targetOwner, remainingTurnEnds: (effect.turns || 1) + 1 });
     addLog(`${state.players[targetOwner].name}は次の自分のターン中、カードを引くことができなくなりました。`);
+  }
+  if (effect.op === "banEffectDrawTemporal") {
+    // E-PR14(PR/0380「このターンと次のターン、お互いは自分のカードの効果でカードを引けない」):
+    // state 常駐の時限フラグ（両陣営共通スカラー・turnCount 比較で自動失効）。今ターン(turnCount)＋
+    // 以降 (turns-1) ターンまで＝既定 turns:2 で「このターンと次のターン」。effect ドロー実行点が参照する
+    // isDrawByEffectPrevented(src/18)がこのフラグを見る。通常ドローステップ(drawAction)は封じない。
+    // banDrawNextTurn(場常駐 preventDrawByEffect/drawBans)とは別軸で、両者は独立に効く。JSON 直列化安全。
+    const until = state.turnCount + Math.max(1, effect.turns ?? 2) - 1;
+    state.effectDrawBanUntilTurn = Math.max(state.effectDrawBanUntilTurn ?? -Infinity, until);
+    addLog(`このターンと次のターン、お互いはカードの効果でカードを引けなくなりました。`);
   }
   if (effect.op === "setLifeZeroSafeguard") {
     // 「そのターン中、次に君のライフが0になるなら、かわりにライフは1になる」（実は生きていた！）。
@@ -1976,15 +2030,29 @@ async function executeAbilityEffect(effect, context) {
     addLog(`${context.card?.name || "効果"}の効果で${target.card.name}に破壊時リアクションを付与しました。`);
   }
   if (effect.op === "preventStandNextTurn") {
-    // 次のスタートフェイズで filter 一致の指定プレイヤーの場札をスタンドさせない（0042）。対象カードにフラグ。
-    const seat = effect.player === "opponent" ? 1 - context.owner : context.owner;
-    zones.forEach((zone) => {
-      const card = state.players[seat]?.field?.[zone];
-      if (card && matchesCardFilter(card, effect.filter || {})) {
-        card.preventStandOnce = true;
+    // 次のスタートフェイズで指定カードをスタンドさせない（standPlayer が preventStandOnce を消費）。
+    // E-PR8(PR/0295 竜装機キャストネッター・D-CBT/0007 ゾディアック"es"): effect.target 指定時は、
+    // 選択した1枚だけへ preventStandOnce を立てる（「相手の場のモンスター1枚を選び、そのカードは次の相手の
+    // スタートフェイズでスタンドしない」）。target 未指定は従来どおり指定プレイヤーの場の filter 一致 全カードへ
+    // 適用（0042 甲蠍 堅牢砦・X-CP02/0070 グラビトン・ジェネレーター＝全体形。既存カードは effect.target 非保持
+    // ＝この分岐へ入らず挙動不変）。裁定: 「次の相手のスタートフェイズ」は preventStandOnce（次スタートフェイズで
+    // 消費）で表現する。cannotStandThisTurn は clearTurnModifiers で当ターン終了時に消えて次スタートフェイズまで
+    // 残らないため用いない（D-CBT/0007 が preventStandThisTurn を誤用していた恒久不発バグをここで是正）。
+    if (effect.target) {
+      if (target?.card) {
+        target.card.preventStandOnce = true;
+        addLog(`${context.card?.name || "効果"}の効果で、次のスタートフェイズに${target.card.name}は【スタンド】できません。`);
       }
-    });
-    addLog(`${context.card?.name || "効果"}の効果で、次の${state.players[seat].name}のスタートフェイズに対象は【スタンド】できません。`);
+    } else {
+      const seat = effect.player === "opponent" ? 1 - context.owner : context.owner;
+      zones.forEach((zone) => {
+        const card = state.players[seat]?.field?.[zone];
+        if (card && matchesCardFilter(card, effect.filter || {})) {
+          card.preventStandOnce = true;
+        }
+      });
+      addLog(`${context.card?.name || "効果"}の効果で、次の${state.players[seat].name}のスタートフェイズに対象は【スタンド】できません。`);
+    }
   }
   if (effect.op === "suppressLifeLinkThisTurn") {
     // そのターン中、指定コントローラーの場のカードのライフリンクを無効化（護竜王アミュレイ 0063）。

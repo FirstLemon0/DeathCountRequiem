@@ -96,6 +96,12 @@ function toggleLinkAttacker() {
     state.linkAttackers.splice(index, 1);
     addLog(`${card.name}を連携攻撃から外しました。`);
   } else {
+    // E-PR1(PR/0075 アーマナイト・ハティー): 「相手の場のカードは連携攻撃できない」。相手の場の
+    // restrictLinkAttack 継続が適用されるカードは連携の攻撃者に加われない（単独攻撃は select→attack で可）。
+    if (linkAttackRestricted(card)) {
+      addLog(`${card.name}は連携攻撃できません。`);
+      return;
+    }
     state.linkAttackers.push(slot);
     addLog(`${card.name}を連携攻撃に加えました。`);
   }
@@ -191,6 +197,17 @@ async function performAttackDeclaration(attackers, targetValue, options = {}) {
   ) {
     addLog(`${state.players[targetOwner].name}は連携攻撃されません。`);
     return false;
+  }
+  // E-PR1(PR/0075 アーマナイト・ハティー): 「相手の場のカードは連携攻撃できない」（攻撃側の抑止）。
+  // 連携(攻撃者2枚以上)に restrictLinkAttack を受ける攻撃者が含まれるなら宣言を拒否する（単独攻撃は不変）。
+  // UI(toggleLinkAttacker)・効果(attackWithAll 等 performAttackDeclaration 直呼び)いずれの経路もここを通る。
+  // 既存カードは restrictLinkAttack を持たず linkAttackRestricted は常に false（高速パス・後方互換）。
+  if (attackers.length > 1) {
+    const blockedAttacker = attackers.find((attacker) => linkAttackRestricted(attacker.card));
+    if (blockedAttacker) {
+      addLog(`${blockedAttacker.card.name}は連携攻撃できません。`);
+      return false;
+    }
   }
   const firstAttacker = attackers[0];
   state.pendingAttack = {

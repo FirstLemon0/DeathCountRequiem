@@ -310,6 +310,12 @@ function isCenterCallPrevented(callerOwner, card) {
 // カードの効果によるドローを禁止する継続効果（ディスターブハンド・ドラゴン PP01/0006「相手はカードの効果でカードを引くことができない」）。
 // controller:"self" は発生源の持ち主のみ、"opponent" はその相手のみを対象（未指定は両者）。preventCenterCall/restrictOwnCall と同じ controller 規約。
 function isDrawByEffectPrevented(drawerOwner) {
+  // E-PR14(PR/0380): 時限の効果ドロー禁止（両陣営共通・このターンと次のターン）。state 常駐スカラー
+  // state.effectDrawBanUntilTurn を turnCount 比較で判定＝設定ターンから当該ターンまで両陣営とも効果ドロー不可。
+  // 既存カードは未設定（undefined）＝このゲートは素通り（後方互換・挙動不変）。
+  if (state.effectDrawBanUntilTurn != null && state.turnCount <= state.effectDrawBanUntilTurn) {
+    return true;
+  }
   return state.players.some((player, pIdx) =>
     zones.some((zone) => {
       const source = player.field[zone];

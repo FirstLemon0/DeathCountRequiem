@@ -666,6 +666,14 @@ function resetLeftFieldCardState(card) {
   card.temporaryKeywords = [];
   card.turnKeywords = [];
   card.turnSuppressedKeywords = [];
+  // E-PR11(PR/0389)/E-PR12(PR/0381): そのターン中だけ付与した一時トリガー能力/攻撃耐性を離場時に解除
+  //（turnKeywords と同寿命。手札/デッキ/ゲージ帰還など resetLeftFieldCardState を通る離場で消える）。
+  card.grantedTempAbilities = [];
+  card.grantedTempAttackResistances = [];
+  // E-PR15(PR/0461): そのターン中だけ付与した一時ワールド名を離場時に解除（turnKeywords と同寿命）。
+  card.turnWorlds = [];
+  // E-PR17(PR/0478): そのターン中だけ付与した一時破壊耐性を離場時に解除（turnKeywords と同寿命）。
+  card.grantedTempDestroyImmunities = [];
   card.counterattack = false;
   card.doubleAttackUsed = false;
   card.preventNextDestroyCount = 0;

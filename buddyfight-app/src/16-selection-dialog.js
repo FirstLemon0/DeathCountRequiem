@@ -384,7 +384,9 @@ function selectionChoiceMarkup(card, index, note = "") {
 async function chooseAndTakeMatchingCards(pile, filter = {}, amount = 1, excludedCard = null, options = {}) {
   const candidates = (pile || [])
     .map((card, index) => ({ card, index }))
-    .filter(({ card }) => card.instanceId !== excludedCard?.instanceId && matchesCardFilter(card, filter));
+    // E-PR3: filter.buddy を場外(ドロップ/手札)でも判定できるよう pile 所有者 options.owner を伝播する
+    // （E-XC15/scriptCardMatches と同型。owner 未供給の呼び出しは matchesCardFilter が従来どおり＝挙動不変）。
+    .filter(({ card }) => card.instanceId !== excludedCard?.instanceId && matchesCardFilter(card, filter, { owner: options.owner }));
   const selected = await chooseCardEntries(candidates, {
     title: options.title || "カード選択",
     lead: options.lead || `${amount}枚選んでください。`,

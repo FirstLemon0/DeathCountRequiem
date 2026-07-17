@@ -9,6 +9,13 @@ async function runTriggeredAbilities(card, event, baseContext = {}) {
   }
   let triggeredAbilities = [
     ...(card.abilities || []).filter((ability) => ability.kind === "triggered" && ability.event === event),
+    // E-PR11(PR/0389 「Brave Soul Fight！」): grantTemporaryTriggeredAbilitySelected で当ターン付与された
+    // 一時トリガー能力(card.grantedTempAbilities)も、印字 abilities と同様に走査する。付与情報は素の DSL
+    // オブジェクト（クロージャ無し）で state 内カードインスタンスに常駐＝room-store 復元/リプレイ/engine-host の
+    // state 直列化だけで往復する。掃除は clearTurnModifiers(src/11・ターン終了/場外)と
+    // resetLeftFieldCardState(src/08・離場)が turnKeywords と同寿命で行う。既存カードは grantedTempAbilities 未設定
+    // ＝この spread は常に空＝挙動バイト不変（後方互換）。
+    ...(card.grantedTempAbilities || []).filter((ability) => ability.kind === "triggered" && ability.event === event),
     // ソウルカードの triggered soulAbilities も、乗っているホスト(card)のイベントで発火（星合体 竜装機 0102 等）。
     ...(card.soul || []).flatMap((soulCard) =>
       (soulCard.soulAbilities || [])
@@ -345,6 +352,9 @@ async function executeAbilityScriptStep(step, context) {
   if (step.op === "reorderTopOrdered") {
     return reorderTopOrderedForScript(step, context);
   }
+  if (step.op === "revealedCardToVar") {
+    return revealedCardToVarForScript(step, context);
+  }
   if (step.op === "payCost") {
     return payCostForScript(step, context);
   }
@@ -356,6 +366,18 @@ async function executeAbilityScriptStep(step, context) {
   }
   if (step.op === "grantKeywordSelected") {
     return grantKeywordSelectedForScript(step, context);
+  }
+  if (step.op === "grantTemporaryTriggeredAbilitySelected") {
+    return grantTemporaryTriggeredAbilitySelectedForScript(step, context);
+  }
+  if (step.op === "grantTemporaryAttackResistanceSelected") {
+    return grantTemporaryAttackResistanceSelectedForScript(step, context);
+  }
+  if (step.op === "gainTemporaryWorldFromVar") {
+    return gainTemporaryWorldFromVarForScript(step, context);
+  }
+  if (step.op === "grantTemporaryDestroyImmunitySelected") {
+    return grantTemporaryDestroyImmunitySelectedForScript(step, context);
   }
   if (step.op === "gainNameAsSelected") {
     return gainNameAsSelectedForScript(step, context);
@@ -698,7 +720,11 @@ function scriptCardMatches(card, owner, zone, step, context) {
   if (Array.isArray(step.zones) && zone && !step.zones.includes(zone)) {
     return false;
   }
-  if (!matchesCardFilter(card, step.filter || {})) {
+  // E-PR3(PR/0175 バディ・リコール / PR/0106 / 出荷済み bf-h-eb01-0013): selectCards の候補判定にも
+  // owner を渡し、filter.buddy を「ドロップ/デッキ/手札等の場外」でも検索主の登録バディ名で判定させる
+  // （E-XC15 が searchDeckToHand に入れた owner 伝播と同型。場のカードは findFieldCardSlot で所有者を
+  //  特定できるため owner は無視される＝場・field 経路の挙動は不変。owner は from 各経路で pile/場の所有者）。
+  if (!matchesCardFilter(card, step.filter || {}, { owner })) {
     return false;
   }
   // filter.sameNameAsVar: 先に選んだ別の選択(var)のカードと同じカード名のみ（爆裂魔神丸の術等）。
@@ -794,6 +820,26 @@ function scriptSourceLabel(from) {
     soul: "ソウル",
     field: "場",
   }[from] || from;
+}
+
+// E-PR9(PR/0311 超勇者 アルスグランデ): revealTopCard で公開した実カード(context.revealedCard)を
+// selectCards 互換の var（{card,owner,index,source:"deck"}）へ橋渡しする。以後 callSelectedToEmptyZones
+// 等の script call/move op が、デッキ上に残っている当カードを『実カードのまま（識別子・印字コストを保って）』
+// 動かせる。callTopDeckAsMonster（裏向きトークン化・コスト無視）や useTopDeckCardIfMatchesElseBottom
+// （spell/impact 限定・無償）では表現できなかった「公開したそのカードを【コールコスト】を払ってコール」を実現する。
+// takeScriptSelectionCards が source:"deck" を scriptPileForSource(owner,"deck") 経由で findIndex→splice する
+// ため index は近似でよいが、現在のデッキ位置を入れておく。既存カードはこの op を持たない＝新規追加のみ。
+function revealedCardToVarForScript(step, context) {
+  const revealed = context.revealedCard;
+  const owner = context.revealedCardOwner ?? context.owner;
+  const deck = state.players[owner]?.deck || [];
+  const index = revealed ? deck.findIndex((c) => c.instanceId === revealed.instanceId) : -1;
+  if (!revealed || index < 0) {
+    context.vars[step.var] = [];
+    return step.require === false ? true : { ok: false, reason: "no_revealed_card" };
+  }
+  context.vars[step.var] = [{ card: revealed, owner, index, source: "deck", zone: null }];
+  return true;
 }
 
 // 発生源カードが、選択カード(var)と同じカード名を『追加のカード名』として得る（そのターン中。RD メタモルエフェクト 0016）。
@@ -1528,6 +1574,123 @@ function grantKeywordSelectedForScript(step, context) {
       card.temporaryKeywords ||= [];
       card.temporaryKeywords.push(step.keyword);
     }
+  });
+  return true;
+}
+
+// E-PR11(PR/0389 「Brave Soul Fight！」): selectCards で選んだ場のカードへ、そのターン中のみ有効な
+// triggered 能力を付与する。付与情報は素の DSL オブジェクトとしてカードインスタンス(state 内)に持たせる
+// (card.grantedTempAbilities)。クロージャは持たない＝room-store 復元・リプレイ・engine-host の state 直列化
+// だけで往復する。走査は runTriggeredAbilities(src/14)が card.abilities と一緒に行い、掃除は
+// clearTurnModifiers(src/11・ターン終了/場外)と resetLeftFieldCardState(src/08・離場)が turnKeywords と
+// 同じ寿命で行う。effects 側は既存 op(destroy / putTopDeckToGauge 等)をそのまま流用する。
+function grantTemporaryTriggeredAbilitySelectedForScript(step, context) {
+  const template = step.ability;
+  if (!template || !template.event) {
+    return true; // 付与内容が無ければ何もしない(後方互換の安全弁)
+  }
+  scriptSelection(step, context).forEach((entry) => {
+    const card = entry.card;
+    if (!card) {
+      return;
+    }
+    // 素の DSL を deep clone(発生源との参照共有を切る)し、kind:"triggered" を正規化して常駐させる。
+    const granted = JSON.parse(JSON.stringify(template));
+    granted.kind = "triggered";
+    card.grantedTempAbilities ||= [];
+    card.grantedTempAbilities.push(granted);
+  });
+  return true;
+}
+
+// E-PR12(PR/0381): selectCards で選んだカードへ、そのターン中のみ有効な攻撃防御耐性
+// (attackResistances 相当エントリ)を付与する。E-PR11 と対の一時付与ストレージ card.grantedTempAttackResistances
+// に素の DSL で常駐(クロージャ無し・state 直列化往復可)。applicableAttackResistances(src/09)が印字 attackResistances
+// と一緒に走査する。掃除は E-PR11 と共通(clearTurnModifiers / resetLeftFieldCardState)。
+// 発動側の「ライフ4以下なら」等のゲートは effect.conditions(lifeLte)で op の外に置く(汎用ゲート)。
+function grantTemporaryAttackResistanceSelectedForScript(step, context) {
+  const entries = Array.isArray(step.resistances)
+    ? step.resistances
+    : step.resistance
+      ? [step.resistance]
+      : [];
+  if (entries.length === 0) {
+    return true; // 付与内容が無ければ何もしない(後方互換の安全弁)
+  }
+  scriptSelection(step, context).forEach((entry) => {
+    const card = entry.card;
+    if (!card) {
+      return;
+    }
+    card.grantedTempAttackResistances ||= [];
+    entries.forEach((resistance) => {
+      card.grantedTempAttackResistances.push(JSON.parse(JSON.stringify(resistance)));
+    });
+  });
+  return true;
+}
+
+// E-PR15(PR/0461 「変幻自在のウェイビー」): 直前に選択/移動したカード群($var・selectCards→moveSelected 等で
+// context.vars に残る選択結果）の全ワールド名を集め、発生源カード(context.card)へ「そのターン中のみ」の追加ワールド
+// として付与する（card.turnWorlds）。多ワールド持ちの選択カードは cardWorlds() 解決で全ワールドを算入。付与は素の
+// 文字列配列で state 常駐（クロージャ無し＝room-store 復元・リプレイ・engine-host の state 直列化だけで往復可）。
+// cardWorlds()(src/03) が静的 world/worlds と合流して読むので filter.world / worldNotIn / distinctByWorld 等の
+// 全読者が新ワールドを自動で拾う。掃除は clearTurnModifiers(src/11・ターン終了/場外)と resetLeftFieldCardState
+// (src/08・離場)が turnKeywords と同寿命で行う。選択が空/ワールド不明なら no-op（後方互換の安全弁）。
+// カード名ハードコードは無い汎用op（選択されたカードのワールドを見るだけ）。
+function gainTemporaryWorldFromVarForScript(step, context) {
+  const source = context.card;
+  if (!source) {
+    return true;
+  }
+  const worlds = [];
+  scriptSelection(step, context).forEach((entry) => {
+    const card = entry.card;
+    if (!card) {
+      return;
+    }
+    cardWorlds(card).forEach((world) => {
+      if (world && !worlds.includes(world)) {
+        worlds.push(world);
+      }
+    });
+  });
+  if (worlds.length === 0) {
+    return true; // 選択が空 or ワールド不明 → 何もしない
+  }
+  source.turnWorlds ||= [];
+  worlds.forEach((world) => {
+    // 静的ワールド／既に付与済みと重複するものは積まない（cardWorlds() 側も合流時に重複除去する）。
+    if (!cardWorlds(source).includes(world)) {
+      source.turnWorlds.push(world);
+    }
+  });
+  return true;
+}
+
+// E-PR17(PR/0478 「振り撒く者」): selectCards で選んだ場のカードへ、そのターン中のみ有効な破壊耐性
+// (destroyImmunity 相当エントリ)を付与する。E-PR11/E-PR12 と対の一時付与ストレージ card.grantedTempDestroyImmunities
+// に素の DSL で常駐(クロージャ無し・state 直列化往復可)。destroyImmunityBlocks(src/11)が印字 destroyImmunity の
+// 新 form と同じ判定で走査する。掃除は E-PR11/12/15 と共通(clearTurnModifiers / resetLeftFieldCardState)。
+// immunities 例: [{from:{byEffect:true, byOpponent:true}}]（相手のカードの効果で破壊されない）。空なら no-op。
+function grantTemporaryDestroyImmunitySelectedForScript(step, context) {
+  const entries = Array.isArray(step.immunities)
+    ? step.immunities
+    : step.immunity
+      ? [step.immunity]
+      : [];
+  if (entries.length === 0) {
+    return true; // 付与内容が無ければ何もしない(後方互換の安全弁)
+  }
+  scriptSelection(step, context).forEach((entry) => {
+    const card = entry.card;
+    if (!card) {
+      return;
+    }
+    card.grantedTempDestroyImmunities ||= [];
+    entries.forEach((immunity) => {
+      card.grantedTempDestroyImmunities.push(JSON.parse(JSON.stringify(immunity)));
+    });
   });
   return true;
 }
@@ -2363,7 +2526,7 @@ async function callSelectedForScript(step, context) {
     return { ok: false, reason: "call_from_zone_restricted" };
   }
   // 必殺モンスターの共通ゲート: 効果によるコールも「1ターンに1枚・自分のファイナルフェイズのみ」に服する。
-  if (!impactMonsterCallAllowed(entry.owner ?? context.owner, entry.card)) {
+  if (!impactMonsterCallAllowed(entry.owner ?? context.owner, entry.card, { specialCall: Boolean(step.specialCall) })) {
     addLog(`${entry.card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
     return { ok: false, reason: "impact_monster_call_restricted" };
   }
@@ -2463,7 +2626,7 @@ async function opponentMayCallFromHandForScript(step, context) {
     if (!matchesCardFilter(card, step.filter || {})) {
       return false;
     }
-    if (!impactMonsterCallAllowed(oppOwner, card)) {
+    if (!impactMonsterCallAllowed(oppOwner, card, { specialCall: Boolean(step.specialCall) })) {
       return false; // 必殺モンスターは「1ターン1枚・自ファイナルのみ」＝相手ターンのこの窓では不可
     }
     if (turnCallRestrictionBlocks(oppOwner, card)) {
@@ -2578,7 +2741,7 @@ async function callSelfFromHandForScript(step, context) {
     return { ok: false, reason: "missing_call_zone" };
   }
   // 必殺モンスターの共通ゲート（効果による自己コールも制限に服する）。
-  if (!impactMonsterCallAllowed(context.owner, card)) {
+  if (!impactMonsterCallAllowed(context.owner, card, { specialCall: Boolean(step.specialCall) })) {
     addLog(`${card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
     return { ok: false, reason: "impact_monster_call_restricted" };
   }
@@ -2655,7 +2818,7 @@ async function callSelfFromSoulForScript(step, context) {
     return { ok: false, reason: "missing_call_zone" };
   }
   // 必殺モンスターの共通ゲート（ソウルからの自己コールも制限に服する）。
-  if (!impactMonsterCallAllowed(context.owner, card)) {
+  if (!impactMonsterCallAllowed(context.owner, card, { specialCall: Boolean(step.specialCall) })) {
     addLog(`${card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
     return { ok: false, reason: "impact_monster_call_restricted" };
   }
@@ -2859,7 +3022,7 @@ async function callSelectedToEmptyZonesForScript(step, context) {
   const allowedZones = Array.isArray(step.zones) ? step.zones : fieldZones;
   for (const entry of selected) {
     // 必殺モンスターの共通ゲート: 効果によるコールも「1ターンに1枚・自分のファイナルフェイズのみ」に服する。
-    if (!impactMonsterCallAllowed(entry.owner ?? context.owner, entry.card)) {
+    if (!impactMonsterCallAllowed(entry.owner ?? context.owner, entry.card, { specialCall: Boolean(step.specialCall) })) {
       addLog(`${entry.card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
       continue;
     }
@@ -2948,7 +3111,7 @@ async function stackCallSelectedForScript(step, context) {
   }
   // 必殺モンスターの共通ゲート: 効果による重ねコールも「1ターンに1枚・自分のファイナルフェイズのみ」に服する。
   // F1: 重ねコール判定なので stackCall:true を渡し、raiseImpactCallCap{stackOnly:true}（ジェムクローン）の cap 解放を算入する。
-  if (!impactMonsterCallAllowed(entry.owner ?? context.owner, entry.card, { stackCall: true })) {
+  if (!impactMonsterCallAllowed(entry.owner ?? context.owner, entry.card, { stackCall: true, specialCall: Boolean(step.specialCall) })) {
     addLog(`${entry.card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
     return { ok: false, reason: "impact_monster_call_restricted" };
   }
@@ -3094,6 +3257,7 @@ function isScriptEffectStep(step) {
     // 停止し報酬（スタンド＋後続破壊）が不発だった（F1 と同経路で露見した欠落・後方互換＝旧挙動は常に停止）。
     "standTarget",
     "setLifeZeroSafeguard",
+    "banEffectDrawTemporal", // E-PR14(PR/0380): script からも使えるよう許可（effect版 src/15 に委譲）
     "preventAllDamageThisTurn",
     "dropSelf",
     "destroySelf",
@@ -3156,6 +3320,8 @@ function isScriptEffectStep(step) {
     "revealRandomHandThenBranch", // E-XU1(X-UB01/0057 パル子): 相手手札ランダム1枚公開＋種別分岐（effect版 src/15 へ委譲）
     "skipToFinalPhase", // E-XV2(X-UB02/0036): メイン→ファイナルへスキップ（effect版 src/15 へ委譲。script からも使用可）
     "endFinalPhase",
+    "gainTemporaryWorldFromVar", // E-PR15(PR/0461): 選択カードのワールドを発生源へそのターン中付与（card.turnWorlds）
+    "grantTemporaryDestroyImmunitySelected", // E-PR17(PR/0478): 選択カードへそのターン中の破壊耐性を付与（grantedTempDestroyImmunities）
   ].includes(step.op);
 }
 

@@ -367,7 +367,8 @@
       "rarity": "共通",
       "rules": [
         "使用可能カード: 属性に「カオス」を持つカード",
-        "サイズ合計上限: 99"
+        "サイズ合計上限: 99",
+        "君の場のサイズ30以上のモンスターは、相手の効果では破壊されず、能力を無効化されない"
       ],
       "allowedAttributes": [
         "カオス"
@@ -376,7 +377,20 @@
       "startingLife": 10,
       "startingHand": 4,
       "startingGauge": 2,
-      "maxFieldSize": 99
+      "maxFieldSize": 99,
+      "continuous": [
+        {
+          "op": "grantDestroyImmunity",
+          "controller": "self",
+          "filter": { "cardType": "monster", "baseSizeGte": 30 },
+          "from": { "byEffect": true, "byOpponent": true }
+        },
+        {
+          "op": "grantNullifyImmunity",
+          "controller": "self",
+          "filter": { "cardType": "monster", "baseSizeGte": 30 }
+        }
+      ]
     },
     {
       "id": "ryuga-raitei",

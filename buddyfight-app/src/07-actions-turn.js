@@ -232,6 +232,9 @@ function impactMonsterCallAllowed(owner, card, options = {}) {
   // 0008 デュエルズィーガー等: カード自身の特殊コール文（「〜が破壊された時…コールしてよい」）が成立している
   // 場合は、必殺モンスター一般注記の「自分のファイナルフェイズのみ」ゲートを免除する（カードテキスト優先原則。
   // ライフリンク相殺の逆転コールは相手ターンの破壊で窓が開くため）。1ターン1枚の上限カウンタは維持する。
+  // E-PR7(PR/0285 デアデビル“リターン”): 対話 callMonster だけでなく script 系 call op（callSelected*ForScript
+  // 全6経路）も、DSL 側 step.specialCall:true で opt-in するとこの免除を受けられる。既存 script call カードは
+  // step.specialCall 非保持＝options.specialCall は Boolean(undefined)=false ＝厳格ゲートのまま（挙動不変）。
   if (options.specialCall) {
     return underPerTurnLimit;
   }
@@ -740,6 +743,21 @@ function queueStandTriggers(stoodEntries) {
   if (list.length === 0) {
     return;
   }
+  // E-PR16(PR/0470): このターン中に「効果で」スタンドしたカードの owner/instanceId を履歴に記帳。
+  // queueStandTriggers は効果スタンド専用の choke point（standTarget/standAll=src/15・standSelected=src/14）で、
+  // ターン開始 standPlayer・多回攻撃キーワードのスタンドは通らない＝原文「効果でスタンド」に一致。hasListener の
+  // 早期 return より前に置き、ally/opponentStand リスナー不在（既存カードは全て不在）でも確実に記帳する。
+  // 素の instanceId 文字列配列＝JSON 直列化可（room 復元/リプレイで往復）。クリアは clearTurnModifiers。
+  state.standedByEffectThisTurn = state.standedByEffectThisTurn || [[], []];
+  for (const entry of list) {
+    if (!Number.isInteger(entry.owner) || !entry.card?.instanceId) {
+      continue;
+    }
+    const bucket = state.standedByEffectThisTurn[entry.owner] || (state.standedByEffectThisTurn[entry.owner] = []);
+    if (!bucket.includes(entry.card.instanceId)) {
+      bucket.push(entry.card.instanceId);
+    }
+  }
   const hasListener = [0, 1].some((playerIndex) =>
     zones.some((zone) => {
       const c = state.players[playerIndex]?.field?.[zone];
@@ -1033,6 +1051,7 @@ async function resolvePendingSpell(action) {
     player,
     owner: action.owner,
     target: getTargetInfoFromValue(action.effectTargetValue),
+    costDiscardedCards: action.costDiscardedCards || [], // E-PR6: 宣言時に捨てたコスト札を解決の条件へ持ち越す
   };
   await executeAbilityBody(context);
   if (!context.cardMoved) {
@@ -1074,6 +1093,7 @@ async function resolvePendingAbility(action) {
     hostOwner: action.hostOwner,
     hostZone: action.hostZone,
     target: getTargetInfoFromValue(action.effectTargetValue),
+    costDiscardedCards: action.costDiscardedCards || [], // E-PR6: 手札発動起動能力でも捨てたコスト札を解決へ持ち越す
   };
   const bodyResult = await executeAbilityBody(context);
   // 手札発動の callSelfFromHand 中断（コール先選択キャンセル等）は宣言不成立として手札へ戻す。

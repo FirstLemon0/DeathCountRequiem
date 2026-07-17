@@ -125,10 +125,16 @@ function makeEffectCause(context, victimOwner) {
 function grantedDestroyImmunityBlocks(card, cause) {
   const targetSlot = findFieldCardSlot(card);
   if (!targetSlot) return false;
-  return state.players.some((player, sourceOwner) =>
-    zones.some((zone) => {
-      const source = player.field[zone];
-      return activeContinuousEffects(source).some((e) => {
+  return state.players.some((player, sourceOwner) => {
+    // 継続の発生源: 場のモンスター(zones)＋フラッグ(player.flag)。フラッグ発の grantDestroyImmunity
+    // （the-chaos「サイズ30以上のモンスターは相手の効果で破壊されない」等）は player.flag に実体があり
+    // zones 走査に乗らないため明示的に加える。既存フラッグは grantDestroyImmunity 継続を持たない＝後方互換。
+    const sources = zones.map((zone) => ({ source: player.field[zone], zone }));
+    if (player.flag?.type === "flag") {
+      sources.push({ source: player.flag, zone: null });
+    }
+    return sources.some(({ source, zone }) =>
+      activeContinuousEffects(source).some((e) => {
         if (e.op !== "grantDestroyImmunity") return false;
         if (e.controller === "self" && targetSlot.owner !== sourceOwner) return false;
         if (e.controller === "opponent" && targetSlot.owner === sourceOwner) return false;
@@ -150,9 +156,9 @@ function grantedDestroyImmunityBlocks(card, cause) {
           return false;
         }
         return true;
-      });
-    }),
-  );
+      }),
+    );
+  });
 }
 
 // 【対抗】等でそのターン中だけ付与された、ゾーン限定の破壊耐性（state.turnDestroyImmunity）。
@@ -186,32 +192,45 @@ function destroyImmunityBlocks(card, cause, owner) {
     return true;
   }
   if (turnDestroyImmunityBlocks(card)) return true;
+  const zone = findFieldCardSlot(card)?.zone;
+  // E-PR17(PR/0478): そのターン中だけ選択カードへ付与した一時破壊耐性（card.grantedTempDestroyImmunities）。
+  // 印字 card.destroyImmunity の新 form と同じ {from:{byEffect,byOpponent,...}} 判定で読む（同ヘルパー共用）。
+  // E-PR11/12 の grantedTempAbilities/grantedTempAttackResistances と対の state 常駐一時付与。掃除は同寿命
+  // （clearTurnModifiers/resetLeftFieldCardState）。既存カードは未設定＝この分岐を踏まず挙動完全不変。
+  const tempImm = card.grantedTempDestroyImmunities;
+  if (Array.isArray(tempImm) && tempImm.some((e) => destroyImmunityEntryBlocks(e, card, cause, owner, zone))) {
+    return true;
+  }
   const imm = card.destroyImmunity;
   if (!imm) return false;
   const entries = Array.isArray(imm) ? imm : [imm];
-  const zone = findFieldCardSlot(card)?.zone;
-  return entries.some((e) => {
-    // 旧 object 形（発生源種別の固定bool）。いずれも効果破壊(byEffect)前提のためバトル破壊では発火しない。
-    if (e.fromEffect && cause.byEffect) return true;
-    if (e.fromOpponentEffect && cause.byEffect && cause.byOpponent) return true;
-    if (e.fromSpell && cause.byEffect && cause.sourceType === "spell") return true;
-    if (e.fromImpact && cause.byEffect && cause.sourceType === "impact") return true;
-    // 新 form（from条件 × byFilter（破壊元カード） × conditions（被破壊側owner基準））
-    if (e.from || e.byFilter || e.conditions) {
-      // バトル破壊耐性は from.byBattle を明示した耐性のみが対象（既存の効果破壊耐性に誤適用しない）。逆も同様。
-      if (cause.byBattle && !(e.from && e.from.byBattle)) return false;
-      if (!cause.byBattle && e.from && e.from.byBattle) return false;
-      if (e.from) {
-        if (e.from.byEffect && !cause.byEffect) return false;
-        if (e.from.byOpponent && !cause.byOpponent) return false;
-        if (e.from.sourceType && cause.sourceType !== e.from.sourceType) return false;
-      }
-      if (e.byFilter && !(cause.sourceCard && matchesCardFilter(cause.sourceCard, e.byFilter))) return false;
-      if (e.conditions && !checkCardConditions(e.conditions, owner, { card, zone, owner })) return false;
-      return true;
+  return entries.some((e) => destroyImmunityEntryBlocks(e, card, cause, owner, zone));
+}
+
+// 破壊耐性エントリ1件が cause による破壊を防ぐか。card.destroyImmunity（印字）と
+// card.grantedTempDestroyImmunities（E-PR17 の一時付与）で共用。旧 object 形と新 form の両対応
+// （元 destroyImmunityBlocks 内 entries.some コールバックをそのまま関数化＝挙動バイト等価）。
+function destroyImmunityEntryBlocks(e, card, cause, owner, zone) {
+  // 旧 object 形（発生源種別の固定bool）。いずれも効果破壊(byEffect)前提のためバトル破壊では発火しない。
+  if (e.fromEffect && cause.byEffect) return true;
+  if (e.fromOpponentEffect && cause.byEffect && cause.byOpponent) return true;
+  if (e.fromSpell && cause.byEffect && cause.sourceType === "spell") return true;
+  if (e.fromImpact && cause.byEffect && cause.sourceType === "impact") return true;
+  // 新 form（from条件 × byFilter（破壊元カード） × conditions（被破壊側owner基準））
+  if (e.from || e.byFilter || e.conditions) {
+    // バトル破壊耐性は from.byBattle を明示した耐性のみが対象（既存の効果破壊耐性に誤適用しない）。逆も同様。
+    if (cause.byBattle && !(e.from && e.from.byBattle)) return false;
+    if (!cause.byBattle && e.from && e.from.byBattle) return false;
+    if (e.from) {
+      if (e.from.byEffect && !cause.byEffect) return false;
+      if (e.from.byOpponent && !cause.byOpponent) return false;
+      if (e.from.sourceType && cause.sourceType !== e.from.sourceType) return false;
     }
-    return false;
-  });
+    if (e.byFilter && !(cause.sourceCard && matchesCardFilter(cause.sourceCard, e.byFilter))) return false;
+    if (e.conditions && !checkCardConditions(e.conditions, owner, { card, zone, owner })) return false;
+    return true;
+  }
+  return false;
 }
 
 // 破壊時誘発がこのカード自身のソウルを参照するか（from:"soul"）。
@@ -1829,6 +1848,7 @@ async function runEndTurnEffects(endingOwner) {
 
 function clearTurnModifiers() {
   state.spiritStrikeDamageBonus = [0, 0]; // 霊撃ブースト（ターンスコープ）をリセット
+  state.standedByEffectThisTurn = [[], []]; // E-PR16(PR/0470): このターン効果でスタンドしたカード履歴をリセット
   state.turnDeckMilled = [0, 0]; // E8(D-CBT/PR-0330): ターン内デッキ→ドロップ ミル枚数(席別)をリセット
   state.turnDamageTaken = [0, 0]; // E-X2(X-SD02/0016): ターン内被ダメージ(席別)をリセット
   state.nextAllyAttackTriggers = []; // E10(D-CBT/0110): 「そのターン中、次の味方攻撃時」ワンショット予約を破棄
@@ -1883,6 +1903,21 @@ function clearTurnModifiers() {
       if (card?.turnKeywords?.length && !zones.some((zone) => player.field[zone] === card)) {
         card.turnKeywords = []; // 場を離れたカードに残ったターンスコープキーワードの残留防止
       }
+      // E-PR11/E-PR12: 場を離れたカードに残った一時付与（トリガー能力/攻撃耐性）の残留防止（turnKeywords と同型）。
+      if (card?.grantedTempAbilities?.length && !zones.some((zone) => player.field[zone] === card)) {
+        card.grantedTempAbilities = [];
+      }
+      if (card?.grantedTempAttackResistances?.length && !zones.some((zone) => player.field[zone] === card)) {
+        card.grantedTempAttackResistances = [];
+      }
+      // E-PR15(PR/0461): 場を離れたカードに残った一時ワールド付与（turnWorlds）の残留防止（turnKeywords と同型）。
+      if (card?.turnWorlds?.length && !zones.some((zone) => player.field[zone] === card)) {
+        card.turnWorlds = [];
+      }
+      // E-PR17(PR/0478): 場を離れたカードに残った一時破壊耐性（grantedTempDestroyImmunities）の残留防止。
+      if (card?.grantedTempDestroyImmunities?.length && !zones.some((zone) => player.field[zone] === card)) {
+        card.grantedTempDestroyImmunities = [];
+      }
       if (card?.turnTreatAsBuddy) {
         // ターン中に場を離れた（ドロップ/手札/ソウル等の）カードに treatAsBuddyThisTurn が
         // 永続化しないよう全パイルで解除（場のカードは下の既存クリアと重複するが無害）。
@@ -1901,6 +1936,12 @@ function clearTurnModifiers() {
         card.turnCriticalBonus = 0;
         card.turnKeywords = [];
         card.turnSuppressedKeywords = [];
+        // E-PR11(PR/0389)/E-PR12(PR/0381): そのターン中だけ付与した一時トリガー能力/攻撃耐性をターン終了で解除
+        //（turnKeywords と同寿命。場のカードはここ、場外に残ったカードは下の全パイル走査で掃除）。
+        card.grantedTempAbilities = [];
+        card.grantedTempAttackResistances = [];
+        card.turnWorlds = []; // E-PR15(PR/0461): 一時ワールド付与をターン終了で解除（turnKeywords と同寿命）
+        card.grantedTempDestroyImmunities = []; // E-PR17(PR/0478): 一時破壊耐性をターン終了で解除（turnKeywords と同寿命）
         card.preventNextDestroyCount = 0;
         card.preventNextDestroyEffects = []; // 未発火の破壊置換effect(反撃付与等)が翌ターンへ残留しないようクリア
         card.cannotAttackThisTurn = false; // 「そのターン中攻撃できない」(グレイプニル等)をターン終了で解除

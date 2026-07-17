@@ -43,6 +43,28 @@ function decodeDeckShareCode(code) {
   return { ver, name, flag, buddy, recipe };
 }
 
+// E-PR10(PR/0343等 limitWith): 「『A』と『B』は合わせてN枚までデッキに入れられる」というデッキ構築制約用。
+// カードは投入上限の「グループ名」を、自分の name ではなく limitWith の値で数える（グループ名 = limitWith || name）。
+// この関数は cards 配列（{id,name,limitWith} を持てば十分）から「id→グループ名」の写像を作る。
+//   ・limitWith を1枚も含まなければ null を返す（＝グループ制約なし＝完全後方互換）。
+//   ・返り値を validateDeckCodePayload の opts.limitGroups に渡すと、グループ合計>上限(4)を弾く。
+// PR側カードだけが limitWith を持ち、本流側（竜気百倍 等）は無改変。両者が同一グループ名に落ちて合算される。
+function buildLimitGroups(cards) {
+  const list = Array.isArray(cards) ? cards : [];
+  const linkedNames = new Set();
+  for (const card of list) {
+    if (card && card.limitWith) linkedNames.add(card.limitWith);
+  }
+  if (linkedNames.size === 0) return null; // limitWith 皆無＝グループ制約なし（後方互換）
+  const map = Object.create(null);
+  for (const card of list) {
+    if (!card || !card.id) continue;
+    const key = card.limitWith || card.name;
+    if (key && linkedNames.has(key)) map[card.id] = key;
+  }
+  return map;
+}
+
 // payload: decodeDeckShareCode() の戻り値（{ver,name,flag,buddy,recipe}）。
 // opts.cardIds / opts.flagIds: Set<string> または string[]（実在チェック用の全カード/全フラッグID集合）。
 // 戻り値: {ok:true, normalized:{name,flag,buddy,recipe}} | {ok:false, reason}
@@ -55,6 +77,11 @@ function validateDeckCodePayload(payload, opts) {
   // Infinity（4枚超を許容）。未指定＝空集合＝全カード従来どおり4枚上限（完全後方互換）。
   const unlimitedCardIds =
     options.unlimitedCardIds instanceof Set ? options.unlimitedCardIds : new Set(options.unlimitedCardIds || []);
+  // E-PR10(limitWith): id→グループ名の写像（buildLimitGroups の出力）。未指定/null＝グループ制約を課さない
+  // ＝共有コード検証は従来どおり（完全後方互換）。ここでのグループ上限は per-ID と同じフラット4（この検証は
+  // フラッグ非依存の粗い構造ゲートで deckAnyFlag のホーム/非ホーム上限も課さないため、グループも4で統一）。
+  const limitGroups =
+    options.limitGroups && typeof options.limitGroups === "object" ? options.limitGroups : null;
 
   if (!payload || typeof payload !== "object") {
     return { ok: false, reason: "invalid payload" };
@@ -108,6 +135,20 @@ function validateDeckCodePayload(payload, opts) {
   if (totalCount > 200) {
     return { ok: false, reason: "デッキの合計枚数が上限(200枚)を超えています" };
   }
+  // E-PR10(limitWith): 「AとBは合わせて4枚まで」のグループ合計を検証（limitGroups 未指定＝空＝スキップ＝後方互換）。
+  if (limitGroups) {
+    const groupTotals = new Map();
+    for (const [id, count] of normalizedRecipe) {
+      const key = limitGroups[id];
+      if (key == null) continue; // グループ非所属のカードは従来どおり per-ID のみ
+      groupTotals.set(key, (groupTotals.get(key) || 0) + count);
+    }
+    for (const [key, sum] of groupTotals) {
+      if (sum > 4) {
+        return { ok: false, reason: `『${key}』グループは合わせて4枚までです（${sum}枚）` };
+      }
+    }
+  }
   return {
     ok: true,
     normalized: { name, flag, buddy, recipe: normalizedRecipe },
@@ -121,5 +162,6 @@ if (typeof module !== "undefined" && module.exports) {
     encodeDeckShareCode,
     decodeDeckShareCode,
     validateDeckCodePayload,
+    buildLimitGroups,
   };
 }
