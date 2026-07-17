@@ -582,6 +582,7 @@ body.seat-flip .player-zone.opponent {
 }
 
 .flag-layer {
+  position: relative;
   display: grid;
   place-items: center;
   min-height: 104px;
@@ -593,6 +594,40 @@ body.seat-flip .player-zone.opponent {
   color: var(--text-2);
   padding: 9px;
   text-align: center;
+  overflow: hidden;
+}
+
+/* フラッグ絵: レイヤー全体を覆い、下部にフラッグ名キャプションを重ねる。読込失敗時は JS が
+   .flag-img を外し .has-flag-img を落とすので、キャプションは自動で中央（現行の見た目）へ戻る。 */
+.flag-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 7px;
+  z-index: 0;
+}
+
+.flag-caption {
+  display: grid;
+  place-items: center;
+  gap: 1px;
+  z-index: 1;
+}
+
+.flag-layer.has-flag-img .flag-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 2px 4px 3px;
+  background: linear-gradient(
+    to top,
+    rgb(var(--surface-deep-rgb) / 0.92),
+    rgb(var(--surface-deep-rgb) / 0.5) 65%,
+    transparent
+  );
 }
 
 .stack-layer-label {

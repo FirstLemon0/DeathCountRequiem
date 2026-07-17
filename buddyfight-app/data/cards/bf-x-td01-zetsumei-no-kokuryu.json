@@ -1,0 +1,829 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-x-td01-zetsumei-no-kokuryu",
+    "name": "バッツ トライアルデッキ第1弾「ゼツメイノ黒竜」",
+    "kind": "トライアルデッキ",
+    "generation": "バッツ",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=65"
+  },
+  "cards": [
+    {
+      "id": "bf-x-td01-0001",
+      "no": "X-TD01/0001",
+      "name": "宣告の黒死竜 アビゲール",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜"
+      ],
+      "size": 1,
+      "power": 6000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが攻撃した時、相手の場のモンスター１枚を破壊する。破壊したら、そのカードのサイズの数値分、君のライフを回復する。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-td01-0001-attack-destroy-heal",
+          "kind": "triggered",
+          "event": "attack",
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "gainLife",
+              "amountFrom": {
+                "source": "targetStat",
+                "stat": "size"
+              },
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "【コールコスト】ゲージ１=costs.call:[payGauge{amount:1}]。『このカードが攻撃した時、相手の場のモンスター１枚を破壊する。破壊したら、そのカードのサイズの数値分、君のライフを回復する。』はD-BT04/0007漆黒の死神ガイト（『このカードが攻撃した時、相手の場のモンスター１枚を破壊する。破壊したら、破壊したカードのサイズの数値分、相手のデッキの上のカードを…』＝完全同型の骨格。報酬部分のみmoveTopDeckToDrop→gainLifeに差替）＋bf-h-bt04-0015百鬼魔導ソウルドレイン（『破壊したら、そのモンスターのサイズの数値分、君のライフを回復する』＝gainLife{amountFrom:{source:targetStat,stat:size},conditions:[lastDestroySucceeded]}の直接前例）の合成: kind:triggered,event:attack+target:{fieldCard,controller:opponent,allowMissingTarget:true,filter:{cardType:monster}}（allowMissingTarget付与はX-CP01/0002爆竜一家の長ヴォムヴォール型のattack+destroy+amountFrom(targetStat)前例に倣う。対象0枚時に安全にno-opすることをVM実測で確認）+effects:[destroy{target:$target}, gainLife{amountFrom:{source:targetStat,stat:size},conditions:[lastDestroySucceeded]}]。gainLifeのamountFromは対象カードの印字サイズを参照（$targetは破壊後もオブジェクト参照が残るためsize読取に問題なし。resolveAmountFrom内はcontext.target.cardを直接参照）。grep自己検査: costs.call payGauge(src/04-cost-resource.js:544,946,1700 step.op===\"payGauge\")/event attack(src/09-attack.js:457 runAttackDeclarationTriggers→runTriggeredAbilities(attacker.card,\"attack\",...))/target+allowMissingTarget(src/17-targeting.js、bf-x-bt02-0095/0107実例と同型)/destroy target(src/15-ability-effects.js:1340-1351)/lastDestroySucceeded(src/13-abilities-core.js:1249)/gainLife(src/15-ability-effects.js:602)/amountFrom targetStat+stat:size(src/15-ability-effects.js:2916-2922、bf-h-bt04-0015実カード実装で確立済み) 全実在確認。VM実測: 対象なしでは破壊もライフ回復も発生しないことを確認。"
+    },
+    {
+      "id": "bf-x-td01-0002",
+      "no": "X-TD01/0002",
+      "name": "漆黒印竜 ヴィーリボルヴァー",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜"
+      ],
+      "size": 3,
+      "power": 5000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■君の場に《黒竜》が『設置』されているなら、このカードの攻撃力＋2000、防御力＋2000！",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "power": 2000,
+          "defense": 2000,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "attribute": "黒竜",
+                "cardTypeIn": [
+                  "spell",
+                  "impact"
+                ]
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う=costs.call:[putTopDeckToSoul{amount:1},payGauge{amount:2}]（bf-x-bt02-0106黒印竜デイレパードと同型の2ステップコール）。『君の場に《黒竜》が『設置』されているなら、このカードの攻撃力＋2000、防御力＋2000！』はcontinuous modifyStats{filter:sameInstanceAsSource,power:2000,defense:2000,conditions:[cardCount{controller:self,pile:field,filter:{attribute:黒竜,cardTypeIn:[spell,impact]},cmp:gte,amount:1}]}（bf-x-bt02-0095_note確立の『設置』＝spell/impact型カードが場に存在=cardTypeIn:[spell,impact]表現を厳密踏襲。黒竜属性のモンスター/アイテム自身は『設置』に含まれないため型で十分）。『２回攻撃』『ソウルガード』=keywords:[\"doubleAttack\",\"soulguard\"]（X-BT01/0006緑晶竜シード・ルー等の確立表記）。grep自己検査: costs.call putTopDeckToSoul(src/04-cost-resource.js:601,1013,1761)+payGauge(同上:544,946,1700)/continuous modifyStats+sameInstanceAsSource(src/05-stats.js:804)/cardCount+cardTypeIn(src/13-abilities-core.js:810-856)/keywords doubleAttack・soulguard(src/18-tooltip-format.js:463,471 keywordAliases、X-BT01/0006実カードで両立確認済み) 全実在確認。"
+    },
+    {
+      "id": "bf-x-td01-0003",
+      "no": "X-TD01/0003",
+      "name": "黒印竜 オースブリング",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードの攻撃で相手のモンスターを破壊した時、カード１枚を引く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td01-0003-destroy-by-attack-draw",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "コールコスト行なし=costsキー無し。『このカードの攻撃で相手のモンスターを破壊した時、カード１枚を引く。』はH-EB02/0005 RDリーダー イモータルスピリット（『このカードの攻撃で相手のモンスターを破壊した時、カード１枚を引く。』＝完全同一文言）の直接前例と完全一致: event:\"destroyByAttack\"（攻撃した本カードにのみ発火。src/10-battle-resolve.js:160 runTriggeredAbilities(attacker.card,\"destroyByAttack\",...)）+effects:[draw{amount:1}]。grep自己検査: event destroyByAttack(src/10-battle-resolve.js:160)/draw(src/15-ability-effects.js:254) 全実在確認。"
+    },
+    {
+      "id": "bf-x-td01-0004",
+      "no": "X-TD01/0004",
+      "name": "黒印竜 ザストンアウル",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 1,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■君のターン終了時、君の場に《黒竜》が『設置』されているなら、君のデッキの上から１枚をこのカードのソウルに入れる。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td01-0004-turnend-soul",
+          "kind": "triggered",
+          "event": "turnEnd",
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "attribute": "黒竜",
+                "cardTypeIn": [
+                  "spell",
+                  "impact"
+                ]
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToSoul",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "【コールコスト】ゲージ１=costs.call:[payGauge{amount:1}]。『君のターン終了時、君の場に《黒竜》が『設置』されているなら、君のデッキの上から１枚をこのカードのソウルに入れる。』はBT03/0015常勝無敗絶獅子等のevent:turnEnd+conditions:[turnOwnerIsSelf]（『君のターン終了時』は自ターン限定=turnOwnerIsSelfで正しくゲート。runPhaseStartTriggers(\"turnEnd\",endingOwner)は両者終了時に走るブロードキャストのためゲート必須＝bf-x-bt02-0110_note前例と同思想）に、X-TD01/0002・0006と同一の『設置』カウント条件cardCount{filter:{attribute:黒竜,cardTypeIn:[spell,impact]}}を追加し、effects:[putTopDeckToSoul{amount:1}]（context.card=このカード自身のソウルに入る。src/15-ability-effects.js:292）。『ソウルガード』=keywords:[\"soulguard\"]。grep自己検査: costs.call payGauge(src/04-cost-resource.js:544,946,1700)/event turnEnd(src/11-destroy-turn.js:1793 runPhaseStartTriggers(\"turnEnd\",endingOwner))/turnOwnerIsSelf(src/13-abilities-core.js:891)/cardCount+cardTypeIn(src/13-abilities-core.js:810-856)/putTopDeckToSoul effect(src/15-ability-effects.js:292)/keywords soulguard(src/18-tooltip-format.js:463) 全実在確認。"
+    },
+    {
+      "id": "bf-x-td01-0005",
+      "no": "X-TD01/0005",
+      "name": "黒印竜 エアロエス",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜"
+      ],
+      "size": 2,
+      "power": 2000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■このカードが登場した時、君のライフを＋１！",
+        "『移動』（お互いのアタックフェイズ開始時に、場のこのカードを空いている別のエリアに置いてよい）"
+      ],
+      "keywords": [
+        "move"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td01-0005-enter-life",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "コールコスト行なし=costsキー無し。『このカードが登場した時、君のライフを＋１！』はkind:triggered,event:\"enter\"（src/07-actions-turn.js:541 runTriggeredAbilities(card,\"enter\",...)）+effects:[gainLife{amount:1}]（多数前例。B6 0097等でgainLife{amount:1}実在確認済み）。『移動』（お互いのアタックフェイズ開始時に、場のこのカードを空いている別のエリアに置いてよい）=keywords:[\"move\"]（bf-x-bt02-0095_note等で確立、src/18-tooltip-format.js keywordAliasesの実在キーワード。move用のリマインダー文はカード固有ロジック不要=keyword一発で挙動を得る既存機構）。grep自己検査: event enter(src/07-actions-turn.js:541)/gainLife(src/15-ability-effects.js:602)/keywords move(src/18-tooltip-format.js keywordAliases、X-BT01/0029実カードで実在確認) 全実在確認。"
+    },
+    {
+      "id": "bf-x-td01-0006",
+      "no": "X-TD01/0006",
+      "name": "黒印竜 デュランディ",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜"
+      ],
+      "size": 1,
+      "power": 7000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■このカードの攻撃で相手の場のモンスターを破壊した時、君の場に《黒竜》が『設置』されているなら、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td01-0006-destroy-by-attack-gauge",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "attribute": "黒竜",
+                "cardTypeIn": [
+                  "spell",
+                  "impact"
+                ]
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "コールコスト行なし=costsキー無し。『このカードの攻撃で相手の場のモンスターを破壊した時、君の場に《黒竜》が『設置』されているなら、君のデッキの上から１枚をゲージに置く。』はH-EB02/0041 RCM ボーダムブレイカー（『このカードの攻撃で相手のモンスターを破壊した時、君のデッキの上から１枚をゲージに置く。』＝destroyByAttack+putTopDeckToGauge{amount:1}の直接前例）に、X-TD01/0002・0004と同一の『設置』カウント条件を追加。event:\"destroyByAttack\"+conditions:[cardCount{controller:self,pile:field,filter:{attribute:黒竜,cardTypeIn:[spell,impact]},cmp:gte,amount:1}]+effects:[putTopDeckToGauge{amount:1}]（player省略=自分のゲージ、bf-x-bt02-0101_note前例と同型）。grep自己検査: event destroyByAttack(src/10-battle-resolve.js:160)/cardCount+cardTypeIn(src/13-abilities-core.js:810-856)/putTopDeckToGauge(src/15-ability-effects.js:283) 全実在確認。"
+    },
+    {
+      "id": "bf-x-td01-0007",
+      "no": "X-TD01/0007",
+      "name": "黒竜 ルアール",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■このカードが相手にダメージを与えた時、君のライフを＋１！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td01-0007-dealdamage-life",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "コールコスト行なし=costsキー無し。『このカードが相手にダメージを与えた時、君のライフを＋１！』はPP01/0057デスルーラーガロウズ（『“魂を吸う鎖”このカードが相手にダメージを与えた時、君のライフを＋１する。』）・bf-h-eb01-0009地方領主シドー等多数前例と完全同型: event:\"dealDamage\"（src/10-battle-resolve.js:834 runDamageDealtTriggers→runTriggeredAbilities(attacker.card,\"dealDamage\",...)。攻撃した本カードが相手プレイヤーに直接ダメージを与えた時のみ発火）+effects:[gainLife{amount:1}]。grep自己検査: event dealDamage(src/10-battle-resolve.js:834)/gainLife(src/15-ability-effects.js:602) 全実在確認。"
+    },
+    {
+      "id": "bf-x-td01-0008",
+      "no": "X-TD01/0008",
+      "name": "黒竜 エルホッパー",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜"
+      ],
+      "size": 0,
+      "power": 1000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■このカードが破壊された時、君の場に《黒竜》が『設置』されているなら、相手の場のサイズ１以下のモンスター１枚を破壊する。",
+        "『移動』"
+      ],
+      "keywords": [
+        "move"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td01-0008-destroyed-destroy",
+          "kind": "triggered",
+          "event": "destroyed",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "attribute": "黒竜",
+                "cardTypeIn": [
+                  "spell",
+                  "impact"
+                ]
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster",
+              "sizeLte": 1
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "_note": "コールコスト行なし=costsキー無し。『このカードが破壊された時、君の場に《黒竜》が『設置』されているなら、相手の場のサイズ１以下のモンスター１枚を破壊する。』はD-BT02/0070黒き双頭スカルヴ（『このカードが破壊された時、相手のドロップゾーンが６枚以上なら、相手の場のサイズ２以下のモンスター１枚を破壊する。』＝event:destroyed+conditions+target{fieldCard,controller:opponent,allowMissingTarget:true,filter:{cardType:monster,sizeLte:N}}+effects:[destroy{target:$target}]の完全同型骨格）を踏襲し、conditions のみ X-TD01/0002・0004・0006（本弾B12で確立済み）と同一の『設置』判定 cardCount{controller:self,pile:field,filter:{attribute:黒竜,cardTypeIn:[spell,impact]},cmp:gte,amount:1}に差替え、sizeLte を1へ変更。event:\"destroyed\"は破壊された本カード自身へ直接発火（接頭辞なし、ownerが破壊された側=controller基準でconditions評価）。『移動』=keywords:[\"move\"]。grep自己検査: event destroyed直接発火(src/11-destroy-turn.js:1069 runTriggeredAbilities(card,\"destroyed\",...))/cardCount+cardTypeIn(src/13-abilities-core.js:810,src/17-targeting.js:324)/target+allowMissingTarget+sizeLte(src/17-targeting.js matchesCardFilter、D-BT02/0070実例と同型)/destroy target形(src/15-ability-effects.js:1296,1340-1351)/keywords move(src/18-tooltip-format.js keywordAliases) 全実在確認。VM実測: 黒竜『設置』なしで自壊→相手は無傷／黒竜『設置』ありでサイズ1以下のみ選べる（サイズ超過は候補外）／候補なしはallowMissingTargetで安全にno-op、を確認予定。"
+    },
+    {
+      "id": "bf-x-td01-0009",
+      "no": "X-TD01/0009",
+      "name": "ポイズン・ダイバー",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜",
+        "チャージ"
+      ],
+      "rules": [
+        "■君のデッキの上から２枚をゲージに置く。さらに、君の場に《黒竜》が『設置』されているなら、君のライフを＋２！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td01-0009-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            },
+            {
+              "op": "gainLife",
+              "amount": 2,
+              "conditions": [
+                {
+                  "op": "cardCount",
+                  "controller": "self",
+                  "pile": "field",
+                  "filter": {
+                    "attribute": "黒竜",
+                    "cardTypeIn": [
+                      "spell",
+                      "impact"
+                    ]
+                  },
+                  "cmp": "gte",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "コールコスト/使用コスト行なし=costsキー無し。『君のデッキの上から２枚をゲージに置く。さらに、君の場に《黒竜》が『設置』されているなら、君のライフを＋２！』はD-EB01/0057エレクトリック・ソース（putTopDeckToGauge(1)→条件付きputTopDeckToGauge(2,conditions)の『さらに』二段effects型）の骨格を踏襲し、2本目をgainLife(2)に差替え。conditions は X-TD01/0002・0004・0006（本弾B12で確立済み）と同一の『設置』判定 cardCount{controller:self,pile:field,filter:{attribute:黒竜,cardTypeIn:[spell,impact]},cmp:gte,amount:1}。kind:spell,timing:[\"main\"]（【対抗】マーカーの記載なし＝main限定、多数前例と同型）。grep自己検査: kind:spell timing main(多数前例)/putTopDeckToGauge(src/15-ability-effects.js:283)/gainLife+effect-level conditions(src/15-ability-effects.js:602、汎用conditionsゲートはsrc/15-ability-effects.js:246-253)/cardCount+cardTypeIn(src/13-abilities-core.js:810,src/17-targeting.js:324) 全実在確認。VM実測: 黒竜『設置』なしはゲージ+2のみ／黒竜『設置』ありはゲージ+2かつライフ+2、を確認予定。"
+    },
+    {
+      "id": "bf-x-td01-0010",
+      "no": "X-TD01/0010",
+      "name": "ヴェノム・スプラッシュ",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜",
+        "破壊"
+      ],
+      "rules": [
+        "■君の場に《黒竜》が『設置』されているなら使える。",
+        "■【使用コスト】ライフ３を払う。",
+        "■【対抗】相手の場のモンスター全てを破壊する！"
+      ],
+      "useConditions": [
+        {
+          "op": "cardCount",
+          "controller": "self",
+          "pile": "field",
+          "filter": {
+            "attribute": "黒竜",
+            "cardTypeIn": [
+              "spell",
+              "impact"
+            ]
+          },
+          "cmp": "gte",
+          "amount": 1
+        }
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payLife",
+            "amount": 3
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-td01-0010-counter-wipe",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 3
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroy",
+              "scope": "opponent",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ]
+        }
+      ],
+      "_note": "『君の場に《黒竜》が『設置』されているなら使える。』はカード級ゲート=useConditions:[cardCount{controller:self,pile:field,filter:{attribute:黒竜,cardTypeIn:[spell,impact]},cmp:gte,amount:1}]（X-BT02/0110死の宣告～鎮魂歌～のuseConditions前例と同型の『なら使える』ゲート表現。F1: checkCardConditions(card.useConditions,...)がsrc/13-abilities-core.js:14で手札キャスト経路に配線済み）。【使用コスト】ライフ３=costs.cast:[payLife{amount:3}]+ability.cost:[payLife{amount:3}]（FIX7二重宣言、bf-pr-0401ダークネス・ヒーリング型。非設置スペルのためcastCostレガシーキーは不要=bf-pr-0401と同型で省略）。【対抗】のみ（メイン使用の記載なし）=kind:spell,timing:[\"counter\"]（自分メインフェイズでも使用可＝abilityTimingIncludesのフォールバック、bf-pr-0401_note前例）。『相手の場のモンスター全てを破壊する！』はdestroy統合形の全体破壊=destroy{scope:opponent,filter:{cardType:monster}}（D-BT02/0071漆黒ノ風と同型。destroyAllはdesugarでdestroy{scope}化される為、直接destroy{scope}表記が現行DSL）。grep自己検査: useConditions gate(src/13-abilities-core.js:14)/cardCount+cardTypeIn(src/13-abilities-core.js:810,src/17-targeting.js:324)/payLife cost 3経路(src/04-cost-resource.js:583,992,1740)/kind:spell timing counter(多数前例)/destroy{scope,filter}(src/15-ability-effects.js:1296以降) 全実在確認。VM実測: 黒竜『設置』なしは使用不可(手札残留)／黒竜『設置』ありはライフ-3で相手モンスター全滅・アイテム/魔法は残存、を確認予定。"
+    },
+    {
+      "id": "bf-x-td01-0011",
+      "no": "X-TD01/0011",
+      "name": "ドラゴンシールド 黒竜の盾",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜",
+        "防御"
+      ],
+      "rules": [
+        "■君がダメージを受ける時、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】そのダメージを０に減らし、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td01-0011-black-dragon-shield",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "pendingAttackDefenderIsSelf"
+                },
+                {
+                  "op": "pendingActionResponderIsSelf"
+                }
+              ]
+            }
+          ],
+          "effects": [
+            {
+              "op": "preventNextDamage"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-td01-0012",
+      "no": "X-TD01/0012",
+      "name": "ミッドナイト・シャドウ",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "死",
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中に使える。",
+        "■【対抗】その攻撃が連携攻撃でないなら、無効化する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td01-0012-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackNotLink"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-td01-0013",
+      "no": "X-TD01/0013",
+      "name": "トキシックゾーン",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜"
+      ],
+      "rules": [
+        "『設置』（このカードは場に置いて使う）",
+        "■相手の場のモンスター全ての攻撃力－1000、防御力－1000！",
+        "■【起動】場のこのカードをドロップゾーンに置き、ゲージ１を払ってよい。そうしたら、相手にダメージ１！"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "opponent",
+          "filter": {
+            "cardType": "monster"
+          },
+          "power": -1000,
+          "defense": -1000
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td01-0013-activated-drop-damage",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "optional": true,
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "dropSelf"
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "使用コスト行なし=costsキー無し（設置コスト無償）。『設置』=keywords:[\"set\"]。『相手の場のモンスター全ての攻撃力－1000、防御力－1000！』はカード級continuous（無条件・常時適用）=continuous:[modifyStats{controller:opponent,filter:{cardType:monster},power:-1000,defense:-1000}]（CP01/0024騎兵学校型の設置カード級continuous表現に、bf-x-ub02-0054/bt05-0130のcontroller:opponent負値modifyStats前例を合成。bf-x-cp02-0003藍玉晶竜アトラは『相手の場のカード全て』でfilter省略だが、本カードは『モンスター全て』限定のためfilter:{cardType:monster}を付与）。『【起動】場のこのカードをドロップゾーンに置き、ゲージ１を払ってよい。そうしたら、相手にダメージ１！』はH-BT03/0096魔界バウンサーアンドラス（『【対抗】【起動】…場のこのカードをドロップゾーンに置き、ゲージ１を払ってよい。そうしたら、その攻撃を無効化する。』＝『Xを置き、Yを払ってよい。そうしたら、Z』の確立イディオム: ability級optional:true+cost:[payGauge(1)]+effects:[dropSelf,Z]）から【対抗】/pendingAttackDefenderIsSelf条件のみ除去したmain限定版（0013には【対抗】マーカーが無いためtiming:[\"main\"]）。dropSelfはcontext.zone（set1/set2いずれか実際の設置先）を参照するため場所非依存で機能する。grep自己検査: continuous modifyStats+controller:opponent(src/05-stats.js:841-845)/keywords set(bf-h-bt03-0047等の確立表記)/activated+optional+cost payGauge(src/04-cost-resource.js:544,946,1700)/dropSelf(src/15-ability-effects.js:1155-1157)/dealDamage(src/15-ability-effects.js:893-907、player未指定でも既定opponentだが明示のためplayer:opponent付与) 全実在確認。VM実測: 設置直後から相手モンスター全ての攻撃力/防御力-1000（相手アイテム/自分モンスターは対象外）／起動でゲージ1消費・場から離れ(ドロップへ)・相手ライフ-1、を確認予定。"
+    },
+    {
+      "id": "bf-x-td01-0014",
+      "no": "X-TD01/0014",
+      "name": "不殺剣 ペインブリンガー",
+      "type": "item",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜",
+        "武器"
+      ],
+      "power": 9000,
+      "critical": 0,
+      "rules": [],
+      "_note": "『不殺剣 ペインブリンガー』は能力記載なし（rules:[]）のステータス専用アイテム=DSLキー無し（D-BT01/0094太陽剣グレンソール〔power:9000,critical:0,rules:[]、costs/equipCost等のキー無し〕と同型の最小形）。装備コストの印字も無いため costs.equip は付与しない。grep自己検査: 同型カードbf-d-bt01-0094が costs/abilities 等のDSLキーを一切持たず正常ロードされることを確認済み（data/cards/bf-d-bt01-hanate-hissatsuryu.json）。VM実測: 通常装備で power=9000/critical=0が可視化され、未実装ログが出ないことを確認予定。"
+    },
+    {
+      "id": "bf-x-td01-0015",
+      "no": "X-TD01/0015",
+      "name": "人喰い鎌 ヴァイタルイーター",
+      "type": "item",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "黒竜",
+        "武器"
+      ],
+      "power": 6000,
+      "critical": 1,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■このカードの攻撃で相手のモンスターを破壊した時、君のデッキの上から１枚をゲージに置き、君のライフを＋１！"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-td01-0015-destroy-gauge-life",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "【装備コスト】ゲージ１=costs.equip:[payGauge{amount:1}]（bt03-0034天下五剣鬼丸・bf-x-ss02-0030煉獄騎士団団長の剣ディミオスソード等の確立表記。legacy equipCostキーは近年のX弾バッチ(mech-XBT02-B7/B8)慣例に倣い省略）。『このカードの攻撃で相手のモンスターを破壊した時、君のデッキの上から１枚をゲージに置き、君のライフを＋１！』はbf-h-eb03-0016百鬼槍鬼崩し（event:destroyByAttack→putTopDeckToGauge(1)）にgainLife(1)を追加した合成（両opの併用はbf-x-bt01-0058曲刀使いクルヴァ等『putTopDeckToGauge+gainLife同一ability』の多数前例と同型）。event:\"destroyByAttack\"はこのアイテムの攻撃で相手モンスターを破壊した時のみ直接発火（装備先モンスターの攻撃を介してitem自身に発火。src/10-battle-resolve.js:160 runTriggeredAbilities(attacker.card,\"destroyByAttack\",...)。attacker.cardは攻撃した装備込みのモンスター本体だが、item自身のability解決経路にも同イベントが配送される点はbf-h-eb03-0016等item型の既存実カードで確立済み)。grep自己検査: costs.equip payGauge(src/04-cost-resource.js:544,946,1700)/event destroyByAttack(src/10-battle-resolve.js:160)/putTopDeckToGauge(src/15-ability-effects.js:283)/gainLife(src/15-ability-effects.js:602) 全実在確認。VM実測: 装備でゲージ1消費／このカードの攻撃で相手モンスターを破壊した時にゲージ+1・ライフ+1、を確認予定。"
+    },
+    {
+      "id": "bf-x-td01-0016",
+      "no": "X-TD01/0016",
+      "name": "死の宣告 ～小夜曲～",
+      "type": "impact",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "死",
+        "黒竜"
+      ],
+      "rules": [
+        "■君の場に《黒竜》のモンスターがいるなら使える。",
+        "■【使用コスト】ライフ２を払う。",
+        "■『設置』（このカードは場に置いて使う）",
+        "■相手のターン終了時、君のデッキの上から１枚をこのカードのソウルに入れる。その後、このカードのソウルが３枚以上なら、場のこのカードをドロップゾーンに置き、相手のライフを１にする。"
+      ],
+      "useConditions": [
+        {
+          "op": "cardCount",
+          "controller": "self",
+          "pile": "field",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "黒竜"
+          },
+          "cmp": "gte",
+          "amount": 1
+        }
+      ],
+      "keywords": [
+        "set"
+      ],
+      "castCost": {
+        "life": 2
+      },
+      "costs": {
+        "cast": [
+          {
+            "op": "payLife",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-td01-0016-requiem",
+          "kind": "triggered",
+          "event": "turnEnd",
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToSoul",
+              "amount": 1
+            },
+            {
+              "op": "setLife",
+              "player": "opponent",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "sourceSoulCountGte",
+                  "amount": 3
+                }
+              ]
+            },
+            {
+              "op": "dropSelf",
+              "conditions": [
+                {
+                  "op": "sourceSoulCountGte",
+                  "amount": 3
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "X-BT02/0110死の宣告～鎮魂歌～（本弾姉妹カード。mech-XBT02-B6.json記載）と同一の骨格を持つ『死の宣告』シリーズ第2弾。差分は使用条件の対象（黒竜『設置』→黒竜モンスター在場）・使用コスト（ライフ3→2）・終端効果（winGame→setLife）のみ。『君の場に《黒竜》のモンスターがいるなら使える。』=useConditions:[cardCount{controller:self,pile:field,filter:{cardType:monster,attribute:黒竜},cmp:gte,amount:1}]（0110のuseConditionsと同型、フィルタのみcardType:monster+attribute:黒竜に変更＝『黒竜のモンスター』を厳密に反映。属性のみでcardTypeIn:[spell,impact]を課す『黒竜が設置されている』とは別語彙で正しい）。【使用コスト】ライフ２=costs.cast:[payLife{amount:2}]+castCost:{life:2}（設置インパクトのためlegacy castCostはpayCardCost経路で実際に参照される＝0110と同型でFIX7二重宣言）。『設置』=keywords:[\"set\"]。『相手のターン終了時、君のデッキの上から１枚をこのカードのソウルに入れる。その後、このカードのソウルが３枚以上なら、場のこのカードをドロップゾーンに置き、相手のライフを１にする。』は単一ability(event:turnEnd+conditions:[turnOwnerIsOpponent]、0110と同型のrunPhaseStartTriggers経由)内の3効果: putTopDeckToSoul{amount:1}(無条件)→setLife{player:opponent,amount:1}(conditions:[sourceSoulCountGte:3])→dropSelf(conditions:[sourceSoulCountGte:3])。0110の_noteが検証済みの理由と同じく、dropSelf実装(dropFieldCardByRule)はcard.soulを即座に[]へリセットするため、setLifeをdropSelfより先に置く（両者とも各自のconditionsは自分の実行直前に評価されるexecuteAbilityEffectの汎用conditionsゲート、src/15-ability-effects.js:246-253）。原文の記述順（ドロップに置き、ライフを１にする）とeffects実行順（setLife→dropSelf）が入れ替わる点はプレイ結果に影響しない内部近似のため0110同様に本_noteへ明記。grep自己検査: useConditions gate(src/13-abilities-core.js:14)/cardCount(src/13-abilities-core.js:810)/payLife 3経路(src/04-cost-resource.js:583,992,1740)/keywords set(bf-h-bt03-0047等)/turnEnd(src/11-destroy-turn.js:1793 runPhaseStartTriggers(\"turnEnd\",endingOwner))/turnOwnerIsOpponent(src/13-abilities-core.js:894-895)/putTopDeckToSoul(src/15-ability-effects.js:292)/setLife(src/15-ability-effects.js:617-623)/dropSelf(src/15-ability-effects.js:1155-1157)/sourceSoulCountGte(src/13-abilities-core.js:1010-1013) 全実在確認。VM実測: 黒竜モンスターなしは使用不可／黒竜モンスターありでライフ-2かつ設置／相手ターン終了ごとにソウル蓄積・3枚未満では変化なし・3枚到達で相手ライフが１になり場から離れる／自分のターン終了時は発動しない、を確認予定。"
+    },
+    {
+      "id": "bf-x-td01-0017",
+      "no": "X-TD01/0017",
+      "name": "ダークネスドラゴンワールド",
+      "type": "flag",
+      "rarity": "デッキ商品",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "■君は＜ダークネスドラゴンワールド＞と＜ジェネリック＞のカードを使える。"
+      ]
+    }
+  ]
+}

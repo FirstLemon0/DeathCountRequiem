@@ -330,6 +330,11 @@ function newGame(options = {}) {
     monsterAttackForbidden: [false, false],
     monsterAttackForbiddenSources: [[], []],
     damagePrevention: [[], []],
+    // E-XB1(X-BT02/0113 アステリズム・エフェクト): 席別の「ファイトに敗北しない」保護。各席の配列に
+    // { untilTurnStartOf, sinceTurnCount } を積む（JSON直列化のみで room/replay 往復・クロージャ無し）。
+    // 敗北確定点（checkWinner/declareDeckLoss/ライフリンク即死）が isSeatLossPrevented で参照し、
+    // endTurn の expireLossPreventionForTurnStart が「相手ターン開始時」に除去して再判定する。
+    lossPrevention: [[], []],
     lifeLinkEvents: [],
     specialCallOpportunities: [],
     counterEventWindow: null,

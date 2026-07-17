@@ -245,10 +245,23 @@ function renderFlagItemZone(zoneButton, player) {
 
   const flagLayer = document.createElement("span");
   flagLayer.className = "flag-layer";
-  flagLayer.innerHTML = `
+  // フラッグ絵（他のカードと同じ画像解決＝imgpack遅延読込→公式URL→テキスト の順にフォールバック）。
+  // 画像が出せない/読込失敗時は showCardImageFallback が flag-layer から画像だけ外し、
+  // 下のキャプション（フラッグ名）＝現行のテキスト表示へグレースフルに戻す。
+  const flagImageCard = flagDisplayImageCard(player.flag);
+  if (flagImageCard) {
+    const flagImg = createCardImageElement(flagImageCard);
+    flagImg.classList.add("flag-img");
+    flagLayer.classList.add("has-flag-img");
+    flagLayer.append(flagImg);
+  }
+  const flagCaption = document.createElement("span");
+  flagCaption.className = "flag-caption";
+  flagCaption.innerHTML = `
     <span class="stack-layer-label">フラッグ</span>
     <span class="stack-layer-name">${escapeHtml(player.flag.name)}</span>
   `;
+  flagLayer.append(flagCaption);
   attachTooltip(flagLayer, player.flag);
   stack.append(flagLayer);
 
@@ -509,6 +522,28 @@ function cardHasDisplayStats(card) {
   return ["monster", "impactMonster", "item"].includes(effectiveCardType(card));
 }
 
+// 対戦画面のフラッグゾーンに出す絵を解決する。他カードと同じ画像ヘルパー(createCardImageElement)へ
+// 渡せる card 風オブジェクトを返す（無ければ null＝画像なしでテキスト表示）。独自の画像ロードはしない。
+//  1) フラッグ自身が id/no/imageUrl で解決できる場合（絵違いカード=別id等）はそのフラッグ自身の絵を使う。
+//  2) 基底ワールドフラッグ(no/imageUrl無し)は data-load が作った同名の代表印字フラッグ参照へフォールバック。
+function flagDisplayImageCard(flag) {
+  if (!flag) {
+    return null;
+  }
+  const resolvableBySelf =
+    Boolean(flag.imageUrl) ||
+    Boolean(flag.id && cardIdToPack[flag.id]) ||
+    Boolean(flag.no && String(flag.no).indexOf("/") >= 0);
+  if (resolvableBySelf) {
+    return flag;
+  }
+  const ref = flag.name ? flagImageRefByName[flag.name] : null;
+  if (ref && (ref.id || ref.no || ref.imageUrl)) {
+    return { id: ref.id || null, no: ref.no || null, imageUrl: ref.imageUrl || null, name: flag.name };
+  }
+  return null;
+}
+
 // カード番号から公式カード画像URLを導出（ローカルWebPが無い場合のフォールバック）。
 // 例: H-EB01/0002 -> .../images/card/heb_01_0002.png
 function officialCardImageUrl(card) {
@@ -601,6 +636,16 @@ function showCardImageFallback(img) {
   }
   if (typeof img.removeEventListener === "function") {
     img.removeEventListener("error", onCardImageError);
+  }
+  // フラッグ絵は .card ではなく .flag-layer 内に置く（アイテム装備の重ね表示を壊さないため）。
+  // 画像が出せない場合は画像だけ外し、キャプション(フラッグ名)＝現行のテキスト表示へ戻す。
+  const flagHolder = typeof img.closest === "function" ? img.closest(".flag-layer") : null;
+  if (flagHolder) {
+    flagHolder.classList?.remove?.("has-flag-img");
+    if (typeof img.remove === "function") {
+      img.remove();
+    }
+    return;
   }
   const holder = typeof img.closest === "function" ? img.closest(".card") : null;
   if (holder && typeof holder.querySelector === "function" && !holder.querySelector(".card-img-fallback")) {

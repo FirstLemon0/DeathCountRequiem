@@ -60,6 +60,13 @@ let cardIdToPack = {};
 const cardImagePacks = {};
 const imagePackPromises = {};
 
+// フラッグ絵の表示用インデックス（対戦画面のフラッグゾーンにイラストを出すため）。
+// 基底ワールドフラッグ(data/flags.json)は no/imageUrl を持たず単独では画像解決できないので、
+// 同名の印字フラッグカード（各セットの type:"flag"）の代表 1 枚を「ワールド名→{id,no,imageUrl}」で
+// 索引化しておき、render 側の画像解決ヘルパー(既存の cardIdToPack/imgpack 経路)へ流す。
+// loadGameData で構築。表示専用で state には載せない（再現/権威サーバ view には影響しない）。
+let flagImageRefByName = {};
+
 const dataFiles = {
   cardsets: "data/cardsets.json",
   decksets: "data/decksets.json",

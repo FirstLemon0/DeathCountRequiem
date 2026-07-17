@@ -2470,8 +2470,13 @@ async function selectZoneForScript(step, context) {
 // 能力無効化・filter・conditions は continuousEffectAppliesFromSoul（filter は「コールされるカード」
 // に適用）。controller は "opponent"=ホスト持ち主の相手のコールのみ封じる／"self"=自分のみ／
 // 未指定=両者（場側 consumer の既定と同じ）。hostOnly は本 op では非該当（場の対象カードが無い）。
+// E-XB3(X-BT02/0068 死地への誘い「相手はドロップゾーンからモンスターをコールできない」): 場 continuous
+// 経路も controller を尊重する。従来 fieldRestricted 分岐は effect.controller を一切見ず両者を無条件
+// 制限していた（controller 対応は soulContinuous 経路だけ）。ソウル経路と同一解釈で、"opponent"=発生源の
+// 相手のコールのみ／"self"=発生源自身のコールのみ／未指定=両者（既存 bf-h-eb03-0033 は controller 無し＝
+// 両者制限のまま不変＝後方互換）。sourceOwner は発生源カードの所有者席。
 function isCallFromZoneRestricted(owner, card, fromZone) {
-  const fieldRestricted = state.players.some((player) =>
+  const fieldRestricted = state.players.some((player, sourceOwner) =>
     zones.some((zone) => {
       const source = player.field[zone];
       return (activeContinuousEffects(source) || []).some((effect) => {
@@ -2480,6 +2485,12 @@ function isCallFromZoneRestricted(owner, card, fromZone) {
         }
         const restrictedZone = effect.fromZone || "drop";
         if (restrictedZone !== fromZone) {
+          return false;
+        }
+        if (effect.controller === "opponent" && owner === sourceOwner) {
+          return false;
+        }
+        if (effect.controller === "self" && owner !== sourceOwner) {
           return false;
         }
         return matchesCardFilter(card, effect.filter || {});
@@ -3311,6 +3322,7 @@ function isScriptEffectStep(step) {
     "grantTurnProtection",
     "grantTurnDamageReduction",
     "grantTurnDestroyImmunity",
+    "preventLossUntilOpponentTurnStart", // E-XB1(X-BT02/0113 アステリズム・エフェクト): chooseBranch から敗北保護を付与（effect版 src/15 へ委譲）
     "setPreventNextLeaveField",
     "preventStandThisTurn",
     "preventStandNextTurn", // E-XC10(X-CP02/0070 グラビトン・ジェネレーター): 次の相手スタートフェイズ 全体スタンド不可

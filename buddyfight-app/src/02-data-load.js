@@ -19,21 +19,41 @@ async function loadGameData() {
 
   // カードid→画像パック名(=カードJSONファイル名stem)。render の画像遅延読込で使う。
   cardIdToPack = {};
+  // ワールド名→代表印字フラッグの画像参照。対戦画面のフラッグ絵表示のためだけの索引（表示専用）。
+  flagImageRefByName = {};
   cardLibrary = [
     ...flags,
     ...cardSets.flatMap(({ set, data }) => {
       const packName = (set.file || "").split("/").pop().replace(/\.json$/, "");
-      return (data.cards || [])
+      const defs = [];
+      (data.cards || []).forEach((card) => {
+        const def = normalizeCardDefinition(card, set);
+        // 画像パック索引は全カード（印字フラッグ含む）で登録する。cardIdToPack は画像解決専用で
+        // ルール/デッキ判定の cardLibrary とは独立なので、除外対象フラッグを含めても互換に影響しない。
+        if (packName && def.id) {
+          cardIdToPack[def.id] = packName;
+        }
+        // 印字フラッグ(type:"flag")の絵をワールド名で索引化（基底フラッグの代表絵として使う）。
+        // 複数候補は preference で 1 枚に決める（小さいスターターパックの原典絵を優先）。
+        if (def.type === "flag" && def.name && packName) {
+          const score = flagImagePackPreference(packName);
+          const prev = flagImageRefByName[def.name];
+          if (!prev || score > prev.score) {
+            flagImageRefByName[def.name] = {
+              id: def.id,
+              no: def.no || null,
+              imageUrl: def.imageUrl || null,
+              score,
+            };
+          }
+        }
         // R7(X-BT01/0128 ドラゴン・ドライ): deckable:true の flag はデッキ投入可＝cardLibrary に含める
         // （手札の handLifeZeroReplacement=FE1 が読むため）。通常の表示専用 flag は従来どおり除外。
-        .filter((card) => card.type !== "flag" || card.deckable === true)
-        .map((card) => {
-          const def = normalizeCardDefinition(card, set);
-          if (packName && def.id) {
-            cardIdToPack[def.id] = packName;
-          }
-          return def;
-        });
+        if (def.type !== "flag" || card.deckable === true) {
+          defs.push(def);
+        }
+      });
+      return defs;
     }),
   ];
   const officialDecks = deckSets.flatMap(({ set, data }) =>
@@ -431,6 +451,19 @@ function legacyAbilityScriptDefinition(handler) {
 function normalizeFlagDefinitions(flagsData = {}) {
   const set = flagsData.product || { id: "common-flags", name: "共通フラッグ" };
   return (flagsData.flags || []).map((flag) => normalizeCardDefinition(flag, set));
+}
+
+// 同名フラッグの絵が複数パックにある時、代表 1 枚を選ぶための優先度（高いほど優先）。
+// 対戦画面のフラッグ絵は「そのワールドの原典的な絵」で十分なので、画像も軽い旧トライアルデッキ
+// (td*/ss01)・各世代スターター(td/sd)を優先し、巨大な PR パックは最後の手段にする（読込コスト抑制）。
+function flagImagePackPreference(packName) {
+  const p = String(packName || "");
+  if (/^td\d/.test(p)) return 5; // 旧トライアルデッキ（最小・原典の絵）
+  if (/^ss01/.test(p)) return 4;
+  if (/^bf-[hdx]-(td|sd)\d/.test(p)) return 3; // 各世代スターター/トライアル
+  if (/^bf-zd\d/.test(p)) return 2; // WHF配布デッキ
+  if (/^bf-hd-pr$/.test(p) || /^bf-s-pr$/.test(p)) return 0; // 巨大 PR パック（最後の手段）
+  return 1;
 }
 
 function buildFlagIdAliases(flags) {

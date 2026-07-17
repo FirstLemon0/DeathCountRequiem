@@ -39,7 +39,10 @@ async function useCardAction() {
     await useCounterCard(selectedCard);
     return;
   }
-  if (canUseCounterPlayCard(selectedCard)) {
+  if (canUseCounterPlayCard(selectedCard) && !hasMainAndCounterHandChoice(selectedCard)) {
+    // 「今この瞬間に main 能力と counter 能力の両方が使える」1枚（X-BT02/0013 支配者の特権 等の
+    // 「次の2つから1つを選んで使う。・…／・【対抗】…」型）は、counter 最優先ショートカットを取らず
+    // 下流の findUsableHandAbilities チューザ（下記）に選ばせる。片方だけ使える通常の対抗札はここで単一発火。
     await useCounterPlayCard(selectedCard);
     expireTransientResponseWindows();
     return;
@@ -434,6 +437,24 @@ function canUseCounterPlayCard(selectedCard) {
       selectedCard &&
       isCounterPlayTiming() &&
       findUsableHandAbility(selectedCard, { counterOnly: true }),
+  );
+}
+
+// 「次の2つから1つを選んで使う。・…（main）／・【対抗】…（counter）」型の手札カードで、今この瞬間に
+// main 能力と counter 能力の両方が使えるか。true なら useCardAction は canUseCounterPlayCard の
+// counter 最優先ショートカットを止め、下流の findUsableHandAbilities チューザ（chooseHandAbility）へ委ねて
+// 選ばせる——「場の起動能力が複数なら選ばせる」(findUsableFieldAbilities) と同じ規則の手札版。
+// 手番プレイヤー（owner===active）の自分のプレイ窓に限定する: 手札の非対抗能力（通常魔法/起動）は
+// 下流 useCardAction の owner===active ゲートで自分の手番でしか使えないため、相手手番の対抗窓では main は
+// 実際には使えず、そこでチューザを出すと単発クリックの対抗が不発になる（byte互換のため非能動側は従来経路）。
+function hasMainAndCounterHandChoice(selectedCard) {
+  if (state.selected?.owner !== state.active) {
+    return false;
+  }
+  const abilities = findUsableHandAbilities(selectedCard);
+  return (
+    abilities.some((ability) => isCounterAbility(ability)) &&
+    abilities.some((ability) => !isCounterAbility(ability))
   );
 }
 

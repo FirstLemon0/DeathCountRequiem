@@ -1420,14 +1420,25 @@ async function executeAbilityEffect(effect, context) {
     }
   }
   if (effect.op === "dischargeSelfFromHostSoul" && context.card && context.hostCard) {
-    // ソウルに入っているこのカード自身を、ホスト（武器等）のソウルからドロップへ置く。
+    // ソウルに入っているこのカード自身を、ホスト（武器等）のソウルから退避する。
+    // E-XB4(X-BT02/0103 天装機 ゼーナ「場か、ソウルにあるこのカードをデッキの下に置いてよい」のソウル分岐):
+    // to:"deckBottom" でデッキ下へ、未指定=従来どおりドロップへ着地（後方互換）。いずれもホストの soul 配列
+    // から removed を1枚抜くだけ＝枚数/instanceId 保存則(fuzz の card-conservation)を満たす。
     const soul = context.hostCard.soul || [];
     const soulIndex = soul.findIndex((c) => c.instanceId === context.card.instanceId);
     if (soulIndex >= 0) {
       const [removed] = soul.splice(soulIndex, 1);
       const selfPlayer = context.player || state.players[context.owner];
-      selfPlayer.drop.push(removed);
-      addLog(`${removed.name}を${context.hostCard.name}のソウルからドロップに置きました。`);
+      if (effect.to === "deckBottom") {
+        // デッキへ戻る際は変身等の一時的な型上書きを解除する（returnSelfToDeckBottom と同方針）。
+        // deck.pop() が山上のため unshift が最下段。
+        removed.currentType = removed.baseType || removed.type;
+        selfPlayer.deck.unshift(removed);
+        addLog(`${removed.name}を${context.hostCard.name}のソウルからデッキの下に置きました。`);
+      } else {
+        selfPlayer.drop.push(removed);
+        addLog(`${removed.name}を${context.hostCard.name}のソウルからドロップに置きました。`);
+      }
     }
   }
   if (effect.op === "dropSoulSourceCard" && context.card && context.soulSourceCard) {
@@ -2687,6 +2698,27 @@ async function executeAbilityEffect(effect, context) {
     state.winnerSeat = context.owner; // D5(戦績): 効果による即勝利
     state.winReason = "effect";
     addLog(`${player.name}は${context.card.name}の効果で勝利しました。`);
+  }
+  if (effect.op === "preventLossUntilOpponentTurnStart") {
+    // E-XB1(X-BT02/0113 アステリズム・エフェクト): 「次の相手ターンの開始時まで、君はファイトに敗北しない。
+    // （ライフが０や、デッキが０枚でもファイトを続ける。）」。席別 state.lossPrevention にエントリを積み、
+    // 敗北確定点（checkWinner の life<=0/deck0・declareDeckLoss・applyLifeLink 即死）が isSeatLossPrevented で
+    // ゲートする。期限は endTurn の expireLossPreventionForTurnStart が「相手(1-seat)のターン開始時」に除去。
+    // sinceTurnCount は付与時の turnCount＝現ターン中は失効せず（判定は turnCount > sinceTurnCount の真に大なり）、
+    // 相手ターン中の【対抗】で撃っても現在の相手ターンでは切れず、次の相手ターン開始時に切れる。
+    const seat = effect.controller === "opponent" ? 1 - context.owner : context.owner;
+    state.lossPrevention ||= [[], []];
+    state.lossPrevention[seat] ||= [];
+    state.lossPrevention[seat].push({
+      untilTurnStartOf: 1 - seat, // 相手のターン開始時に失効
+      sinceTurnCount: state.turnCount,
+    });
+    // 直前の致死（守る当人のライフ0/デッキ0）で既に winner が立っていれば、保護成立でその敗北を巻き戻す。
+    // clearWinnerIfNoCurrentLoss は保護席を「現在の敗北」に数えないため、当人由来の暫定 winner のみ解除される。
+    clearWinnerIfNoCurrentLoss();
+    addLog(
+      `${context.card?.name || "効果"}の効果で、${state.players[seat]?.name}は次の相手ターンの開始時までファイトに敗北しなくなりました。`,
+    );
   }
 }
 

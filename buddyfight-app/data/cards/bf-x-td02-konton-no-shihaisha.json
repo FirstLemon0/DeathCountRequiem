@@ -1,0 +1,849 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-x-td02-konton-no-shihaisha",
+    "name": "バッツ トライアルデッキ第2弾「混沌の支配者」",
+    "kind": "トライアルデッキ",
+    "generation": "バッツ",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=66"
+  },
+  "cards": [
+    {
+      "id": "bf-x-td02-0001",
+      "no": "X-TD02/0001",
+      "name": "創られし混沌 ギアゴッドⅦ",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "-",
+      "attributes": [
+        "カオス"
+      ],
+      "size": 30,
+      "power": 50000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】君の場のモンスター２枚までをこのカードのソウルに入れ、ゲージ２を払う。",
+        "■このカードが登場した時、君のドロップゾーンの《カオス》のモンスター１枚までを、【コールコスト】を払ってコールする。",
+        "『ソウルガード』『C・テリトリー』（君のセンターにこのカードがあるなら、君のセンターはこのカードを含めて、モンスターを２枚置ける）"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putSelectedOwnFieldCardsToSoul",
+            "filter": {
+              "cardType": "monster"
+            },
+            "min": 0,
+            "max": 2
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td02-0001-enter-drop-call",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "カオス"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "創られし混沌 ギアゴッドⅦ",
+              "lead": "【コールコスト】を払ってコールする、ドロップゾーンの《カオス》のモンスター１枚まで選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "call",
+              "payCost": "call",
+              "resolveOnEnter": true
+            }
+          ]
+        }
+      ],
+      "_note": "【コールコスト】『君の場のモンスター２枚までをこのカードのソウルに入れ、ゲージ２を払う』=costs.call:[putSelectedOwnFieldCardsToSoul{filter:{cardType:monster},min:0,max:2}, payGauge(2)]（『２枚まで』=min:0/max:2、bf-h-ss01-0044超源射線ガンマレディアスの同型min:0,max:3前例に倣う。同名前身カードbf-pr-0399叡智の結晶ギアゴッドⅦはmin:1,max:1固定1枚版で、本カードは『２枚まで』のためmin:0,max:2に差替。putSelectedOwnFieldCardsToSoulはcontext.sourceCard=呼び出し中の本カード自身のsoul配列へ直接pushする実装のため、場に出る前のコール中でも正しく機能する=src/04-cost-resource.js:2020 moveSelectedFieldCardsToSoul）。『このカードが登場した時、君のドロップゾーンの《カオス》のモンスター１枚までを、【コールコスト】を払ってコールする』=bf-d-bt03-0016超光合竜ゴルディロクス・Zの『このカードが登場した時、君のドロップゾーンの《竜装機》のモンスター１枚までを、【コールコスト】を払って、コールする』と完全同一構文のため、その実装（script:[selectCards{from:drop,controller:self,filter,min:0,max:1,amount:1,require:false,callable:true,canPayCost:call},callSelectedToEmptyZones{var,payCost:call,resolveOnEnter:true}]）をそのまま踏襲。callableはisCallableMonster判定（src/14-ability-script.js:751-753）、canPayCostは選んだカード自身のcosts.callが現在払えるかをcanPayCardCostで判定（同761-768）、callSelectedToEmptyZonesのpayCost:callは選んだカード自身の印字コールコストをpayCardCostWithSelectionで課金する（src/14-ability-script.js:3072-3078）。『ソウルガード』=keywords:[soulguard]。『C・テリトリー』（君のセンターにこのカードがあるなら、君のセンターはこのカードを含めて、モンスターを２枚置ける）は【未実装・報告】: rulings.md R1（統括裁定・pr-backfill R11踏襲、同名の前身カードbf-pr-0399叡智の結晶ギアゴッドⅦの_noteが明記する通りfield.centerが単一nullableスロット構造のため表現不能）に従い、rules原文はそのまま保持しDSLは機構キー無しの表示専用とする。任意能力（『置ける』）のため『2枚目を置かない』は合法な部分集合。grep自己検査: putSelectedOwnFieldCardsToSoul(canPay:src/04-cost-resource.js:672-678、非対話pay:1096-1100、対話pay:1819-1820、helper:2020-2035)/payGauge(src/04-cost-resource.js:544,946,1700)/selectCards from:drop+callable+canPayCost(src/14-ability-script.js:527,751-753,761-768)/callSelectedToEmptyZones(src/14-ability-script.js:467-468,3026-3078)/soulguardエイリアス(src/18-tooltip-format.js:463) 全実在確認。VM自己検証: xtd02-b14-verify.js testXTD020001で(A)場のモンスター2枚を選んでコール（ゲージ2課金+ソウル2枚）、(B)ドロップの《カオス》モンスター1枚を選び、その印字コールコスト（ゲージ）を払って場にコールされることを実操作経路(callMonster→resolvePendingResolution→resolveOnEnter)で確認。"
+    },
+    {
+      "id": "bf-x-td02-0002",
+      "no": "X-TD02/0002",
+      "name": "C・ハイロウ",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ダンジョンW",
+      "attributes": [
+        "Dエネミー",
+        "魔王",
+        "カオス"
+      ],
+      "size": 3,
+      "power": 8000,
+      "critical": 2,
+      "defense": 8000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "『２回攻撃』（このカードは１ターンに１回、攻撃した後スタンドできる）"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "_note": "【コールコスト】ゲージ２=costs.call:[payGauge(2)]+callCost:{gauge:2}。『２回攻撃』（このカードは１ターンに１回、攻撃した後スタンドできる）=keywords:[doubleAttack]（tooltip-format.jsのkeywordAliasesがdoubleAttack↔『２回攻撃』を対応付け=src/18-tooltip-format.js:471、実際のスタンド判定はsrc/10-battle-resolve.js:889 hasKeyword(card,'doubleAttack')+card.doubleAttackUsedガード。カード固有のscript/effectは不要な純キーワードカード）。abilitiesキーは無し（bt05-0011竜騎士スパルタクス等のkeywordsのみカードと同型）。grep自己検査: payGauge(src/04-cost-resource.js:544)/doubleAttackエイリアス(src/18-tooltip-format.js:471)/hasKeyword+doubleAttackUsedスタンド判定(src/10-battle-resolve.js:889-894) 全実在確認。VM自己検証: xtd02-b14-verify.js testXTD020002でcallMonster実経路によりゲージ2課金・場への設置とhasKeyword(card,'doubleAttack')=trueを確認。"
+    },
+    {
+      "id": "bf-x-td02-0003",
+      "no": "X-TD02/0003",
+      "name": "C・マーナガルム",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "レジェンドW",
+      "attributes": [
+        "アースガルド",
+        "カオス"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 3,
+      "defense": 4000,
+      "rules": [
+        "『貫通』（このカードの攻撃で相手センターのモンスターを破壊したら、相手にも打撃力分ダメージを与える）"
+      ],
+      "keywords": [
+        "penetrate"
+      ],
+      "_note": "使用（コール）コスト印字なし=costsキー省略（無償コール。bf-x-ub01-0004轟雷の勇者牙王等コールコスト行の無い既存モンスターと同型）。『貫通』（このカードの攻撃で相手センターのモンスターを破壊したら、相手にも打撃力分ダメージを与える）=keywords:[penetrate]（src/18-tooltip-format.jsのkeywordAliasesがpenetrate↔『貫通』を対応付け=470行目、貫通ダメージの実処理はsrc/10-battle-resolve.js既存機構）。grep自己検査: penetrateエイリアス(src/18-tooltip-format.js:470) 実在確認。VM自己検証: xtd02-b14-verify.js testXTD020003でcallMonster実経路により無償（ゲージ不変）で場に出ることとhasKeyword(card,'penetrate')=trueを確認。"
+    },
+    {
+      "id": "bf-x-td02-0004",
+      "no": "X-TD02/0004",
+      "name": "C・ジャバウォック",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "レジェンドW",
+      "attributes": [
+        "妖精",
+        "カオス"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【対抗】【起動】レフトかライトのこのカードを、君のセンターに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td02-0004-move-to-center",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "right"
+              ]
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "effects": [
+            {
+              "op": "moveTargetToZone",
+              "target": "$self",
+              "zone": "center"
+            }
+          ]
+        }
+      ],
+      "_note": "使用（コール）コスト印字なし=costsキー省略（無償コール。原文に【コールコスト】行が無い）。『【対抗】【起動】レフトかライトのこのカードを、君のセンターに置く。』=kind:activated,timing:[counter,main]（X-BT02/0020ジャックナイフ“ワールド・リンカー！”型の対抗+起動2timing）+conditions:[sourceZoneIn{zones:[left,right]}（原文『レフトかライトの』を明示的に反映）, ownCenterEmpty（センターへの実移動先が要る＝bf-h-bt03-0085五角騎竜砂杖のアルカイドの同型move-to-center前例『君のセンターにモンスターがいないなら』が使う条件を踏襲。field.centerは単一nullableスロットのため、既にこのカード自身がセンターにいる場合もownCenterEmptyがfalseとなり自然に無効化される＝sourceZoneInと機能的に整合）]+effects:[moveTargetToZone{target:'$self',zone:'center'}]。target:'$self'はresolveEffectReferenceが{owner:context.owner,zone:context.zone,card:context.card}へ解決する組み込み参照（standTargetの$self解決コメントが明記する既存機構、src/15-ability-effects.js:2733-2735）。moveTargetToZoneはbt05-0002超武装騎竜ドラムブレイカー・ドラゴンの『【起動】このカードを君の場の空いているエリアに置く』（effects:[{op:moveTargetToEmptyZone,target:'$self'}]）と、bf-h-bt03-0085の『このカードを君のセンターに移動させてよい』（effects:[{op:moveTargetToZone,target:'$self',zone:'center'}]）の2直接前例を合成した形（本カードは移動先がセンター固定のためmoveTargetToZone+zone:'center'を採用）。moveTargetToZone実装は宛先が空でない場合『移動できるエリアがありません』で不発するため（src/15-ability-effects.js:2314-2321のownerPlayer.field[destination]チェック）、ownCenterEmpty条件が無くても実害は無いが、原文『置ける』相当の起動可否UI表示（findUsableFieldAbilities）を正しくfalseにするため明示。原文に使用コスト行が無いためability.costは無し。grep自己検査: sourceZoneIn(src/13-abilities-core.js:991-994)/ownCenterEmpty(src/13-abilities-core.js:976-977)/moveTargetToZone(src/15-ability-effects.js:2314)/resolveEffectReference $self(src/15-ability-effects.js:2725,2733)/kind:activated timing:[counter,main]前例(bf-x-bt02-0020) 全実在確認。VM自己検証: xtd02-b14-verify.js testXTD020004で(正)場のレフトに置き、センターが空の状態でuseCardAction実経路によりセンターへ移動すること、(負)センターに他モンスターが既にいる場合はfindUsableFieldAbilitiesが本能力を返さず（useCardActionを呼んでも）レフトに留まることを確認。"
+    },
+    {
+      "id": "bf-x-td02-0005",
+      "no": "X-TD02/0005",
+      "name": "C・アスクレピオス",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "レジェンドW",
+      "attributes": [
+        "英雄",
+        "カオス"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■このカードが登場した時、君のセンターのモンスターの枚数分、君のライフを＋１！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td02-0005-enter-life-per-center",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "center",
+              "filter": {
+                "cardType": "monster"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "使用（コール）コスト印字なし=costsキー省略。『このカードが登場した時、君のセンターのモンスターの枚数分、君のライフを＋１！』は rulings.md R2（統括裁定：『センターのモンスター全て/枚数分』参照はセンター単一スロット参照で近似。現盤面ではセンターは常に0か1枚のため観測上は忠実）に従い、cardCount{controller:self,pile:center,filter:{cardType:monster},cmp:gte,amount:1}で『センターにモンスターがいるか』をゲートし、真の時のみgainLife{amount:1}を実行する（枚数の上限が1のため『枚数分』=0か1と数学的に一致）。ability.conditionsを採用する理由（effects[].conditionsではない）はbf-x-sd02-0008白晶竜ヴィオニエ『このカードが登場した時、君のセンターにサイズ３のモンスターがいるなら、君のライフを+１！』の_note（『単一effectのみのためeffects[].conditionsではなくability.conditionsを採用』）と同判断。同カードのcardCount{pile:center,...}構造をそのまま流用し、filterのみsizeIn:[3]→cardType:monster（原文にサイズ限定が無いため）に差替。grep自己検査: cardCount pile:center(src/13-abilities-core.js:810,825)/gainLife(src/15-ability-effects.js:602)/直接前例bf-x-sd02-0008 全実在確認。VM自己検証: xtd02-b14-verify.js testXTD020005で(正)センターに別モンスターがいる状態でレフトへコール→ライフ+1、(負)センターが空の状態でレフトへコール→ライフ不変、をcallMonster実経路（resolveOnEnter経由）で確認。"
+    },
+    {
+      "id": "bf-x-td02-0006",
+      "no": "X-TD02/0006",
+      "name": "C・ガルジリオン",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "デンジャーW",
+      "attributes": [
+        "デュエルドラゴン",
+        "カオス"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■このカードがレフトかライトに登場した時、君のセンターにモンスターがいるなら、相手の場のモンスター１枚を破壊する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td02-0006-enter-side-destroy",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "right"
+              ]
+            },
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "center",
+              "filter": {
+                "cardType": "monster"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "_note": "使用（コール）コスト印字なし=costsキー省略。『このカードがレフトかライトに登場した時、君のセンターにモンスターがいるなら、相手の場のモンスター１枚を破壊する。』=event:enter,conditions:[sourceZoneIn{zones:[left,right]}（『レフトかライトに登場した時』。bf-h-eb01-0014闘気竜ゲキオーラ・bt01-0038剣爪竜ヴァルケン等の直接前例と同型）, cardCount{controller:self,pile:center,filter:{cardType:monster},cmp:gte,amount:1}（『君のセンターにモンスターがいるなら』。X-TD02/0005と同一部品）]+target:{type:fieldCard,controller:opponent,allowMissingTarget:true,filter:{cardType:monster}}+effects:[destroy{target:'$target'}]（bf-d-td01-0001大海神デュエルイェーガー・bf-h-eb02-0003影雄シュヴァルツの『登場時、相手の場のモンスター1枚を破壊する』と完全同型のtarget+destroy定型）。allowMissingTarget:trueにより相手モンスターが0枚でも不発（対象なし）で処理される。grep自己検査: sourceZoneIn(src/13-abilities-core.js:991)/cardCount pile:center(src/13-abilities-core.js:810,825)/target:fieldCard+allowMissingTarget(src/17-targeting.js matchesCardFilter系)/destroy target形(src/15-ability-effects.js:1296,1330-1345) 全実在確認。VM自己検証: xtd02-b14-verify.js testXTD020006で(正)センターに別モンスターがいる状態でレフトへコール→相手の場のモンスター1枚が破壊される、(負)センターが空の状態でレフトへコール→相手モンスターは破壊されない、をcallMonster実経路で確認。"
+    },
+    {
+      "id": "bf-x-td02-0007",
+      "no": "X-TD02/0007",
+      "name": "C・尺鉄",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "カタナW",
+      "attributes": [
+        "忍者",
+        "カオス"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■このカードが登場した時、手札１枚を捨ててよい。捨てたら、君のデッキの上から１枚をゲージに置き、カード１枚を引く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td02-0007-enter-discard-gauge-draw",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "使用（コール）コスト印字なし=costsキー省略。『このカードが登場した時、手札１枚を捨ててよい。捨てたら、君のデッキの上から１枚をゲージに置き、カード１枚を引く。』はbf-d-ss03-0049魔竜の眷属ハードロンの『このカードが登場した時、君のフラッグが「ドラゴン・ツヴァイ」なら、手札１枚を捨ててよい。捨てたら、君のデッキの上から１枚をゲージに置き、カード１枚を引く。』と（フラッグ条件の有無を除き）完全同一の効果文のため、その実装をそのまま踏襲: kind:triggered,event:enter,optional:true,cost:[discardHand{amount:1}],effects:[putTopDeckToGauge{amount:1},draw{amount:1}]。optional:trueはrunTriggeredAbilities内のshouldUseOptionalAbility（使う/使わないの2択ダイアログ）で『捨ててよい』の任意性を表現し、承諾した場合のみcost（discardHand）が課金されて『捨てたら』以降のeffectsが実行される（コストが払えない＝手札が0枚の場合はcanPayStructuredCostが不成立でability自体が発火しない、src/14-ability-script.js:6-70の分岐）。grep自己検査: discardHandコスト(canPay:src/04-cost-resource.js:559、対話pay:1710)/putTopDeckToGauge(src/15-ability-effects.js:283)/draw(src/15-ability-effects.js:254)/shouldUseOptionalAbility(src/14-ability-script.js:175-210)/直接前例bf-d-ss03-0049 全実在確認。VM自己検証: xtd02-b14-verify.js testXTD020007で(正)『使う』を選び手札1枚を捨てる→ゲージ+1・手札+1(ドロー分、正味捨てた1枚と差引0)、(負)『使わない』を選ぶ→手札・ゲージ・デッキが不変、をcallMonster実経路(resolveOnEnter)で確認。"
+    },
+    {
+      "id": "bf-x-td02-0008",
+      "no": "X-TD02/0008",
+      "name": "C・ゴーガス",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "魔術師",
+        "カオス"
+      ],
+      "size": 3,
+      "power": 4000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【起動】「C・ゴーガス」以外の君のドロップゾーンの《カオス》のモンスター１枚を選び、ゲージ１を払い、このカードをレストしてよい。そうしたら、選んだカードを手札に加える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td02-0008-drop-recycle",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "optional": true,
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "restSource"
+            }
+          ],
+          "effects": [
+            {
+              "op": "moveMatchingDropToHand",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "カオス",
+                "nameNot": "C・ゴーガス"
+              },
+              "amount": 1,
+              "optional": true
+            }
+          ]
+        }
+      ],
+      "_note": "使用（コール）コスト印字なし=costsキー省略。『【起動】「C・ゴーガス」以外の君のドロップゾーンの《カオス》のモンスター１枚を選び、ゲージ１を払い、このカードをレストしてよい。そうしたら、選んだカードを手札に加える。』はbf-x-cp01-0023超武装騎竜ガルバニックホーン・ドラゴンの『【起動】君のドロップゾーンの＜ドラゴンＷ＞のサイズ３のモンスター１枚を選び、ゲージ１を払ってよい。払ったら、選んだカードを手札に加える。』と同型の『選び…払ってよい／そうしたら選んだカードを手札に加える』構文のため、cost:[payGauge,restSource]+effects:[moveMatchingDropToHand{filter,amount:1,optional:true}]の合成で表現（『選び』のドロップ選択自体はcost側で先取りせずeffect側のmoveMatchingDropToHandが担う。このカードは追加コストとしてrestSource（『このカードをレストしてよい』＝発生源を自らレストする、bf-d-bt04-0096冷王の杖ロッド・オブ・ミセリアの同型定型cost:[payGauge,restSource]を流用）を持つ点がbf-x-cp01-0023との差分。filter.nameNot:'C・ゴーガス'で『「C・ゴーガス」以外』を実装（S-UB-C03/0064等のnameNot前例と同型、bf-x-bt01-0064赤の鬼女紅葉が同じmoveMatchingDropToHand{filter:{...,nameNot:...}}構成の直接前例）。restSourceは発生源が既にused（レスト済）なら支払い不能=canPayStructuredCostで弾かれるため、原文に印字の無い『1ターンに1回』制限が無くても、レスト状態が自然な連続使用不可ガードとして働く（Buddyfight一般規則と一致）。grep自己検査: payGauge(src/04-cost-resource.js:544)/restSource(canPay:src/04-cost-resource.js:696、対話pay:1831)/moveMatchingDropToHand(src/15-ability-effects.js:1006-1023)/filter.nameNot(src/17-targeting.js:454)/直接前例bf-x-cp01-0023・bf-x-bt01-0064 全実在確認。VM自己検証: xtd02-b14-verify.js testXTD020008でドロップに同名『C・ゴーガス』1枚＋別名《カオス》モンスター1枚を置いた状態でuseCardAction実経路により、別名カードのみが手札に加わり同名カードはドロップに残ること、ゲージ1課金・自身がレスト状態(used:true)になることを確認。"
+    },
+    {
+      "id": "bf-x-td02-0009",
+      "no": "X-TD02/0009",
+      "name": "電子乱脈",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "カタナW",
+      "attributes": [
+        "チャージ",
+        "回復",
+        "カオス"
+      ],
+      "rules": [
+        "■君のライフを＋１し、君の場のモンスターの枚数分、君のデッキの上からゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td02-0009-life-gauge",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amountFrom": {
+                "source": "fieldCardCount",
+                "controller": "self",
+                "filter": {
+                  "cardType": "monster"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "_note": "使用条件・使用コスト印字なし（rulesに【使用コスト】行が無い＝無償スペル、useConditions/costsキー省略）。timing:[\"main\"]（原文に【対抗】マーカー無し）。『君のライフを＋1し、君の場のモンスターの枚数分、君のデッキの上からゲージに置く』はeffects:[gainLife{amount:1},putTopDeckToGauge{amountFrom:{source:fieldCardCount,controller:self,filter:{cardType:monster}}}]（bf-pr-0349バディファイト・バレンタイン！2017の同型2op連結・fieldCardCountはbf-pr-0349で確立済みamountFrom source。bt04-0007デビル・スティグマのeffects配列直列パターンと同型）。grep自己検査: gainLife(src/15-ability-effects.js:602)/putTopDeckToGauge(src/15-ability-effects.js:283)/amountFrom.source:fieldCardCount(src/15-ability-effects.js:2965-2981) 全実在確認。"
+    },
+    {
+      "id": "bf-x-td02-0010",
+      "no": "X-TD02/0010",
+      "name": "混沌より来る者",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "レジェンドW",
+      "attributes": [
+        "ドロー",
+        "カオス"
+      ],
+      "rules": [
+        "■君の場に《カオス》２枚以上があるなら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■カード２枚を引く。「混沌より来る者」は１ターンに１回だけ使える。"
+      ],
+      "useConditions": [
+        {
+          "op": "cardCount",
+          "controller": "self",
+          "pile": "field",
+          "filter": {
+            "attribute": "カオス"
+          },
+          "cmp": "gte",
+          "amount": 2
+        }
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-td02-0010-draw2",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xtd02-混沌より来る者"
+          }
+        }
+      ],
+      "_note": "『君の場に《カオス》2枚以上があるなら使える』=useConditions:[cardCount{controller:self,pile:field,filter:{attribute:カオス},cmp:gte,amount:2}]（bf-x-bt01-0048クリスティアーノ・クリスタル・シュート！のcardCount{pile:center,filter:{attribute:...}}と同型、pileをfieldへ）。『【使用コスト】ゲージ1を払う』=costs.cast:[payGauge(1)]+ability.cost:[payGauge(1)]（FIX7・bf-pr-0332キラーオーダー型の重複規約）。『カード2枚を引く』=effects:[draw{amount:2}]。timing:[\"main\"]（原文に【対抗】マーカー無し）。named-once『「混沌より来る者」は1ターンに1回だけ使える』はkind:spellのためisHandCastLimitAbilityでbaseキー自動共有(shared不要)、key:\"xtd02-混沌より来る者\"（bare名禁止=prefix必須、bf-h-sd01-0010ドラゴニック・ディレクティブのbareロマ字key慣例を踏襲しつつ製品prefix付与）。grep自己検査: cardCount+filter.attribute(src/13-abilities-core.js:810-856/src/17-targeting.js:401-403)/payGauge(src/04-cost-resource.js)/draw(src/15-ability-effects.js:254)/limit.scope:turn(src/15-ability-effects.js:3153-3181,isHandCastLimitAbility:3179-3181) 全実在確認。"
+    },
+    {
+      "id": "bf-x-td02-0011",
+      "no": "X-TD02/0011",
+      "name": "Cの侵食",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "レジェンドW",
+      "attributes": [
+        "強化",
+        "カオス"
+      ],
+      "rules": [
+        "■君の場にサイズ３以上のモンスター３枚以上がいるなら使える。",
+        "■そのターン中、君の場のモンスター全ての打撃力＋１！"
+      ],
+      "useConditions": [
+        {
+          "op": "cardCount",
+          "controller": "self",
+          "pile": "field",
+          "filter": {
+            "cardType": "monster",
+            "sizeGte": 3
+          },
+          "cmp": "gte",
+          "amount": 3
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td02-0011-power-buff",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "scope": "self",
+              "filter": {
+                "cardType": "monster"
+              },
+              "critical": 1,
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "使用コスト印字なし（costsキー省略）。『君の場にサイズ3以上のモンスター3枚以上がいるなら使える』=useConditions:[cardCount{controller:self,pile:field,filter:{cardType:monster,sizeGte:3},cmp:gte,amount:3}]（filter.sizeGteはsrc/17-targeting.js:358の汎用サイズ比較キー）。『そのターン中、君の場のモンスター全ての打撃力＋1』は『打撃力』=critical（SKILL.mdの既知の罠：power ではない）につきeffects:[modifyStats{scope:self,filter:{cardType:monster},critical:1,duration:turn}]（bf-x-cp01-0060知略の勝利のmodifyStats{scope:self,filter,power,critical,duration:turn}と同型、powerキーを省いてcriticalのみ指定）。timing:[\"main\"]（原文に【対抗】マーカー無し）。grep自己検査: cardCount+filter.sizeGte(src/13-abilities-core.js:810-856/src/17-targeting.js:358)/modifyStats scope+duration:turn(src/15-ability-effects.js:1613以降) 全実在確認。"
+    },
+    {
+      "id": "bf-x-td02-0012",
+      "no": "X-TD02/0012",
+      "name": "カオスエナジー",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "レジェンドW",
+      "attributes": [
+        "強化",
+        "カオス"
+      ],
+      "rules": [
+        "■【対抗】バトルしている《カオス》のモンスター１枚を選び、このバトル中、攻撃力＋3000、防御力＋3000し、さらに『反撃』を与える。(『反撃』：このカードが攻撃された後、このカードが場にいるなら、このカードの攻撃力以下の防御力を持つ攻撃してきたモンスター１枚を破壊する）"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td02-0012-counter-buff-counterattack",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "battleCard",
+            "filter": {
+              "attribute": "カオス",
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "power": 3000,
+              "defense": 3000,
+              "duration": "battle"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "counterattack",
+              "duration": "battle"
+            }
+          ]
+        }
+      ],
+      "_note": "使用条件・使用コスト印字なし（costsキー省略）。『【対抗】バトルしている《カオス》のモンスター1枚を選び、このバトル中、攻撃力＋3000、防御力＋3000し、さらに『反撃』を与える』はbf-zd02-0010ドラゴエナジー（■【対抗】バトルしている《武装騎竜》1枚を選び、このバトル中、攻撃力＋3000、防御力＋3000し、さらに『反撃』を与える！）と一字一句同一構造の別属性版: kind:spell,timing:[counter],target:{type:battleCard,filter:{attribute:カオス,cardType:monster}}（原文『のモンスター』限定のためcardType:monster追加、武装騎竜は元々モンスター専用属性のため元例は省略していた差分のみ）,effects:[modifyStats{target:$target,power:3000,defense:3000,duration:battle},grantKeyword{target:$target,keyword:counterattack,duration:battle}]（反撃=counterattack、SKILL.mdキーワード対応表）。grep自己検査: target.type:battleCard(src/17-targeting.js:168,185-199)/modifyStats target+duration:battle(src/15-ability-effects.js:1613)/grantKeyword(src/15-ability-effects.js:1701) 全実在確認。"
+    },
+    {
+      "id": "bf-x-td02-0013",
+      "no": "X-TD02/0013",
+      "name": "カオスディフェンサー",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ダークネスドラゴンW",
+      "attributes": [
+        "防御",
+        "カオス"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにサイズ３以上のモンスターがいるなら使える。",
+        "■【対抗】その攻撃を無効化する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-td02-0013-counter-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "center",
+              "filter": {
+                "sizeGte": 3
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            }
+          ]
+        }
+      ],
+      "_note": "使用コスト印字なし（costsキー省略）。『相手のターンの攻撃中、君のセンターにサイズ3以上のモンスターがいるなら使える』+『【対抗】その攻撃を無効化する』はbf-x-bt01-0098鬼道 おぼろ幻舞（■相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。■【対抗】その攻撃を無効化する）と同型構造の条件反転版: kind:spell,timing:[counter],conditions:[pendingAttackDefenderIsSelf,cardCount{controller:self,pile:center,filter:{sizeGte:3},cmp:gte,amount:1}]（元例のownCenterEmptyをcardCount{pile:center,sizeGte:3,gte1}へ置換=bf-x-bt01-0048クリスティアーノ・クリスタル・シュート！のuseConditions内cardCount{pile:center,filter:{attribute:プリズムドラゴン},gte1}と同型のcenter存在判定パターンをability.conditionsへ転用）,effects:[nullifyAttack]。counter-timing条件（pendingAttackDefenderIsSelf等）は原文どおりability.conditions側に置く（useConditionsではない。鬼道おぼろ幻舞前例に厳密準拠）。grep自己検査: pendingAttackDefenderIsSelf(src/13-abilities-core.js:1531)/cardCount pile:center(src/13-abilities-core.js:810-856,825)/nullifyAttack(src/15-ability-effects.js:2105) 全実在確認。"
+    },
+    {
+      "id": "bf-x-td02-0014",
+      "no": "X-TD02/0014",
+      "name": "Chaos Ejecter",
+      "type": "item",
+      "rarity": "デッキ商品",
+      "world": "エンシェントW",
+      "attributes": [
+        "武器",
+        "カオス"
+      ],
+      "power": 2000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払い、ライフ１を払う。",
+        "■このカードは、君のセンターにモンスターがいても攻撃できる。",
+        "■君のセンターのモンスター１枚につき、このカードの攻撃力＋2000！"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "canAttackWithCenter"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "power": 2000,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "center",
+              "filter": {
+                "cardType": "monster"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "『【装備コスト】ゲージ1を払い、ライフ1を払う』=costs.equip:[payGauge(1),payLife(1)]（bf-d-td01-0017海男児の錨 さざ波型）。『このカードは、君のセンターにモンスターがいても攻撃できる』=keywords:[canAttackWithCenter]（同bf-d-td01-0017型/bf-d-bt03-0107星銃 バリアバレット型、確立キーワード）。『君のセンターのモンスター1枚につき、このカードの攻撃力＋2000』は、本エンジンのfield.centerが単一nullableスロット（ゾーン複数化プリミティブ無し。rulings.md R1/R2『現盤面ではセンターは常に最大1枚＝観測上は忠実』）につき、『1枚につき』のスケーリングは実質『0枚(+0)か1枚(+2000)』の二値であり、continuous modifyStats{filter:sameInstanceAsSource,power:2000,conditions:[cardCount{controller:self,pile:center,filter:{cardType:monster},cmp:gte,amount:1}]}（固定+2000をcenterに モンスターがいる場合のみ許可するconditionsゲート）で数学的に同値に表現した。継続側の汎用スケーリングop amountFrom:{source:fieldCardCount}（bf-x-cp01-0040紅蓮拳 ドラゴプラス型）はzones全体（left/center/right+item系全部）を横断加算する実装（continuousFieldCardStatAmount, src/05-stats.js:404-434、zone限定不可）であり、center限定カウントには使えないため不採用（left/right のモンスターまで誤加算する）。continuous.conditionsは継続専用の条件ゲート（bf-x-bt02-0008 C・エディルディアボロス継続{conditions:[not(sourceSoulCountGte)]}前例と同型機構）で、評価owner・contextはcontinuousEffectApplies(src/05-stats.js:849-864)がsourceSlot.ownerを渡すため、controller:self指定のcardCountは自然にitem所有者視点で解決される。grep自己検査: costs.equip payGauge+payLife(src/04-cost-resource.js)/canAttackWithCenter(src/11-destroy-turn.js:35,src/18-tooltip-format.js:464)/continuous modifyStats filter.sameInstanceAsSource(src/05-stats.js:818)/continuous conditions評価(src/05-stats.js:849-864)/cardCount pile:center(src/13-abilities-core.js:810-856,825) 全実在確認。"
+    },
+    {
+      "id": "bf-x-td02-0015",
+      "no": "X-TD02/0015",
+      "name": "Chaos Absorber",
+      "type": "item",
+      "rarity": "デッキ商品",
+      "world": "レジェンドW",
+      "attributes": [
+        "武器",
+        "カオス"
+      ],
+      "power": 2000,
+      "critical": 1,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■【起動】このカードをレストしてよい。レストしたら、君のデッキの上から１枚をゲージに置く。",
+        "■【対抗】【起動】場のこのカードをドロップゾーンに置く。置いたら、そのターン中、相手の場のカード全ての『貫通』を無効化する。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-td02-0015-rest-gauge",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceStanding"
+            }
+          ],
+          "effects": [
+            {
+              "op": "restSelf"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-x-td02-0015-counter-nullify-penetrate",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "dropSource"
+            }
+          ],
+          "effects": [
+            {
+              "op": "suppressKeywordAll",
+              "controller": "opponent",
+              "keyword": "penetrate",
+              "label": "貫通",
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "『【装備コスト】ゲージ1を払う』=costs.equip:[payGauge(1)]。『【起動】このカードをレストしてよい。レストしたら、君のデッキの上から1枚をゲージに置く』はbf-x-ub01-0040グラウルズ・ワンドの同一文言と完全一致構造: kind:activated,timing:[main]（【対抗】マーク無し）+conditions:[sourceStanding]+effects:[restSelf,putTopDeckToGauge{amount:1}]（『てよい』の任意性は起動そのものが選択制であることで担保、cost化しない確立慣例）。『【対抗】【起動】場のこのカードをドロップゾーンに置く。置いたら、そのターン中、相手の場のカード全ての『貫通』を無効化する』はbf-d-bt03-0107星銃 バリアバレット（■【対抗】【起動】場のこのカードをドロップゾーンに置く。置いたら、そのターン中、場のカード全ての『貫通』を無効化する）の相手限定版: kind:activated,timing:[counter,main],cost:[dropSource],effects:[suppressKeywordAll{controller:opponent,keyword:penetrate,label:貫通,duration:turn}]（原文『相手の場の』のためcontroller:opponentのみを残し、bt03-0107の両側版=自陣分suppressKeywordAllエントリは省略）。grep自己検査: costs.equip payGauge(src/04-cost-resource.js)/sourceStanding(src/13-abilities-core.js:1002)/restSelf(src/15-ability-effects.js:1146)/putTopDeckToGauge(src/15-ability-effects.js:283)/dropSource(src/04-cost-resource.js:623,1046,1805)/suppressKeywordAll(src/15-ability-effects.js:1937-1955) 全実在確認。"
+    },
+    {
+      "id": "bf-x-td02-0016",
+      "no": "X-TD02/0016",
+      "name": "世界機能強制停止",
+      "type": "impact",
+      "rarity": "デッキ商品",
+      "world": "レジェンドW",
+      "attributes": [
+        "カオス"
+      ],
+      "rules": [
+        "■相手のライフが５以下なら使える。",
+        "■【使用コスト】ゲージ２を払う。",
+        "■君のセンターのモンスター全ての打撃力の合計分、相手にダメージ！！"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-td02-0016-center-power-damage",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "conditions": [
+            {
+              "op": "opponentLifeLte",
+              "amount": 5
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amountFrom": {
+                "source": "fieldCardStat",
+                "controller": "self",
+                "zone": "center",
+                "stat": "critical"
+              }
+            }
+          ]
+        }
+      ],
+      "_note": "『相手のライフが5以下なら使える』+『【使用コスト】ゲージ2を払う』+timing無マーカー(final)はbf-d-td01-0018大漁鬼岩 海割双竜波！（■相手のライフが3以下で、君のセンターにサイズ3のモンスターがいるなら使える。■【使用コスト】ゲージ2を払う。■相手にダメージ3！！）と完全同型構造（useConditions無し・ability.conditionsへ直接opponentLifeLteを置く。costs.cast+ability.costの重複=FIX7規約）: costs.cast:[payGauge(2)],ability{kind:impact,timing:[final],cost:[payGauge(2)],conditions:[opponentLifeLte{amount:5}]}。『君のセンターのモンスター全ての打撃力の合計分、相手にダメージ』は、rulings.md R1/R2（field.centerは単一nullableスロット＝『全て/枚数分』はcenter単一スロット参照で近似、観測上忠実）につき、effects:[dealDamage{player:opponent,amountFrom:{source:fieldCardStat,controller:self,zone:center,stat:critical}}]（打撃力=critical、fieldCardStatはcenterが空なら0を返す=『合計』が自然に0へ収束、DB内での初使用だがresolveAmountFrom内で既に汎用実装済みop・src/15-ability-effects.js:2930-2938）。grep自己検査: opponentLifeLte(src/13-abilities-core.js:908)/dealDamage(src/15-ability-effects.js:893-895)/amountFrom.source:fieldCardStat(src/15-ability-effects.js:2930-2938) 全実在確認。"
+    },
+    {
+      "id": "bf-x-td02-0017",
+      "no": "X-TD02/0017",
+      "name": "the Chaos",
+      "type": "flag",
+      "rarity": "デッキ商品",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "■君は《カオス》のカードを使える。",
+        "■君の最初の手札は４枚、ゲージは２枚、ライフは10になる！",
+        "■君は場にサイズの合計が99になるまでモンスターを置ける。",
+        "■君の場のサイズ30以上のモンスターは全ては、効果で破壊されず、能力は無効化されない。"
+      ],
+      "_note": "the Chaos の再録（bf-pr-0398 と同一テキストプリント）。フラッグの機構（閉鎖ワールド/カオス使用可否）は flags.json の the-chaos エントリが名前一致で担うため、本エントリに機構キーは不要（配線漏れではない）。"
+    }
+  ]
+}

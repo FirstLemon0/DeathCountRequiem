@@ -1571,6 +1571,12 @@ function applyLifeLink(card, owner) {
   }
   const event = recordLifeLinkEvent(card, owner, { amount, instantDefeat });
   if (instantDefeat) {
+    // E-XB1(X-BT02/0113): 「ファイトに敗北しない」保護中は即死ライフリンクでも敗北しない
+    //（一度免れた即死は再誘発しない＝期限失効後の checkWinner はライフ0/デッキ0 のみ再判定する）。
+    if (isSeatLossPrevented(owner)) {
+      addLog(`${state.players[owner].name}は「ファイトに敗北しない」効果により、${card.name}の即死ライフリンクによる敗北を免れています。`);
+      return event;
+    }
     if (!state.winner) {
       state.winner = state.players[1 - owner]?.name || null;
       state.winnerSeat = 1 - owner; // D5(戦績): ライフリンクによる即敗北（効果起因）
@@ -1729,11 +1735,48 @@ function clearWinnerIfNoCurrentLoss() {
   if (!state.winner) {
     return;
   }
-  const stillLost = state.players.some((player) => player.life <= 0 || player.deck.length === 0);
+  // E-XB1(X-BT02/0113): 「ファイトに敗北しない」保護中の席は現在の敗北条件に数えない
+  // （checkWinner のゲートと同じ判定。未設定時は isSeatLossPrevented=false ＝従来と完全一致）。
+  const stillLost = state.players.some(
+    (player, index) => (player.life <= 0 || player.deck.length === 0) && !isSeatLossPrevented(index),
+  );
   if (!stillLost) {
     state.winner = null;
     state.winnerSeat = null; // D5(戦績): 巻き戻し時は勝者席・理由も消す（決着フックは pending 解消後に再判定）
     state.winReason = null;
+  }
+}
+
+// E-XB1(X-BT02/0113 アステリズム・エフェクト): 席 seat が「ファイトに敗北しない」保護下にあるか。
+// state.lossPrevention[seat] に有効エントリがあれば true。敗北確定点（checkWinner の life<=0/deck0・
+// declareDeckLoss・applyLifeLink の即死ライフリンク）がこれを見て、保護中の席の敗北を保留する。
+// 保護は endTurn の expireLossPreventionForTurnStart が「相手ターン開始時」に必ず除去する（延命ループ無し）。
+// 未設定（従来の全カード/セーブ）は optional chaining で false ＝敗北判定はバイト単位で従来一致。
+function isSeatLossPrevented(seat) {
+  return (state?.lossPrevention?.[seat]?.length || 0) > 0;
+}
+
+// E-XB1: ターン境界（endTurn）で「次の相手ターンの開始時まで」保護の期限を判定して除去する。
+// untilTurnStartOf（＝保護席の相手）が active になり、かつ turnCount が付与時より真に進んだ最初の
+// ターン開始時に失効する（付与が相手ターン中の【対抗】でも、現ターンでは失効せず次の相手ターンで失効）。
+// 除去が起きたら checkWinner を再実行し、ライフ0/デッキ0 のまま延命していた席をその場で敗北確定させる。
+function expireLossPreventionForTurnStart() {
+  if (!Array.isArray(state.lossPrevention)) {
+    return;
+  }
+  let expired = false;
+  state.lossPrevention.forEach((entries, seat) => {
+    const list = Array.isArray(entries) ? entries : [];
+    const kept = list.filter(
+      (entry) => !(state.active === entry.untilTurnStartOf && state.turnCount > entry.sinceTurnCount),
+    );
+    if (kept.length !== list.length) {
+      expired = true;
+    }
+    state.lossPrevention[seat] = kept;
+  });
+  if (expired) {
+    checkWinner();
   }
 }
 
@@ -1805,6 +1848,9 @@ async function endTurn() {
   state.turnDamageEvents = []; // 「武器がダメージを与えたターン中」判定用の蓄積をターン境界でクリア
   state.linkAttackers = [];
   state.buddyCallDeclared = null;
+  // E-XB1(X-BT02/0113): 新しいターンの開始時点（active/turnCount 更新後）で「ファイトに敗北しない」保護の
+  // 期限を判定し、失効した席がライフ0/デッキ0 のまま延命していればその場で敗北を確定させる（延命ループ防止）。
+  expireLossPreventionForTurnStart();
   addLog(`${activePlayer().name}のターンです。`);
   render();
 }
@@ -2171,6 +2217,11 @@ function resolveLifeZeroReplacements() {
 function checkWinner() {
   resolveLifeZeroReplacements();
   state.players.forEach((player, index) => {
+    // E-XB1(X-BT02/0113): 「ファイトに敗北しない」保護中の席はライフ0/デッキ0でも敗北を保留する
+    //（isSeatLossPrevented は未設定時 false ＝従来の敗北判定と完全一致）。
+    if (isSeatLossPrevented(index)) {
+      return;
+    }
     if (player.life <= 0 && !state.winner) {
       state.winner = state.players[1 - index].name;
       state.winnerSeat = 1 - index; // D5(戦績): 名前はデッキと紐付かないため勝者席・理由を刻む
@@ -2192,6 +2243,10 @@ function declareDeckLoss(player) {
   }
   const loserIndex = state.players.indexOf(player);
   if (loserIndex < 0) {
+    return;
+  }
+  // E-XB1(X-BT02/0113): 「ファイトに敗北しない」保護中の席はデッキ0枚でも敗北を保留する。
+  if (isSeatLossPrevented(loserIndex)) {
     return;
   }
   state.winner = state.players[1 - loserIndex].name;

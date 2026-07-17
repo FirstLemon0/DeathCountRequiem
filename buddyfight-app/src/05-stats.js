@@ -92,12 +92,23 @@ function granterOnField(instanceId) {
 // このカードの能力(abilities/continuous/soulContinuous/keywords)が、場のいずれかの
 // nullifyAbilities 継続(凍てつく星辰)によって無効化されているか。nullifyImmune のカードは対象外。
 // card は場札 or ソウル内カード(ソウルの場合はホストの所有者・"soul"位置で判定)。
-// Z4(d)(S-UB-C03): grantNullifyImmunity 継続の保護判定中に isAbilitiesNullified が再入した時、
-// 「無効化されていない」扱いで打ち切るためのフラグ（保護元カード自身の継続走査が
-// activeContinuousEffects→isAbilitiesNullified を再帰的に辿るため、無限再帰を防ぐ）。
-// 0024(諸星きらり・全体無効化＋nullifyImmune) vs 0001(アイドル無効化耐性) の競合は
-// 「されない」側が勝つ（0001側のcardProtectedFrom判定が先に評価されfalseで確定するため）。
-let evaluatingNullifyProtection = false;
+// Z4(d)(S-UB-C03) / R10(E-XB2): grantNullifyImmunity 継続の保護判定は、保護元カード自身の継続走査
+// (grantedProtectionBlocks→activeContinuousEffects→isAbilitiesNullified) を辿るため循環し得る。
+// 旧実装は「保護評価中に再入した“どのカードでも”保護チェックを丸ごと打ち切り fieldNullified の生値を
+// 返す」グローバルフラグ(evaluatingNullifyProtection)で循環を止めていた。だがこれだと相手の
+// nullifyAbilities 継続が場に実在するとき、保護元が“自分自身”を守る継続(filter一致=自己言及保護)まで
+// 生値=無効化扱いで打ち切られ、保護元もろとも保護対象まで無効化された（B7 が VM 実測で発見した
+// 出荷済みバグ。bf-pr-0441 / bf-x-ss02-0002 / bf-x-ub01-0021 等 filter:{} 型や、自身が filter に一致
+// する条件付き保護が該当）。
+// 修正: グローバルフラグを「いま保護評価中のカード集合」(visited set)へ格上げする。再入が“同一カード”
+// のときだけ（＝真の自己循環）「無効化されていない」(false)で打ち切り、その札の自己言及保護を有効と
+// 見なす（最大不動点＝能力が生きている前提）。異なるカードへの再入は通常どおり保護評価を通すので、
+// 保護元が“自分では守れない別要因”で無効化された場合は保護も止まる（red pin ②）。集合キーは
+// カードオブジェクト（instanceId を持たない疑似札でも安全＝sizeEvaluationStack と同方針）。
+// 無限再帰は「同一カードは stack 追加後に必ず即 false で打ち切る」ことで防ぐ（保護2枚相互でも停止）。
+// 0024(諸星きらり・全体無効化＋nullifyImmune) vs 0001(アイドル無効化耐性) の競合は「されない」側が
+// 勝つ（0001側のcardProtectedFrom判定が先に評価されfalseで確定するため）。
+const nullifyProtectionStack = new Set();
 function isAbilitiesNullified(card) {
   if (!card || card.nullifyImmune || !state?.players?.length) return false;
   // FD5(X-BT01/0124 ガエン): ゾーン限定の無効化耐性。指定ゾーン(item=変身中)に在る間だけ「能力を無効化されない」。
@@ -112,13 +123,16 @@ function isAbilitiesNullified(card) {
   // 誰のソウルにも存在しないため、下の探索は本来どのみち host が見つからず false になるが、
   // 将来の実装変更（フラッグを走査対象に含める等）に備えて明示的に免除しておく。
   if (card.type === "flag") return false;
-  if (!evaluatingNullifyProtection) {
-    evaluatingNullifyProtection = true;
-    try {
-      if (cardProtectedFrom(card, "nullify")) return false;
-    } finally {
-      evaluatingNullifyProtection = false;
-    }
+  if (nullifyProtectionStack.has(card)) {
+    // 同一カードの保護評価への再入＝自己言及保護の循環。最大不動点として「無効化されていない」で打ち切る
+    // （＝この札の能力が生きている前提で、その札自身の grantNullifyImmunity を読ませる）。
+    return false;
+  }
+  nullifyProtectionStack.add(card);
+  try {
+    if (cardProtectedFrom(card, "nullify")) return false;
+  } finally {
+    nullifyProtectionStack.delete(card);
   }
   let cardOwner;
   let location = "field";
@@ -964,8 +978,22 @@ function grantedProtectionBlocks(card, kind, cause) {
     if (player.flag?.type === "flag") {
       sources.push({ source: player.flag, zone: null });
     }
-    return sources.some(({ source, zone }) =>
-      activeContinuousEffects(source).some((e) => {
+    return sources.some(({ source, zone }) => {
+      if (!source) return false;
+      // R10(E-XB2) 再入バウンド: この source が op を印字継続(continuous/turnContinuous。flagはcontinuous)に
+      // 一切持たないなら、activeContinuousEffects(→isAbilitiesNullified 再帰) を呼ばずに早期スキップする。
+      // isAbilitiesNullified の再入ガードを visited set 化した結果、grantedProtectionBlocks は「発生源自身が
+      // 無効化されていないか」を実評価するようになったため、保護カードでない大多数の場札まで能力無効化評価を
+      // 連鎖的に走らせると盤面枚数の階乗オーダに膨らむ。op を印字継続に持つ source（＝実際の保護カード。
+      // 通常0〜1枚）だけに activeContinuousEffects 評価を限定して再入を有界化する純粋なプレチェック。
+      // activeContinuousEffects が返す集合は continuous+turnContinuous（flag は continuous）と一致するため、
+      // このプレチェックは真の保護カードを取りこぼさない（無効化された保護元は activeContinuousEffects が []
+      // を返し保護を与えない、という既存意味論も不変）。
+      const hasOpRaw =
+        (source.continuous || []).some((e) => e.op === op) ||
+        (source.turnContinuous || []).some((e) => e.op === op);
+      if (!hasOpRaw) return false;
+      return activeContinuousEffects(source).some((e) => {
         if (e.op !== op) return false;
         if (e.controller === "self" && targetSlot.owner !== sourceOwner) return false;
         if (e.controller === "opponent" && targetSlot.owner === sourceOwner) return false;
@@ -978,8 +1006,8 @@ function grantedProtectionBlocks(card, kind, cause) {
           if (e.from.byOpponent && !cause.byOpponent) return false;
         }
         return true;
-      }),
-    );
+      });
+    });
   });
 }
 
