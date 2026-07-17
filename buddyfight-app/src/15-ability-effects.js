@@ -231,6 +231,13 @@ async function maybeApplyHandDiscardGuard(receiver, context) {
   return true;
 }
 
+// E-XB8(X-CP03/0058 ファントム・ゲッター): この dealDamage が"霊撃"か。霊撃は「破壊された時に相手へ
+// ダメージ」＝event:"destroyByAttack" の dealDamage（＋明示 effect.spiritStrike）で表現される既存概念で、
+// spiritStrikeDamageBonus の同定条件と一致させる。ブースト加算点と被弾トリガー点で共有する。
+function damageIsSpiritStrike(effect, context) {
+  return Boolean(effect.spiritStrike) || context.ability?.event === "destroyByAttack";
+}
+
 async function executeAbilityEffect(effect, context) {
   const target = resolveEffectReference(effect.target, context);
   const player = context.player;
@@ -437,6 +444,19 @@ async function executeAbilityEffect(effect, context) {
       sourceName: context.card?.name || "効果",
     });
     addLog(`${state.players[restricted].name}はこのターン、コールできるカードが制限されます。`);
+  }
+  if (effect.op === "restrictCallCountPerTurn") {
+    // E-XB7(X-SS03/0060 ロイヤルティ): 「そのターン中、相手はN枚以上モンスターをコールできない」。
+    // max＝そのターンにコールできる最大枚数（「4枚以上コールできない」＝max:3）。総コール枚数キャップは
+    // 同名単位の callLimitPerTurn とは別軸。clearTurnModifiers で解除・isCallCountCappedThisTurn(src/07)が参照。
+    const capped =
+      effect.controller === "opponent" || effect.player === "opponent"
+        ? 1 - context.owner
+        : context.owner;
+    const max = Math.max(0, effect.max ?? effect.amount ?? 1);
+    state.callCountCapsThisTurn ||= [];
+    state.callCountCapsThisTurn.push({ owner: capped, max, sourceName: context.card?.name || "効果" });
+    addLog(`${state.players[capped].name}はこのターン、モンスターを${max}枚までしかコールできません。`);
   }
   if (effect.op === "lookTopSelectToSoulRestToDrop") {
     // X10(D-BT01/0044/0050): デッキの上から count 枚を見て amount 枚をこのカードのソウルへ、残りをドロップへ。
@@ -646,6 +666,7 @@ async function executeAbilityEffect(effect, context) {
       queueDeckMilledTriggers(state.players.indexOf(player), rest, makeEffectCause(context, state.players.indexOf(player))); // E5
     } else if (effect.altTo === "gauge") {
       rest.forEach((c) => player.gauge.push(c));
+      noteGaugePlaced(state.players.indexOf(player), rest.length); // E-XB12: 残りをゲージへ（funnel 非経由）
     } else {
       rest.forEach((c) => player.deck.unshift(c));
     }
@@ -761,6 +782,7 @@ async function executeAbilityEffect(effect, context) {
         toTop = ordered;
       }
       toGauge.forEach((c) => player.gauge.push(c));
+      noteGaugePlaced(state.players.indexOf(player), toGauge.length); // E-XB12: scry の選択分をゲージへ（funnel 非経由）
       // 上バッチ: ordered[0] を最上段(末尾)にするため逆順 push（reorderTopOrdered と同規約）。
       for (let i = toTop.length - 1; i >= 0; i -= 1) player.deck.push(toTop[i]);
       // 秘匿: 枚数のみログ（カード名は出さない＝相手先読み防止）。
@@ -894,9 +916,10 @@ async function executeAbilityEffect(effect, context) {
     const receiver = effect.player === "self" ? player : opponent;
     let amount = effect.amountFrom ? resolveAmountFrom(effect.amountFrom, context) : effect.amount || 1;
     // 霊撃ブースト: バイオレンス・ファミリア等で立てた turn ボーナスを、霊撃(=event destroyByAttack の dealDamage)に加算。
+    const isSpiritStrike = damageIsSpiritStrike(effect, context); // E-XB8: 霊撃同定（ブースト/被弾トリガー共通）
     if (
       receiver === opponent &&
-      (context.ability?.event === "destroyByAttack" || effect.spiritStrike) &&
+      isSpiritStrike &&
       state.spiritStrikeDamageBonus?.[context.owner]
     ) {
       amount += state.spiritStrikeDamageBonus[context.owner];
@@ -934,7 +957,35 @@ async function executeAbilityEffect(effect, context) {
         if (label === "爆雷") {
           await runTriggeredAbilities(listener, "opponentDamagedByBakurai", detail);
         }
+        if (isSpiritStrike) {
+          // E-XB8(X-CP03/0058 ファントム・ゲッター): 「相手が"霊撃"でダメージを受けた時」の受け皿。
+          // 霊撃は event:"destroyByAttack"（＋明示 spiritStrike）の dealDamage＝ブースト同定と同一条件。
+          // opponentDamagedByEffect/Bakurai と同じ発生源(context.owner)視点で自陣の場札へ直接配送する
+          //（設置札は zones（set 枠含む）に載るためこのループで拾える。1ターン1回等は card 側 limit で制御）。
+          await runTriggeredAbilities(listener, "opponentDamagedBySpiritStrike", detail);
+        }
       }
+    }
+  }
+  if (effect.op === "discardRandomFromHand") {
+    // E-XB8 補助(X-CP03/0058 ファントム・ゲッター): 相手(既定)/自分の手札からランダムにN枚捨てる。
+    // 乱数索引は state 常駐 rngInt（リプレイ/room 復元で決定的）。索引/シードは addLog しない（T13）。
+    // 捨て札は公開領域（ドロップ）へ落ちるため、捨てたカード名の addLog は許容（公開）。
+    const receiver = effect.player === "self" ? player : opponent;
+    if (receiver !== player && (await maybeApplyHandDiscardGuard(receiver, context))) {
+      return;
+    }
+    const amount = Math.min(effect.amount || 1, receiver.hand.length);
+    const picked = [];
+    for (let index = 0; index < amount; index += 1) {
+      if (receiver.hand.length === 0) {
+        break;
+      }
+      picked.push(receiver.hand.splice(rngInt(receiver.hand.length), 1)[0]);
+    }
+    discardHandCardsToDrop(receiver, picked, makeEffectCause(context, state.players.indexOf(receiver)));
+    if (picked.length > 0) {
+      addLog(`${receiver.name}はランダムに選ばれた${picked.map((card) => card.name).join("、")}を捨てました。`);
     }
   }
   if (effect.op === "dealDamageByFieldCardStat") {
@@ -997,6 +1048,7 @@ async function executeAbilityEffect(effect, context) {
       owner: state.players.indexOf(player), // E-PR3: filter.buddy を手札でも所有者判定できるよう伝播
     });
     player.gauge.push(...movedCards);
+    noteGaugePlaced(state.players.indexOf(player), movedCards.length); // E-XB12: 手札→ゲージ（funnel 非経由・直接 runFieldEventTriggers）
     if (movedCards.length > 0) {
       addLog(`${movedCards.map((card) => card.name).join("、")}をゲージに置きました。`);
       // 「相手のゲージにカードが置かれた時」誘発（爆雷 0020）。効果でゲージに置く経路も対象。
@@ -1026,10 +1078,15 @@ async function executeAbilityEffect(effect, context) {
     // E-XV5(X-UB02/0068 フィジカル・フォーマット！): downTo 指定時は「ゲージが downTo 枚になるように置く」＝
     // 超過分(gauge.length - downTo)だけドロップへ。downTo 以下なら no-op（「3枚以上なら2枚に」= downTo:2 と
     // 自然に一致：2枚以下は動かさない）。downTo 未指定時は従来の固定 amount 挙動（既存カード不変・オプトイン）。
+    // E-XB15(X-CP03/0034 ヴェンディダート・ディザスター): amountFrom 指定時は動的枚数（putTopDeckToGauge と同型の
+    // resolveAmountFrom。「相手の場のモンスターの枚数分」＝fieldCardCount controller:opponent）をゲージ残数でクランプ。
+    // downTo/amount の各経路はこの分岐が undefined のときのみ到達＝挙動完全不変（後方互換のオプトイン）。
     const amount =
       effect.downTo !== undefined
         ? Math.max(0, receiver.gauge.length - effect.downTo)
-        : Math.min(effect.amount || 1, receiver.gauge.length);
+        : effect.amountFrom !== undefined
+          ? Math.max(0, Math.min(resolveAmountFrom(effect.amountFrom, context), receiver.gauge.length))
+          : Math.min(effect.amount || 1, receiver.gauge.length);
     const movedCards = receiver.gauge.splice(receiver.gauge.length - amount, amount);
     receiver.drop.push(...movedCards);
     if (movedCards.length > 0) {
@@ -1758,6 +1815,47 @@ async function executeAbilityEffect(effect, context) {
         `${context.card.name}の効果で${target.card.name}のソウルから${movedCards
           .map((card) => card.name)
           .join("、")}をドロップゾーンに置きました。`,
+      );
+    }
+  }
+  if (effect.op === "returnTargetSoulToHand" && target?.card) {
+    // E-XB11(X-SS03/0057 アトラ"SD"): 「場のカード1枚を選び、そのカードのソウル全てを持ち主の手札に戻す」。
+    // dropTargetSoul の宛先違い版（ドロップではなく持ち主＝target.owner の手札へ）。amount 省略＝全て。
+    // これは「捨てる」ではなく「戻す」なので soulDiscardImmunity（Z4(b)）ゲート・soulCardDropped 誘発は掛けない
+    // （ソウルはドロップに落ちていない）。ソウル切れの設置自壊のみ dropTargetSoul と同様に検査する。
+    const amount = effect.amount ?? target.card.soul?.length ?? 0;
+    if (amount <= 0) {
+      return; // ソウル0枚＝no-op（枚数保存）
+    }
+    const soulEntries = (target.card.soul || []).map((card, index) => ({
+      card,
+      index,
+      owner: target.owner,
+      source: "soul",
+      note: `${target.card.name}のソウル`,
+    }));
+    const selected =
+      soulEntries.length > amount
+        ? await chooseCardEntries(soulEntries, {
+            title: `${context.card.name}のソウル選択`,
+            lead: `${target.card.name}のソウルから手札に戻すカードを${amount}枚選んでください。`,
+            min: amount,
+            max: amount,
+            forceDialog: true,
+            promptSeat: context.owner, // 効果の使用者が選ぶ（CPU対戦/権威サーバの誤配送防止）
+            purpose: "move",
+          })
+        : soulEntries.slice(0, amount);
+    const movedCards = removePileEntries(target.card.soul || [], selected || []);
+    // 「持ち主の手札」＝ソウルを持つカードの持ち主(target.owner)の手札（dropTargetSoul が drop 先を target.owner に
+    // 取るのと同じ持ち主決定）。instanceId/枚数はそのまま保存（soul → hand の移動のみ・card-conservation 満たす）。
+    state.players[target.owner].hand.push(...movedCards);
+    maybeDropSetWhenSoulEmpty(target.card, target.owner); // 設置のソウル切れ自壊（宛先が手札でも同様）
+    if (movedCards.length > 0) {
+      addLog(
+        `${context.card.name}の効果で${target.card.name}のソウルから${movedCards
+          .map((card) => card.name)
+          .join("、")}を持ち主の手札に戻しました。`,
       );
     }
   }

@@ -105,6 +105,9 @@ async function loadGameData() {
         .map((card) => {
           const c = normalizeCard(card, set);
           c.imagePack = packName;
+          // hidden セット（エラッタ前カード）由来のカードは製品ドロップダウン・検索一覧から除外し、
+          // 名前検索でのみヒットさせる（デッキ投入・共有コード・limitWith 合算は通常どおり有効）。
+          c.hidden = Boolean(card.hidden ?? set.hidden);
           return c;
         });
     }),
@@ -313,6 +316,7 @@ function productsForGeneration(generation) {
   const seen = new Map();
   cards.forEach((card) => {
     if (!card.productId) return;
+    if (card.hidden) return; // hidden セット（エラッタ前カード）は製品ドロップダウンに出さない。
     if (generation && card.generation !== generation) return;
     if (!seen.has(card.productId)) seen.set(card.productId, card.productName || card.productId);
   });
@@ -774,6 +778,14 @@ function filteredCards() {
   const world = elements.worldFilter.value;
   const productId = elements.productFilter.value;
   return cards
+    // hidden セット（エラッタ前カード）は、検索語がカード名にヒットした時のみ表示する
+    // （デッキ投入自体は可能＝検索でヒットさせてから入れる。共有コード/limitWith 合算は通常どおり）。
+    .filter((card) => {
+      if (!card.hidden) {
+        return true;
+      }
+      return Boolean(text) && card.name.toLowerCase().includes(text);
+    })
     // 世代で絞る（フラッグは全世代共通なので常に通す）
     .filter((card) => !activeGeneration || card.generation === activeGeneration || card.type === "flag")
     .filter((card) => !type || card.type === type)

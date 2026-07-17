@@ -2085,6 +2085,7 @@ function putFieldCardToGauge(player, zone) {
   }
   applyLifeLink(card, state.players.indexOf(player));
   player.gauge.push(card);
+  noteGaugePlaced(state.players.indexOf(player), 1); // E-XB12: コストで場札をゲージへ（この経路は queueGaugePlacedTriggers を通らない）
   addLog(`${card.name}をコストでゲージに置きました。`);
   return card;
 }

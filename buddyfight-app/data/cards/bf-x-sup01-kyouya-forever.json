@@ -1,0 +1,596 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-x-sup01-kyouya-forever",
+    "name": "バッツ サプライセット第1弾「キョウヤフォーエバー」",
+    "kind": "サプライセット",
+    "generation": "バッツ",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=67"
+  },
+  "cards": [
+    {
+      "id": "bf-x-sup01-0001",
+      "no": "D/0001",
+      "name": "終焉魔王 キョウヤ",
+      "type": "monster",
+      "rarity": "PR",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ダークネスドラゴンW"
+      ],
+      "attributes": [
+        "魔王",
+        "ドラゴン",
+        "神",
+        "ディザスター"
+      ],
+      "size": 3,
+      "power": 10000,
+      "critical": 2,
+      "defense": 10000,
+      "rules": [
+        "■【コールコスト】君の場のカード１枚をドロップゾーンに置き、ゲージ３を払う。",
+        "■このカードがセンターにいるなら、君のレフトとライトの《ディザスター》のサイズを１減らす。",
+        "■このカードが攻撃した時、君のドロップゾーンに《ディザスター》７種類以上があるなら、相手にダメージ７！！"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/d_0001.png",
+      "costs": {
+        "call": [
+          {
+            "op": "dropOwnFieldCard",
+            "amount": 1,
+            "filter": {}
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 3
+      },
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "targetZones": [
+            "left",
+            "right"
+          ],
+          "filter": {
+            "cardType": "monster",
+            "attribute": "ディザスター"
+          },
+          "size": -1,
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "center"
+              ]
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-sup01-0001-attack-damage",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "attribute": "ディザスター"
+              },
+              "distinct": "distinctByName",
+              "cmp": "gte",
+              "amount": 7
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 7
+            }
+          ]
+        }
+      ],
+      "_note": "【コールコスト】『君の場のカード１枚をドロップゾーンに置き、ゲージ３を払う』は無限定（モンスター限定でない）ため忠実に costs.call:[dropOwnFieldCard{amount:1,filter:{}}, payGauge(3)] を採用（bf-d-ss01-0033等の再録前例はdropOwnMonster近似だが、本カードは再録ではなく新規のため過剰絞り込みを避け dropOwnFieldCard を選択。dropOwnFieldCard は canPay/pay/payWithSelection の3経路とも実装済み src/04-cost-resource.js:659,1080,1350）。『このカードがセンターにいるなら、君のレフトとライトの《ディザスター》のサイズを１減らす』は bf-d-ss02-0008 天蝎の星守りエスコルピア（『このカードがセンターにいるなら、君のレフトとライトの元々のサイズが２以下の《星》のモンスターのサイズは０になる』）と同型骨格の continuous modifyStats{controller:self,targetZones:[left,right],filter,size:-1,conditions:[sourceZoneIn{zones:[center]}]}（targetZones使用はFS1黙殺回避のための必須作法）。『このカードが攻撃した時、君のドロップゾーンに《ディザスター》７種類以上があるなら、相手にダメージ７』は event:attack（接頭辞なし直接発火、bf-x-bt01-reborn-of-satan.json:81の_note前例）+ conditions:[cardCount{pile:drop,filter:{attribute:ディザスター},distinct:distinctByName,cmp:gte,amount:7}]（filterにcardType:monsterを付けない＝ディザスターはD/0009のようなアイテムにも付く属性のため過剰絞り込み回避）+ effects:[dealDamage{player:opponent,amount:7}]。grep自己検査: dropOwnFieldCard(src/04-cost-resource.js:659,1080,1350)/payGauge(src/04)/modifyStats+targetZones(src/05-stats.js, bf-d-ss02-souse-no-michishirube.json:667実例)/sourceZoneIn(src/13-abilities-core.js)/event:attack直接発火(src/09-attack.js)/cardCount+distinctByName(src/13-abilities-core.js:810-856)/dealDamage(src/15-ability-effects.js) 全実在確認。"
+    },
+    {
+      "id": "bf-x-sup01-0002",
+      "no": "D/0002",
+      "name": "黒竜神官 グレムリン",
+      "type": "monster",
+      "rarity": "PR",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ダークネスドラゴンW"
+      ],
+      "attributes": [
+        "黒竜",
+        "深淵",
+        "ディザスター"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードが登場した時、君のデッキの上から３枚をドロップゾーンに置く。その中に《ディザスター》があるなら、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/d_0002.png",
+      "abilities": [
+        {
+          "id": "bf-x-sup01-0002-enter-mill-gauge",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "moveTopDeckToDrop",
+              "amount": 3
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "milledContains",
+                "filter": {
+                  "attribute": "ディザスター"
+                }
+              },
+              "then": [
+                {
+                  "op": "putTopDeckToGauge",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "コール印字なし（原文に【コールコスト】行が無い＝無償コール、costsキー省略）。『このカードが登場した時、君のデッキの上から３枚をドロップゾーンに置く。その中に《ディザスター》があるなら、君のデッキの上から１枚をゲージに置く』は G1(D-EB01) のミル計測パターン: event:enter, script:[moveTopDeckToDrop{amount:3}（context.milledに今回ミルした3枚を記録）, ifCondition{condition:{op:milledContains,filter:{attribute:ディザスター}}, then:[putTopDeckToGauge{amount:1}]}]。bf-d-eb01-buddy-collection.json:3320-3345（無顔黒竜レイズフェイス）と同型構造をplayer省略（既定=自分）+ 後続効果をselectCards/destroySelectedからputTopDeckToGaugeへ差替。grep自己検査: moveTopDeckToDrop+context.milled記録(src/15-ability-effects.js:335-364)/ifCondition(src/14-ability-script.js:340)/milledContains(src/13-abilities-core.js:1268-1272)/putTopDeckToGauge(isScriptEffectStep許可リストsrc/14-ability-script.js:3245、実装src/15-ability-effects.js) 全実在確認。"
+    },
+    {
+      "id": "bf-x-sup01-0003",
+      "no": "D/0003",
+      "name": "死竜騎士 ダビデ",
+      "type": "monster",
+      "rarity": "PR",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ダークネスドラゴンW"
+      ],
+      "attributes": [
+        "騎士",
+        "黒竜",
+        "ディザスター"
+      ],
+      "size": 1,
+      "power": 6000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■君の場の《ディザスター》がモンスターを攻撃しているなら、その攻撃は無効化されない。",
+        "■“霊撃”このカードの攻撃で、相手のモンスターを破壊した時、相手にダメージ１。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/d_0003.png",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "continuous": [
+        {
+          "op": "grantAttackResistance",
+          "controller": "self",
+          "filter": {
+            "attribute": "ディザスター"
+          },
+          "conditions": [
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "monster"
+            }
+          ],
+          "effects": [
+            "nullify"
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-sup01-0003-spirit-strike",
+          "label": "霊撃",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "【コールコスト】ゲージ１=costs.call:[payGauge(1)]。『君の場の《ディザスター》がモンスターを攻撃しているなら、その攻撃は無効化されない』は continuous grantAttackResistance{controller:self,filter:{attribute:ディザスター}（cardType限定なし=ディザスターはアイテムにも付く属性のため過剰絞り込み回避）,conditions:[pendingAttackTargetIs{targetType:monster}]（『モンスターを攻撃している』=対象が本体でなくモンスタースロットであることの判定。src/09-attack.js:221で通常のゾーン宣言は常にtargetType:monster、本体宣言はtargetType:fighter）,effects:[nullify]}（H-BT03/0080紅蓮闘士ザ・ブラックスミス『君の場のカード名に「拳」を含むアイテムが１枚で攻撃しているなら、その攻撃は無効化されない』と同型骨格・attackingAlone条件をpendingAttackTargetIsに差替、cardType限定を撤去）。“霊撃”行は bf-h-eb04-buddy-allstars.json:2050（デスゲイズ・ドラゴン“SD”）と一字一句同一原文につき同一DSL（kind:triggered,label:霊撃,event:destroyByAttack,effects:[dealDamage{player:opponent,amount:1}]）をそのまま採用。grep自己検査: payGauge(src/04)/grantAttackResistance(src/10-battle-resolve.js:286-340、H-BT03/0080実例)/pendingAttackTargetIs(src/13-abilities-core.js:1505-1511)/destroyByAttack event直接発火(bf-h-eb04-0029実例)/dealDamage(src/15-ability-effects.js) 全実在確認。"
+    },
+    {
+      "id": "bf-x-sup01-0004",
+      "no": "D/0004",
+      "name": "魔王の傀儡 テルミ",
+      "type": "monster",
+      "rarity": "PR",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "レジェンドW"
+      ],
+      "attributes": [
+        "オリンピア",
+        "ワイダーサカー",
+        "ディザスター"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■君の場の他の《ワイダーサカー》か《ディザスター》が場から離れる場合、このカードをドロップゾーンに置いてよい。置いたら、そのカードを場に残す。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/d_0004.png",
+      "allyDestroyReplacement": {
+        "optional": true,
+        "filter": {
+          "attributeIn": [
+            "ワイダーサカー",
+            "ディザスター"
+          ]
+        },
+        "cost": [
+          {
+            "op": "dropSource"
+          }
+        ]
+      },
+      "_note": "コール印字なし（原文に【コールコスト】行が無い＝無償コール、costsキー省略）。『君の場の他の《ワイダーサカー》か《ディザスター》が場から離れる場合、このカードをドロップゾーンに置いてよい。置いたら、そのカードを場に残す』は H-EB04/0024 ドラゴンベビー リッキー『君の場の他の《怒羅魂頭》が場から離れる場合、このカードをドロップゾーンに置いてよい。置いたら、そのカードを場に残す』と一字一句同一原文構造（属性のみ相違）につき同一機構 allyDestroyReplacement{optional:true,filter:{attribute}, cost:[dropSource]} を採用（filterはattributeIn化して《ワイダーサカー》《ディザスター》のOR判定）。『他の』はapplyAllyDestroyReplacementのreplacer走査が破壊対象card自身をreplacer候補から除外する仕組み（src/11-destroy-turn.js:568 `replacer.instanceId === card.instanceId` continue）で自然に満たされ、追加のexcludeSource等は不要（H-EB04/0024と同じ扱い）。grep自己検査: allyDestroyReplacement(src/11-destroy-turn.js:555-600、data/cards/bf-h-eb04-buddy-allstars.json:1687-1699実例)/filter.attributeIn(src/17-targeting.js:401-406) 全実在確認。"
+    },
+    {
+      "id": "bf-x-sup01-0005",
+      "no": "D/0005",
+      "name": "自称癒し系錬金術師 カバラ",
+      "type": "monster",
+      "rarity": "PR",
+      "world": "ダンジョンW",
+      "attributes": [
+        "コンストラクト",
+        "ディザスター"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■このカードが登場した時、ライフ２を払ってよい。払ったら、君のデッキから《コンストラクト》か《ディザスター》１枚までを手札に加え、デッキをシャッフルする。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/d_0005.png",
+      "abilities": [
+        {
+          "id": "bf-x-sup01-0005-enter-search",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "searchDeckToHand",
+              "filter": {
+                "attributeIn": [
+                  "コンストラクト",
+                  "ディザスター"
+                ]
+              },
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "コール印字なし（原文に【コールコスト】行が無い＝無償コール、costsキー省略）。『このカードが登場した時、ライフ２を払ってよい。払ったら、君のデッキから《コンストラクト》か《ディザスター》１枚までを手札に加え、デッキをシャッフルする』は bf-x-ss01-0033（『このカードが登場した時、…ライフ１を払ってよい。払ったら、選んだカードを手札に加える』）と同型の enter+optional:true+cost:[payLife]+effects:[…] 構造。sourceはデッキのためsearchDeckToHand{filter:{attributeIn:[コンストラクト,ディザスター]},amount:1}（『１枚まで』=amount上限、min0は既定でsearchDeckToHandに内蔵。シャッフルはeffect.shuffle!==false既定で自動実行）。grep自己検査: payLife(src/04-cost-resource.js)/searchDeckToHand+filter.attributeIn(src/15-ability-effects.js:368-406、src/17-targeting.js) 全実在確認。"
+    },
+    {
+      "id": "bf-x-sup01-0006",
+      "no": "D/0006",
+      "name": "魔王の牙 ロウガ",
+      "type": "monster",
+      "rarity": "PR",
+      "world": "デンジャーW",
+      "worlds": [
+        "デンジャーW",
+        "ダンジョンW"
+      ],
+      "attributes": [
+        "タイラント",
+        "ディザスター"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■このカードが攻撃した時、君の場にアイテムか他の《ディザスター》があるなら、次の２つから１つを選んで使う。",
+        "・君のライフを＋２！",
+        "・そのターン中、このカードの打撃力＋２！"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/d_0006.png",
+      "abilities": [
+        {
+          "id": "bf-x-sup01-0006-attack-choice",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "excludeSource": true,
+              "filter": {
+                "anyOf": [
+                  {
+                    "cardType": "item"
+                  },
+                  {
+                    "cardType": "monster",
+                    "attribute": "ディザスター"
+                  }
+                ]
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "魔王の牙 ロウガ",
+              "lead": "次の2つから1つを選んでください。",
+              "options": [
+                {
+                  "key": "life",
+                  "label": "君のライフを＋２する。",
+                  "script": [
+                    {
+                      "op": "gainLife",
+                      "amount": 2
+                    }
+                  ]
+                },
+                {
+                  "key": "critical",
+                  "label": "そのターン中、このカードの打撃力＋２する。",
+                  "script": [
+                    {
+                      "op": "modifyStats",
+                      "target": "$self",
+                      "critical": 2,
+                      "duration": "turn"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "コール印字なし（原文に【コールコスト】行が無い＝無償コール、costsキー省略）。『このカードが攻撃した時、君の場にアイテムか他の《ディザスター》があるなら、次の２つから１つを選んで使う』は event:attack(接頭辞なし直接発火) + conditions:[cardCount{pile:field,excludeSource:true(『他の』=自分自身除外、src/13-abilities-core.js:826-828),filter:{anyOf:[{cardType:item},{cardType:monster,attribute:ディザスター}]},cmp:gte,amount:1}] でゲート。excludeSourceはfilter適用前に自分自身をプール全体から除外するため、アイテム枝には影響せず（自分はモンスターなので該当なし）ディザスター枝だけが実質的に『他の』を反映する。『次の２つから１つを選んで使う』は bf-x-ss01-0001 五角の継承者ドラム『君がダメージを受けた時、次の２つから１つを選んで使う』と同型の script:[chooseBranch{options:[…]}]（スキップ枝なし=完全選択・原文に『してよい』が無いため）。『君のライフを＋２する』はgainLife{amount:2}。『そのターン中、このカードの打撃力＋２する』は modifyStats{target:$self,critical:2,duration:turn}（『打撃力』=critical、SKILL.md落とし穴節）。grep自己検査: cardCount+excludeSource+filter.anyOf(src/13-abilities-core.js:810-856、src/17-targeting.js:306-309)/chooseBranch(src/14-ability-script.js、bf-x-ss01-0001実例)/gainLife(isScriptEffectStep許可リストsrc/14:3245)/modifyStats target:$self(isScriptEffectStep許可リスト・resolveEffectReference) 全実在確認。"
+    },
+    {
+      "id": "bf-x-sup01-0007",
+      "no": "D/0007",
+      "name": "門番長 シドー",
+      "type": "monster",
+      "rarity": "PR",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ダークネスドラゴンW"
+      ],
+      "attributes": [
+        "死",
+        "深淵",
+        "ディザスター"
+      ],
+      "size": 1,
+      "power": 410,
+      "critical": 2,
+      "defense": 410,
+      "rules": [
+        "■“潜影”このカードは相手のセンターにモンスターがいても、相手を攻撃できる！",
+        "■このカードが攻撃された時、「門番長 シドー」以外の君の場の《ディザスター》のモンスター１枚を選び、その攻撃の対象を選んだカードに変更する。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/d_0007.png",
+      "keywords": [
+        "canAttackFighterThroughCenter"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-sup01-0007-attacked-redirect",
+          "kind": "triggered",
+          "event": "attacked",
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "excludeSource": true,
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster",
+              "attribute": "ディザスター"
+            }
+          },
+          "effects": [
+            {
+              "op": "redirectPendingAttackToTarget",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "_note": "コール印字なし（原文に【コールコスト】行が無い＝無償コール、costsキー省略）。『“潜影”このカードは相手のセンターにモンスターがいても、相手を攻撃できる』=keywords:[canAttackFighterThroughCenter]（多数前例、src/12-render.js:995-998、src/18-tooltip-format.js:465）。『このカードが攻撃された時、「門番長 シドー」以外の君の場の《ディザスター》のモンスター１枚を選び、その攻撃の対象を選んだカードに変更する』はカード名を直接ハードコードせず excludeSource:true（自分自身を候補から除外＝『「門番長 シドー」以外』の意味論を満たす）で表現。ability級 target:{type:fieldCard,controller:self,excludeSource:true,allowMissingTarget:true,filter:{cardType:monster,attribute:ディザスター}}（候補複数なら対話選択・0枚ならallowMissingTargetで不発）+ effects:[redirectPendingAttackToTarget{target:$target}]は H-BT02/0089 鬼道 馬鹿囃子『【対抗】その攻撃の対象を、君の場のモンスター１枚に変更する』のability級target+redirectPendingAttackToTarget形を kind:triggered,event:attacked（bf-x-bt01-0016等で確立済みの直接発火イベント）へ移植。grep自己検査: canAttackFighterThroughCenter(src/12-render.js:995,src/18-tooltip-format.js:465)/event:attacked直接発火(bf-x-bt01-reborn-of-satan.json:1462実例)/target.excludeSource+allowMissingTarget(src/17-targeting.js:122,216、bf-x-bt02-0105実例)/redirectPendingAttackToTarget(src/15-ability-effects.js:2160-2172、bf-h-bt02-galaxy-burst.json:4957実例) 全実在確認。"
+    },
+    {
+      "id": "bf-x-sup01-0008",
+      "no": "D/0008",
+      "name": "魔王の片腕 ソフィア",
+      "type": "monster",
+      "rarity": "PR",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "レジェンドW"
+      ],
+      "attributes": [
+        "星",
+        "ディザスター"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■君のレフトとライトの《星》と《ディザスター》は、相手のカードの効果で破壊されない。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/d_0008.png",
+      "continuous": [
+        {
+          "op": "grantDestroyImmunity",
+          "controller": "self",
+          "zoneIn": [
+            "left",
+            "right"
+          ],
+          "filter": {
+            "cardType": "monster",
+            "attributeIn": [
+              "星",
+              "ディザスター"
+            ]
+          },
+          "from": {
+            "byEffect": true,
+            "byOpponent": true
+          }
+        }
+      ],
+      "_note": "コール印字なし（原文に【コールコスト】行が無い＝無償コール、costsキー省略）。『君のレフトとライトの《星》と《ディザスター》は、相手のカードの効果で破壊されない』は bf-x-cp02-0068（『このカードがセンターにいるなら、君のレフトとライトの《プリズムドラゴン》は相手のカードの効果で破壊されず、打撃力＋1！』）の continuous grantDestroyImmunity{controller:self,zoneIn:[left,right],filter:{cardType:monster,attribute:...},from:{byEffect:true,byOpponent:true}} と同型骨格（本カードは『このカードがセンターにいるなら』のゲートが原文に無いため conditions は付けず常時発動、対象属性は《星》《ディザスター》のOR=attributeInで2属性化。星系スタットバフ節は無いためmodifyStatsは付けない）。grep自己検査: grantDestroyImmunity(src/11-destroy-turn.js:120-152、bf-x-cp02-100-yen-star-dragon.json:1697-1765実例)/filter.attributeIn(src/17-targeting.js:401-406) 全実在確認。"
+    },
+    {
+      "id": "bf-x-sup01-0009",
+      "no": "D/0009",
+      "name": "煉獄魔剣士の甲冑",
+      "type": "item",
+      "rarity": "PR",
+      "world": "ダンジョンW",
+      "worlds": [
+        "ダンジョンW",
+        "ダークネスドラゴンW"
+      ],
+      "attributes": [
+        "武器",
+        "ディザスター"
+      ],
+      "power": 1000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■このカードは君のセンターにモンスターがいても、攻撃できる。",
+        "■君のドロップゾーンの《ディザスター》１種類につき、このカードの攻撃力＋1000、防御力＋1000！さらに、７種類以上があるなら、このカードの打撃力＋２！！"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/d_0009.png",
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "canAttackWithCenter"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "amountFrom": {
+            "source": "dropAttributeCount",
+            "filter": {
+              "attribute": "ディザスター"
+            },
+            "distinct": true,
+            "per": {
+              "power": 1000,
+              "defense": 1000
+            }
+          }
+        },
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 2,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "attribute": "ディザスター"
+              },
+              "distinct": "distinctByName",
+              "cmp": "gte",
+              "amount": 7
+            }
+          ]
+        }
+      ],
+      "_note": "【装備コスト】ゲージ１=costs.equip:[payGauge(1)]（D-SD02/0015星銃ネオミーティア等の item costs.equip 慣例）。『このカードは君のセンターにモンスターがいても、攻撃できる』=keywords:[canAttackWithCenter]（bf-d-bt02-0017海王の錨 荒波『このカードは君のセンターにモンスターがいても攻撃できる』と一字一句同一原文につき同一keyword採用）。『君のドロップゾーンの《ディザスター》１種類につき、このカードの攻撃力＋1000、防御力＋1000！さらに、７種類以上があるなら、このカードの打撃力＋２！！』は2本の continuous に分解: (1) modifyStats{filter:sameInstanceAsSource,amountFrom:{source:dropAttributeCount,filter:{attribute:ディザスター}（cardType限定なし=ディザスターはこの甲冑自身のようなアイテムにも付く属性のため過剰絞り込み回避）,distinct:true,per:{power:1000,defense:1000}}}（X-CP01/0025山岳の竜騎王ジェロニモの『ドロップゾーンの《竜騎士》1種類につき+1000/+1000』と同型のdropAttributeCount distinct:true実例を踏襲）、(2) modifyStats{filter:sameInstanceAsSource,critical:2,conditions:[cardCount{pile:drop,filter:{attribute:ディザスター},distinct:distinctByName,cmp:gte,amount:7}]}（『さらに』＝(1)に上乗せする独立の閾値バフ、7種類到達で常時+2）。grep自己検査: costs.equip(src/04-cost-resource.js、bf-d-sd02-cross-dragoner.json:648-658実例)/canAttackWithCenter(src/09-attack.js等、bf-d-bt02-0017実例)/modifyStats+amountFrom.dropAttributeCount+distinct(src/05-stats.js:325-350、bf-x-cp01-0025実例)/cardCount+distinctByName(src/13-abilities-core.js:810-856) 全実在確認。"
+    },
+    {
+      "id": "bf-x-sup01-0010",
+      "no": "D/0010",
+      "name": "ダンジョンワールド",
+      "type": "flag",
+      "rarity": "PR",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "■君は＜ダンジョンワールド＞と＜ジェネリック＞のカードを使える。"
+      ],
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/d_0010.png"
+    }
+  ]
+}

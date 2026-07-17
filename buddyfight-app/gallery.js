@@ -50,7 +50,9 @@ async function initializeGallery() {
     galleryRenderGenerationTabs();
     galleryBindEvents();
     galleryRender();
-    gallerySetStatus(`全${galleryCards.length}枚を読み込みました。`);
+    // 総枚数は hidden セット（エラッタ前カード）を除いた公開枚数を表示する。
+    const publicCount = galleryCards.filter((card) => !card.hidden).length;
+    gallerySetStatus(`全${publicCount}枚を読み込みました。`);
   } catch (error) {
     gallerySetStatus(`読込失敗: ${error.message}`);
   }
@@ -88,6 +90,9 @@ function galleryNormalizeCard(card, set = {}, packName = "") {
     productId: card.productId || set.id || "",
     productName: card.productName || set.name || "",
     generation: card.generation || set.generation || "",
+    // hidden セット（エラッタ前カード）由来のカードは一覧・製品ドロップダウン・総枚数から除外し、
+    // 名前検索でのみヒットさせる（対戦/デッキ構築側は cardLibrary へ通常どおりロードされる）。
+    hidden: Boolean(card.hidden ?? set.hidden),
     attributes: [...(card.attributes || [])],
     keywords: [...(card.keywords || [])],
     rules: [...(card.rules || [])],
@@ -114,6 +119,14 @@ function galleryComputeFiltered(criteria) {
   const rarity = c.rarity || "";
   const generation = c.generation || "";
   return galleryCards
+    // hidden セット（エラッタ前カード）は、検索語がカード名にヒットした時のみ表示する。
+    // 検索語なし・製品/世代/種類/ワールド/レアリティだけの絞り込みでは一覧に出さない。
+    .filter((card) => {
+      if (!card.hidden) {
+        return true;
+      }
+      return Boolean(text) && String(card.name || "").toLowerCase().includes(text);
+    })
     .filter((card) => !generation || card.generation === generation)
     .filter((card) => !type || card.type === type)
     .filter((card) => !world || cardWorlds(card).includes(world))
@@ -282,6 +295,7 @@ function galleryPopulateProductFilter() {
   const seen = new Map();
   galleryCards.forEach((card) => {
     if (!card.productId) return;
+    if (card.hidden) return; // hidden セット（エラッタ前カード）は製品ドロップダウンに出さない。
     if (galleryActiveGeneration && card.generation !== galleryActiveGeneration) return;
     if (!seen.has(card.productId)) seen.set(card.productId, card.productName || card.productId);
   });

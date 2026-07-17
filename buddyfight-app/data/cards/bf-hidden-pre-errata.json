@@ -1,0 +1,143 @@
+{
+  "product": {
+    "id": "bf-hidden-pre-errata",
+    "name": "エラッタ前カード（隠し）"
+  },
+  "_note": "下方修正エラッタを受けた神以前カードの『修正前（エラッタ前）』バージョンを隠し収録した特別セット。正典は公式エラッタページ https://fc-buddyfight.com/rules/eratta/ の『誤（修正前）』テキスト。cardsets.json では hidden:true フラグを持ち、gallery/builder の一覧・製品ドロップダウン・総枚数集計から除外され、カード名検索でのみヒットする（対戦・デッキ構築・共有コード・リプレイでは通常どおり機能）。各カードは対応するエラッタ後カード（本流・無改変）と limitWith で 4 枚制限を合算する。no は元プリントを流用（画像導出のため）。id は bf-pre-errata-* で一意。",
+  "cards": [
+    {
+      "id": "bf-pre-errata-oozora",
+      "no": "BT01/0050",
+      "name": "大空を手に入れて（エラッタ前）",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": ["ドラゴン"],
+      "rarity": "上",
+      "generation": "無印",
+      "limitWith": "大空を手に入れて",
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】君の場のモンスター全てを手札に戻す。"
+      ],
+      "castCost": { "gauge": 1 },
+      "costs": {
+        "cast": [{ "op": "payGauge", "amount": 1 }]
+      },
+      "abilities": [
+        {
+          "id": "bf-pre-errata-oozora-counter",
+          "kind": "spell",
+          "timing": ["counter"],
+          "cost": [{ "op": "payGauge", "amount": 1 }],
+          "effects": [
+            { "op": "returnAllToHand", "controller": "self", "filter": { "cardType": "monster" } }
+          ]
+        }
+      ],
+      "_note": "エラッタ前『大空を手に入れて』(BT01/0050 ＝ H-SS01/0010 同一テキストの2プリントを1枚に集約)。公式エラッタ https://fc-buddyfight.com/rules/eratta/ ／理由 https://fc-buddyfight.com/blog/29710/ ／告知 2017.7.21・施行 2017.7.29。修正で『「大空を手に入れて」は１ターンに１回だけ使える』が追加されたため、エラッタ前は本流 BT01/0050 の DSL から ability.limit(scope:turn,key:grab-the-sky) を除いた形＝1ターンに複数回使用可。cost/effects は本流と同一。limitWith:'大空を手に入れて' でエラッタ後版(BT01/0050・H-SS01/0010)と合わせて4枚制限を合算。"
+    },
+    {
+      "id": "bf-pre-errata-force-return",
+      "no": "BT02/0078",
+      "name": "フォースリターン（エラッタ前）",
+      "ruby": "フォースリターン",
+      "type": "spell",
+      "world": "ドラゴンW",
+      "attributes": ["ドラゴン"],
+      "rarity": "並",
+      "generation": "無印",
+      "limitWith": "フォースリターン",
+      "rules": [
+        "■君の場のモンスター全てを手札に戻し、君のライフを＋１する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-pre-errata-force-return-main",
+          "kind": "spell",
+          "timing": ["main"],
+          "effects": [
+            { "op": "returnAllToHand", "controller": "self", "filter": { "cardType": "monster" } },
+            { "op": "gainLife", "amount": 1 }
+          ]
+        }
+      ],
+      "_note": "エラッタ前『フォースリターン』(BT02/0078)。公式エラッタ https://fc-buddyfight.com/rules/eratta/ ／理由 https://fc-buddyfight.com/blog/29710/ ／告知 2017.7.21・施行 2017.7.29。修正で『「フォースリターン」は１ターンに１回だけ使える』が追加されたため、エラッタ前は本流 BT02/0078 の DSL から ability.limit(scope:turn,key:bt02-0078-cast) を除いた形＝1ターンに複数回使用可。effects(returnAllToHand+gainLife1) は本流と同一。limitWith でエラッタ後版と4枚合算。"
+    },
+    {
+      "id": "bf-pre-errata-gambit",
+      "no": "BT02/0103",
+      "name": "ギャンビット（エラッタ前）",
+      "ruby": "ギャンビット",
+      "type": "spell",
+      "world": "ジェネリック",
+      "attributes": ["チェス", "移動"],
+      "rarity": "並",
+      "generation": "無印",
+      "limitWith": "ギャンビット",
+      "rules": [
+        "■君の場のモンスター全てを手札に戻す。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-pre-errata-gambit-main",
+          "kind": "spell",
+          "timing": ["main"],
+          "effects": [
+            { "op": "returnAllToHand", "controller": "self", "filter": { "cardType": "monster" } }
+          ]
+        }
+      ],
+      "_note": "エラッタ前『ギャンビット』(BT02/0103)。公式エラッタ https://fc-buddyfight.com/rules/eratta/ ／理由 https://fc-buddyfight.com/blog/29710/ ／告知 2017.7.21・施行 2017.7.29。修正で『「ギャンビット」は１ターンに１回だけ使える』が追加されたため、エラッタ前は本流 BT02/0103 の DSL から ability.limit(scope:turn,key:bt02-0103-cast) を除いた形＝1ターンに複数回使用可。effects(returnAllToHand) は本流と同一。limitWith でエラッタ後版と4枚合算。"
+    },
+    {
+      "id": "bf-pre-errata-guilty-wave",
+      "no": "D-EB02/0012",
+      "name": "リバースカル “ギルティ・ウェーブ！”（エラッタ前）",
+      "type": "impactMonster",
+      "world": "ヒーローW",
+      "attributes": ["ダークヒーロー"],
+      "rarity": "",
+      "generation": "DDD",
+      "limitWith": "リバースカル “ギルティ・ウェーブ！”",
+      "size": 2,
+      "power": 8000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■君が《ダークヒーロー》のアイテムを装備していて、君の場にモンスターがいないならコールできる。",
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが登場した時、君のドロップゾーンの《ダークヒーロー》４種類以上があるなら、君のドロップゾーンの「リバースカル“ギルティ・ウェーブ!”」以外の《ダークヒーロー》１枚までを手札に加える。",
+        "■このカードのバトル終了時、このカードを手札に戻す。"
+      ],
+      "callConditions": [
+        { "op": "ownItemHasAttribute", "attribute": "ダークヒーロー" },
+        { "op": "cardCount", "controller": "self", "pile": "field", "filter": { "cardType": "monster" }, "cmp": "eq", "amount": 0 }
+      ],
+      "costs": {
+        "call": [{ "op": "payGauge", "amount": 2 }]
+      },
+      "abilities": [
+        {
+          "id": "bf-pre-errata-guilty-wave-enter",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            { "op": "ownDropDistinctCardCountGte", "filter": { "attribute": "ダークヒーロー" }, "amount": 4 }
+          ],
+          "effects": [
+            { "op": "moveMatchingDropToHand", "filter": { "attribute": "ダークヒーロー", "nameNotIncludes": "リバースカル “ギルティ・ウェーブ！”" }, "amount": 1, "optional": true }
+          ]
+        },
+        {
+          "id": "bf-pre-errata-guilty-wave-battle-end",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "effects": [
+            { "op": "returnToHand", "target": "$self" }
+          ]
+        }
+      ],
+      "_note": "エラッタ前『リバースカル “ギルティ・ウェーブ！”』(D-EB02/0012)。公式エラッタ https://fc-buddyfight.com/rules/eratta/ ／理由 https://fc-buddyfight.com/blog/23243 ／告知 2017.1.6・施行 2017.1.20（ゼータループ＝泥鬼 アイティオピコンとの無限攻撃対策）。修正で登場時の回収対象が『「リバースカル“ギルティ・ウェーブ!”」以外』→『必殺モンスター以外』へ限定された。エラッタ前は必殺モンスター（例: 泥鬼）も回収でき、除外は自身の名前のみ。よって enter 効果の filter を本流 D-EB02/0012 の {attribute:ダークヒーロー}（近似）から {attribute:ダークヒーロー, nameNotIncludes:'リバースカル “ギルティ・ウェーブ！”'}（＝『このカード以外』を自身の名前で除外＝エラッタ後/前どちらの名前を持つ自コピーも部分一致で除外）へ変更。callConditions/コールコスト/バトル終了時手札戻しは本流と同一。limitWith でエラッタ後版(D-EB02/0012)と4枚合算。※本流の battleEnd は queueBattleEndTriggers が攻撃側スロットのみ発火する既知の近似を踏襲。"
+    }
+  ]
+}

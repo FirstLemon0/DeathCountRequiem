@@ -322,8 +322,13 @@ function newGame(options = {}) {
     counterHandOwner: null,
     turnCount: 1,
     impactMonsterCallsThisTurn: [0, 0], // 必殺モンスター(DDD)の「1ターンに1枚」コール数（席別）
+    callsThisTurn: [0, 0], // E-XB7(X-SS03/0060): ターン内の総コール枚数（席別・restrictCallCountPerTurn が参照）
+    callCountCapsThisTurn: [], // E-XB7(X-SS03/0060): ターン内総コール枚数キャップ（{owner,max,sourceName}）
     turnDeckMilled: [0, 0], // E8(D-CBT/PR-0330): デッキ所有者ごとのターン内デッキ→ドロップ ミル枚数（席別）
+    gaugePlacedThisTurn: [0, 0], // E-XB12(X-CP03/0069 影雄 グラウ): 席別のターン内ゲージ流入枚数（noteGaugePlaced が全ゲージ流入点で加算）
     turnDamageTaken: [0, 0], // E-X2(X-SD02/0016): 席別のターン内被ダメージ累積（軽減/無効化後の実ダメージ・payLife 等コスト直減算は除外）
+    spellsCastThisTurn: [0, 0], // E-XB9(X-SS03/0017): 席別のターン内魔法使用回数（spellCastThisTurnGte が参照）
+    turnHandDiscardedByEffect: [0, 0], // E-XB10(X-SS03/0048): 席別のターン内「効果で捨てられた手札枚数」（byCost 除外）
     nextAllyAttackTriggers: [], // E10(D-CBT/0110): 「そのターン中、次の味方攻撃時」ワンショット予約キュー
 
     fightLimits: [{}, {}],

@@ -24,6 +24,12 @@ function getFieldSize(player) {
 let statMemoDepth = 0;
 const statMemoSize = new Map(); // card → effectiveSize（完全値のみ）
 const statMemoAttributes = new Map(); // card → effectiveAttributes（完全値のみ）
+// perf(R11): isAbilitiesNullified も同じ statMemo スコープでメモ化する（taint 無しの完全値のみ格納）。
+// E-XB2 で無効化保護判定を per-card 再入化した結果、保護グラフを DAG として何度も踏み直し、cinderella 系で
+// 1手が main 比 10倍(seed641 2.3s→21s)に膨れた。isAbilitiesNullified は純粋関数で、この評価中に走る
+// matchesCardFilter→effectiveAttributes が独自に開いていた最外スコープを isAbilitiesNullified 側の
+// statMemoBegin/End で覆うことで、1回の最外評価の再帰全体で結果を共有し指数を多項式へ落とす。
+const statMemoNullified = new Map(); // card → isAbilitiesNullified（完全値のみ）
 function statMemoBegin() {
   statMemoDepth += 1;
 }
@@ -33,6 +39,7 @@ function statMemoEnd() {
     statMemoDepth = 0;
     statMemoSize.clear();
     statMemoAttributes.clear();
+    statMemoNullified.clear();
   }
 }
 
@@ -108,7 +115,11 @@ function granterOnField(instanceId) {
 // 無限再帰は「同一カードは stack 追加後に必ず即 false で打ち切る」ことで防ぐ（保護2枚相互でも停止）。
 // 0024(諸星きらり・全体無効化＋nullifyImmune) vs 0001(アイドル無効化耐性) の競合は「されない」側が
 // 勝つ（0001側のcardProtectedFrom判定が先に評価されfalseで確定するため）。
-const nullifyProtectionStack = new Set();
+// perf(R11): stack を Map(card→評価順序) にして taint 追跡付きメモ化を行う（詳細は statMemoNullified 定義／
+// 下の isAbilitiesNullified の statMemoBegin コメント参照）。自己言及保護の循環打ち切りの意味論は不変。
+const nullifyProtectionStack = new Map(); // card → enterOrder（cardProtectedFrom 評価中のみ在籍）
+let nullifyEnterCounter = 0;
+let nullifySubtreeMinCut = Infinity; // 現フレームの subtree 内で観測した最小 cut 順序（祖先=より浅い順序）
 function isAbilitiesNullified(card) {
   if (!card || card.nullifyImmune || !state?.players?.length) return false;
   // FD5(X-BT01/0124 ガエン): ゾーン限定の無効化耐性。指定ゾーン(item=変身中)に在る間だけ「能力を無効化されない」。
@@ -124,11 +135,49 @@ function isAbilitiesNullified(card) {
   // 将来の実装変更（フラッグを走査対象に含める等）に備えて明示的に免除しておく。
   if (card.type === "flag") return false;
   if (nullifyProtectionStack.has(card)) {
-    // 同一カードの保護評価への再入＝自己言及保護の循環。最大不動点として「無効化されていない」で打ち切る
+    // 同一/祖先カードの保護評価への再入＝自己言及保護の循環。最大不動点として「無効化されていない」で打ち切る
     // （＝この札の能力が生きている前提で、その札自身の grantNullifyImmunity を読ませる）。
+    // taint 追跡: 打ち切った再入元(card)の評価順序を subtree の最小 cut として記録する。これより深い
+    // （順序が大きい＝祖先を跨いだ）フレームの結果は文脈依存になるためメモ対象から外す。
+    nullifySubtreeMinCut = Math.min(nullifySubtreeMinCut, nullifyProtectionStack.get(card));
     return false;
   }
-  nullifyProtectionStack.add(card);
+  // perf(R11): この評価の再帰全体を1つの statMemo スコープで覆う。isAbilitiesNullified は純粋関数だが、
+  // 内部で走る matchesCardFilter→effectiveAttributes/effectiveSize が各々「最外」スコープを開閉していたため、
+  // isAbilitiesNullified の結果メモが再帰の途中で毎回破棄され効かなかった。ここで最外スコープを覆うことで
+  // 1回の最外評価（さらに親が continuousStatBonus 等でスコープを開いていれば、その1手ぶん全体）で保護グラフ
+  // の結果を共有し、E-XB2 の per-card 再入で階乗化していた再帰を多項式へ落とす（seed641 21s→数s）。
+  statMemoBegin();
+  try {
+    const cached = statMemoNullified.get(card);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const topLevel = nullifyProtectionStack.size === 0;
+    const myOrder = (nullifyEnterCounter += 1);
+    const savedSubtreeMinCut = topLevel ? Infinity : nullifySubtreeMinCut;
+    nullifySubtreeMinCut = Infinity;
+    const result = evaluateAbilitiesNullified(card, myOrder);
+    const myMinCut = nullifySubtreeMinCut;
+    // subtree 内で「自分より浅い(=祖先)フレームへの cut」が起きた結果は文脈依存＝メモ不可。自己保護の cut は
+    // 順序が myOrder ちょうど（myMinCut===myOrder）のため taint にならず、E-XB2 の自己言及保護はそのまま格納。
+    if (!(myMinCut < myOrder)) {
+      statMemoNullified.set(card, result);
+    }
+    // subtree の cut 順序を親フレームへ伝播（親は自分の順序で taint 判定する）。最外は次の問い合わせへ
+    // 影響させないため Infinity に戻す。
+    nullifySubtreeMinCut = topLevel ? Infinity : Math.min(savedSubtreeMinCut, myMinCut);
+    return result;
+  } finally {
+    statMemoEnd();
+  }
+}
+
+// isAbilitiesNullified の実体（保護判定→フィールド無効化継続の走査）。保護スタック(nullifyProtectionStack)の
+// set/delete スコープは従来どおり cardProtectedFrom の間のみ（fieldNullified 走査中は card を stack に載せない
+// ＝挙動不変）。myOrder はラッパが振った評価順序（再入 cut の taint 判定に使う）。
+function evaluateAbilitiesNullified(card, myOrder) {
+  nullifyProtectionStack.set(card, myOrder);
   try {
     if (cardProtectedFrom(card, "nullify")) return false;
   } finally {

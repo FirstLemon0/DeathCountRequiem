@@ -132,6 +132,7 @@ async function chargeAction() {
   // FE2(0124 ガエン): チャージ自体（ゲージ送り）は可能だが、引くことはできない。
   const drawBanned = drawBanActive(state.active);
   activePlayer().gauge.push(card);
+  noteGaugePlaced(state.active, 1); // E-XB12: チャージ&ドローのゲージ流入（この経路は queueGaugePlacedTriggers を通らない）
   drawCards(activePlayer(), 1);
   state.chargedThisTurn = true;
   state.phase = "main";
@@ -248,17 +249,49 @@ function impactMonsterCallAllowed(owner, card, options = {}) {
 // X6(D-BT01/0064): ターン限定コール制限（restrictCallThisTurn）は効果によるコールにも掛かる。
 // 通常コールは isCallRestricted（src/18）が同リストを参照する。effect-call 5op はこのヘルパーで判定する。
 function turnCallRestrictionBlocks(owner, card) {
+  // E-XB7: 総コール枚数キャップ到達なら、種別/ゾーンに関わらず効果コールも不可（restrictCallCountPerTurn）。
+  if (isCallCountCappedThisTurn(owner)) {
+    return true;
+  }
   return (state.callRestrictionsThisTurn || []).some(
     (restriction) => restriction.owner === owner && !matchesCardFilter(card, restriction.allowFilter || {}),
   );
 }
 
+// E-XB9(X-SS03/0017 セフィロトの講義): このターンに <owner> が魔法を「使った」回数（席別）。
+// 3つの魔法使用 funnel（対抗/即時手札魔法解決=src/13・通常魔法解決=src/07・設置魔法=src/07。いずれも
+// runFieldEventTriggers("spellCast",...) の直前）から呼ぶ。clearTurnModifiers でリセット・
+// spellCastThisTurnGte(src/13)が参照。JSON直列化のみで往復（クロージャ無し・未設定は0扱い＝後方互換）。
+function recordSpellCastThisTurn(owner) {
+  state.spellsCastThisTurn ||= [0, 0];
+  state.spellsCastThisTurn[owner] = (state.spellsCastThisTurn[owner] || 0) + 1;
+}
+
 function recordImpactMonsterCall(owner, card) {
+  // E-XB7(X-SS03/0060 ロイヤルティ): 総コール枚数（席別）をターン内で加算する。この関数は全ての
+  // コール materialization 点（callMonster＋script 系 callSelected* 全経路）で呼ばれるため、ここ1箇所で
+  // 「今ターン、その席が何枚コールしたか」を漏れなく計上できる（restrictCallCountPerTurn が参照）。
+  // 同名単位の callLimitPerTurn(calledCardNamesThisTurn) とは完全に別軸。
+  state.callsThisTurn ||= [0, 0];
+  state.callsThisTurn[owner] = (state.callsThisTurn[owner] || 0) + 1;
   if (card?.type !== "impactMonster") {
     return;
   }
   state.impactMonsterCallsThisTurn ||= [0, 0];
   state.impactMonsterCallsThisTurn[owner] = (state.impactMonsterCallsThisTurn[owner] || 0) + 1;
+}
+
+// E-XB7(X-SS03/0060 ロイヤルティ): 「そのターン中、相手はN枚以上モンスターをコールできない」。
+// restrictCallCountPerTurn が積んだ席別キャップ（cap.max＝そのターンにコールできる最大枚数）と、
+// recordImpactMonsterCall が計上した総コール数を突き合わせ、上限到達なら true（＝これ以上コール不可）。
+// 複数キャップが同席に積まれた場合は最も厳しい（min）ものを採用する。キャップ0件なら常に false（挙動不変）。
+function isCallCountCappedThisTurn(owner) {
+  const caps = (state.callCountCapsThisTurn || []).filter((cap) => cap.owner === owner);
+  if (caps.length === 0) {
+    return false;
+  }
+  const limit = Math.min(...caps.map((cap) => cap.max));
+  return (state.callsThisTurn?.[owner] || 0) >= limit;
 }
 
 async function callMonster(zone) {
@@ -323,6 +356,12 @@ async function callMonster(zone) {
   if (isCallCountLimitedThisTurn(selectedOwner, selectedCard)) {
     // 「このカードは1ターンにN枚だけコールできる」(竜騎士 トモエ 0012 等)。同名でこのターンの上限に達していれば不可。
     addLog(`${selectedCard.name}はこのターンこれ以上コールできません。`);
+    return;
+  }
+  if (isCallCountCappedThisTurn(selectedOwner)) {
+    // E-XB7(X-SS03/0060 ロイヤルティ): 総コール枚数キャップ到達（そのターン中これ以上コールできない）。
+    // 同名単位の callLimitPerTurn とは独立＝別のカードでもコール不可。
+    addLog(`${player.name}はこのターン、これ以上モンスターをコールできません。`);
     return;
   }
   const actualZone = stackTarget?.zone || zone;
@@ -654,6 +693,21 @@ function capitalizeAscii(value = "") {
   return value ? value[0].toUpperCase() + value.slice(1) : "";
 }
 
+// E-XB12(X-CP03/0069 影雄 グラウ): このターン中に各席のゲージへ置かれたカード枚数を記帳する（席別）。
+// 条件op gaugePlacedThisTurnLte(src/13)が参照する。ゲージ流入は単一 funnel に集約されていない
+// （queueGaugePlacedTriggers を通る経路＝デッキ→ゲージ/破壊置換/ソウル→ゲージ/自身→ゲージ に加え、
+//  funnel を通らない直接 push 経路＝チャージ&ドロー/手札→ゲージ/scry の残りゲージ/コストで場札→ゲージ/
+//  伏せ札ゲージ がある）ため、queueGaugePlacedTriggers 内で1回集計し、funnel を通らない各所は明示的に呼ぶ。
+// E8(state.turnDeckMilled)と同型: state 常駐で room 復元(JSON往復)後も保たれ、clearTurnModifiers(src/11)が
+// ターン境界でリセットする。seat/count のガードで空/負値は無視（既存 state に無くても ||= で安全初期化）。
+function noteGaugePlaced(seat, count = 1) {
+  if ((seat !== 0 && seat !== 1) || !(count > 0)) {
+    return;
+  }
+  state.gaugePlacedThisTurn ||= [0, 0];
+  state.gaugePlacedThisTurn[seat] = (state.gaugePlacedThisTurn[seat] || 0) + count;
+}
+
 // 「相手のゲージにカードが置かれた時」誘発（爆雷 メギトス 0020）を microtask で発火する。
 // 同期のゲージ配置ヘルパー（デッキ/ソウル/自身をゲージへ）からも安全に呼べるよう非同期化。
 // リスナーが無ければ何もしない（gaugePlaced に反応する場札が無い時は空振り）。
@@ -662,6 +716,8 @@ function queueGaugePlacedTriggers(chargingOwner, cards = []) {
   if (list.length === 0) {
     return;
   }
+  // E-XB12: funnel を通る全ゲージ流入をここで集計する（hasListener 早期returnより前＝リスナー在否に依らず常時）。
+  noteGaugePlaced(chargingOwner, list.length);
   const hasListener = [0, 1].some((playerIndex) =>
     zones.some((zone) => {
       const c = state.players[playerIndex]?.field?.[zone];
@@ -1061,6 +1117,7 @@ async function resolvePendingSpell(action) {
   addLog(`${action.card.name}を解決しました。`);
   // 「君が魔法を使った時」の場全体誘発（allySpellCast/opponentSpellCast）。設置カード等が反応（ルヴィア 0004）。
   if (effectiveCardType(action.card) === "spell") {
+    recordSpellCastThisTurn(action.owner); // E-XB9: ターン内魔法使用回数（席別）を加算
     await runFieldEventTriggers("spellCast", action.owner, action.card, null, { spellCard: action.card });
   }
 }
@@ -1138,6 +1195,7 @@ async function resolvePendingSetSpell(action) {
   // 魔法のみ（『設置』持ち必殺技では発火しない=resolvePendingSpellと同じガード）。
   // 置いた設置カード自身は自己反応しない（連鎖を狙え！が自分で1ソウル貯めない）。
   if (effectiveCardType(action.card) === "spell") {
+    recordSpellCastThisTurn(action.owner); // E-XB9: 設置魔法も「使う」に含める（ターン内魔法使用回数を加算）
     await runFieldEventTriggers("spellCast", action.owner, action.card, null, {
       spellCard: action.card,
       __excludeSourceInstanceId: action.card.instanceId,

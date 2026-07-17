@@ -84,6 +84,10 @@ async function chooseCardEntriesImpl(candidates, options = {}) {
     });
     return [normalized[0]];
   }
+  // E-XB6(X-SS03/0012 カリスマジック): faceDown 指定時は候補の正体を伏せた提示用ビューを作る
+  // （相手のブラインド選択・T13＝余計な公開情報を渡さない）。選択の解決は choiceIndex（提示順の位置）で
+  // 行うため、正体を隠しても正しく実カード（normalized）へ写像できる。未指定＝presented===normalized で不変。
+  const presented = options.faceDown ? normalized.map(maskChoiceFaceDown) : normalized;
   let selected;
   if (globalThis.__BUDDYFIGHT_SERVER__ && typeof globalThis.__serverPrompt === "function") {
     // 権威サーバ: 該当クライアントへ選択を往復で問い合わせる（DOMダイアログは使わない）。
@@ -96,7 +100,7 @@ async function chooseCardEntriesImpl(candidates, options = {}) {
       max,
       allowCancel: options.allowCancel !== false,
       searchable: Boolean(options.searchable),
-      candidates: normalized.map((candidate) => ({
+      candidates: presented.map((candidate) => ({
         index: candidate.choiceIndex,
         ...compactChoiceForLog(candidate),
       })),
@@ -104,11 +108,18 @@ async function chooseCardEntriesImpl(candidates, options = {}) {
     selected = resolveServerSelection(response, normalized, min, max, options.allowCancel !== false);
   } else if (typeof aiShouldAnswerPrompt === "function" && aiShouldAnswerPrompt(options.promptSeat)) {
     // CPU対戦: promptSeat がCPU席の選択は src/22-ai.js が答える（ダイアログは出さない）。
-    selected = await aiAnswerSelection(normalized, { ...options, min, max });
+    selected = await aiAnswerSelection(presented, { ...options, min, max });
   } else if (!canShowSelectionDialog()) {
-    selected = fallbackCardEntrySelection(normalized, { ...options, min, max });
+    selected = fallbackCardEntrySelection(presented, { ...options, min, max });
   } else {
-    selected = await showCardSelectionDialog(normalized, { ...options, min, max });
+    selected = await showCardSelectionDialog(presented, { ...options, min, max });
+  }
+  // E-XB6: faceDown 提示で AI/ダイアログ/フォールバックが返したマスク entry を、choiceIndex で
+  // 実 entry（normalized）へ戻す（server 経路は resolveServerSelection が既に normalized を返すため恒等）。
+  if (options.faceDown && Array.isArray(selected)) {
+    selected = selected.map(
+      (entry) => normalized.find((real) => real.choiceIndex === entry.choiceIndex) || entry,
+    );
   }
   recordDiagnosticEvent("choice", {
     ...choiceBase,
@@ -118,6 +129,35 @@ async function chooseCardEntriesImpl(candidates, options = {}) {
     selected: (selected || []).map(compactChoiceForLog),
   });
   return selected;
+}
+
+// E-XB6(X-SS03/0012 カリスマジック): 裏向き選択の提示用に候補の正体を全て伏せる。
+// choiceIndex（提示順の位置）だけを残し、名前/番号/属性/スタッツ/instanceId/ゾーン/索引・所有者は隠す。
+// 選択の解決は choiceIndex で実 entry へ写像するため、表示だけ伏せれば実処理は正しく進む。
+function maskChoiceFaceDown(choice) {
+  return {
+    choiceIndex: choice.choiceIndex,
+    index: null,
+    owner: null,
+    zone: null,
+    note: "裏向きのカード",
+    card: {
+      id: null,
+      instanceId: null,
+      no: "",
+      name: "裏向きのカード",
+      type: "monster",
+      currentType: "monster",
+      world: "",
+      attributes: [],
+      size: null,
+      power: null,
+      critical: null,
+      defense: null,
+      used: false,
+      soul: [],
+    },
+  };
 }
 
 // 権威サーバのプロンプト応答(selectedIndexes)を実候補entryへ再マップする。

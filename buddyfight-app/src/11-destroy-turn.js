@@ -1416,6 +1416,14 @@ function queueDiscardedFromHandTriggers(card, owner, cause = null) {
 // ally/opponentHandDiscarded（deckMilled=E5 と同型）もここから1回だけ発火する。
 function discardHandCardsToDrop(player, cards, cause = null) {
   const owner = state.players.indexOf(player);
+  // E-XB10(X-SS03/0048 シャインブレイド・ジョーカー): 「このターン中、カードの効果で君の手札のカードが
+  // 捨てられているなら」用のターン内カウンタ。手札→ドロップの唯一合流点で、効果起因（cause.byEffect）の
+  // 捨て枚数のみ席別に加算する。コスト起因（byCost）や単なる移動は含めない＝バディファイトの慣例で
+  // 【使用コスト】の捨て札は「効果で捨てられた」に含めない（コストは効果でない）。E8 turnDeckMilled の鏡。
+  if (cause?.byEffect && cards.length > 0) {
+    state.turnHandDiscardedByEffect ||= [0, 0];
+    state.turnHandDiscardedByEffect[owner] = (state.turnHandDiscardedByEffect[owner] || 0) + cards.length;
+  }
   cards.forEach((card) => {
     player.drop.push(card);
     queueDiscardedFromHandTriggers(card, owner, cause); // per-card 自己参照（不変）
@@ -1828,6 +1836,7 @@ async function endTurn() {
   syncMonstersDestroyedThisTurn(); // monstersDestroyedThisTurn は destroyedCardsThisTurn からの導出（リセットで[0,0]になる）
   state.calledCardNamesThisTurn = [{}, {}]; // 「1ターンにN枚だけコール」(竜騎士 トモエ 0012 等)のカウンタをリセット
   state.impactMonsterCallsThisTurn = [0, 0]; // 必殺モンスター「1ターンに1枚」コール数をリセット
+  state.callsThisTurn = [0, 0]; // E-XB7(X-SS03/0060): ターン内の総コール枚数（席別）をリセット
   state.suppressLifeLinkThisTurn = [false, false]; // ライフリンク無効化(ターンスコープ)をリセット
   state.attackRedirectThisTurn = [null, null]; // 攻撃再誘導(ターンスコープ)をリセット
   state.opponentCounterLockThisTurn = []; // 対抗ロック(ターンスコープ)をリセット
@@ -1896,9 +1905,13 @@ function clearTurnModifiers() {
   state.spiritStrikeDamageBonus = [0, 0]; // 霊撃ブースト（ターンスコープ）をリセット
   state.standedByEffectThisTurn = [[], []]; // E-PR16(PR/0470): このターン効果でスタンドしたカード履歴をリセット
   state.turnDeckMilled = [0, 0]; // E8(D-CBT/PR-0330): ターン内デッキ→ドロップ ミル枚数(席別)をリセット
+  state.gaugePlacedThisTurn = [0, 0]; // E-XB12(X-CP03/0069): ターン内ゲージ流入枚数(席別)をリセット
   state.turnDamageTaken = [0, 0]; // E-X2(X-SD02/0016): ターン内被ダメージ(席別)をリセット
+  state.spellsCastThisTurn = [0, 0]; // E-XB9(X-SS03/0017): ターン内魔法使用回数(席別)をリセット
+  state.turnHandDiscardedByEffect = [0, 0]; // E-XB10(X-SS03/0048): ターン内「効果で捨てられた手札枚数」(席別)をリセット
   state.nextAllyAttackTriggers = []; // E10(D-CBT/0110): 「そのターン中、次の味方攻撃時」ワンショット予約を破棄
   state.callRestrictionsThisTurn = []; // X6(D-BT01/0064): ターン限定コール制限をリセット
+  state.callCountCapsThisTurn = []; // E-XB7(X-SS03/0060): ターン内総コール枚数キャップをリセット
   state.turnFlagNameAliases = [[], []]; // E12(D-SS02/0005): ターン限定フラッグ名エイリアスをリセット
   state.turnNullifies = []; // E2(D-SS03/0010): ターン限定の全体能力無効化(nullifyFieldAbilities)をリセット
   // X11b(D-BT01/0131): ターンスコープのサイズ上書き(setConditionalSizeScope turnScoped)と

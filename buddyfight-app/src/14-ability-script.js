@@ -311,6 +311,11 @@ function canSatisfyAbilityScript(card, ability, owner, baseContext = {}) {
 function canSatisfyScriptSteps(script, context) {
   return (script || []).every((step) => {
     if (step.op === "selectCards") {
+      // E-XB6: from:"var" の候補は先行ステップの選択で実行時に確定する。事前充足チェックの時点では
+      // 未確定（vars 空）なので楽観的に満たせる扱いにする（過小評価でアビリティが不発になるのを防ぐ）。
+      if (step.from === "var") {
+        return true;
+      }
       const candidates = groupScriptCandidates(scriptCardSelectionCandidates(step, context), step);
       const amount = step.amount ?? 1;
       const allowEmpty = Boolean(step.allowEmpty && candidates.length === 0);
@@ -574,15 +579,26 @@ async function selectCardsForScript(step, context) {
     }
     return true;
   }
-  const selected = await chooseCardEntries(candidates, {
+  // E-XB6(X-SS03/0012 カリスマジック): chooser:"opponent" は選択プロンプトを相手席へ往復させる
+  // （opponentMayCallFromHandForScript の promptSeat=相手席と同じ配管・リプレイ/room 復元/権威サーバ決定的）。
+  // 未指定＝従来どおり能力主体（context.owner）席＝完全後方互換。
+  const chooserSeat = step.chooser === "opponent" ? 1 - context.owner : context.owner;
+  // E-XB6: shuffle:true は候補を決定的(rng・shuffle=state 常駐 rngInt)にシャッフルしてから提示する
+  // （「２枚を裏向きにしてシャッフルし」＝相手の並び順を伏せる）。faceDown と併用で真のブラインド選択。
+  const presentCandidates = step.shuffle ? shuffle(candidates) : candidates;
+  const selected = await chooseCardEntries(presentCandidates, {
     title: step.title || `${context.card.name}の選択`,
     lead: step.lead || `${min}枚選んでください。`,
     min,
     max,
     forceDialog: step.forceDialog !== false,
-    // 権威サーバ: スクリプト選択は能力主体（context.owner）の席へ往復させる。
+    // 権威サーバ: スクリプト選択は既定で能力主体（context.owner）の席へ往復させる。
     // 相手誘発(opponentEnter等)が能動側ターンに選ぶ場合、未指定だと能動側へ誤配送＝手札漏れ。
-    promptSeat: context.owner,
+    // chooser:"opponent" 指定時のみ相手席へ振る。
+    promptSeat: chooserSeat,
+    // E-XB6: faceDown:true は候補の正体（名前/番号/スタッツ/instanceId/索引）を伏せて提示する
+    // （裏向きのブラインド選択・T13＝相手へ余計な公開情報を渡さない）。解決は choiceIndex で実カードへ写像。
+    faceDown: Boolean(step.faceDown),
     // CPU対戦(src/22): 用途タグ。DSLの明示指定(purpose/role)が最優先、無ければ消費opから推論。
     purpose:
       step.purpose ||
@@ -634,6 +650,35 @@ function scriptGroupKey(card, groupBy) {
 
 function scriptCardSelectionCandidates(step, context) {
   const from = step.from || "field";
+  if (from === "var") {
+    // E-XB6(X-SS03/0012 カリスマジック): 直前の選択(var)のエントリを候補にする（「君が選んだ2枚から
+    // 相手が1枚選ぶ」型の2段選択）。sourceVar（単一）か sourceVars（複数=マージ）で参照する。
+    // 各エントリは元の source/index/owner を保持したまま渡し、後段の callSelected/moveSelected が
+    // 正しい実ゾーンから取り出せるようにする。
+    const varNames = Array.isArray(step.sourceVars)
+      ? step.sourceVars
+      : [step.sourceVar].filter(Boolean);
+    const seen = new Set();
+    const entries = [];
+    for (const name of varNames) {
+      for (const entry of scriptSelection({ var: name }, context)) {
+        if (!entry?.card || (entry.card.instanceId && seen.has(entry.card.instanceId))) {
+          continue;
+        }
+        if (entry.card.instanceId) {
+          seen.add(entry.card.instanceId);
+        }
+        if (!scriptCardMatches(entry.card, entry.owner ?? context.owner, entry.zone, step, context)) {
+          continue;
+        }
+        entries.push({
+          ...entry,
+          note: step.note || entry.note || scriptSourceLabel(entry.source || "drop"),
+        });
+      }
+    }
+    return entries;
+  }
   if (from === "pendingAttackers") {
     return getPendingAttackers()
       .filter((entry) =>
@@ -724,7 +769,25 @@ function scriptCardMatches(card, owner, zone, step, context) {
   // owner を渡し、filter.buddy を「ドロップ/デッキ/手札等の場外」でも検索主の登録バディ名で判定させる
   // （E-XC15 が searchDeckToHand に入れた owner 伝播と同型。場のカードは findFieldCardSlot で所有者を
   //  特定できるため owner は無視される＝場・field 経路の挙動は不変。owner は from 各経路で pile/場の所有者）。
-  if (!matchesCardFilter(card, step.filter || {}, { owner })) {
+  // 相対フィルタ（発生源カード基準）: matchesCardFilter は sameInstanceAsSource 等を解釈しない
+  // （effect 経路は matchesRelativeCardFilter 側・src/15 が担うが、script の selectCards/callSelected/
+  //  moveSelected 経路はここを通る）。従来これらのキーは黙殺され「このカード自身１枚」を厳密に絞れず、
+  //  手札発動の自己コール（X-SS03/0048）が counter timing の事前ドロップ後にドロップの同名別インスタンスを
+  //  誤コールし得た。context.card 基準で instanceId/id/name を評価し、残りの汎用述語のみ matchesCardFilter へ
+  //  渡す（未使用なら strip は no-op＝完全後方互換。script 経路での使用は PR/0473・PR/0474・X-SS03/0045・0048
+  //  の4枚のみで、いずれも「このカード自身」を意図＝厳密化は狭義の正しさ向上のみ）。
+  const rawFilter = step.filter || {};
+  if (rawFilter.sameInstanceAsSource && card.instanceId !== context.card?.instanceId) {
+    return false;
+  }
+  if (rawFilter.sameIdAsSource && card.id !== context.card?.id) {
+    return false;
+  }
+  if (rawFilter.sameNameAsSource && card.name !== context.card?.name) {
+    return false;
+  }
+  const { sameInstanceAsSource, sameIdAsSource, sameNameAsSource, ...cardFilter } = rawFilter;
+  if (!matchesCardFilter(card, cardFilter, { owner })) {
     return false;
   }
   // filter.sameNameAsVar: 先に選んだ別の選択(var)のカードと同じカード名のみ（爆裂魔神丸の術等）。
@@ -2050,6 +2113,7 @@ async function lookTopSelectToSelectedSoulRestForScript(step, context) {
       if (restTo === "gauge") {
         // ゲージは伏せ札（hidden pile）＝lookTopSelectToGaugeRestToTop と同様に gaugePlaced 誘発は起こさず枚数のみログ。
         rest.forEach((card) => player.gauge.push(card));
+        noteGaugePlaced(owner, rest.length); // E-XB12: 伏せ札ゲージも「置かれた」ターン記帳（gaugePlaced 誘発は従来どおり非発火）
         addLog(`残りの${rest.length}枚をゲージに置きました。`);
       } else {
         // ドロップ（公開）へ。movedToDrop/deckMilled 誘発つき（lookTopSelectToSoulRestToDrop と同規約・枚数のみログ）。
@@ -2256,8 +2320,18 @@ async function useSelectedCardForScript(step, context) {
         return { ok: false, reason: "cannot_pay_equip" };
       }
     }
-    takeScriptSelectionCards([entry]);
-    await equipCardDirect(player, card, { byEffect: true });
+    const takenItem = takeScriptSelectionCards([entry]);
+    // 非同期誘発レース: 上の await payCardCostWithSelection 中に、対象カードが別経路で元ゾーンを
+    // 離れることがある（例: fuzzer seed340「煉獄騎士団 グラッジアロー」の破壊時装備が、AIの通常装備
+    // 宣言=beginPendingAction と同フレームで走り、先に手札から抜かれる）。stale 参照のまま
+    // equipCardDirect すると field.item に既存の同一カードがあると見なされて dropFieldCardByRule で
+    // ドロップへ落とし、再度 field.item へ置くため二重存在（instanceId 重複・保存則破れ）になる。
+    // 取り出せなかった＝既に別経路が確保済みなので装備を中止する（equipItem/callMonster の !card 同型ガード）。
+    if (takenItem.length === 0) {
+      addLog(`${card.name}が見つからないため、装備を中止しました。`);
+      return { ok: false, reason: "use_card_gone" };
+    }
+    await equipCardDirect(player, takenItem[0].card, { byEffect: true });
     return true;
   }
   if ((type === "spell" || type === "impact") && hasKeyword(card, "set")) {
@@ -2281,8 +2355,14 @@ async function useSelectedCardForScript(step, context) {
         return { ok: false, reason: "cannot_pay_cast" };
       }
     }
-    takeScriptSelectionCards([entry]);
-    await placeSetSpellDirect(player, card, zone);
+    const takenSet = takeScriptSelectionCards([entry]);
+    // 同上の非同期誘発レースガード（設置版）。cost 支払いの await 中に対象が元ゾーンを離れていたら
+    // stale 参照での二重配置を避けて中止する。
+    if (takenSet.length === 0) {
+      addLog(`${card.name}が見つからないため、配置を中止しました。`);
+      return { ok: false, reason: "use_card_gone" };
+    }
+    await placeSetSpellDirect(player, takenSet[0].card, zone);
     return true;
   }
   // 通常の魔法/必殺技は能力を即時解決（既存挙動）
@@ -3241,6 +3321,9 @@ function isScriptEffectStep(step) {
     "draw",
     "searchDeckToHand", // X4(D-BT01)
     "restrictCallThisTurn", // X6(D-BT01/0064)
+    "restrictCallCountPerTurn", // E-XB7(X-SS03/0060 ロイヤルティ): chooseBranch の option.script（3択の1つ）から呼べるよう許可
+    "discardRandomFromHand", // E-XB8(X-CP03/0058 ファントム・ゲッター): script 経由でも使えるよう許可（effect版 src/15 に委譲）
+    "returnTargetSoulToHand", // E-XB11(X-SS03/0057 アトラ"SD"): script 経由でも使えるよう許可（dropTargetSoul と同格）
     "lookTopSelectToSoulRestToDrop", // X10(D-BT01/0044)
     "setConditionalSizeScope", // X11b(D-BT01/0131)
     "addTurnContinuous", // X19(D-BT01/0131)

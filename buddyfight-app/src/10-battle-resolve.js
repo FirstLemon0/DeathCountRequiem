@@ -481,6 +481,31 @@ async function resolveCounterattack(targetSlot, attackers) {
   });
   if (destroyed) {
     addLog(`${targetAfterBattle.name}の反撃で${attackerName}を破壊しました。`);
+    // E-XB14(X-CP03/0013 蠱惑の剣鬼 ヴィオローザ): 『反撃』でモンスターを破壊した時のフックを発火する。
+    // 既存 event:"destroyByAttack"（DB全76枚が「このカードの"攻撃で"破壊した時」＝攻撃限定・generic『破壊した時』は
+    // grep 実証で0枚）へ反撃を混ぜると76枚全てが反撃時に誤爆するため、別イベント名 "destroyByCounterattack" を新設する
+    //（既存データに listener 0件＝挙動完全不変のオプトイン）。0013 は原文がDB唯一の無限定『このカードがモンスターを
+    // 破壊した時』のため、mech 側で destroyByAttack＋destroyByCounterattack の2本立てにして攻撃/反撃の両破壊を拾う。
+    // 反撃側カード(targetAfterBattle)は攻撃を耐えて場に残った側＝現在も場在。runAttackDestroyedTriggers の
+    // destroyByAttack 発火 context と同型（card/owner/zone＋破壊されたカード情報＋eventCard）。
+    const counterCard = state.players[targetSlot.owner]?.field?.[targetSlot.zone];
+    if (counterCard && counterCard.instanceId === targetAfterBattle.instanceId) {
+      await runTriggeredAbilities(counterCard, "destroyByCounterattack", {
+        card: counterCard,
+        player: state.players[targetSlot.owner],
+        owner: targetSlot.owner,
+        zone: targetSlot.zone,
+        destroyedCard: destroyed,
+        destroyedOwner: counterTarget.owner,
+        destroyedZone: counterTarget.zone,
+        eventCard: {
+          card: destroyed,
+          owner: counterTarget.owner,
+          zone: counterTarget.zone,
+          source: "field",
+        },
+      });
+    }
   }
 }
 

@@ -333,6 +333,8 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     visiblePower,
     destroyFieldCard,
     executeAbilityBody,
+    // R11 回帰用: script op useSelectedCard の実体（装備/配置の非同期誘発レースガードを実経路で叩く）。
+    useSelectedCardForScript,
     hasKeyword,
     findUsableHandAbility,
     findUsableHandAbilities,
@@ -364,6 +366,9 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     returnFieldTargetToHand,
     getPendingAttackers,
     resolveAmountFrom,
+    // E-XB14(X-CP03/0013 ヴィオローザ): 反撃破壊の destroyByCounterattack 発火を実経路で叩くため公開。
+    resolveCounterattack,
+    chargeAction,
     endTurn,
     // FE2(X-BT01/0124 ドロー禁止)回帰テスト用: 通常ドローステップ(drawAction)・低レベルドロー(drawCards)を実経路で叩く。
     drawAction,

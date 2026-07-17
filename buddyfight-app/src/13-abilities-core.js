@@ -262,6 +262,7 @@ async function useHandAbilityAction(card, ability, options = {}) {
   // usedCard は直前で player.drop に積んでおり、場のカードとして自分自身を拾うことはないため
   // 自己反応の心配はない（既存の resolvePendingSpell と同じ安全性）。
   if (effectiveCardType(usedCard) === "spell") {
+    recordSpellCastThisTurn(owner); // E-XB9: 対抗/即時手札魔法解決経路もターン内魔法使用回数へ算入
     await runFieldEventTriggers("spellCast", owner, usedCard, null, { spellCard: usedCard });
   }
   state.selected = null;
@@ -578,6 +579,12 @@ function describeAbilityCondition(condition) {
   }
   if (condition.op === "lifeLte") return `自分のライフ${condition.amount}以下`;
   if (condition.op === "lifeGte") return `自分のライフ${condition.amount}以上`;
+  if (condition.op === "lifeCount") {
+    const who = condition.controller === "opponent" ? "相手" : "自分";
+    const cmp = condition.cmp === "lte" ? "以下" : condition.cmp === "eq" ? "ちょうど" : "以上";
+    const amount = condition.amount ?? 0;
+    return condition.cmp === "eq" ? `${who}のライフが${amount}` : `${who}のライフ${amount}${cmp}`;
+  }
   if (condition.op === "phaseIs") return `${ABILITY_TIMING_LABELS[condition.phase] || condition.phase}フェイズ中`;
   if (condition.op === "turnOwnerIsSelf") return "自分のターン中";
   if (condition.op === "turnOwnerIsOpponent") return "相手のターン中";
@@ -590,6 +597,11 @@ function describeAbilityCondition(condition) {
     const who = condition.damageOwner === "opponent" ? "相手" : "自分";
     const n = condition.amount ?? 1;
     return `このターン中、${who}が${n > 1 ? `${n}以上の` : ""}ダメージを受けていること`;
+  }
+  if (condition.op === "gaugePlacedThisTurnLte") {
+    const who = condition.controller === "opponent" ? "相手" : "自分";
+    const n = condition.amount ?? 0;
+    return n <= 0 ? `このターン中、${who}のゲージにカードが置かれていないこと` : `このターン中、${who}のゲージに置かれたカードが${n}枚以下であること`;
   }
   if (condition.op === "hostMatches") return "装備している（搭乗/変身）カードの条件";
   if (condition.op === "sourceStanding") return "このカードがスタンドしていること";
@@ -908,6 +920,16 @@ function checkCondition(condition, owner, context = {}) {
   if (condition.op === "opponentLifeLte") {
     return opponent.life <= condition.amount;
   }
+  if (condition.op === "lifeCount") {
+    // E-XB13(X-CP03/0011 大連鎖凶骨 サーティーン): ライフ枚数の汎用比較。controller(self/opponent) × cmp(gte/lte/eq) × amount。
+    // 既存 lifeLte/lifeGte(self専用)・opponentLifeLte(相手≤のみ) では表現できない「相手のライフがちょうど13」等の
+    // 等値・相手側 gte を1opで賄う（cardCount の life 版＝pile 列挙に life が無い穴を埋める）。既存カード使用0件＝挙動不変。
+    const target = condition.controller === "opponent" ? opponent : player;
+    const cmp = condition.cmp || "gte";
+    const amount = condition.amount ?? 0;
+    const n = target.life;
+    return cmp === "lte" ? n <= amount : cmp === "eq" ? n === amount : n >= amount;
+  }
   if (condition.op === "revealedMatches") {
     // E-XC1(X-CP02 コスモドラグーン reveal-gate): 直前に revealTopCard で公開したカード(context.revealedCard)が
     // filter に一致するか。script の ifCondition と effects[] の effect.conditions の両方に context 経由で届く
@@ -963,6 +985,14 @@ function checkCondition(condition, owner, context = {}) {
     const milledSeat = condition.deckOwner === "opponent" ? 1 - owner : owner;
     return (state.turnDeckMilled?.[milledSeat] || 0) >= (condition.amount ?? 1);
   }
+  if (condition.op === "gaugePlacedThisTurnLte") {
+    // E-XB12(X-CP03/0069 影雄 グラウ):「このターン中、<controller>のゲージにカードが置かれていないなら」。
+    // state.gaugePlacedThisTurn[席]=席別のターン内ゲージ流入枚数（noteGaugePlaced=全ゲージ流入点で集計・
+    // clearTurnModifiers でリセット・src/07/11）。controller を owner 視点で席へ解決（"opponent"=相手 / 既定 self）。
+    // amount 既定=0（「置かれていないなら」= 0枚以下）。deckMilledThisTurn(E8)と同型・?. ガードで旧state 非throw。
+    const gaugeSeat = condition.controller === "opponent" ? 1 - owner : owner;
+    return (state.gaugePlacedThisTurn?.[gaugeSeat] || 0) <= (condition.amount ?? 0);
+  }
   if (condition.op === "damageTakenThisTurn") {
     // E-X2(X-SD02/0016 クリスタル・フローレス・シュート！):「このターン中、<damageOwner>がダメージを受けているなら」。
     // state.turnDamageTaken[席]=席別のターン内被ダメージ累積（applyDamageToPlayer=全ダメージ funnel の実適用点で
@@ -972,6 +1002,23 @@ function checkCondition(condition, owner, context = {}) {
     // （self が0ダメージ＝真）。deckMilledThisTurn(E8)と同型・?. ガードで旧state 非throw。
     const damagedSeat = condition.damageOwner === "opponent" ? 1 - owner : owner;
     return (state.turnDamageTaken?.[damagedSeat] || 0) >= (condition.amount ?? 1);
+  }
+  if (condition.op === "spellCastThisTurnGte") {
+    // E-XB9(X-SS03/0017 セフィロトの講義):「このターン中、<controller>が魔法を使っているなら」。
+    // state.spellsCastThisTurn[席]=席別のターン内魔法使用回数（recordSpellCastThisTurn=全 spellCast funnel で
+    // 加算・clearTurnModifiers でリセット・src/07/11）。controller を owner 視点で席へ解決（"opponent"=相手 /
+    // 既定 "self"=自分）。amount 既定=1（「1回以上使っているなら」）。deckMilledThisTurn(E8)と同型・?. ガードで旧state 非throw。
+    const casterSeat = condition.controller === "opponent" ? 1 - owner : owner;
+    return (state.spellsCastThisTurn?.[casterSeat] || 0) >= (condition.amount ?? 1);
+  }
+  if (condition.op === "handDiscardedByEffectThisTurnMatches") {
+    // E-XB10(X-SS03/0048 シャインブレイド・ジョーカー):「このターン中、カードの効果で <controller> の手札の
+    // カードが捨てられているなら」。state.turnHandDiscardedByEffect[席]=席別のターン内「効果で捨てられた手札枚数」
+    // （discardHandCardsToDrop=手札→ドロップの唯一合流点で cause.byEffect のみ加算＝コスト捨て/byCost は非計上。
+    // clearTurnModifiers でリセット・src/11）。controller を owner 視点で席へ解決（"opponent"=相手 / 既定 "self"=自分）。
+    // amount 既定=1。E8 deckMilledThisTurn の鏡・?. ガードで旧state 非throw。
+    const discardedSeat = condition.controller === "opponent" ? 1 - owner : owner;
+    return (state.turnHandDiscardedByEffect?.[discardedSeat] || 0) >= (condition.amount ?? 1);
   }
   if (condition.op === "ownCenterEmpty") {
     return !player.field.center;

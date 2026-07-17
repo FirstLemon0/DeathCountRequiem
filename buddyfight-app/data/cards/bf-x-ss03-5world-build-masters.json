@@ -1,0 +1,3891 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-x-ss03-5world-build-masters",
+    "name": "バッツ スペシャルシリーズ第3弾「5WORLD BUILD MASTERS（ファイブワールド ビルド マスターズ）」",
+    "kind": "スペシャルシリーズ",
+    "generation": "バッツ",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=68"
+  },
+  "cards": [
+    {
+      "id": "bf-x-ss03-0001",
+      "no": "X-SS03/0001",
+      "name": "暴嵐の魔王竜 バッツ",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■君のターン中、場のこのカードは破壊されない。",
+        "■君のライフが４以下なら、このカードの打撃力＋１し、『貫通』を得る。",
+        "『２回攻撃』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "destroyImmunity": [
+        {
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        },
+        {
+          "from": {
+            "byBattle": true
+          },
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        }
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 4
+            }
+          ]
+        },
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 4
+            }
+          ]
+        }
+      ],
+      "_note": "【コールコスト】ゲージ1=costs.call:[payGauge:1]。『君のターン中、場のこのカードは破壊されない』はbf-x-bt01-0114魔王竜バッツ（同系列バッツ）と完全同型の2エントリ分割destroyImmunity（fromなし+conditions:[turnOwnerIsSelf]=効果破壊保護／from:{byBattle:true}+conditions:[turnOwnerIsSelf]=バトル破壊保護。destroyImmunityEntryBlocks, src/11-destroy-turn.js:213-234でcause.byBattleの有無によりfromなしエントリとfrom:{byBattle:true}エントリが排他的に効くことを確認）。『君のライフが4以下なら、打撃力+1し、貫通を得る』はcontinuous 2件（modifyStats{filter:{sameInstanceAsSource:true},critical:1,conditions:[lifeLte:4]}+grantKeyword{keyword:penetrate,filter:{sameInstanceAsSource:true},conditions:[lifeLte:4]}）＝bf-pr-0227バトンタッチ！バルドラゴン（grantKeyword move/penetrate、lifeLte:5条件）・bf-x-cp01-0026朧ろげな記憶バッツ（modifyStats critical:2、lifeLte:4条件、sameInstanceAsSource）と同型の確立前例（打撃力=critical系ステータス、power ではない点に注意）。『2回攻撃』は常時付与=keywords:[doubleAttack]（条件文の外側に独立して置かれた行のため無条件）。grep自己検査: payGauge(src/04-cost-resource.js:544,946)/turnOwnerIsSelf(src/13-abilities-core.js:891)/destroyImmunityEntryBlocks(src/11-destroy-turn.js:213)/modifyStats(src/05-stats.js 継続集計)/grantKeyword+keywordAliases.penetrate(src/18:470)/lifeLte(src/13:900) 全実在確認。VM(_scratch/x67-slice/x67-b2-verify.js): 実call経路(callMonster+resolvePendingResolution)でゲージ1課金・doubleAttack常時付与を確認。ライフ4→打撃力3(2+1)・貫通あり、ライフ5(陰性対照)→打撃力2・貫通なし、を確認。自分のターン中は効果破壊(cause:{byEffect:true})・バトル破壊(cause:{byBattle:true})とも実destroy経路(destroyFieldCard)で破壊されないことを確認。相手のターン中(陰性対照、active=1)は同じ効果破壊で通常通り破壊されることを確認。"
+    },
+    {
+      "id": "bf-x-ss03-0002",
+      "no": "X-SS03/0002",
+      "name": "角王の長老 天武",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "『角王』",
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが登場した時、相手の場のモンスター１枚を、能力全てを無効化して、破壊する。"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "ドラゴンW",
+        "awayMaxCopies": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0002-enter-nullify-destroy",
+          "kind": "triggered",
+          "event": "enter",
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target",
+              "options": {
+                "ignoreSoulguard": true,
+                "ignoreDestroyImmunity": true,
+                "ignoreDestroyReplacement": true,
+                "suppressDestroyedTriggers": true,
+                "suppressLifeLink": true
+              }
+            }
+          ]
+        }
+      ],
+      "_note": "『角王』=deckAnyFlag:{homeWorld:\"ドラゴンW\",awayMaxCopies:1}（bf-h-bt03-0003二角魔王アスモダイ等、角王アイコン内部表現の確立前例。filter.deckAnyFlag=角王枚数判定, src/17-targeting.js:320）。【コールコスト】ゲージ2=costs.call:[payGauge:2]。『このカードが登場した時、相手の場のモンスター1枚を、能力全てを無効化して、破壊する』=event:enter（自己直接発火）+target(fieldCard,controller:opponent,allowMissingTarget:true,filter:{cardType:monster})+destroy単体形にoptions直渡し{ignoreSoulguard,ignoreDestroyImmunity,ignoreDestroyReplacement,suppressDestroyedTriggers,suppressLifeLink:true}。destroy単体対象形(effect.target!==\"$self\")はdestroyFieldCard呼び出し時にcause+effect.optionsをマージするため(src/15-ability-effects.js:1340-1351)、この5フラグはscope形のnullifyAbilities:true翻訳（同ファイル1324-1330、FE1コメント『能力を無効化して破壊』＝ソウルガード/破壊耐性/破壊置換/破壊時誘発/ライフリンクを一括で貫通）と完全に同じ挙動をdestroyFieldCard側(src/11-destroy-turn.js:339,345,351,354,358,363,367,370,400,435,452,463)が直接読むため単体選択でも忠実再現できる（新op不要・既存destroy op内の既存optionsサブキーの組み合わせ）。相手の場にモンスターが無い場合はtarget.allowMissingTarget:trueで安全にno-op（bf-d-bt04-0032刻印の聖痕竜スティグマータと同型）。grep自己検査: destroy単体options(src/15-ability-effects.js:1340-1351)/destroyFieldCard の各ignore*・suppress*判定(src/11-destroy-turn.js:339,345,351,354,358,363,367,370,400,435,452,463)/deckAnyFlag(src/17-targeting.js:320) 全実在確認。VM: 実call経路(callMonster+resolvePendingResolution)でゲージ2課金・登場時トリガーが相手モンスター1枚選択プロンプトを経て発火。対象にソウルガード+破壊耐性(destroyImmunity from:{byEffect:true})+破壊時誘発(gainLife)を全て持たせた上で、破壊が成立しかつ破壊時誘発(ライフ回復)が発火しないこと(suppressDestroyedTriggers)を確認。相手の場が空の場合はno-opで自身は問題なく場に出ることを確認(陰性対照)。"
+    },
+    {
+      "id": "bf-x-ss03-0003",
+      "no": "X-SS03/0003",
+      "name": "ドラムバンカー・ドラゴンXIV世",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ドラゴンW",
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■このカードが相手にダメージを与えた時、相手の場のカード１枚を破壊する。",
+        "『貫通』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0003-dealdamage-destroy",
+          "kind": "triggered",
+          "event": "dealDamage",
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {}
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "_note": "【コールコスト】『デッキの上から1枚をこのカードのソウルに入れ、ゲージ1を払う』=costs.call:[putTopDeckToSoul:1,payGauge:1]（原文順。bt01-0021ドラムバンカー・ドラゴン=BT01/0021無印版・bf-x-bt02-0018紫晶竜サングリア等、同一2op組合せの確立多数前例）。『このカードが相手にダメージを与えた時、相手の場のカード1枚を破壊する』=event:dealDamage（自己直接発火。攻撃で実際にダメージを与えた時に発火＝src/10-battle-resolve.js:834 runDamageDealtTriggers）+target(fieldCard,controller:opponent,allowMissingTarget:true,filter:{})（カード種別限定無し=「場のカード」。bf-x-bt02-0095黒印竜ヴァンエイチ・bf-d-bt04-0062黒き豪雨ジークロンのfilter:{}形と同型）+effects:[destroy{target:$target}]。keywords=『貫通』『ソウルガード』。grep自己検査: putTopDeckToSoul(src/04-cost-resource.js:601,1013,1761)/payGauge(src/04:544,946)/dealDamage誘発元runDamageDealtTriggers(src/10-battle-resolve.js:799-842)/destroy単体形(src/15-ability-effects.js:1340) 全実在確認。VM: 実call経路(callMonster+resolvePendingResolution)でソウル1枚+ゲージ1課金・貫通/ソウルガードkeyword付与を確認。実攻撃経路(context.performAttackDeclaration+resolvePendingResolution、相手センター空でファイター直接攻撃)でダメージが実際に通った後、dealDamage誘発が発火し相手の場のカード(モンスター以外含む任意1枚)を選択破壊できることを確認。"
+    },
+    {
+      "id": "bf-x-ss03-0004",
+      "no": "X-SS03/0004",
+      "name": "轟拳のバルドラゴン",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ドラゴンW",
+      "attributes": [
+        "太陽竜"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■このカードが攻撃した時、このカード以外の君の場のカード１枚を選び、そのターン中、選んだカードとこのカードの打撃力＋１！",
+        "『移動』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "move",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0004-attack-buff-both",
+          "kind": "triggered",
+          "event": "attack",
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "excludeSource": true,
+            "allowMissingTarget": true,
+            "filter": {}
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "critical": 1,
+              "duration": "turn"
+            },
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "critical": 1,
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "【コールコスト】=costs.call:[putTopDeckToSoul:1,payGauge:1]（0003と同型組合せ）。『このカードが攻撃した時、このカード以外の君の場のカード1枚を選び、そのターン中、選んだカードとこのカードの打撃力+1』=event:attack（自己直接発火）+target(fieldCard,controller:self,excludeSource:true,allowMissingTarget:true,filter:{})（カード種別限定無し=モンスター/アイテム問わず「場のカード」。excludeSourceはbt02-0046竜騎士リョウマ等の確立語彙）+effects二連: modifyStats{target:$target,critical:1,duration:turn}→modifyStats{target:$self,critical:1,duration:turn}（『選んだカードとこのカードの』＝対象と自身の両方を独立にcritical+1する既存opの単純合成。新op不要・既存カードにtarget:$targetとtarget:$selfのmodifyStatsを同一abilityのeffects配列に並べる組合せの前例は無いが、各opは97件超の独立使用実績を持つ確立op）。keywords=『移動』『ソウルガード』。grep自己検査: putTopDeckToSoul/payGauge(src/04)/modifyStats target:$target・target:$self(src/15-ability-effects.js、既存97件超のtarget:$self実績確認)/move・soulguardキーワード(src/18-tooltip-format.js keywordAliases) 全実在確認。VM: 実call経路でソウル1枚+ゲージ1課金・移動/ソウルガードkeyword付与を確認。実attack経路(api.runAttackDeclarationTriggers)で他の場のカード1枚選択プロンプトを経て、選んだカードの打撃力+1(そのターン中)とこのカード自身の打撃力+1(そのターン中)の両方が成立することを確認。他に場のカードが無い場合(陰性対照)はallowMissingTargetで安全にno-op・未実装ログも出ないことを確認。"
+    },
+    {
+      "id": "bf-x-ss03-0005",
+      "no": "X-SS03/0005",
+      "name": "電導師 イナズマック",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ドラゴンW",
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■君の場のサイズ２のモンスターが攻撃した時、君のデッキの上から２枚をゲージに置く。この能力は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0005-size2-attack-gauge",
+          "kind": "triggered",
+          "event": "allyAttack",
+          "conditions": [
+            {
+              "op": "targetMatches",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  2
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "rulesに【コールコスト】行が無い=無償コール（costsキー省略、多数前例と同型）。『君の場のサイズ2のモンスターが攻撃した時、君のデッキの上から2枚をゲージに置く。この能力は1ターンに1回だけ発動する』=event:allyAttack（場ブロードキャスト。runFieldEventTriggersが自分自身の攻撃も含め自分の場全体へ配信、src/07-actions-turn.js:618-651）+conditions:[targetMatches{filter:{cardType:monster,sizeIn:[2]}}]（allyAttack等runFieldEventTriggers発の場イベントはcontext.targetにeventCardエントリが自動セットされるためtargetMatchesがそのまま攻撃者を参照できる、src/07:646＋bf-x-ub01-0032復讐者イカヅチと同型。size本体のスカラー直書きは禁止のためsizeIn:[2]を使用、baseSizeでなく現在サイズ判定の原文『サイズ2の』に整合)+effects:[putTopDeckToGauge{amount:2}]（player未指定=既定=イベント受信側=自分、src/15-ability-effects.js:283-291）+limit:{scope:turn}（この能力は1ターンに1回だけ発動する、印字カード=自身のインスタンス単位）。grep自己検査: allyAttack生成元runFieldEventTriggers(src/07-actions-turn.js:618)/targetMatches(src/13-abilities-core.js:860)/sizeIn(src/17-targeting.js:361)/putTopDeckToGauge(src/15-ability-effects.js:283) 全実在確認。VM: 実attack経路(api.runAttackDeclarationTriggers)で自分の場のサイズ2モンスターが攻撃した際にデッキ上2枚がゲージへ移動することを確認。同一ターン内2回目の攻撃(同じサイズ2モンスター/別モンスター問わず1インスタンス単位のlimit)では追加ゲージ配置が無いことを確認(limit:turn)。サイズ1のモンスターが攻撃した場合(陰性対照)は不発であることを確認。"
+    },
+    {
+      "id": "bf-x-ss03-0006",
+      "no": "X-SS03/0006",
+      "name": "ドラゴディフレクト",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ドラゴンW",
+      "attributes": [
+        "防御"
+      ],
+      "rules": [
+        "■君が攻撃されている攻撃中に使える。",
+        "■【対抗】その攻撃を無効化し、攻撃してきたカード１枚のソウル１枚をドロップゾーンに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0006-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
+            }
+          ],
+          "target": {
+            "type": "battleCard",
+            "role": "attacker"
+          },
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "dropTargetSoul",
+              "target": "$target",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "rulesに【使用コスト】行が無い=無償使用（costsキー省略）。『君が攻撃されている攻撃中に使える』=conditions:[pendingAttackDefenderIsSelf, pendingAttackTargetIs{targetType:fighter}]（bf-x-cp02-0064アースバリアと完全同型・ファイター本体が攻撃対象の攻撃中限定）。『【対抗】その攻撃を無効化し、攻撃してきたカード1枚のソウル1枚をドロップゾーンに置く』=target(battleCard,role:attacker)（filter無し=種別問わず『攻撃してきたカード』。攻撃者は常にモンスターのため実質等価。src/17-targeting.js:185-206でpending.attackersから解決）+effects:[nullifyAttack, dropTargetSoul{target:$target,amount:1}]（eb01-0034忍法半殺しの『ソウル全て』版(amount未指定)に対し、本カードは『ソウル1枚』が明示のためamount:1を指定。dropTargetSoulはamount未指定時=全ソウルのため区別が必須）。grep自己検査: pendingAttackDefenderIsSelf(src/13-abilities-core.js:1531)/pendingAttackTargetIs(src/13:1505)/battleCard role:attacker解決(src/17-targeting.js:185-206)/nullifyAttack(src/15-ability-effects.js:2116)/dropTargetSoul(src/15:1720) 全実在確認。VM: 相手のファイター攻撃を宣言→対抗ウィンドウで本スペルを実use経路(useCardAction)で使用→その攻撃が無効化され、攻撃してきたモンスターのソウルが1枚(2枚以上あっても1枚のみ)ドロップゾーンへ移動することを確認。"
+    },
+    {
+      "id": "bf-x-ss03-0007",
+      "no": "X-SS03/0007",
+      "name": "宝竜剣 ドラゴトレジャー",
+      "type": "item",
+      "rarity": "デッキ商品",
+      "world": "ドラゴンW",
+      "attributes": [
+        "ドラゴン",
+        "武器"
+      ],
+      "power": 5000,
+      "critical": 1,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■君の場の属性に「竜」か「ドラゴン」を含むモンスターが攻撃した時、カード１枚を引く。この能力は１ターンに１回だけ発動する。"
+      ],
+      "equipCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0007-allyattack-draw",
+          "kind": "triggered",
+          "event": "allyAttack",
+          "conditions": [
+            {
+              "op": "targetMatches",
+              "filter": {
+                "cardType": "monster",
+                "attributeIncludesAny": [
+                  "竜",
+                  "ドラゴン"
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "【装備コスト】ゲージ1=equipCost:{gauge:1}+costs.equip:[payGauge:1]（bf-h-sd01-0014襲撃剣ドラゴラプター型の確立表現）。『君の場の属性に「竜」か「ドラゴン」を含むモンスターが攻撃した時、カード1枚を引く。この能力は1ターンに1回だけ発動する』=event:allyAttack（場ブロードキャスト、item自身もzones走査対象=既存allyDestroyed/allyBattleEnd等の武器item前例と同型）+conditions:[targetMatches{filter:{cardType:monster,attributeIncludesAny:[竜,ドラゴン]}}]（bt03-0070竜滅剣ドラゴンスレイヤー・bf-h-eb03-0031ギロチンアックス・ドラゴン等、attributeIncludesAny:[ドラゴン,竜]の確立語彙）+effects:[draw{amount:1}]+limit:{scope:turn}。grep自己検査: equipCost/costs.equip payGauge(src/04-cost-resource.js:544,946)/allyAttack(src/07-actions-turn.js:618)/targetMatches(src/13:860)/attributeIncludesAny(src/17-targeting.js、bt03-0070等既存6件超使用実績)/draw(src/15-ability-effects.js:254) 全実在確認。VM: 実use経路(useCardAction→pendingAction kind:equip→resolvePendingResolution)でゲージ1が宣言時に課金され装備されることを確認。装備後、属性に「竜」を含む自分の場のモンスターが攻撃した際にカードを1枚引くことを確認。同一ターン2回目の攻撃では追加ドロー無し(limit:turn)を確認。属性に竜/ドラゴンを含まないモンスターの攻撃では不発(陰性対照)であることを確認。"
+    },
+    {
+      "id": "bf-x-ss03-0008",
+      "no": "X-SS03/0008",
+      "name": "ドラゴンシールド 青竜の盾",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ドラゴンW",
+      "attributes": [
+        "青竜",
+        "防御"
+      ],
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】その攻撃を無効化し、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0008-blue-dragon-shield-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss03-0009",
+      "no": "X-SS03/0009",
+      "name": "竜魔法 ハイディングボマー",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "worlds": [
+        "マジックW",
+        "ドラゴンW"
+      ],
+      "attributes": [
+        "ドラゴン",
+        "破壊"
+      ],
+      "rules": [
+        "■相手のターン中に使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】場の防御力5000以下のモンスター１枚を手札に戻すか、破壊する。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0009-hiding-bomber",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "t",
+              "from": "field",
+              "controller": "any",
+              "filter": {
+                "cardType": "monster",
+                "defenseLte": 5000
+              },
+              "amount": 1,
+              "require": true,
+              "title": "竜魔法 ハイディングボマー",
+              "lead": "手札に戻すか破壊する防御力5000以下のモンスターを選んでください。"
+            },
+            {
+              "op": "chooseBranch",
+              "title": "竜魔法 ハイディングボマー",
+              "lead": "手札に戻すか破壊するか選んでください。",
+              "options": [
+                {
+                  "key": "return",
+                  "label": "手札に戻す",
+                  "script": [
+                    {
+                      "op": "moveSelected",
+                      "var": "t",
+                      "to": "hand"
+                    }
+                  ]
+                },
+                {
+                  "key": "destroy",
+                  "label": "破壊する",
+                  "script": [
+                    {
+                      "op": "destroySelected",
+                      "var": "t"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss03-0010",
+      "no": "X-SS03/0010",
+      "name": "天竜神明",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ドラゴンW",
+      "worlds": [
+        "ドラゴンW",
+        "エンシェントW"
+      ],
+      "attributes": [
+        "ドラゴン",
+        "ドロー",
+        "天国"
+      ],
+      "rules": [
+        "■君のドロップが10枚以下なら使える。",
+        "■【使用コスト】ゲージ１を払い、ライフ１を払う。",
+        "■君のドロップのカード３枚を君のデッキの下に好きな順番で置く。置いたら、カード２枚を引く。「天竜神明」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0010-tenryu-shinmei",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "cardCount",
+              "pile": "drop",
+              "cmp": "lte",
+              "amount": 10
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "d",
+              "from": "drop",
+              "controller": "self",
+              "amount": 3,
+              "require": true,
+              "title": "天竜神明",
+              "lead": "デッキの下に置く君のドロップゾーンのカードを3枚選んでください。"
+            },
+            {
+              "op": "moveSelectedToDeckBottomOrdered",
+              "var": "d",
+              "log": "{cards}を好きな順番でデッキの下に置きました。"
+            },
+            {
+              "op": "draw",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "deb03-tenryu-shinmei"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss03-0011",
+      "no": "X-SS03/0011",
+      "name": "ドラゴンワールド",
+      "type": "flag",
+      "rarity": "デッキ商品",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "■君は＜ドラゴンワールド＞と＜ジェネリック＞のカードを使える。"
+      ]
+    },
+    {
+      "id": "bf-x-ss03-0012",
+      "no": "X-SS03/0012",
+      "name": "カリスマ魔王ティーチャー アスモダイ",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■“カリスマジック！”このカードが登場した時、君のドロップゾーンのカード名が違うモンスター２枚を裏向きにして、その２枚をシャッフルし、相手はその中から１枚を選ぶ。君は相手が選んだカードを【コールコスト】を払ってコールする。「カリスマジック！」は１ターンに１回だけ発動する。（選ばれなかったカードはドロップゾーンに戻す）"
+      ],
+      "_note": "R2(統括裁定rulings.md)＝『相手はその中から１枚を選ぶ』は selectCards の chooser:\"opponent\" オプション(E-XB6)を要する。grep実測: selectCardsForScript(src/14-ability-script.js:527-599)の chooseCardEntries 呼び出しは promptSeat: context.owner に固定(585行)で、相手席(1-context.owner)へ選択を振る経路が存在しない。近縁のE-XV4 opponentMayCallFromHandForScript(src/14-ability-script.js:2631-2709)は『相手がコールするか/何を』を相手席プロンプトで往復させる同型機構だが、これは『相手自身の手札から相手が選ぶ』専用で、本カードの『君のドロップの2枚から相手が1枚選ぶ』（選択対象は君のカード）には転用できない(候補集合が player.hand決め打ち)。R2指示どおり、E-XB6が統括側で新設されるまで abilities は実装せず rules のみ収録する。反映後の想定配線: enter誘発→selectCards{from:drop,controller:self,filter:{cardType:monster},amount:2,distinctName必要}で君が2枚選定→裏向き化・シャッフル→selectCards{chooser:\"opponent\",promptSeat:1-context.owner}で相手が1枚選択→選ばれた1枚をcallSelected(payCost:call)、選ばれなかった1枚はドロップへ戻す(moveSelectedToDrop等)、limit{scope:turn,shared:true,key:\"karisumajikku\"}(named-once・モンスター/アイテムはshared:trueの house 規約)。VM: 未実装のため対象外(rules表示のみ確認)。 ／【E-XB6/R2 で忠実実装（統括反映 2026-07-17）】異名2枚選択（differentNameFromVar=既存E3キー）→相手席ブラインド選択（chooser:opponent＋faceDown＋shuffle=E-XB6 新設・choiceIndex 逆写像でT13安全・決定的シャッフル）→選ばれた1枚を【コールコスト】払ってコール。選ばれなかった1枚はドロップに残置（原文の括弧書きどおり）。named-once monster 規約で limit.shared:true。赤ピン=E-XB6 系（effects-regression）。旧未実装は解消。",
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0012-charisma-magic",
+          "label": "カリスマジック！",
+          "kind": "triggered",
+          "event": "enter",
+          "limit": {
+            "scope": "turn",
+            "shared": true,
+            "key": "xss03-カリスマジック"
+          },
+          "script": [
+            {
+              "op": "selectCards",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster"
+              },
+              "callable": true,
+              "amount": 1,
+              "var": "$first",
+              "require": false,
+              "title": "カリスマジック！",
+              "lead": "裏向きにする1枚目のモンスターを選んでください。"
+            },
+            {
+              "op": "selectCards",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "differentNameFromVar": "$first"
+              },
+              "callable": true,
+              "amount": 1,
+              "var": "$second",
+              "require": false,
+              "title": "カリスマジック！",
+              "lead": "裏向きにする2枚目（1枚目と名前が違う）のモンスターを選んでください。"
+            },
+            {
+              "op": "selectCards",
+              "from": "var",
+              "sourceVars": [
+                "$first",
+                "$second"
+              ],
+              "chooser": "opponent",
+              "faceDown": true,
+              "shuffle": true,
+              "amount": 1,
+              "var": "$chosen",
+              "require": false,
+              "title": "カリスマジック！",
+              "lead": "裏向きの2枚から1枚を選んでください。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "$chosen",
+              "payCost": "call",
+              "chooseZones": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss03-0013",
+      "no": "X-SS03/0013",
+      "name": "影絵の舞踏家 シルエット・ジョー",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "シャドウシェイド"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■【コールコスト】君のドロップゾーンの魔法１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■君の場に他の元々のサイズが２以上の＜マジックＷ＞のモンスターがいるなら、場のこのカードのサイズを２減らす。",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putDropToSoul",
+            "filter": {
+              "cardType": "spell"
+            },
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "size": -2,
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "cardType": "monster",
+                "baseSizeGte": 2,
+                "world": "マジックW"
+              },
+              "excludeSource": true,
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "『【コールコスト】君のドロップゾーンの魔法１枚をこのカードのソウルに入れ、ゲージ２を払う』=costs.call:[putDropToSoul{filter:{cardType:spell},amount:1}(min省略=amount既定=mandatory。『まで』が無い＝bf-x-ub01-0021氷竜魔王ミセリアのmin:0(『魔法１枚までを』)とは逆で必須), payGauge{amount:2}]。『君の場に他の元々のサイズが２以上の＜マジックＷ＞のモンスターがいるなら、場のこのカードのサイズを２減らす』はcontinuous modifyStats{size:-2, filter:sameInstanceAsSource, conditions:[cardCount{controller:self, pile:field, filter:{cardType:monster, baseSizeGte:2, world:マジックW}, excludeSource:true, cmp:gte, amount:1}]}。bf-x-cp02-0004翠晶竜シャルトリューズ(pile:center版・baseSize:3固定一致)のcontinuous形を土台に、①pile:centerでなくpile:field(原文『君の場に』はセンター限定でない)、②baseSize:3固定一致でなくbaseSizeGte:2(原文『サイズが２以上』は下限)、③excludeSource:true追加(原文『他の』＝自分自身は数えない。continuousEffectApplies(src/05-stats.js:797-850)がconditions評価時にcontext.card=sourceCard=自分自身を渡すため、cardCount条件op(src/13-abilities-core.js:828-830)のexcludeSourceがそのまま自己除外に効く)に変更。sourceZoneIn(left/right限定)は原文に『レフトかライトの』の限定句が無いため付けない(全ゾーンで有効)。『２回攻撃』『ソウルガード』=keywords:[doubleAttack,soulguard]。grep自己検査: putDropToSoul(src/04-cost-resource.js:609,1016,1764)/payGauge/modifyStats size/cardCount excludeSource(src/13-abilities-core.js:810-856,828-830)/baseSizeGte(src/17-targeting.js:382)/filter.world(src/17-targeting.js:327-328)/sameInstanceAsSource(src/05-stats.js:804) 全実在確認。VM: 他の元々サイズ2以上のマジックWモンスターが自分の場にいる/いない、及び自分自身しかいない(excludeSource効果測定)の3状態でeffectiveSizeを実測。"
+    },
+    {
+      "id": "bf-x-ss03-0014",
+      "no": "X-SS03/0014",
+      "name": "伽藍の絶対少女 メアリー・スー",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "魔術師"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■“絶対魔導規約”君が魔法を使った時、カード１枚を引く。「絶対魔導規約」は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0014-zettai-madou-kiyaku",
+          "label": "絶対魔導規約",
+          "kind": "triggered",
+          "event": "allySpellCast",
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "shared": true,
+            "key": "zettai-madou-kiyaku"
+          }
+        }
+      ],
+      "_note": "『“絶対魔導規約”君が魔法を使った時、カード１枚を引く。「絶対魔導規約」は１ターンに１回だけ発動する』=event:allySpellCast(「君が魔法を使った時」の場全体誘発。runFieldEventTriggers(\"spellCast\",...)がsrc/07-actions-turn.js:1062-1065[非設置スペル解決後]・1136-1141[設置スペルの『使う』]の両経路から発火＝bf-d-cbt-0041ヘブンズベルの血統/bf-d-cbt-0049魔砲士カノーネと同型確立イベント)+effects:[draw{amount:1}]。named-once(『「絶対魔導規約」は』の引用符付き名称)はhouse規約(HANDOFF BF-D-BT04メモ『名前付きonce=monster/item は shared:true+名称キー』)に従いlimit.shared:trueを付与、キーはbare slug(パック接頭辞なし。X-SS02 F2是正[stardust-brave/another-hand]の現行標準に準拠=将来の再録と自動合算できるよう\"zettai-madou-kiyaku\"とする)。grep自己検査: allySpellCast発火元(src/07-actions-turn.js:1062-1065,1136-1141)/draw(src/15-ability-effects.js:254)/limit.shared処理(src/15-ability-effects.js:3171-3173) 全実在確認。VM: 実際に魔法をuseCardActionで使用→resolvePendingSpell経由のspellCast放送でカード1枚を引くこと、同ターン2枚目の魔法使用では発動しない(named-once)ことを実操作経路で確認。"
+    },
+    {
+      "id": "bf-x-ss03-0015",
+      "no": "X-SS03/0015",
+      "name": "ロックな魔王ティーチャー ルシファー",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "size": 2,
+      "power": 4000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■このカードが破壊された時、君のデッキの上から１枚をゲージに置き、君のライフを＋１！",
+        "■このカードがカードの効果で登場した時、そのターン中、このカードは『２回攻撃』を得る。カード名に「アスモダイ」を含むカードの効果で登場したなら、かわりに、そのターン中、『３回攻撃』を得る。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0015-destroyed-gauge-life",
+          "kind": "triggered",
+          "event": "destroyed",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ss03-0015-enter-effect-attack",
+          "kind": "triggered",
+          "event": "enter",
+          "conditions": [
+            {
+              "op": "enteredByEffect"
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "tripleAttack",
+              "duration": "turn",
+              "conditions": [
+                {
+                  "op": "enterCauseMatches",
+                  "filter": {
+                    "nameIncludes": "アスモダイ"
+                  }
+                }
+              ]
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "doubleAttack",
+              "duration": "turn",
+              "conditions": [
+                {
+                  "op": "not",
+                  "condition": {
+                    "op": "enterCauseMatches",
+                    "filter": {
+                      "nameIncludes": "アスモダイ"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "『このカードが破壊された時、君のデッキの上から１枚をゲージに置き、君のライフを＋１！』=event:destroyed+putTopDeckToGauge{amount:1}+gainLife{amount:1}(bf-x-bt01-0058曲刀使いクルヴァ・bf-h-bt03-0085五角騎竜砂杖のアルカイドと完全同型)。『このカードがカードの効果で登場した時、そのターン中、このカードは『２回攻撃』を得る。カード名に「アスモダイ」を含むカードの効果で登場したなら、かわりに、そのターン中、『３回攻撃』を得る』=event:enter+ability.conditions:[enteredByEffect](通常コールでは不発。context.enteredByEffect=Boolean(options.byEffect)、src/07-actions-turn.js:554-556)。ability全体をenteredByEffectでゲートした上で、効果を2本の相互排他条件で分岐: enterCauseMatches{filter:{nameIncludes:アスモダイ}}が真ならtripleAttack、偽(not)ならdoubleAttack。enterCauseCardはcallSelectedForScript(src/14-ability-script.js:2617)ほか効果コール5経路(callSelfFromHand以外)がcontext.card(=召喚元の発生源カード)を自動で渡す確立配線(E-XU2 0021氷竜魔王ミセリアのenteredByCardNamedと同一供給源。本カードは名称部分一致が要るためenteredByCardNamed(完全一致)でなくenterCauseMatches{filter:{nameIncludes}}の汎用形を使用)。grep自己検査: destroyed イベント/putTopDeckToGauge(src/15-ability-effects.js:283)/gainLife/enteredByEffect(src/13-abilities-core.js:878-880)/enterCauseMatches(src/13-abilities-core.js:887-889)/enterCauseCard供給(src/07-actions-turn.js:554-560、src/14-ability-script.js:2617,2796,3106,3157)/grantKeyword target:$self duration:turn(src/15-ability-effects.js:1690-1708)/tripleAttackキーワード実在(src/18-tooltip-format.js:472、src/10-battle-resolve.js:880-884) 全実在確認。VM: ①破壊時にデッキ上1枚がゲージへ+ライフ+1、②「アスモダイ」を名に含む発生源カードのcallSelectedToEmptyZones{resolveOnEnter:true}経由でコール→tripleAttack付与、③無関係な名前の発生源カードから同経路でコール→doubleAttack付与(tripleAttackは得ない)、④通常callMonster(enteredByEffect無し)ではどちらも付与されない、の4パターンを実操作経路で確認。"
+    },
+    {
+      "id": "bf-x-ss03-0016",
+      "no": "X-SS03/0016",
+      "name": "リヒト “SD”＆ドゥンケルハイト “SD”",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "魔術師"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■君が魔法を使った時、君のライフを＋１する。さらに、相手のターン中なら、君のデッキの上から１枚をゲージに置く。この能力は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0016-spellcast-life-gauge",
+          "kind": "triggered",
+          "event": "allySpellCast",
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "turnOwnerIsOpponent"
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-x-ss03-0016-spellcast"
+          }
+        }
+      ],
+      "_note": "『君が魔法を使った時、君のライフを＋１する。さらに、相手のターン中なら、君のデッキの上から１枚をゲージに置く。この能力は１ターンに１回だけ発動する』=event:allySpellCast(0014と同一の確立イベント)+effects:[gainLife{amount:1}, putTopDeckToGauge{amount:1, conditions:[turnOwnerIsOpponent]}](後段effectのみ相手ターン限定条件を付与。executeAbilityEffect(src/15-ability-effects.js:234-253)は各effectごとにconditionsを個別評価するため1本のabilityで無条件効果と条件付き効果を混在させられる)。turnOwnerIsOpponentはcontext.owner(=自分)を基準に(context.turnOwner??state.active)!==ownerで判定(src/13-abilities-core.js:894-896)。無名once(『この能力は』に引用符が無い)はhouse規約によりper-instance想定だが、limit.scope:turnのみでkeyを明示してもkind:triggeredのためisHandCastLimitAbility=falseとなりinstanceId付きキーへ自動分離される(src/15-ability-effects.js:3164-3179)＝shared無しの通常挙動。grep自己検査: allySpellCast/gainLife/putTopDeckToGauge/turnOwnerIsOpponent(src/13-abilities-core.js:894)/effect単位conditions(src/15-ability-effects.js:247-253) 全実在確認。VM: ①自分のターン中に魔法使用→ライフ+1のみ(ゲージ増分なし)、②相手のターン中(対抗魔法等)に魔法使用→ライフ+1かつデッキ上1枚がゲージへ、③同ターン内2回目の魔法使用は不発(named-once)、を実操作経路で確認。"
+    },
+    {
+      "id": "bf-x-ss03-0017",
+      "no": "X-SS03/0017",
+      "name": "セフィロトの講義",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "チャージ"
+      ],
+      "rules": [
+        "■このターン中、君が魔法を使っているなら使える。",
+        "■【対抗】君のデッキの上から２枚を見て、その中の１枚を手札に加え、残りのカードをゲージに置く。「セフィロトの講義」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0017-lookdraw",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "effects": [
+            {
+              "op": "lookTopSelectToHandRestToBottom",
+              "count": 2,
+              "max": 1,
+              "altTo": "gauge"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-x-ss03-0017-cast"
+          }
+        }
+      ],
+      "_note": "★不足op（報告・未実装）: 『このターン中、君が魔法を使っているなら使える』の使用条件はgrep実測で表現不能。state.players[owner]に『このターン魔法を使ったか』を記録するフィールドが無く(state.attacksThisTurn/state.turnDeckMilled等、他の『このターン中N回』系はいずれも専用のstateカウンタを持つ個別機構＝汎用のイベント発生フラグ基盤は無い)、対応する条件op(spellCastThisTurn 等)もsrc全体に存在しない(grep: spellsThisTurn/spellCastCount/castThisTurn いずれも0件)。既存の近縁例bf-x-bt01-0002バッツ×リンクのattacksThisTurnGte(state.attacksThisTurn専用カウンタ)と同型の新規カウンタ(例: state.players[].spellCastThisTurn真偽値をturnStartでリセットしspellCast発火点2箇所[src/07:1062-1065,1136-1141]でtrueに立てる)+条件op(spellCastThisTurn)が必要。無いopを創作せず報告する方針(厳守事項)に従い、useConditionsは追加せず本カードは常時使用可能な状態で実装している(過剰実装ではなく過少実装の近似＝原文より緩い使用条件。要修正)。効果本体『【対抗】君のデッキの上から２枚を見て、その中の１枚を手札に加え、残りのカードをゲージに置く。「セフィロトの講義」は１ターンに１回だけ使える』は完全実装: lookTopSelectToHandRestToBottom{count:2,max:1,altTo:\"gauge\"}(bf-x-bt01-0002バッツ×リンクの{count:3,max:1,altTo:gauge}と同型パターン。altTo:gaugeはS-UB-C03/0042フローラル夕美で確立)。named-once(引用符付きカード名『「セフィロトの講義」は』)はkind:spellのためisHandCastLimitAbilityでbaseキー自動共有(shared不要。bf-d-sd02-0010ブレイブメモリー型)、key明示は id接頭辞スタイル(bt03-0067-dangerous-fuse等の多数派に準拠)。統括反映待ち: 新state.players[].spellCastThisTurn + 条件op spellCastThisTurn の追加後、abilities[0]にuseConditions:[{op:\"spellCastThisTurn\"}]相当を配線すること。grep自己検査: lookTopSelectToHandRestToBottom+altTo:gauge分岐(src/15-ability-effects.js:624-668)/isHandCastLimitAbility(src/15-ability-effects.js:3190-3192) 全実在確認、spellCastThisTurn系は全DB0件を確認(不足op)。VM: 効果本体(デッキ上2枚見て1枚手札+残りゲージ)と1ターン1回制限のみ実操作経路で確認（使用条件ゲートは未実装のため検証対象外）。 ／【E-XB9/R10 で使用条件を忠実化（統括反映）】「このターン中、君が魔法を使っているなら使える」= useConditions:[spellCastThisTurnGte{controller:self,amount:1}]（state.spellsCastThisTurn=3つの魔法使用funnelで記帳・clearTurnModifiers リセット）。常時使用可の近似は解消。",
+      "useConditions": [
+        {
+          "op": "spellCastThisTurnGte",
+          "controller": "self",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss03-0018",
+      "no": "X-SS03/0018",
+      "name": "ソロモンの壁",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "防御"
+      ],
+      "rules": [
+        "■【使用コスト】君のドロップゾーンの魔法１枚を君のデッキの下に置き、ゲージ１を払う。",
+        "■【対抗】次の２つから１つを選んで使う。",
+        "・そのターン中、次に君が受けるダメージを０に減らす。",
+        "・相手の場のモンスター１枚をレストする。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "putDropToDeckBottom",
+            "filter": {
+              "cardType": "spell"
+            },
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0018-counter-choice",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "ソロモンの壁",
+              "lead": "次の２つから１つを選んで使ってください。",
+              "options": [
+                {
+                  "key": "reduce",
+                  "label": "そのターン中、次に君が受けるダメージを０に減らす。",
+                  "script": [
+                    {
+                      "op": "preventNextDamage",
+                      "all": true
+                    }
+                  ]
+                },
+                {
+                  "key": "rest",
+                  "label": "相手の場のモンスター１枚をレストする。",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "m",
+                      "from": "field",
+                      "controller": "opponent",
+                      "filter": {
+                        "cardType": "monster"
+                      },
+                      "amount": 1,
+                      "allowEmpty": true,
+                      "emptyMessage": "相手の場にモンスターがいないため、レストは行いません。",
+                      "title": "ソロモンの壁",
+                      "lead": "レストする相手の場のモンスターを選んでください。"
+                    },
+                    {
+                      "op": "restSelected",
+                      "var": "m"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "『【使用コスト】君のドロップゾーンの魔法１枚を君のデッキの下に置き、ゲージ１を払う』=costs.cast:[putDropToDeckBottom{filter:{cardType:spell},amount:1}, payGauge{amount:1}]。『【対抗】次の２つから１つを選んで使う。・そのターン中、次に君が受けるダメージを０に減らす。・相手の場のモンスター１枚をレストする』は、rules文面が一字一句同一のbf-x-cp02-0020エクステンド・ディフェンダー(X-CP02/0020)のscript chooseBranchをそのまま踏襲(唯一の差分は0020が『君の場にソウル2枚以上があるモンスターがいるなら使える』useConditions付きだが本カードにその句は無いため未使用コンディション=省略、使用コストの内訳のみ差し替え): 分岐1=preventNextDamage{all:true}(『0に減らす』=all:trueの確立語彙。bt05-0098/d-bt02-0022/bf-x-cp01-0063型)、分岐2=selectCards{controller:opponent,filter:{cardType:monster},allowEmpty:true}+restSelected(対象0枚でもno-op)。abilities[0].costは省略(costs.castが唯一のコスト源。bf-x-cp02-0020と同型でability.cost非重複＝abilityCostSteps=ability.cost||costs.cast(src/13-abilities-core.js:135-138)の後段フォールバックで課金される。FIX7: 非設置スペルの印字コストはcosts.cast配列で課金される経路のため必須要件は満たす)。grep自己検査: putDropToDeckBottom(src/04-cost-resource.js:711,1134,1848)/payGauge/chooseBranch(src/14-ability-script.js:343-345,1209-1248)/preventNextDamage(src/15-ability-effects.js)/selectCards allowEmpty/restSelected(src/14-ability-script.js:403,1728-1743) 全実在確認。VM: ①【使用コスト】でドロップの魔法1枚がデッキ下へ+ゲージ-1、②分岐1選択で次に受けるダメージが0になる、③分岐2選択で相手の場のモンスター1枚がレストされる、④相手の場が空でも分岐2選択でno-opでクラッシュしないこと、を実操作経路(useCardAction→resolvePendingResolution)で確認。"
+    },
+    {
+      "id": "bf-x-ss03-0019",
+      "no": "X-SS03/0019",
+      "name": "踊るぜ！アスモダイ",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "72柱"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■このカードが登場した時、カード１枚を引く。"
+      ],
+      "callCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0019-enter-draw",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss03-0020",
+      "no": "X-SS03/0020",
+      "name": "ネバー・セイ・ネバー",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "ドロー",
+        "チャージ"
+      ],
+      "rules": [
+        "■君のデッキの上から２枚をゲージに置く。さらに！！君の手札が０枚なら、カード２枚を引く。「ネバー・セイ・ネバー」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0020-charge-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "script": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "not",
+                "condition": {
+                  "op": "ownHandCountGte",
+                  "amount": 1
+                }
+              },
+              "then": [
+                {
+                  "op": "draw",
+                  "amount": 2
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-bt03-0015-charge-draw"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss03-0021",
+      "no": "X-SS03/0021",
+      "name": "ナイスワン！（最高だぜ）",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "マジックW",
+      "attributes": [
+        "魔力"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■カード２枚を引く。「ナイスワン！（最高だぜ）」は１ターンに１回だけ使える。"
+      ],
+      "castCost": {
+        "gauge": 1
+      },
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0021-nice-one-cast",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "nice-one"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss03-0022",
+      "no": "X-SS03/0022",
+      "name": "マジックワールド",
+      "type": "flag",
+      "rarity": "デッキ商品",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "■君は＜マジックワールド＞と＜ジェネリック＞のカードを使える。"
+      ]
+    },
+    {
+      "id": "bf-x-ss03-0023",
+      "no": "X-SS03/0023",
+      "name": "白面暴君 伊吹童子",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "カタナW",
+      "attributes": [
+        "暗殺鬼",
+        "カオス"
+      ],
+      "size": 3,
+      "power": 8000,
+      "critical": 3,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが登場した時、場のカード１枚までを持ち主の手札に戻す。",
+        "■【起動】君の場のモンスター１枚を選び、手札のこのカードを公開する。公開したら、このカードを裏向きで、選んだモンスタ－のソウルに入れる。",
+        "『奇襲』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "ambush"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0023-enter-bounce",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "bounce",
+              "from": "field",
+              "controller": "any",
+              "filter": {},
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "白面暴君 伊吹童子",
+              "lead": "持ち主の手札に戻す場のカードを1枚まで選んでください（戻さなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "bounce",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を持ち主の手札に戻しました。"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ss03-0023-hide-in-soul",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "moveSelfToTargetSoul",
+              "target": "$target",
+              "faceDown": true
+            }
+          ]
+        }
+      ],
+      "_note": "①【コールコスト】ゲージ2=costs.call:[payGauge(2)]。②『このカードが登場した時、場のカード１枚までを持ち主の手札に戻す』=kind:triggered,event:enter,script:[selectCards{from:field,controller:any,filter:{},min:0,max:1,amount:1,require:false},moveSelected{to:hand,require:false}]（bf-h-eb04-0042メイク・サム・ノイズ！の『場のモンスター２枚までを持ち主の手札に戻す』と同型・controller:anyで両陣営が対象・filter空でモンスター/アイテム両方含む＝rules原文『場のカード』通り。moveSelectedのto:handは宛先ownerを既定でentry.owner＝各カードの持ち主にする(src/14:1484-1491 scriptMoveDestinationOwner)ため『持ち主の』を追加キー無しで満たす。excludeSourceは付けない=原文に『このカード以外』の限定が無いため自分自身も対象に含め得る合法選択）。③【起動】『君の場のモンスター１枚を選び、手札のこのカードを公開する。公開したら、このカードを裏向きで、選んだモンスタ－のソウルに入れる』=bf-pr-0376デモンズアサシン ジオーガの同一文言アビリティをそのまま踏襲（kind:activated,fromHandOnly:true,timing:[main],target:{type:fieldCard,controller:self,filter:{cardType:monster}},effects:[moveSelfToTargetSoul{target:$target,faceDown:true}]）。moveSelfToTargetSoulは手札からの起動呼び出しに標準対応（sourceSlot不在→handIndex検索）。faceDown:trueで『裏向きで』を明示。『公開する』は演出テキストのみ（機構差分なし）。『奇襲』=keywords:[\"ambush\"]（E-Y1標準。裏向きソウルに入ったこのカードは、ホストが破壊されソウルごとドロップへ落ちた時reconcileFaceDownSoulDrops(src/11-destroy-turn.js:876)がfaceDown解除+ambush特殊コール権を記録し【コールコスト】(ゲージ2)を払ってドロップから場へコールできる）。grep自己検査: payGauge(src/04-cost-resource.js)/selectCards from:field controller:any(src/14-ability-script.js:663-668,777-787)/moveSelected+scriptMoveDestinationOwner(src/14-ability-script.js:328,1043-1077,1484-1491)/moveSelfToTargetSoul(src/15-ability-effects.js:2430)/faceDown(markSoulCardsFaceDown, src/15:49)/reconcileFaceDownSoulDrops(src/11:876)/ambushエイリアス(src/18-tooltip-format.js:469) 全実在確認。"
+    },
+    {
+      "id": "bf-x-ss03-0024",
+      "no": "X-SS03/0024",
+      "name": "激動たる角王 ジウン",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "カタナW",
+      "attributes": [
+        "髑髏武者"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 4,
+      "defense": 1000,
+      "rules": [
+        "『角王』",
+        "■【コールコスト】ゲージ１を払い、ライフ１を払う。",
+        "■このカードが１枚で攻撃しているバトル中、相手は【対抗】を使えない。",
+        "■【起動】ゲージ１を払ってよい。払ったら、そのターン中、このカードの攻撃力＋2000し、『貫通』を得る。"
+      ],
+      "deckAnyFlag": true,
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0024-solo-counterlock",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "attackingAlone"
+            }
+          ],
+          "effects": [
+            {
+              "op": "preventOpponentCounterThisTurn"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ss03-0024-boost",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "optional": true,
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$self",
+              "power": 2000,
+              "duration": "turn"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "penetrate",
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "①『角王』=card級 deckAnyFlag:true（X18/D-BT01型の角王アイコン内部表現）。②【コールコスト】ゲージ1+ライフ1=costs.call:[payGauge(1),payLife(1)]。③『このカードが１枚で攻撃しているバトル中、相手は【対抗】を使えない』=bf-x-cp01-0001武装騎神エネルゲイアの同一文言部分と完全同型（kind:triggered,event:attack,conditions:[attackingAlone],effects:[preventOpponentCounterThisTurn]。『バトル中』→『そのターン中』は当該precedentの_note記載通りDB多数の既存忠実近似）。④『【起動】ゲージ１を払ってよい。払ったら、そのターン中、このカードの攻撃力＋2000し、『貫通』を得る』=bf-cr-0004ブルードバグナグ・ドラゴン型（kind:activated,optional:true,cost:[payGauge(1)],effects内でmodifyStats+grantKeyword）に、bt03-0036勇者ドラムのgrantKeyword{target:$self,keyword:penetrate,duration:turn}を合成。攻撃力=power（打撃力=criticalとは別語のためmodifyStatsはpowerキー使用）。grep自己検査: deckAnyFlag(src/03-setup.js:143,src/17-targeting.js:320-321)/payGauge/payLife(src/04-cost-resource.js)/attackingAlone(src/13-abilities-core.js:857)/preventOpponentCounterThisTurn(src/15-ability-effects.js:2075)/modifyStats(src/15:1613)/grantKeyword+duration:turn(src/15:1701-1712) 全実在確認。"
+    },
+    {
+      "id": "bf-x-ss03-0025",
+      "no": "X-SS03/0025",
+      "name": "神速抜刀 三日月宗近",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "カタナW",
+      "attributes": [
+        "刀獣",
+        "日本刀"
+      ],
+      "size": 2,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■このカードが破壊された時、君がアイテムを装備しているなら、君のデッキの上から１枚をゲージに置き、君のライフを＋１！",
+        "『移動』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "move",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0025-destroyed-gauge-life",
+          "kind": "triggered",
+          "event": "destroyed",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "①【コールコスト】『君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う』=costs.call:[putTopDeckToSoul(1),payGauge(1)]（bf-x-cp01-0001等前例通り3経路実装済みop）。②『このカードが破壊された時、君がアイテムを装備しているなら、君のデッキの上から１枚をゲージに置き、君のライフを＋１』=bf-x-bt01-0058曲刀使いクルヴァ（event:destroyed+putTopDeckToGauge+gainLife、無条件版）に、bf-pr-0376の『アイテムを装備しているなら』ゲート＝cardCount{controller:self,pile:item,cmp:gte,amount:1}（D-SS03/0025・X-UB02/0041等多数前例の定型）を合成。③『移動』『ソウルガード』=keywords:[move,soulguard]（keywordAliases, src/18:459-471）。grep自己検査: putTopDeckToSoul(src/04-cost-resource.js:601,1013,1761)/payGauge(src/04)/cardCount pile:item(src/13-abilities-core.js:810-824)/putTopDeckToGauge(src/15-ability-effects.js:283)/gainLife(src/15:602)/moveエイリアス・soulguardエイリアス(src/18:459-471) 全実在確認。"
+    },
+    {
+      "id": "bf-x-ss03-0026",
+      "no": "X-SS03/0026",
+      "name": "瞬動の極意 月影",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "カタナW",
+      "attributes": [
+        "忍者"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■“ナノマシン瞬動術”このカードが登場した時、君のドロップゾーンの《忍法》１枚までを手札に加える。「ナノマシン瞬動術」は１ターンに１回だけ発動する。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0026-nanomachine-shundou",
+          "label": "ナノマシン瞬動術",
+          "kind": "triggered",
+          "event": "enter",
+          "limit": {
+            "scope": "turn",
+            "shared": true,
+            "key": "xss03-ナノマシン瞬動術"
+          },
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "pick",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "attribute": "忍法"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "瞬動の極意 月影",
+              "lead": "手札に加えるドロップゾーンの《忍法》を1枚まで選んでください（加えなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "pick",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を手札に加えました。"
+            }
+          ]
+        }
+      ],
+      "_note": "①【コールコスト】ゲージ1=costs.call:[payGauge(1)]。②『“ナノマシン瞬動術”このカードが登場した時、君のドロップゾーンの《忍法》１枚までを手札に加える。「ナノマシン瞬動術」は１ターンに１回だけ発動する』=kind:triggered,event:enter,script:[selectCards{from:drop,controller:self,filter:{attribute:忍法},min:0,max:1,amount:1,require:false},moveSelected{to:hand,require:false}]（bf-h-eb02-0007ガイグレンダー２号型の『デッキから～１枚までを手札に加える』script構造をfrom:drop+属性フィルタに差替。属性のみでcardType制約は付けない=既存bf-h-eb02-0001《ブレイブマシン》1枚までソウルイン型と同様、属性フィルタ単独が定型）。名前付き（「」付き）1ターン1回=named-once→limit:{scope:turn,shared:true,key:\"xss03-ナノマシン瞬動術\"}（rulings.md運用・named-once bare slug規約。将来同名再録との自動合算に備える）。grep自己検査: payGauge(src/04)/selectCards from:drop attribute filter(src/14-ability-script.js:663-693,matchesCardFilter attribute src/17-targeting.js)/moveSelected to:hand(src/14:1043-1077)/limit shared(markAbilityLimit/isAbilityLimitUsed, src/13) 全実在確認。"
+    },
+    {
+      "id": "bf-x-ss03-0027",
+      "no": "X-SS03/0027",
+      "name": "邪眼瞳術 闇狐",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "カタナW",
+      "attributes": [
+        "髑髏武者",
+        "闇"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】ライフ１を払う。",
+        "■“瞳術・屍轍”このカードが登場した時、君のドロップゾーンのサイズ１以下のモンスター１枚までを【コールコスト】を払ってコールする。「瞳術・屍轍」は１ターンに１回だけ発動する。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0027-doujutsu-shitetsu",
+          "label": "瞳術・屍轍",
+          "kind": "triggered",
+          "event": "enter",
+          "limit": {
+            "scope": "turn",
+            "shared": true,
+            "key": "xss03-瞳術・屍轍"
+          },
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "sizeLte": 1
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "邪眼瞳術 闇狐",
+              "lead": "【コールコスト】を払ってコールする、ドロップゾーンのサイズ１以下のモンスター１枚まで選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "call",
+              "payCost": "call",
+              "resolveOnEnter": true
+            }
+          ]
+        }
+      ],
+      "_note": "①【コールコスト】ライフ1=costs.call:[payLife(1)]。②『“瞳術・屍轍”このカードが登場した時、君のドロップゾーンのサイズ１以下のモンスター１枚までを【コールコスト】を払ってコールする。「瞳術・屍轍」は１ターンに１回だけ発動する』=bf-x-td02-0001創られし混沌ギアゴッドⅦ／bf-d-bt03-0016超光合竜ゴルディロクス・Zと完全同型構文（script:[selectCards{from:drop,controller:self,filter:{cardType:monster,sizeLte:1},min:0,max:1,amount:1,require:false,callable:true,canPayCost:call},callSelectedToEmptyZones{var,payCost:call,resolveOnEnter:true}]）をそのまま踏襲。sizeLte:1でscalar size禁止規約を遵守。名前付き1ターン1回=named-once→limit:{scope:turn,shared:true,key:\"xss03-瞳術・屍轍\"}。grep自己検査: payLife(src/04-cost-resource.js)/selectCards from:drop callable+canPayCost(src/14-ability-script.js:751-753,761-768)/callSelectedToEmptyZones(src/14:467-468,3026-3078) 全実在確認。"
+    },
+    {
+      "id": "bf-x-ss03-0028",
+      "no": "X-SS03/0028",
+      "name": "風遁 天狗凩",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "カタナW",
+      "attributes": [
+        "忍法",
+        "風"
+      ],
+      "rules": [
+        "■君が攻撃されている攻撃中に使える。",
+        "■【対抗】その攻撃を無効化し、場のサイズ１以下のモンスター１枚までを持ち主の手札に戻す。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0028-tengu-kogarashi",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
+            }
+          ],
+          "script": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "selectCards",
+              "var": "bounce",
+              "from": "field",
+              "controller": "any",
+              "filter": {
+                "cardType": "monster",
+                "sizeLte": 1
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "風遁 天狗凩",
+              "lead": "持ち主の手札に戻す、場のサイズ１以下のモンスターを1枚まで選んでください（戻さなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "bounce",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を持ち主の手札に戻しました。"
+            }
+          ]
+        }
+      ],
+      "_note": "①『君が攻撃されている攻撃中に使える』=conditions:[pendingAttackDefenderIsSelf, pendingAttackTargetIs{targetType:fighter}]（bf-pr-0213アースバリアの同一文言部分と完全同型。timing:[counter]・使用コスト行なしのためcostsキー無し）。②『【対抗】その攻撃を無効化し、場のサイズ１以下のモンスター１枚までを持ち主の手札に戻す』=script:[nullifyAttack, selectCards{from:field,controller:any,filter:{cardType:monster,sizeLte:1},min:0,max:1,amount:1,require:false}, moveSelected{to:hand,require:false}]（bf-x-ss02-0005/bf-x-bt02-0089等のscript内nullifyAttack+selectCards+moveSelected合成パターンを踏襲。nullifyAttackはisScriptEffectStep許可リスト登録済のためscript内使用可。controller:anyで両陣営が対象＝『場のサイズ1以下のモンスター』に自陣・相手陣の区別なし、to:handは既定でentry.owner=持ち主の手札）。grep自己検査: pendingAttackDefenderIsSelf/pendingAttackTargetIs(src/13-abilities-core.js:1505-1533)/nullifyAttack(src/15-ability-effects.js:2116、isScriptEffectStep src/14:3290)/selectCards+moveSelected(src/14) 全実在確認。"
+    },
+    {
+      "id": "bf-x-ss03-0029",
+      "no": "X-SS03/0029",
+      "name": "簪刀 鬼灯",
+      "type": "item",
+      "rarity": "デッキ商品",
+      "world": "カタナW",
+      "attributes": [
+        "暗殺鬼",
+        "武器"
+      ],
+      "power": 5000,
+      "critical": 1,
+      "rules": [
+        "■【装備コスト】ゲージ１を払い、ライフ１を払う。",
+        "■このカードは、君のセンターにモンスターがいても攻撃できる。",
+        "■君の場にドロップゾーンからモンスターが登場した時、カード１枚を引く。この能力は１ターンに１回だけ発動する。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "canAttackWithCenter"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0029-drop-enter-draw",
+          "kind": "triggered",
+          "event": "allyEnter",
+          "conditions": [
+            {
+              "op": "enteredCardMatches",
+              "filter": {
+                "cardType": "monster"
+              }
+            },
+            {
+              "op": "enteredFromZoneIn",
+              "zones": [
+                "drop"
+              ]
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "①【装備コスト】ゲージ1+ライフ1=costs.equip:[payGauge(1),payLife(1)]（アイテムはability.cost非併記・costs.equip配列。bf-x-cp02-0066紅玉球型）。②『このカードは、君のセンターにモンスターがいても攻撃できる』=keyword canAttackWithCenter（card級keywords配列。bf-x-cp02-0066紅玉球と同一文言・同一実装）。③『君の場にドロップゾーンからモンスターが登場した時、カード１枚を引く。この能力は１ターンに１回だけ発動する』=kind:triggered,event:allyEnter（場プレゼンス誘発・他カードの登場も拾う。runAllyEnterTriggers, src/07-actions-turn.js:571-608）,conditions:[enteredCardMatches{filter:{cardType:monster}}（『モンスターが』限定）, enteredFromZoneIn{zones:[drop]}（『ドロップゾーンから』＝進入したカード自身の発生元ゾーンを判定。context.enteredCardを参照、allyEnterはcontext.enteredCardを供給済み）],effects:[draw(1)],limit:{scope:turn}（無名『この能力は』のため shared 無し=per-instance既定）。bf-d-bt04-0087オゾンC等の『ドロップゾーンから登場した時』の名指し先例はfromDropZone(自身がドロップにいる時のリスナー)型だったため転用不可と判断し、代わりにevent:allyEnter+enteredFromZoneInの一般組合せ（既存bf-x-bt02-0111/bf-x-bt01-0065/bf-pr-0097/bf-h-bt02-0056/bf-d-bt02-0053等はいずれもevent:enter=自分自身の登場限定）を『場の他カードの登場も拾う』ようevent:allyEnterに差し替えて合成。この差し替えはenteredFromZoneInの実装(src/13-abilities-core.js:1138-1141)がcontext.enteredCard.enteredFromZoneを読むだけの汎用ロジックで、allyEnter配送(src/07:571-579)がcontext.enteredCard/enteredOwner/enteredZoneを供給する既存契約に忠実に沿うため新opは不要。grep自己検査: canAttackWithCenter(src/11-destroy-turn.js:35,src/18-tooltip-format.js:464)/payGauge・payLife(src/04)/allyEnter配送(src/07-actions-turn.js:561,571-579)/enteredCardMatches(src/13:1035-1037)/enteredFromZoneIn(src/13:1138-1141)/draw(src/15-ability-effects.js:254) 全実在確認。VM検証: ally装備下で他モンスターがドロップから効果コールで登場→ドロー成立／同ターン2回目はlimitで不発／アイテム自身の登場や『手札から』の通常コールでは不発、の3経路をB4検証で確認。"
+    },
+    {
+      "id": "bf-x-ss03-0030",
+      "no": "X-SS03/0030",
+      "name": "明鏡止水",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "カタナW",
+      "attributes": [
+        "忍法",
+        "鬼道"
+      ],
+      "rules": [
+        "■【対抗】君のデッキの上から３枚をゲージに置く。「明鏡止水」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0030-top3-gauge",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 3
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "meikyou-shisui"
+          }
+        }
+      ],
+      "ruby": "めいきょうしすい"
+    },
+    {
+      "id": "bf-x-ss03-0031",
+      "no": "X-SS03/0031",
+      "name": "忍法 半殺し",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "カタナW",
+      "attributes": [
+        "忍法"
+      ],
+      "rules": [
+        "■相手の『ソウルガード』を持つモンスターの攻撃中に使える。",
+        "■【対抗】その攻撃を無効化し、攻撃しているモンスターのソウル全てをドロップゾーンに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0031-drop-soulguard-soul",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackByOpponentCardMatches",
+              "filter": {
+                "cardType": "monster",
+                "keyword": "soulguard"
+              }
+            }
+          ],
+          "target": {
+            "type": "battleCard",
+            "role": "attacker",
+            "filter": {
+              "cardType": "monster",
+              "keyword": "soulguard"
+            }
+          },
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "dropTargetSoul",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "ruby": "にんぽう はんごろし"
+    },
+    {
+      "id": "bf-x-ss03-0032",
+      "no": "X-SS03/0032",
+      "name": "鬼道 緋しぐれ",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "カタナW",
+      "attributes": [
+        "鬼道",
+        "ドロー",
+        "地獄"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■君のデッキの上から２枚をドロップゾーンに置き、カード１枚を引く。さらに、君のドロップゾーンが10枚以上なら、カード１枚を引く。「鬼道 緋しぐれ」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0032-mill-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "moveTopDeckToDrop",
+              "amount": 2
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "cardCount",
+                  "controller": "self",
+                  "pile": "drop",
+                  "cmp": "gte",
+                  "amount": 10
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "deb03-kidou-hishigure"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss03-0033",
+      "no": "X-SS03/0033",
+      "name": "カタナワールド",
+      "type": "flag",
+      "rarity": "デッキ商品",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "■君は＜カタナワールド＞と＜ジェネリック＞のカードを使える。"
+      ]
+    },
+    {
+      "id": "bf-x-ss03-0034",
+      "no": "X-SS03/0034",
+      "name": "灼熱の鉄甲番長 デュエルイェーガー",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "エンシェントW",
+      "attributes": [
+        "竜王番長"
+      ],
+      "size": 3,
+      "power": 10000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から２枚をこのカードのソウルに入れ、ゲージ３を払う。",
+        "■君のドロップゾーンにサイズ３のモンスター５枚以上があるなら、このカードの打撃力＋１し、『貫通』を得る。",
+        "■【対抗】【起動】君の手札のサイズ３のモンスター１枚を捨ててよい。捨てたら、このカードをスタンドする！",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 2
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              },
+              "cmp": "gte",
+              "amount": 5
+            }
+          ]
+        },
+        {
+          "op": "grantKeyword",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "keyword": "penetrate",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              },
+              "cmp": "gte",
+              "amount": 5
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0034-hand-discard-stand",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "optional": true,
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1,
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ]
+        }
+      ],
+      "_note": "①【コールコスト】君のデッキの上から2枚をこのカードのソウルに入れ、ゲージ3を払う=costs.call:[putTopDeckToSoul(2),payGauge(3)]（bf-x-bt02-0001現界せし竜神デュナミスと同一amount構成の直接前例。順序はputTopDeckToSoul→payGaugeでも成立=同型カード多数precedent）。②『君のドロップゾーンにサイズ3のモンスター5枚以上があるなら、このカードの打撃力+1し、貫通を得る』=continuous 2本（modifyStats{filter:sameInstanceAsSource,critical:1}+grantKeyword{keyword:penetrate,filter:sameInstanceAsSource}）が共通条件cardCount{controller:self,pile:drop,filter:{cardType:monster,sizeIn:[3]},cmp:gte,amount:5}をそれぞれ持つ（bf-h-sd01-0004紅蓮闘士グランドキック・ドラゴン/bf-x-bt02-0001と同型パターン）。『打撃力』=critical（SKILL.md既知の落とし穴）。filter.sizeはスカラー禁止のためsizeIn:[3]を使用（matchesCardFilter, src/17-targeting.js:355-361に素のsizeキー無し）。③『【対抗】【起動】君の手札のサイズ3のモンスター1枚を捨ててよい。捨てたら、このカードをスタンドする！』=kind:activated,timing:[counter,main],optional:true,cost:[discardHand{amount:1,filter:{cardType:monster,sizeIn:[3]}}],effects:[standTarget{target:$self}]（bf-h-bt02-0003ナノマシン忍者白夜の『手札のモンスター以外のカード1枚を捨ててよい。捨てたら、このカードを【スタンド】する』と同一構造・フィルタのみ差し替え）。『ソウルガード』=keywords:[soulguard]。grep自己検査: putTopDeckToSoul(src/04-cost-resource.js:1013,1761,1949)/payGauge(src/04-cost-resource.js多数)/modifyStats+sameInstanceAsSource(src/05-stats.js)/grantKeyword continuous(src/18-tooltip-format.js:260,269)/cardCount(src/13-abilities-core.js:810)/sizeIn(src/17-targeting.js:361)/discardHand cost(src/04-cost-resource.js:559,1710)/standTarget(src/15-ability-effects.js:1817) 全実在確認。VM実証: _scratch/x67-slice/x67-b5-verify.js test0034。"
+    },
+    {
+      "id": "bf-x-ss03-0035",
+      "no": "X-SS03/0035",
+      "name": "C・ヴァルヴァロス",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード",
+        "カオス"
+      ],
+      "size": 3,
+      "power": 12000,
+      "critical": 3,
+      "defense": 8000,
+      "rules": [
+        "■【コールコスト】ゲージ５を払う。",
+        "■“ビジブルインビジブル”このカードが登場した時、君のデッキの上から５枚までを見て、好きな順番でデッキの上に置き、カード１枚を引く。その後、君の手札のモンスター１枚を、【コールコスト】を払ってコールしてよい。「ビジブルインビジブル」は１ターンに１回だけ発動する。"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 5
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0035-visible-invisible",
+          "label": "ビジブルインビジブル",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "reorderTopOrdered",
+              "count": 5
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            },
+            {
+              "op": "selectCards",
+              "var": "call",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster"
+              },
+              "amount": 1,
+              "min": 0,
+              "max": 1,
+              "require": false,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "C・ヴァルヴァロスでコールするモンスター",
+              "lead": "手札からコールするモンスターを1枚まで選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "call",
+              "then": [
+                {
+                  "op": "selectZone",
+                  "var": "z",
+                  "cardVar": "call",
+                  "emptyOnly": true
+                },
+                {
+                  "op": "payCardCostForSelection",
+                  "var": "call",
+                  "purpose": "call"
+                },
+                {
+                  "op": "callSelected",
+                  "var": "call",
+                  "zoneVar": "z",
+                  "resolveOnEnter": true
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "shared": true,
+            "key": "xss03-ビジブルインビジブル"
+          }
+        }
+      ],
+      "_note": "①【コールコスト】ゲージ5を払う=costs.call:[payGauge(5)]。②“ビジブルインビジブル”このカードが登場した時、デッキ上5枚までを見て好きな順番で上に置き1枚引く。その後、手札のモンスター1枚を【コールコスト】を払ってコールしてよい。1ターンに1回=kind:triggered,event:enter,script:[reorderTopOrdered{count:5}(G4 D-EB01前例・bf-x-cp02-0017フィフス・フォーカスと同型『デッキの上から5枚を見て、好きな順番でデッキの上に置く』),draw{amount:1},selectCards{from:hand,controller:self,filter:{cardType:monster},min:0,max:1,require:false,callable:true,canPayCost:call}(bf-h-bt01-0013デックアールヴの魔剣士ヘイム/bf-x-ss01-0043進化の胎動ヤミゲドウと同型『してよい』任意コール選択),ifSelection→selectZone{emptyOnly:true}+payCardCostForSelection{purpose:call}+callSelected{resolveOnEnter:true}]。原文の引用名「ビジブルインビジブル」はカード名と不一致のサブ能力固有名のため named-once bare slug（HANDOFF F2『同名カード合算＝shared:true』・xbt02-guren-tamashii等の前例形式）で limit:{scope:turn,shared:true,key:\"xss03-ビジブルインビジブル\"}（bare=ability.idを介さずキー直指定、instanceId分離なし=同名カード間で共有）。grep自己検査: payGauge/reorderTopOrdered(src/14-ability-script.js:352,1473)/draw(isScriptEffectStep許可リスト src/14:3241)/selectCards+callable+canPayCost(src/14-ability-script.js:527,752,761)/ifSelection/selectZone/payCardCostForSelection/callSelected 全実在確認・limit.shared(src/15-ability-effects.js:3171)実在確認。VM実証: x67-b5-verify.js test0035（reorder no-op確認済み手法でdraw対象カードを固定検証・任意コールの選択/非選択両分岐・sharedキーの記帳を実測）。"
+    },
+    {
+      "id": "bf-x-ss03-0036",
+      "no": "X-SS03/0036",
+      "name": "グランドドラゴン ゼルザール",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "エンシェントW",
+      "attributes": [
+        "ネイキッドドラゴン"
+      ],
+      "size": 3,
+      "power": 9000,
+      "critical": 3,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■【対抗】【起動】相手の場のモンスター１枚を選び、ライフ１を払い、君の手札のモンスター１枚を捨ててよい。そうしたら、選んだカードを破壊する。この能力は１ターンに１回だけ使える。",
+        "『貫通』『ソウルガード』『ライフリンク１』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate",
+        "soulguard",
+        "lifeLink1"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0036-counter-destroy",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "optional": true,
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            },
+            {
+              "op": "discardHand",
+              "amount": 1,
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "①【コールコスト】デッキ上1枚をソウルに入れ、ゲージ2を払う=costs.call:[putTopDeckToSoul(1),payGauge(2)]。②『【対抗】【起動】相手の場のモンスター1枚を選び、ライフ1を払い、君の手札のモンスター1枚を捨ててよい。そうしたら、選んだカードを破壊する。この能力は1ターンに1回だけ使える』=kind:activated,timing:[counter,main],optional:true,target:{type:fieldCard,controller:opponent,filter:{cardType:monster}},cost:[payLife(1),discardHand(1,filter:{cardType:monster})],effects:[destroy($target)],limit:{scope:turn}。bf-x-cp01-0013黄金の竜騎王ツタンカーメン『【起動】相手の場のモンスター1枚を選び、手札の《竜騎士》1枚を捨ててよい。捨てたら、選んだカードを破壊する』（optional:true+cost discardHand{filter}+target fieldCard opponent monster+effects destroy $target）と同一骨格に、原文どおりpayLife(1)コストを追加し、原文の『この能力は1ターンに1回だけ使える』にlimit:{scope:turn}（無名制限=インスタンス分離の既定）を付与。『このカードは場にあり手札のこのカードを捨てるのではない』ため、bf-x-bt02-0071（fromHandOnly自己discard）ではなくbf-x-cp01-0013（場発動・手札の別カードを捨てる）を踏襲。『貫通』『ソウルガード』『ライフリンク1』=keywords:[penetrate,soulguard,lifeLink1]。grep自己検査: putTopDeckToSoul/payGauge/payLife(src/04-cost-resource.js)/discardHand(cost,src/04-cost-resource.js:559,1710)/destroy(src/15-ability-effects.js)/lifeLink1文字列規約(src/11-destroy-turn.js:1535-1543,/^lifeLink\\d+$/)/target:fieldCard+controller:opponent(src/13-abilities-core.js findUsableFieldAbilities経路) 全実在確認。VM実証: x67-b5-verify.js test0036。"
+    },
+    {
+      "id": "bf-x-ss03-0037",
+      "no": "X-SS03/0037",
+      "name": "爆進の角王 バーンノヴァ",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭",
+        "火"
+      ],
+      "size": 3,
+      "power": 9000,
+      "critical": 2,
+      "defense": 8000,
+      "rules": [
+        "『角王』",
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ３を払う。",
+        "■相手のカードが攻撃した時、その対象をこのモンスターに変更する。",
+        "『３回攻撃』『ソウルガード』『ライフリンク３』"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "エンシェントW",
+        "awayMaxCopies": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "keywords": [
+        "tripleAttack",
+        "soulguard",
+        "lifeLink3"
+      ],
+      "continuous": [
+        {
+          "op": "redirectAttackToSelf"
+        }
+      ],
+      "_note": "①skeleton側rules[0]は既に『角王』（先頭行・原本どおり・本mechファイルはrulesキーを持たずskeletonをそのまま採用＝shallow mergeでの上書き事故を避ける）。角王=deckAnyFlag:{homeWorld:エンシェントW,awayMaxCopies:1}（bf-x-ss01-0010四角炎王バーンノヴァ＝同一キャラクター系統・同一world/attributesの直接前例と同型。ホームworldのみ4枚、他は1枚）。②【コールコスト】デッキ上1枚をソウルに入れ、ゲージ3を払う=costs.call:[putTopDeckToSoul(1),payGauge(3)]。③『相手のカードが攻撃した時、その対象をこのモンスターに変更する』=continuous:[{op:redirectAttackToSelf}]（bf-h-bt03-0017無天竜王メラバクシンの同一文言と完全一致の直接前例・パラメータ無し）。『3回攻撃』『ソウルガード』『ライフリンク3』=keywords:[tripleAttack,soulguard,lifeLink3]。grep自己検査: deckAnyFlag(builder.js cardCopyLimitForFlag)/putTopDeckToSoul/payGauge/redirectAttackToSelf(src/09-attack.js:353,applyAttackRedirectContinuous)/tripleAttack文字列(bf-x-ss01-0010実例)/lifeLink3規約 全実在確認。VM実証: x67-b5-verify.js test0037（applyAttackRedirectContinuousを実経路で叩き、対象変更とbuilder角王上限home=4/away=1を実測）。"
+    },
+    {
+      "id": "bf-x-ss03-0038",
+      "no": "X-SS03/0038",
+      "name": "武神皇竜帝 デュエルズィーガー",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴンロード"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 2,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】君の手札２枚までをこのカードのソウルに入れ、ゲージ１を払う。",
+        "■君の場のモンスターが攻撃された時、君のデッキの上から２枚をゲージに置く。この能力は１ターンに１回だけ発動する。",
+        "『２回攻撃』『ソウルガード』『ライフリンク３』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putHandToSoul",
+            "amount": 2,
+            "min": 0,
+            "max": 2
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard",
+        "lifeLink3"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0038-opponent-attack-gauge",
+          "kind": "triggered",
+          "event": "opponentAttack",
+          "conditions": [
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "monster"
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "①【コールコスト】君の手札2枚までをこのカードのソウルに入れ、ゲージ1を払う=costs.call:[putHandToSoul(amount:2,min:0,max:2),payGauge(1)]（bf-d-bt02-0005伝統番長オリエンタル・承と同一amount/min/max構成の直接前例・attribute等の追加filter無し）。『まで』は既存規約どおりmin:0で任意化。②『君の場のモンスターが攻撃された時、君のデッキの上から2枚をゲージに置く。この能力は1ターンに1回だけ発動する』は、bare event『attacked』が自分自身が攻撃対象になった時のみ直接発火（ally/opponent接頭辞の場全体ブロードキャストが存在しない・SKILL.md/CLAUDE.md記載の既知制約、runAttackedTriggers=src/09-attack.js:399-421は対象カードへ直送のみ）ため、原文『君の場のモンスターが攻撃された時』（=自分の場のいずれかのモンスターが攻撃対象になった時、このカード自身に限らない）をそのまま満たすには使えない（bare名禁止規約に抵触）。かわりに『attack』イベントの既存ally/opponentブロードキャスト（runFieldEventTriggers(\"attack\", attacker.owner, ...) が両陣営の場全体へ opponentAttack/allyAttack を配送・src/09-attack.js:455-469）を用いる：opponentAttackは防御側(=自分)の場の全カードへ相手の攻撃宣言のたびに配信されるため、event:opponentAttack + conditions:[pendingAttackTargetIs{targetType:monster}]（対象がモンスターであることに限定・fighter攻撃を除外）の組み合わせで『君の場のモンスターが攻撃された時』を過不足なく表現できる（bf-x-ss01-0036裂爪ライジンの_note『design.mdのattacked近似からopponentAttackへ正当差し替え』と同型の確立技法・bf-x-bt01-0076/bf-d-bt02-0114でopponentAttackが場全体（アイテム枠含む）へ確実配信されることを実証済み）。新規opは1つも使用していない（既存event『opponentAttack』+既存条件op『pendingAttackTargetIs』の組み合わせのみ）。『2回攻撃』『ソウルガード』『ライフリンク3』=keywords:[doubleAttack,soulguard,lifeLink3]。grep自己検査: putHandToSoul(src/04-cost-resource.js:567,972,1719)/payGauge/opponentAttack(src/09-attack.js:466-469 runFieldEventTriggers(\"attack\",...)のally/opponent動的生成)/pendingAttackTargetIs(src/13-abilities-core.js:1505-1512)/putTopDeckToGauge(src/15-ability-effects.js:283-289) 全実在確認。VM実証: x67-b5-verify.js test0038（runFieldEventTriggersを実経路で叩き、targetType:monster時のみ発火・fighter攻撃では不発・1ターン1回制限を実測）。"
+    },
+    {
+      "id": "bf-x-ss03-0039",
+      "no": "X-SS03/0039",
+      "name": "無敵の絆 リッキー＆怒羅魂頭達",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "エンシェントW",
+      "attributes": [
+        "怒羅魂頭"
+      ],
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■君がサイズ３の＜エンシェントＷ＞のモンスターをコールする場合、【コールコスト】に書かれている払うゲージの数値は１少なくなる。",
+        "『ライフリンク１』"
+      ],
+      "keywords": [
+        "lifeLink1"
+      ],
+      "costReduction": [
+        {
+          "purpose": "call",
+          "filter": {
+            "cardType": "monster",
+            "sizeIn": [
+              3
+            ],
+            "world": "エンシェントW"
+          },
+          "payOp": "payGauge",
+          "amount": 1
+        }
+      ],
+      "_note": "①コールコスト行なし=無料コール（bf-x-cp02-0068等の前例どおりcosts/callCost省略）。②『君がサイズ3の＜エンシェントＷ＞のモンスターをコールする場合、【コールコスト】に書かれている払うゲージの数値は1少なくなる』=costReduction:[{purpose:call,filter:{cardType:monster,sizeIn:[3],world:エンシェントW},payOp:payGauge,amount:1}]（bf-d-ss01-0027カースドラゴントラゴス/bf-s-ub-c03-0083等のcostReduction purpose:call前例と同型・fieldCostReductions/costReductionApplies, src/04-cost-resource.js:449-496が場のこのカードから他の対象カードのコールコストへ適用する既存機構。filterはmatchesCardFilterを通るためsizeスカラー禁止に従いsizeIn:[3]を使用）。『ライフリンク1』=keywords:[lifeLink1]。原文の＜エンシェントＷ＞疑似タグはrules表示文側で全角＜＞のまま保持（skeleton由来・このmechファイルでは変更しない）、DSLのworldキー値は既存card.world規約どおり半角W=\"エンシェントW\"。grep自己検査: costReduction(src/04-cost-resource.js:449,459,481,491)/matchesCardFilter cardType/sizeIn/world(src/17-targeting.js:311,328,361)/lifeLink1規約 全実在確認。VM実証: x67-b5-verify.js test0039（adjustedCostStepsを実経路で叩き、サイズ3＋エンシェントWのみゲージ-1、サイズ違い/world違いは無適用であることを実測）。"
+    },
+    {
+      "id": "bf-x-ss03-0040",
+      "no": "X-SS03/0040",
+      "name": "志竜堅固",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "エンシェントW",
+      "attributes": [
+        "竜王番長",
+        "防御"
+      ],
+      "rules": [
+        "■君の場のサイズ３のモンスターが攻撃されている攻撃中に使える。",
+        "■【対抗】その攻撃を無効化し、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0040-nullify",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetMatches",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "①【使用コスト】記載なし=無償（costs.cast省略）。②『君の場のサイズ3のモンスターが攻撃されている攻撃中に使える。【対抗】その攻撃を無効化し、君のデッキの上から1枚をゲージに置く』=kind:spell,timing:[counter],conditions:[pendingAttackDefenderIsSelf,pendingAttackTargetMatches{filter:{cardType:monster,sizeIn:[3]}}],effects:[nullifyAttack,putTopDeckToGauge(1)]。bf-h-bt03-0060ザッツ・ハウ・アイ・ロール『君の場のサイズ2以上のモンスターが攻撃されている攻撃中に使える。【対抗】その攻撃を無効化する』（conditions:[pendingAttackDefenderIsSelf,pendingAttackTargetMatches{filter:{cardType:monster,sizeGte:2}}]）とbf-x-ss02-0021プロトバリア『君が攻撃されている攻撃中に使える。【対抗】その攻撃を無効化し、君のデッキの上から1枚をゲージに置く』（effects:[nullifyAttack,putTopDeckToGauge(1)]）を合成した直接前例（サイズ限定はGte→In(3)へ差し替え、報酬節はプロトバリア型を採用）。filter.sizeスカラー禁止のためsizeIn:[3]を使用。grep自己検査: pendingAttackDefenderIsSelf(src/13-abilities-core.js:1531)/pendingAttackTargetMatches(src/13-abilities-core.js:1472,getPendingBattleTargetInfo=src/11-destroy-turn.js:78-95)/nullifyAttack(src/15-ability-effects.js:2116)/putTopDeckToGauge(src/15-ability-effects.js:283) 全実在確認。VM実証: x67-b5-verify.js test0040（pendingAttackを実構築しuseCardActionの対抗経路で無効化+ゲージ加算、サイズ1の対象では条件不成立で不発であることを実測）。"
+    },
+    {
+      "id": "bf-x-ss03-0041",
+      "no": "X-SS03/0041",
+      "name": "天竜開闢",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rules": [
+        "■【使用コスト】ライフ２を払う。",
+        "■カード２枚を引く。「天竜開闢」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payLife",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0041-draw2",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "tenryu-kaibyaku"
+          }
+        }
+      ],
+      "ruby": "てんりゅうかいびゃく"
+    },
+    {
+      "id": "bf-x-ss03-0042",
+      "no": "X-SS03/0042",
+      "name": "竜王伝",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rules": [
+        "■君のデッキの上から１枚をゲージに置き、君のライフを＋１し、カード１枚を引く。「竜王伝」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0042-gauge-life-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "ryuoden"
+          }
+        }
+      ],
+      "ruby": "りゅうおうでん"
+    },
+    {
+      "id": "bf-x-ss03-0043",
+      "no": "X-SS03/0043",
+      "name": "逆鱗",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "エンシェントW",
+      "attributes": [
+        "ドラゴン"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ１を払い、ライフ１を払う。",
+        "■【対抗】君の場のモンスター１枚を選ぶ。そのターン中、次にそのモンスターが破壊される場合、そのモンスターを場に残し、そのターン中、『反撃』を与える。"
+      ],
+      "castCost": {
+        "gauge": 1,
+        "life": 1
+      },
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0043-guard",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "setPreventNextDestroy",
+              "target": "$target",
+              "grantKeyword": "counterattack"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss03-0044",
+      "no": "X-SS03/0044",
+      "name": "エンシェントワールド",
+      "type": "flag",
+      "rarity": "デッキ商品",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "■君は＜エンシェントワールド＞と＜ジェネリック＞のカードを使える。"
+      ]
+    },
+    {
+      "id": "bf-x-ss03-0045",
+      "no": "X-SS03/0045",
+      "name": "復活の魔狼 フェンリル",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "レジェンドW",
+      "worlds": [
+        "レジェンドW",
+        "ダンジョンW"
+      ],
+      "attributes": [
+        "アースガルド"
+      ],
+      "size": 3,
+      "power": 10000,
+      "critical": 2,
+      "defense": 8000,
+      "rules": [
+        "■【コールコスト】ゲージ４を払う。",
+        "■このカードが手札から捨てられた時、ゲージ２を払ってよい。払ったら、ドロップゾーンにあるこのカードを【コールコスト】を払わずにコールする。",
+        "■このカードが登場した時、君のデッキの上から１枚をこのカードのソウルに入れる。",
+        "■君か相手の手札が０枚なら、このカードの打撃力＋１！",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 4
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "either",
+              "pile": "hand",
+              "cmp": "eq",
+              "amount": 0
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0045-discard-recall",
+          "kind": "triggered",
+          "event": "discardedFromHand",
+          "optional": true,
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "self",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "sameInstanceAsSource": true
+              },
+              "amount": 1
+            },
+            {
+              "op": "selectZone",
+              "var": "z",
+              "cardVar": "self",
+              "emptyOnly": true
+            },
+            {
+              "op": "callSelected",
+              "var": "self",
+              "zoneVar": "z",
+              "resolveOnEnter": true
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ss03-0045-enter-soul",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "putTopDeckToSoul",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "①【コールコスト】ゲージ4=costs.call:[payGauge(4)]。②『このカードが手札から捨てられた時、ゲージ２を払ってよい。払ったら、ドロップゾーンにあるこのカードを【コールコスト】を払わずにコールする』はbf-hd-pr.json PR/0285デアデビル“リターン”／PR/0473拳の炎竜バーンボンドドラゴンと同型（印字コールコストがあるカードの『コールコストを払わず』はcallSelfFromHandが常に印字コストを強制精算するため使えない、というPR/0473 _note記載の既知制約に従う）: event:discardedFromHand,optional:true,cost:[payGauge(2)]でゲートし、script:[selectCards{from:drop,controller:self,filter:{sameInstanceAsSource:true},amount:1}(discardedFromHand発火時点でcontext.cardは既にドロップにある自分自身1枚のみに一致), selectZone{cardVar:self,emptyOnly:true}, callSelected{zoneVar:z,resolveOnEnter:true}](payCost省略=無償コール、callSelectedForScript src/14-ability-script.js:2529-2612の`if (step.payCost)`ガードのみが課金するため省略時は完全無償)。③『このカードが登場した時、君のデッキの上から１枚をこのカードのソウルに入れる』=event:enter,effects:[putTopDeckToSoul{amount:1}]（bf-h-bt04-mikado-evolution.json H-BT04/0003と同型、context.card=自分自身のソウルへ）。④『君か相手の手札が０枚なら、このカードの打撃力＋1！』=continuous modifyStats{filter:{sameInstanceAsSource:true},critical:1(打撃力=critical、power不可),conditions:[cardCount{controller:\"either\"（『君か相手』＝OR意味論。D-EB03/0004型・E2＝各側個別集計しいずれか一方でも条件を満たせば真。bothの合算とは別値）,pile:\"hand\",cmp:\"eq\",amount:0}]}。⑤『２回攻撃』『ソウルガード』=keywords:[doubleAttack,soulguard]。grep自己検査: payGauge(src/04-cost-resource.js)/discardedFromHand配信(src/11-destroy-turn.js:1399-1404)/selectCards+selectZone+callSelected(src/14-ability-script.js:452-453,443,2432-2463,2529-2612)/putTopDeckToSoul effect(src/15-ability-effects.js:292-297)/cardCount controller:either(src/13-abilities-core.js:810-856、850-851がeither分岐)/modifyStats filter.sameInstanceAsSource+critical(src/15-ability-effects.js:1613、src/17-targeting.js相対キー)/doubleAttack・soulguardエイリアス(src/18-tooltip-format.js:463,471) 全実在確認。VM検証: x67-b6-verify.js test0045参照（A:手札から捨てられゲージ2払い選択でドロップから無償コール成立／払わない選択では場に出ない、B:登場時ソウルへ1枚、C:自分の手札0枚なら打撃力+1・1枚以上なら+0、D:相手の手札0枚でも+1が成立=either）。"
+    },
+    {
+      "id": "bf-x-ss03-0046",
+      "no": "X-SS03/0046",
+      "name": "調停の角王 ドーン伯爵",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "レジェンドW",
+      "attributes": [
+        "ワイダーサカー"
+      ],
+      "size": 0,
+      "power": 4000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "『角王』(このカードは全てのフラッグで使える。君のフラッグが＜レジェンドＷ＞以外なら、「調停の角王 ドーン伯爵」はデッキに１枚しか入れることができない)",
+        "■君のメインフェイズ開始時、このカードが君のドロップゾーンにあるなら、ゲージ１を払ってよい。払ったら、ドロップゾーンにあるこのカードを手札に加える。"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "レジェンドW",
+        "awayMaxCopies": 1
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0046-drop-recycle",
+          "kind": "triggered",
+          "event": "mainStart",
+          "fromDropZone": true,
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "drop"
+              ]
+            }
+          ],
+          "optional": true,
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "returnSelfToHand"
+            }
+          ]
+        }
+      ],
+      "_note": "①『角王』（このカードは全てのフラッグで使える。君のフラッグが＜レジェンドＷ＞以外なら、「調停の角王 ドーン伯爵」はデッキに１枚しか入れることができない）=card級deckAnyFlag:{homeWorld:\"レジェンドW\",awayMaxCopies:1}。これは同一キャラクター「ドーン伯爵」の別プリント H-BT02/0005「七角地王 ドーン伯爵」（一字一句同一文言の『角王』節。data/cards/bf-h-bt02-galaxy-burst.json）が使う正確な既存表現をそのまま踏襲（object形。B4/0024のboolean省略形\"deckAnyFlag\":trueも同一効果だが、本カードは文言完全一致の直接precedentがあるためobject形を採用）。②【コールコスト】行なし＝costsキー省略（無償コール）。③『君のメインフェイズ開始時、このカードが君のドロップゾーンにあるなら、ゲージ１を払ってよい。払ったら、ドロップゾーンにあるこのカードを手札に加える』はbf-d-eb03-heaven-and-hell.json D-EB03/0027「鬼道 地獄絵図」-drop-recycleアビリティと一字一句同一文言構造（対象がゲージ数・カード名のみ相違）につき完全同型のDSLをそのまま踏襲: event:\"mainStart\"(src/07-actions-turn.js:144,163でrunPhaseStartTriggers呼出),fromDropZone:true(ドロップにいる間もフェイズ開始誘発を受け取るopt-inフラグ。isDropTrigger判定 src/07-actions-turn.js:933-936、zone:\"drop\"付きでcontextへ配送 946行),conditions:[turnOwnerIsSelf(src/13-abilities-core.js:891),sourceZoneIn{zones:[\"drop\"]}(src/13-abilities-core.js:991-995、context.zone===\"drop\"かつcontext.owner===sourceOwnerで判定。fromDropZoneと二重の防御的ゲートだがD-EB03/0027前例が同時に持つため踏襲)],optional:true,cost:[payGauge(1)],effects:[returnSelfToHand](src/15-ability-effects.js:1481、ドロップにあるカードをinstanceId検索で手札へ。SKILL.md「destroyed誘発の自己手札戻しはreturnSelfToHand」節と同じ根拠＝このカードもドロップにいる状態から自己参照するため同じopが必要)。エンジン内の関連コメント（src/07-actions-turn.js:932「例: ドーン伯爵0005(ターン開始時に自己蘇生) / 村雨0013(メイン開始時に手札へ)」）が本カードと同系統の実装パターンを直接裏付けている。grep自己検査: deckAnyFlag object形(src/03-setup.js:143,src/17-targeting.js:320-321,H-BT02/0005実例)/mainStart(src/07-actions-turn.js:144,163)/fromDropZone判定(src/07-actions-turn.js:933-936,946)/turnOwnerIsSelf(src/13-abilities-core.js:891)/sourceZoneIn(src/13-abilities-core.js:991-995)/payGauge(src/04-cost-resource.js)/returnSelfToHand(src/15-ability-effects.js:1481) 全実在確認。VM検証: x67-b6-verify.js test0046参照（A:自分のメインフェイズ開始時・ドロップにある状態でゲージ1払い選択→手札へ戻る、B:払わない選択では残る、C:相手のメインフェイズ開始時は不発、D:場にいる間は不発=sourceZoneIn(drop)ゲート）。"
+    },
+    {
+      "id": "bf-x-ss03-0047",
+      "no": "X-SS03/0047",
+      "name": "春風の運び手 シルフ",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "レジェンドW",
+      "attributes": [
+        "ワイダーサカー",
+        "妖精"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■【対抗】【起動】君のアタックフェイズ中、君の手札１枚を捨ててよい。捨てたら、そのターン中、君の場のモンスター全ての打撃力＋１！この能力は１ターンに１回だけ使える。",
+        "■このカードが手札から捨てられた時、そのターン中、君の場のモンスター１枚は『貫通』を得る。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0047-attack-buff",
+          "kind": "activated",
+          "timing": [
+            "attack",
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "phaseIs",
+              "phase": "attack"
+            }
+          ],
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "modifyStats",
+              "scope": "self",
+              "filter": {
+                "cardType": "monster"
+              },
+              "critical": 1,
+              "duration": "turn"
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        },
+        {
+          "id": "bf-x-ss03-0047-discard-penetrate",
+          "kind": "triggered",
+          "event": "discardedFromHand",
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "penetrate",
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "①【コールコスト】行なし＝costsキー省略（無償コール）。②『【対抗】【起動】君のアタックフェイズ中、君の手札１枚を捨ててよい。捨てたら、そのターン中、君の場のモンスター全ての打撃力＋1！この能力は１ターンに１回だけ使える』はbf-h-pp01-ura-kakuou.json H-PP01/0051「忍者刀 散桜」（『【対抗】【起動】君のアタックフェイズ中、〜。破壊したら、そのターン中、このカードの攻撃力＋5000！』）の timing/conditions 骨格を踏襲: kind:\"activated\",timing:[\"attack\",\"counter\"]（findUsableFieldAbilitiesのtiming計算は`state.pendingAttack||state.pendingAction?\"counter\":state.phase`のため、宣言前=\"attack\"／対抗窓中=\"counter\"の両方をカバーする必要がありtiming:[\"counter\"]単独ではphase===\"attack\"時に不一致というX-BT02/0060 _note記載の既知の罠を回避）,conditions:[turnOwnerIsSelf,phaseIs{phase:\"attack\"}]（timing:[\"counter\"]がphase===\"main\"でもtrueになる2018年ルール特例をこのconditionsで確実に締め出す）,cost:[discardHand{amount:1}]（『捨ててよい』はD-EB02/0042制服戦士セイラーフリル型の慣例通りcost stepで表現。活性化能力自体が使うか使わないか選択できる形のため追加のoptionalラップは不要）,effects:[modifyStats{scope:\"self\",filter:{cardType:\"monster\"},critical:1,duration:\"turn\"}](X-TD02/0011の『君の場のモンスター全ての打撃力＋1』と同型),limit:{scope:\"turn\"}（無名『1ターンに1回』のためkey省略＝ability.idを既定キーとして使用、abilityLimitKey src/15-ability-effects.js:3164-3165）。③『このカードが手札から捨てられた時、そのターン中、君の場のモンスター１枚は『貫通』を得る』はD-BT03/0116「魔竜の眷属 フェルニゲス」-drop-penetrateと同型骨格（あちらはoptional+cost付き、本カードは『得る』＝強制のためoptional/costは付けず）: event:\"discardedFromHand\",target:{type:\"fieldCard\",controller:\"self\",filter:{cardType:\"monster\"}}(対象0体ならtargetCandidatesFromSpecForOwnerが空集合を返しrunTriggeredAbilitiesのtarget事前ガードで自動スキップ。src/14-ability-script.js:48-55),effects:[grantKeyword{target:\"$target\",keyword:\"penetrate\",duration:\"turn\"}]。grep自己検査: discardedFromHand配信(src/11-destroy-turn.js:1399-1404)/kind:activated+timing配列(src/13-abilities-core.js:404-426,431-438,698-705、H-PP01/0051実例)/turnOwnerIsSelf・phaseIs(src/13-abilities-core.js:891,897-899)/discardHand cost(src/04-cost-resource.js)/modifyStats scope:self(src/15-ability-effects.js:1613、X-TD02/0011実例)/limit scope:turn key省略(src/15-ability-effects.js:3117-3176、D-EB02/0042実例)/target事前ガード(src/14-ability-script.js:48-55)/grantKeyword target+duration:turn(src/15-ability-effects.js:1701-1712) 全実在確認。VM検証: x67-b6-verify.js test0047参照（A:自分のアタックフェイズ中に起動可・手札を捨てると場のモンスター全ての打撃力+1、B:メインフェイズ中は使用不可(findUsableFieldAbilitiesに現れない)、C:同一ターン2回目は不可(limit)、D:手札から捨てられた時に選んだ場のモンスター1枚が貫通を得る、E:場にモンスターがいなければ誘発しても何も起きない）。"
+    },
+    {
+      "id": "bf-x-ss03-0048",
+      "no": "X-SS03/0048",
+      "name": "シャインブレイド・ジョーカー",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "レジェンドW",
+      "attributes": [
+        "アースガルド",
+        "光"
+      ],
+      "size": 0,
+      "power": 1000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ３を払う。",
+        "■【対抗】【起動】“卑劣なる者に災いあれ”このターン中、カードの効果で君の手札のカードが捨てられているなら、手札のこのカードを、【コールコスト】を払わずコールする。「卑劣なる者に災いあれ」は１ターンに１回だけ使える。",
+        "■このカードが登場した時、君のライフを＋１！"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 3
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0048-enter-life",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ss03-0048-call",
+          "label": "卑劣なる者に災いあれ",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main",
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "handDiscardedByEffectThisTurnMatches",
+              "controller": "self"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "shared": true,
+            "key": "xss03-卑劣なる者に災いあれ"
+          },
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "self",
+              "from": [
+                "hand",
+                "drop"
+              ],
+              "controller": "self",
+              "filter": {
+                "sameInstanceAsSource": true
+              },
+              "amount": 1
+            },
+            {
+              "op": "selectZone",
+              "var": "z",
+              "cardVar": "self",
+              "emptyOnly": true
+            },
+            {
+              "op": "callSelected",
+              "var": "self",
+              "zoneVar": "z",
+              "resolveOnEnter": true
+            }
+          ]
+        }
+      ],
+      "_note": "①【コールコスト】ゲージ3=costs.call:[payGauge(3)]。②『このカードが登場した時、君のライフを＋1！』=event:enter,effects:[gainLife{amount:1}]（多数前例。callSelected resolveOnEnter:true で自己コール経路からも発火）。③『【対抗】【起動】“卑劣なる者に災いあれ”このターン中、カードの効果で君の手札のカードが捨てられているなら、手札のこのカードを、【コールコスト】を払わずコールする。「卑劣なる者に災いあれ」は１ターンに１回だけ使える』を忠実実装。kind:activated+fromHandOnly+timing:[main,counter]（【対抗】【起動】両用）+conditions:[handDiscardedByEffectThisTurnMatches{controller:self}]（E-XB10で新設のターン内カウンタ state.turnHandDiscardedByEffect。手札→ドロップの唯一合流点 discardHandCardsToDrop で cause.byEffect のみ席別加算＝コスト捨ては非計上・src/11-destroy-turn.js:1423-1426／条件op src/13-abilities-core.js:1014-1021／clearTurnModifiers でリセット src/11:1911）+limit:{scope:turn,shared:true,key}（名前付き『1ターンに1回』＝同名合算のファイター単位1回・shared:true で instanceId 分離をスキップ・src/15-ability-effects.js:3269）+『コールコストを払わず』無償コール。§コール経路の要点（レビュー致命1修正）: 本能力は【対抗】timing を含むため isCounterAbility=true。useHandAbilityAction は counter を含む手札能力を script 実行前に usedCard を player.drop へ push する（src/13-abilities-core.js:224＝line200 の !isCounterAbility ゲートを通過しない即時解決経路）。よって script 実行時に自身は手札ではなくドロップに居る。一方 findUsableHandAbilities→canSatisfyAbilityScript（src/14:293/311）の事前充足チェックは push 前＝自身がまだ手札に居る時点で走る。この二相性のため from を [hand,drop] の両ゾーンにし、filter.sameInstanceAsSource で自 instanceId 1枚だけに厳密限定する（自身は常に hand か drop のどちらか一方に居る＝事前充足時=hand・実行時=drop の双方で候補1件を満たし、かつドロップの同名別インスタンス誤コールを封じる）。※旧実装 from:hand は push 後に手札から自身が消えて候補0＝コール不発でカードがドロップに落ち named-once も消費（手札純損）。単純な hand→drop 置換は事前充足が push 前で不成立（自身は未だ手札）＝能力が提示されず、かつ script の selectCards は従来 filter.sameInstanceAsSource を黙殺していたため（scriptCardMatches が matchesCardFilter を直呼びし相対キーを未解釈）ドロップの別カードを誤コールした（レビュー実測）。エンジン最小修正: scriptCardMatches（src/14-ability-script.js:747近傍）で sameInstanceAsSource/sameIdAsSource/sameNameAsSource を context.card 基準に評価してから残りを matchesCardFilter へ渡すよう厳密化（script 経路でのこれらキー使用は PR/0473・PR/0474・X-SS03/0045・0048 の4枚のみ・いずれも『このカード自身』意図＝狭義の正しさ向上のみで後方互換）。selectZone emptyOnly:true でオープンエリアへコール（占有エリアへは非コール＝2018ルール準拠。全枠占有時は候補0で不発＝この稀な盤面のみカードがドロップ残留する既知の縁ケース＝0045/0473 と同型idiom・要求スコープ外）。grep自己検査: payGauge(src/04-cost-resource.js)/enter+gainLife(src/15:602)/handDiscardedByEffectThisTurnMatches(src/13:1014)+state.turnHandDiscardedByEffect(src/03:331,src/11:1424,1911)/fromHandOnly起動の手札発動(src/08-card-use.js:82-91,420-431→src/13:144)/selectCards from配列+sameInstanceAsSource厳密化(src/14:718-745,747-791)/selectZone emptyOnly+cardVar(src/14:2478-2508)/callSelected var+zoneVar+resolveOnEnter+payCost省略=無償(src/14:2575-2665)/limit shared(src/15:3269) 全実在確認。VM検証: x67-b6-verify.js test0048（A:コール時ゲージ3消費、B:登場時ライフ+1、C:効果ハンデス後に手札から本能力使用→無償で場にコール（手札/ドロップに残らずゲージ非消費）、D:ハンデス無しでは使用不可、E:named-once＝同名2枚目はターン内使用不可、F:ドロップの同名別インスタンスを誤コールしない）。回帰: tests/effects-regression.test.js 末尾に実操作経路(useCardAction→useHandAbilityAction の counter 事前ドロップ経由)の端到端テストを追加。"
+    },
+    {
+      "id": "bf-x-ss03-0049",
+      "no": "X-SS03/0049",
+      "name": "大魔法 天壌のビフレスト",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "レジェンドW",
+      "worlds": [
+        "レジェンドW",
+        "ダンジョンW"
+      ],
+      "attributes": [
+        "アースガルド"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■次の２つから１つを選んで使う。「大魔法 天壌のビフレスト」は１ターンに１回だけ使える。",
+        "・君のドロップゾーンの《アースガルド》か《Dエネミー》のモンスター１枚を手札に加え、君のライフを＋１！",
+        "・カード１枚を引き、場の『設置』を持つ魔法１枚のソウル全てをドロップゾーンに置く。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0049-bifrost-choice",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "大魔法 天壌のビフレスト",
+              "lead": "次の2つから1つを選んでください。",
+              "options": [
+                {
+                  "key": "recoverAndLife",
+                  "label": "君のドロップゾーンの《アースガルド》か《Dエネミー》のモンスター１枚を手札に加え、君のライフを＋１！",
+                  "script": [
+                    {
+                      "op": "moveMatchingDropToHand",
+                      "filter": {
+                        "cardType": "monster",
+                        "attributeIn": [
+                          "アースガルド",
+                          "Dエネミー"
+                        ]
+                      },
+                      "amount": 1
+                    },
+                    {
+                      "op": "gainLife",
+                      "amount": 1
+                    }
+                  ]
+                },
+                {
+                  "key": "drawAndSoulDrop",
+                  "label": "カード１枚を引き、場の『設置』を持つ魔法１枚のソウル全てをドロップゾーンに置く。",
+                  "script": [
+                    {
+                      "op": "draw",
+                      "amount": 1
+                    },
+                    {
+                      "op": "selectCards",
+                      "var": "host",
+                      "from": "field",
+                      "controller": "any",
+                      "filter": {
+                        "cardType": "spell",
+                        "keyword": "set"
+                      },
+                      "amount": 1,
+                      "min": 0,
+                      "require": false,
+                      "title": "大魔法 天壌のビフレスト",
+                      "lead": "ソウルをドロップゾーンに置く『設置』を持つ魔法１枚を選んでください（無ければそのまま）。"
+                    },
+                    {
+                      "op": "ifSelection",
+                      "var": "host",
+                      "then": [
+                        {
+                          "op": "dropSelectedSoul",
+                          "var": "host"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "①【使用コスト】ゲージ1=costs.cast:[payGauge(1)]+ability.cost:[payGauge(1)]（FIX7: castの二重記載規約）。②『次の２つから１つを選んで使う。「大魔法 天壌のビフレスト」は１ターンに１回だけ使える』はbt04-roaring-slash.json BT04/0088「パワー・オブ・ミソロジー」のscript:[chooseBranch{options:[...]}]構造を踏襲（bf-x-sup01-0006魔王の牙ロウガのシンプル版chooseBranch形にも整合）。timing:[\"main\"]（原文に【対抗】マーカーが無いため）。named-once『「大魔法 天壌のビフレスト」は1ターンに1回』はkind:spellのためisHandCastLimitAbilityでbaseキー自動共有(shared不要)、limit:{scope:\"turn\"}（key省略時はability.idを既定キー化）。③選択肢1『君のドロップゾーンの《アースガルド》か《Dエネミー》のモンスター１枚を手札に加え、君のライフを＋１！』=script:[moveMatchingDropToHand{filter:{cardType:\"monster\",attributeIn:[\"アースガルド\",\"Dエネミー\"]},amount:1}(候補0枚でもchooseAndTakeMatchingCardsのmin自動丸めで安全に空振り。bf-hd-pr.json PR/0473の_note記載の既定挙動を踏襲、『まで』表記不要), gainLife{amount:1}]。④選択肢2『カード１枚を引き、場の『設置』を持つ魔法１枚のソウル全てをドロップゾーンに置く』=script:[draw{amount:1}, selectCards{var:\"host\",from:\"field\",controller:\"any\"（『場の』＝両陣営対象。src/14-ability-script.js:776-791既定はself限定のため明示必須）,filter:{cardType:\"spell\",keyword:\"set\"}（bf-hd-pr.json PR/0108煉獄騎士団カースファルクス・ドラゴンの target.filter:{cardType:spell,keyword:set}と同一語彙）,amount:1,min:0,require:false（『1枚を選び』だが該当が無い場合の空振りを許容）}, ifSelection{then:[dropSelectedSoul{var:\"host\"}]}（amount省略＝『ソウル全て』。dropSelectedSoulForScriptの既定`step.amount ?? entry.card.soul.length`=全枚数。bf-d-cbt-dragon-fighters.json D-CBT/0049「魔砲士カノーネ」・bf-h-bt04-mikado-evolution.json H-BT04/0103「ソウルアームズ」の同一パターンから、amount指定無し版で『全て』を表現）]。grep自己検査: payGauge(src/04-cost-resource.js)/chooseBranch(src/14-ability-script.js:348)/moveMatchingDropToHand(src/15-ability-effects.js:1006、isScriptEffectStep許可リスト在)/gainLife(src/15-ability-effects.js:602)/draw script step(isScriptEffectStep許可リスト,src/15-ability-effects.js:254)/selectCards controller:any(src/14-ability-script.js:663-668,786-791、bt01-dragon-bancho.json実例)/filter.keyword:set(src/17-targeting.js、PR/0108実例)/ifSelection(src/14-ability-script.js:339-341)/dropSelectedSoul(src/14-ability-script.js:419-420,1759-1772、D-CBT/0049・H-BT04/0103実例) 全実在確認。VM検証: x67-b6-verify.js test0049参照（A:選択肢1でドロップの《アースガルド》/《Dエネミー》モンスターが手札へ+ライフ+1、B:選択肢2で1枚ドロー+場の設置魔法のソウルが全てドロップへ、C:設置魔法が場に無ければソウル処理は空振り（ドローのみ成立）、D:同一ターン2回目は不発）。"
+    },
+    {
+      "id": "bf-x-ss03-0050",
+      "no": "X-SS03/0050",
+      "name": "エリネドの指輪",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "レジェンドW",
+      "attributes": [
+        "防御",
+        "回復"
+      ],
+      "rules": [
+        "■君が攻撃されている攻撃中に使える。",
+        "■【対抗】その攻撃を無効化する。その後、君の手札１枚を捨ててよい。捨てたら、カード１枚を引き、君のライフを＋１！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0050-nullify-refresh",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
+            }
+          ],
+          "script": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "selectCards",
+              "var": "d",
+              "from": "hand",
+              "controller": "self",
+              "filter": {},
+              "amount": 1,
+              "min": 0,
+              "require": false,
+              "title": "エリネドの指輪",
+              "lead": "捨てる場合は手札１枚を選んでください（捨てなくてもよい）。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "d",
+              "then": [
+                {
+                  "op": "moveSelected",
+                  "var": "d",
+                  "to": "drop"
+                },
+                {
+                  "op": "draw",
+                  "amount": 1
+                },
+                {
+                  "op": "gainLife",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "①使用コスト行なし＝costsキー省略。②『君が攻撃されている攻撃中に使える』=conditions:[pendingAttackDefenderIsSelf, pendingAttackTargetIs{targetType:\"fighter\"}]（bf-d-bt04-kagayake-super-sun-dragon.json D-BT04/0024「太陽の鏡」・D-BT04/0018「機甲符：VOID HOLE」と同型骨格。『君が攻撃されている』＝ファイター（本体）へ向けられた攻撃、というDB確立済み解釈をそのまま踏襲）,timing:[\"counter\"]。③『【対抗】その攻撃を無効化する。その後、君の手札１枚を捨ててよい。捨てたら、カード１枚を引き、君のライフを＋１！』=script:[nullifyAttack(isScriptEffectStep許可リスト在、bt04-0088等でscript内使用実例), selectCards{from:\"hand\",controller:\"self\",filter:{},amount:1,min:0,require:false}(『捨ててよい』＝任意選択。D-EB02/0037カーディアン“モード・A”のselectCards min:0,require:false型を踏襲), ifSelection{then:[moveSelected{to:\"drop\"}(D-EB02/0037と同型の手札→ドロップ), draw{amount:1}, gainLife{amount:1}]}]。grep自己検査: pendingAttackDefenderIsSelf(src/13-abilities-core.js:1531)/pendingAttackTargetIs(src/13-abilities-core.js:1505)/nullifyAttack(src/15-ability-effects.js:2116、isScriptEffectStep在)/selectCards from:hand(src/14-ability-script.js:663-700)/ifSelection(src/14-ability-script.js:339-341,1759近傍)/moveSelected to:drop(src/14-ability-script.js、D-EB02/0037実例)/draw script step(src/15-ability-effects.js:254、isScriptEffectStep在)/gainLife(src/15-ability-effects.js:602) 全実在確認。VM検証: x67-b6-verify.js test0050参照（A:自分が本体攻撃を受けている対抗窓で使用可・攻撃が無効化される、B:モンスターへの攻撃（targetType:monster）では使用不可、C:捨てる選択をするとドロー+ライフ+1が発生、D:捨てない選択ではドロー等は発生しない）。"
+    },
+    {
+      "id": "bf-x-ss03-0051",
+      "no": "X-SS03/0051",
+      "name": "王剣 セクエンス",
+      "type": "item",
+      "rarity": "デッキ商品",
+      "world": "レジェンドW",
+      "attributes": [
+        "英雄",
+        "武器"
+      ],
+      "power": 3000,
+      "critical": 2,
+      "rules": [
+        "■【起動】相手の場のモンスター１枚を選び、君の手札１枚を捨ててよい。捨てたら、選んだカードを破壊する。この能力は１ターンに１回だけ使える。",
+        "『装備変更』"
+      ],
+      "keywords": [
+        "equipChange"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0051-discard-destroy",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "optional": true,
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "cost": [
+            {
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "①装備コスト行なし＝costsキー省略（無償装備）。②『【起動】相手の場のモンスター１枚を選び、君の手札１枚を捨ててよい。捨てたら、選んだカードを破壊する。この能力は１ターンに１回だけ使える』はbf-s-ub-c03-idolrare.json S-UB-C03/0085（altArtOf bf-s-ub-c03-0085）「ミリタリーアイドル 大和亜季」-destroyアビリティ（『【起動】相手の場のカード１枚を選び、君の手札１枚を捨ててよい。捨てたら、選んだカードを破壊する』）と完全同型のkind:activated,optional:true,target+cost:[discardHand(1)]+effects:[destroy{target:\"$target\"}]構造を踏襲し、原文の『相手の場のモンスター』限定でtarget.filterにcardType:\"monster\"を追加、原文にある『この能力は1ターンに1回だけ使える』の分だけlimit:{scope:\"turn\"}を付加（ir070側はこの制限句が無いためlimit無し・本カードはbf-x-bt02-chaos-control-crisis.json X-BT02/0060相当の“1ターンに1回付き”バリアントに相当）。timing:[\"main\"]（原文に【対抗】マーカーが無いため）。③『装備変更』=keywords:[\"equipChange\"]（src/08-card-use.js:169の`hasKeyword(card,\"equipChange\")`判定で装備済みアイテムを手札へ戻して装備変更できる。多数前例）。grep自己検査: kind:activated+timing:main(src/13-abilities-core.js:404-426,698-705)/discardHand cost(src/04-cost-resource.js)/destroy target(src/15-ability-effects.js:1296、対象$targetの単体破壊形)/limit scope:turn key省略(src/15-ability-effects.js:3117-3176)/equipChangeキーワード判定(src/08-card-use.js:167-173) 全実在確認。VM検証: x67-b6-verify.js test0051参照（A:相手の場のモンスター1枚を選び手札1枚を捨てると選んだカードが破壊される、B:相手の場にアイテム/魔法しか無ければ候補0でtarget事前ガードにより起動能力自体が現れない、C:同一ターン2回目は不可、D:装備済みの状態で別アイテムを装備しようとすると装備変更で手札に戻る）。"
+    },
+    {
+      "id": "bf-x-ss03-0052",
+      "no": "X-SS03/0052",
+      "name": "戦乙女 全知のアルヴィドル",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "レジェンドW",
+      "attributes": [
+        "アースガルド",
+        "英雄"
+      ],
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■君の使うカード名に「大魔法」を含むカードは、無効化されない。",
+        "■このカードが君の手札から捨てられた時、君のデッキの上から１枚をゲージに置き、カード１枚を引く。"
+      ],
+      "callCost": {
+        "gauge": 0
+      },
+      "costs": {
+        "call": []
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0052-discarded-gauge-draw",
+          "kind": "triggered",
+          "event": "discardedFromHand",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "continuous": [
+        {
+          "op": "grantNullifyImmunity",
+          "controller": "self",
+          "filter": {
+            "nameIncludes": "大魔法"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss03-0053",
+      "no": "X-SS03/0053",
+      "name": "スンベル・ガルド",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "レジェンドW",
+      "attributes": [
+        "アースガルド",
+        "ルーン",
+        "ドロー"
+      ],
+      "rules": [
+        "■君のライフが６以下なら使える。",
+        "■君のドロップゾーンに「ブレッフェン・ガルド」があるなら、このカードの【使用コスト】を払わなくてよい。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■カード２枚を引く。「スンベル・ガルド」は１ターンに１回だけ使える。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0053-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "lifeLte",
+              "amount": 6
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "not",
+                  "condition": {
+                    "op": "ownDropHasCard",
+                    "filter": {
+                      "nameIncludes": "ブレッフェン・ガルド"
+                    }
+                  }
+                }
+              ]
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bt04-0016-draw"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss03-0054",
+      "no": "X-SS03/0054",
+      "name": "ブレッフェン・ガルド",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "レジェンドW",
+      "attributes": [
+        "アースガルド",
+        "ルーン"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ２を払う。",
+        "■【対抗】相手が使った魔法を無効化するか、場の魔法１枚を破壊する。さらに、君のドロップゾーンに「ベルセルク・ガルド」があるなら、手札１枚を捨て、ゲージ２を払ってよい。そうしたら、このカードを手札に戻す。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0054-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "ブレッフェン・ガルド",
+              "lead": "解決する効果を選んでください。",
+              "options": [
+                {
+                  "key": "nullify",
+                  "label": "相手が使った魔法を無効化",
+                  "condition": {
+                    "op": "all",
+                    "conditions": [
+                      {
+                        "op": "pendingActionIsOpponent"
+                      },
+                      {
+                        "op": "pendingActionCardType",
+                        "cardType": "spell"
+                      }
+                    ]
+                  },
+                  "script": [
+                    {
+                      "op": "nullifyPendingAction"
+                    }
+                  ]
+                },
+                {
+                  "key": "destroy",
+                  "label": "場の魔法1枚を破壊",
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "spell",
+                      "from": "field",
+                      "filter": {
+                        "cardType": "spell"
+                      },
+                      "amount": 1,
+                      "title": "破壊する魔法",
+                      "lead": "破壊する場の魔法1枚を選んでください。"
+                    },
+                    {
+                      "op": "destroySelected",
+                      "var": "spell"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "ownDropHasCardName",
+                "name": "ベルセルク・ガルド"
+              },
+              "then": [
+                {
+                  "op": "chooseBranch",
+                  "title": "ブレッフェン・ガルド 追加効果",
+                  "lead": "手札1枚を捨てゲージ2を払うとこのカードを手札に戻せます。",
+                  "options": [
+                    {
+                      "key": "return",
+                      "label": "手札1枚を捨て、ゲージ2を払って手札に戻す",
+                      "script": [
+                        {
+                          "op": "payCost",
+                          "cost": [
+                            {
+                              "op": "discardHand",
+                              "amount": 1
+                            },
+                            {
+                              "op": "payGauge",
+                              "amount": 2
+                            }
+                          ]
+                        },
+                        {
+                          "op": "returnSelfToHand"
+                        }
+                      ]
+                    },
+                    {
+                      "key": "skip",
+                      "label": "何もしない",
+                      "script": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x-ss03-0055",
+      "no": "X-SS03/0055",
+      "name": "レジェンドワールド",
+      "type": "flag",
+      "rarity": "デッキ商品",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ"
+      ],
+      "rules": [
+        "■君は＜レジェンドワールド＞と＜ジェネリック＞のカードを使える。"
+      ]
+    },
+    {
+      "id": "bf-x-ss03-0056",
+      "no": "X-SS03/0056",
+      "name": "世界を巡る旅 ちびパンダ＆バッツ “SD”",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ジェネリック",
+      "attributes": [
+        "バディ"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払い、ライフ１を払う。",
+        "『移動』『２回攻撃』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "move",
+        "doubleAttack"
+      ],
+      "_note": "世界を巡る旅 ちびパンダ＆バッツ “SD”。『【コールコスト】ゲージ１を払い、ライフ１を払う』=costs.call:[payGauge(1),payLife(1)]（bf-x-bt01-0010型・原文の記載順どおりgauge→life）。『移動』『２回攻撃』=keywords:[\"move\",\"doubleAttack\"]（追加能力なし・完全なキーワードのみ構成、bf-x-bt01-0010/bf-d-cr-hissatsu-dragon型）。abilities配列は無し（rulesに能力文が無くキーワード行のみ＝能力なしの正当ケース）。grep自己検査: payGauge/payLife(src/04-cost-resource.js、canPay/pay/payWithSelectionの3経路実装済み)/keywords move・doubleAttack エイリアス(src/18-tooltip-format.js keywordAliases、doubleAttack判定はsrc/10-battle-resolve.js:879 hasKeyword) 全実在確認。VM実測(x67-b7-verify.js): コールコストでゲージ1・ライフ1消費／攻撃後に2回目の攻撃宣言が可能（doubleAttack）／センターへの移動が可能（move）を実操作経路で確認。"
+    },
+    {
+      "id": "bf-x-ss03-0057",
+      "no": "X-SS03/0057",
+      "name": "世界を巡る旅 アトラ “SD”",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ジェネリック",
+      "attributes": [
+        "バディ"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■このカードが登場した時、相手の場のモンスター１枚を選び、ゲージ１を払い、手札１枚を捨ててよい。そうしたら、選んだカードのソウル全てを相手の手札に戻す。",
+        "■このカードが攻撃した時、君のライフを＋１！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0057-enter",
+          "kind": "triggered",
+          "event": "enter",
+          "optional": true,
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            },
+            {
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "returnTargetSoulToHand",
+              "target": "$target"
+            }
+          ]
+        },
+        {
+          "id": "bf-x-ss03-0057-attack-lifegain",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "世界を巡る旅 アトラ “SD”。コール印字コスト行なし＝costsキー省略（無償コール。bf-x-bt02-0015型の既存慣例）。②『このカードが攻撃した時、君のライフを＋１』=event:\"attack\"（接頭辞なし＝カード自身への直接発火、SKILL.md既定）+effects:[gainLife{amount:1}]。原文に『1ターンに1回』の記載が無く、このカードはdoubleAttack等の追加攻撃キーワードを持たないため通常1ターン最大1回しか攻撃しない＝limit省略でも実害なし（bf-h-ss01-0007等の限定なしgainLife-on-attack前例と同型）。grep自己検査: event attack直接発火(src/09-attack.js)/gainLife(src/15-ability-effects.js:622) 実在確認。 ①『このカードが登場した時、相手の場のモンスター１枚を選び、ゲージ１を払い、手札１枚を捨ててよい。そうしたら、選んだカードのソウル全てを相手の手札に戻す』は【未実装・要エンジン班フォロー】。選択対象(ability.target: fieldCard controller:opponent filter:{cardType:monster})とコスト(payGauge1+discardHand1をability.optional:trueでまとめて『てよい』化。bf-d-bt03-horobose-daimaryu.jsonのグラビティレスト『ゲージ1を払い、手札1枚を捨ててよい。そうしたら〜』型で確立済みの型)自体は既存プリミティブで表現できるが、肝心の『選んだカードのソウル全てを相手の手札に戻す』を表す op がsrc全域に存在しない：dropTargetSoul(src/15-ability-effects.js:1719-1760)は同型だが宛先がdropに固定（drop.push固定）でhand宛先の分岐が無く、moveSourceSoulToHand(src/15:1797)はcontext.card(発生源自身)のソウル専用でtarget（選んだ他カード）には使えない。全DB横断grep（'ソウル全て'21件）でも『〜手札に加える』はすべて自壊時onDestroy.moveSoulTo:\"hand\"／破壊される場合の自己ソウルのみで、任意の選択対象の全ソウルをhandへ動かす前例は0件（全て drop 宛先）。script側selectCards+moveSelectedでの代替も検討したが、『全て』を強制するにはmin=max=候補数の動的一致が要る一方、selectCardsのamount/min/maxは静的JSON値のみ・amountFrom系(maxFrom/minFrom)にも対象カードの現在ソウル枚数を返すsource（fieldCardSoulCountはzone固定で選択対象を参照できない）が無く、動的『全て』選択を表現する経路が無い。R1〜R9(rulings.md)にもこの効果は言及なし（設計班の§5ギャップ列挙に不掲載＝見落とし）。「無いopは創作せず報告」の指示に従い、コスト支払い済みで効果が空発（silent no-op）になる中途半端な実装を避けるため、本能力は丸ごと未実装（abilities配列に含めない）とした。提案op名: dropTargetSoulの姉妹形として例えば {op:\"returnTargetSoulToHand\", target:\"$target\", amount?}（宛先を対象カード所有者のhandへ。dropTargetSoulのdrop.push箇所をhand.push相当に差し替えるのみの小改修見込み）。エンジン班フォロー要。 ／【E-XB11/R12 で enter 能力を忠実実装（統括反映）】「相手の場のモンスター1枚を選び、ゲージ1を払い、手札1枚を捨ててよい。そうしたら、選んだカードのソウル全てを相手の手札に戻す」= optional＋target＋cost[payGauge,discardHand]＋returnTargetSoulToHand（amount省略=全て・持ち主の手札へ・保存則充足・赤ピン E-XB11）。旧未実装は解消。"
+    },
+    {
+      "id": "bf-x-ss03-0058",
+      "no": "X-SS03/0058",
+      "name": "世界を巡る旅 アビゲール “SD”",
+      "type": "monster",
+      "rarity": "デッキ商品",
+      "world": "ジェネリック",
+      "attributes": [
+        "バディ"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■【対抗】【起動】相手の場のモンスター１枚を選び、手札のこのカードを捨ててよい。捨てたら、相手のデッキの上から２枚を相手のドロップゾーンに置き、その中のモンスターの枚数分、そのターン中、選んだカードの打撃力－１！さらに、置いたカード全てがモンスターなら、選んだカードを破壊する！！"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0058-hand-mill-debuff-destroy",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "moveTopDeckToDrop",
+              "player": "opponent",
+              "amount": 2
+            },
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "amountFrom": {
+                "source": "milledMatchCount",
+                "filter": {
+                  "cardType": "monster"
+                },
+                "per": -1
+              },
+              "applyTo": [
+                "critical"
+              ],
+              "duration": "turn"
+            },
+            {
+              "op": "destroy",
+              "target": "$target",
+              "conditions": [
+                {
+                  "op": "milledMatchCountGte",
+                  "filter": {
+                    "cardType": "monster"
+                  },
+                  "amount": 2
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "世界を巡る旅 アビゲール “SD”。コール印字コスト行なし＝costsキー省略（無償コール。0057と同型・bf-x-bt02-0015前例）。『【対抗】【起動】相手の場のモンスター１枚を選び、手札のこのカードを捨ててよい。捨てたら〜』=kind:activated,fromHandOnly:true,timing:[counter,main]（bf-x-bt02-0071型）+target:{type:fieldCard,controller:opponent,filter:{cardType:monster}}（『選び』＝宣言時のtargetForAbilityUse解決、対象0枚なら候補自体が無くuseHandAbilityActionの対象未選択ガードで自然に不発）。『手札のこのカードを捨ててよい』はfromHandOnly活性化そのものが暗黙に『捨てる』を意味する既存機構（useHandAbilityActionがscript/effects実行前にusedCardをplayer.dropへ積む。bf-x-bt01-reborn-of-satan.json:8359等、多数の確立前例が明示discardステップ無しで同型）ため追加コストstep不要。『相手のデッキの上から２枚を相手のドロップゾーンに置き』=moveTopDeckToDrop{player:\"opponent\",amount:2}（bf-x-bt02-0093型・effect.player===\"opponent\"でreceiver=相手、context.milledに今回の2枚を記録）。『その中のモンスターの枚数分、そのターン中、選んだカードの打撃力－１』=modifyStats{target:$target,amountFrom:{source:\"milledMatchCount\",filter:{cardType:monster},per:-1},applyTo:[critical],duration:turn}（bf-x-bt02-0093の打撃力+1型を踏襲しper:-1で符号反転。resolveAmountFrom内『milledMatchCount』の実装(src/15-ability-effects.js:3038-3043)は`count*(spec.per??1)`という純粋な乗算でper未指定時のみ1に既定される汎用契約のため、per:-1はDB内に他precedentが無いものの新opではなく既存パラメータの範囲内の利用。x67-b7-verify.jsで実際にcritical値が減少することをVM実測して裏付け済み。『打撃力』=critical、SKILL.md既知の落とし穴通りpowerと混同しない）。『さらに、置いたカード全てがモンスターなら、選んだカードを破壊する』=destroy{target:$target,conditions:[milledMatchCountGte{filter:{cardType:monster},amount:2}]}（『全てが』＝ミル枚数と同数(2)の閾値というmilledMatchCountGteの一般形。bf-x-bt01-0014/0015/0071/0075の4例が同一パターン（ミル枚数と同じamount値をmilledMatchCountGteに渡す）を確立済み。デッキ残り1枚以下でミルが2枚未満になる極小エッジケースでは『全て一致』でも閾値2に届かず不発し得るが、上記4precedent全てが同じ近似のまま採用されており、本カードもそれに倣う＝新規逸脱ではない）。grep自己検査: fromHandOnly経路(src/13-abilities-core.js:144-260)/isCounterAbility(src/13:106-108、timing counter含み対抗即解決)/moveTopDeckToDrop+context.milled記録(src/15-ability-effects.js:335-364)/modifyStats+amountFrom milledMatchCount(src/15:2884-2887(resolveAmountFrom冒頭),3038-3043)/destroy+conditions(src/15-ability-effects.js:949以降、どのeffectにもconditionsゲート可)/milledMatchCountGte(src/13-abilities-core.js:1273-1278) 全実在確認。VM実測(x67-b7-verify.js): 相手モンスター0体では能力候補なし(findUsableHandAbility)／対象選択→使用でこのカードが手札からドロップへ・相手デッキ上2枚が相手ドロップへ／2枚中モンスター1枚なら選んだ相手モンスターの打撃力がそのターン中-1・破壊されない／2枚とも(=全て)モンスターなら打撃力-2かつ選んだ相手モンスターが破壊される、の3系統を確認。"
+    },
+    {
+      "id": "bf-x-ss03-0059",
+      "no": "X-SS03/0059",
+      "name": "タイムセール",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ジェネリック",
+      "attributes": [
+        "ドロー"
+      ],
+      "rules": [
+        "■君のライフが３以下なら、このカードの【使用コスト】は払わなくてよい。",
+        "■【使用コスト】ゲージ２を払い、ライフ２を払う。",
+        "■カード２枚を引く。「タイムセール」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2,
+            "conditions": [
+              {
+                "op": "not",
+                "condition": {
+                  "op": "lifeLte",
+                  "amount": 3
+                }
+              }
+            ]
+          },
+          {
+            "op": "payLife",
+            "amount": 2,
+            "conditions": [
+              {
+                "op": "not",
+                "condition": {
+                  "op": "lifeLte",
+                  "amount": 3
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0059-draw",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2,
+              "conditions": [
+                {
+                  "op": "not",
+                  "condition": {
+                    "op": "lifeLte",
+                    "amount": 3
+                  }
+                }
+              ]
+            },
+            {
+              "op": "payLife",
+              "amount": 2,
+              "conditions": [
+                {
+                  "op": "not",
+                  "condition": {
+                    "op": "lifeLte",
+                    "amount": 3
+                  }
+                }
+              ]
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xss03-タイムセール"
+          }
+        }
+      ],
+      "_note": "タイムセール（魔法）。『君のライフが３以下なら、このカードの【使用コスト】は払わなくてよい』=costs.cast各ステップにconditions:[{op:not,condition:{op:lifeLte,amount:3}}]（bf-x-ub02-0064パワードボディ型のコスト条件ゲート。src/04-cost-resource.js costStepApplies＝conditions省略時true・lifeLte<=3でnotがfalseとなりそのステップをスキップ=無償化。閾値のみ6→3に差替）。『【使用コスト】ゲージ２を払い、ライフ２を払う』=payGauge(2)+payLife(2)の2ステップ双方に同一conditionsを付与（両方一括で有償/無償が切り替わる、bf-x-ub02-0064型）。costs.cast+ability.cost二重宣言（bf-d-sd02-0010ブレイブメモリー/bf-x-ub02-0064型の確立された定型・FIX7非該当）。『カード２枚を引く』=effects:[draw{amount:2}]。『「タイムセール」は１ターンに１回だけ使える』=named-once→limit:{scope:turn,key:\"xss03-タイムセール\"}（rulings.md運用の named-once bare slug規約: bare(プレフィックス無し)の生カード名キーは禁止のため製品スラグ\"xss03-\"を前置。同slice内mech-X67-B4.jsonの命名規則(\"xss03-ナノマシン瞬動術\"等)を直接踏襲。kind:\"spell\"はisHandCastLimitAbility(src/15-ability-effects.js:3175)がtrueを返すためlimit.scope:turnの既定キーは元々インスタンス分離されず名称単位で共有される＝shared:true指定は冗長だが害はない。本カードは新規名称でDB内に同名重複が無い＝現時点でshared:trueの有無で実挙動差は無いが、将来の同名再録に備え製品スラグ付きkeyのみ明記し、shared:trueは付けない（rulings.md指示『monster/item named は shared:true』はモンスター/アイテム限定の明示であり、spell/impactは元々isHandCastLimitAbilityで共有されるため対象外と判断）。grep自己検査: not条件(src/13-abilities-core.js:761)/lifeLte(src/13:900-902)/costStepApplies(src/04-cost-resource.js:877-886)/payGauge/payLife(src/04、canPay/pay/payWithSelectionの3経路)/draw(src/15-ability-effects.js:261)/limit shared判定・isHandCastLimitAbility(src/15-ability-effects.js:3117-3178) 全実在確認。VM実測(x67-b7-verify.js): ライフ4以上でゲージ2・ライフ2を消費して2枚ドロー／ライフ3以下ではゲージ・ライフとも消費せず2枚ドロー／同ターン内に同名カード2枚目を使おうとするとnamed-once(shared key)で不発、の3系統を確認。"
+    },
+    {
+      "id": "bf-x-ss03-0060",
+      "no": "X-SS03/0060",
+      "name": "ロイヤルティ",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ジェネリック",
+      "attributes": [
+        "防御"
+      ],
+      "rules": [
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】次の３つから１つを選んで使う。",
+        "・そのターン中、次に君が受けるダメージを２減らす。",
+        "・場のモンスター１枚のソウル１枚を捨てる。",
+        "・そのターン中、相手は４枚以上モンスターをコールできない。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0060-counter-choice",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "ロイヤルティ",
+              "lead": "次の２つから１つを選んでください。",
+              "options": [
+                {
+                  "key": "reduce",
+                  "label": "そのターン中、次に君が受けるダメージを２減らす。",
+                  "script": [
+                    {
+                      "op": "preventNextDamage",
+                      "amount": 2
+                    }
+                  ]
+                },
+                {
+                  "key": "soulDiscard",
+                  "label": "場のモンスター１枚のソウル１枚を捨てる。",
+                  "condition": {
+                    "op": "cardCountGte",
+                    "controller": "either",
+                    "pile": "field",
+                    "filter": {
+                      "cardType": "monster",
+                      "soulCountGte": 1
+                    },
+                    "amount": 1
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "m",
+                      "from": "field",
+                      "controller": "any",
+                      "filter": {
+                        "cardType": "monster",
+                        "soulCountGte": 1
+                      },
+                      "amount": 1,
+                      "require": true,
+                      "title": "ロイヤルティ",
+                      "lead": "ソウルを1枚捨てる場のモンスターを選んでください。"
+                    },
+                    {
+                      "op": "dropSelectedSoul",
+                      "var": "m",
+                      "amount": 1
+                    }
+                  ]
+                },
+                {
+                  "key": "cap",
+                  "label": "そのターン中、相手は4枚以上モンスターをコールできない",
+                  "script": [
+                    {
+                      "op": "restrictCallCountPerTurn",
+                      "controller": "opponent",
+                      "max": 3
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "ロイヤルティ（魔法）。『【使用コスト】ゲージ１を払う』=costs.cast[payGauge(1)]+ability.cost二重宣言（定型）。『【対抗】次の３つから１つを選んで使う』=kind:spell,timing:[counter]+script:[chooseBranch]。分岐1『そのターン中、次に君が受けるダメージを２減らす』=preventNextDamage{amount:2}（bf-d-eb03-0058シャドウ・クルセイダー型・amount指定時はN軽減、全無効化はamount省略時のみという既存契約どおり）。分岐2『場のモンスター１枚のソウル１枚を捨てる』=selectCards{from:field,controller:\"any\",filter:{cardType:monster,soulCountGte:1}}→dropSelectedSoul{var,amount:1}（『場の』＝両陣営が対象のためcontroller:\"any\"。★実装時の発見: 当初bf-d-cbt-0017大海賊キャプテン・カイドウに倣いselectCards{from:soul,hostVar:m}→moveSelected{to:drop}の2段階選択で起草したが、VM実測でエンジンの潜在的な罠を検出: scriptCardSelectionCandidatesのfrom:\"soul\"+hostVar経路は、候補カードの実体(pile)はhostVarの実カードから正しく取得する一方、各候補entryのownerフィールドはstep.controller由来の外側ループ変数（未指定時は既定\"self\"=context.owner固定）で上書きされ、hostの真の所有者を反映しない。結果としてmoveSelected(toOwner未指定→entry.owner既定)の宛先が常にcontext.owner（能力の使用者=自分）に固定され、host=相手モンスターを選んだ場合でも捨てたソウルが自分のドロップへ誤って積まれる（bf-d-cbt-0017自体も同型構造のため恐らく同じ潜在挙動を持つ、既存カード未変更ゆえ本タスクでは修正せず報告に留める）。dropSelectedSoulForScript(src/14-ability-script.js:1804-1817)はFIELD選択（entry.ownerが場所在から正しく解決される。allyFieldTargets経由で常に正確）のvarを直接受け取りentry.card.soul.splice(0,amount)→state.players[entry.owner??context.owner].dropへ積むため、ソウル専用の2段階選択を経由せずこの罠を完全に回避できる。原文『場のモンスター１枚のソウル１枚を捨てる』にはソウル札自体を『選び』とは書かれていない（bf-d-cbt-0017の『持ち主の手札に戻す』は複数ソウルからの選択が示唆される書き方だが本カードは『１枚』を単純に指すのみ）ため、dropSelectedSoulの無選択自動1枚spliceも原文に忠実）。option.condition:cardCountGte{controller:\"either\",pile:field,filter:{cardType:monster,soulCountGte:1},amount:1}を付与し、ソウルを持つモンスターが両陣営に1体も無い時はchooseBranchの候補から自動除外（src/14-ability-script.js chooseBranchForScriptのoption.condition評価、controller:\"either\"はOR意味論=いずれか一方で満たせば真）。★分岐3『そのターン中、相手は４枚以上モンスターをコールできない』は【未実装・エンジン班への1行追記依頼が必要】: rulings.md R3のエンジン班案件E-XB7＝ターン内総コール数キャップ continuous `restrictCallCountPerTurn{controller,max}` は**既に実装済み**（src/15-ability-effects.js:448-459、コメントに明記『E-XB7(X-SS03/0060 ロイヤルティ)』・関連state(state.callCountCapsThisTurn)もsrc/03-setup.jsに配線済み）。しかし ability-level effects（executeAbilityEffect経由）としてのみ実装されており、script内（chooseBranchのoption.script等）から呼ぶための `isScriptEffectStep`（src/14-ability-script.js:3281-3345）の許可リストに \"restrictCallCountPerTurn\" が未登録（grep 0件）。そのため本カードのようにchooseBranchのoption.script内から使おうとすると『未実装のscript命令です』でscriptが停止する。本タスクの制約『既存テスト変更禁止・src/data変更禁止』によりsrc側の許可リスト追記はできないため、無いopを創作せず分岐3は見送り、chooseBranchのoptionsに含めなかった（2択のみ提示）。エンジン班がsrc/14-ability-script.jsのisScriptEffectStep配列に\"restrictCallCountPerTurn\"を1行追記後、options配列に第3分岐{key:\"limitCall\",label:\"そのターン中、相手は４枚以上モンスターをコールできない。\",script:[{op:\"restrictCallCountPerTurn\",controller:\"opponent\",max:3}]}を追記するだけで復元できる見込み（『4枚以上コールできない』＝maxは実装コメントの意味論どおり『そのターンにコールできる最大枚数』なので3）。grep自己検査: payGauge(src/04)/chooseBranch+option.condition(src/14-ability-script.js:1254-1260)/preventNextDamage amount指定(src/15-ability-effects.js:2523-2539)/dropSelectedSoul(src/14-ability-script.js:1804-1817、メインdispatchで直接登録済みのためisScriptEffectStep許可リスト不要)/cardCountGte controller:either(src/13-abilities-core.js:810-855)/restrictCallCountPerTurn実装確認・isScriptEffectStep未登録確認(src/15:448-459, src/14:3281-3345) 全実在確認。VM実測(x67-b7-verify.js): 対抗タイミングでゲージ1を払い使用可能／分岐1選択でそのターン中次の1回のダメージが2減る（3ダメージ→1ダメージ）／分岐2選択で場の指定モンスター（相手側でも）のソウルが1枚、その所有者(相手)のドロップへ正しく移る／場の全モンスターがソウル0枚の時は分岐2が選択肢から消える、の3系統を確認。 ／【E-XB7/R3/R14 で3択目を忠実実装（統括反映）】「そのターン中、相手は4枚以上モンスターをコールできない」= restrictCallCountPerTurn{controller:opponent,max:3}（総コール数キャップ=recordImpactMonsterCall 記帳・callMonster/turnCallRestrictionBlocks 両判定点・callLimitPerTurn と別軸・isScriptEffectStep 登録済み=chooseBranch から使用可・赤ピン E-XB7/R14）。旧2択の近似は解消。"
+    },
+    {
+      "id": "bf-x-ss03-0061",
+      "no": "X-SS03/0061",
+      "name": "ネオバディソード",
+      "type": "item",
+      "rarity": "デッキ商品",
+      "world": "ジェネリック",
+      "attributes": [
+        "バディ",
+        "武器"
+      ],
+      "power": 4000,
+      "critical": 2,
+      "rules": [
+        "■【装備コスト】ゲージ１を払う。",
+        "■君の場のバディモンスターが攻撃した時、君のライフを＋２！この能力は１ターンに１回だけ発動する。"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0061-ally-attack-lifegain",
+          "kind": "triggered",
+          "event": "allyAttack",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "buddy": true
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "ネオバディソード（アイテム）。『【装備コスト】ゲージ１を払う』=costs.equip[payGauge(1)]。『君の場のバディモンスターが攻撃した時、君のライフを＋２！この能力は１ターンに１回だけ発動する』=event:\"allyAttack\"（src/09-attack.js:467のrunFieldEventTriggers(\"attack\",...)がally/opponent接頭辞ブロードキャストを生成。SKILL.md記載どおりフィールドイベントはally<Base>形）+conditions:[eventCardMatches{filter:{buddy:true}}]（context.eventCard.cardが攻撃した実カード。buddy:trueは登録バディ本人かどうかのmatchesCardFilter判定で場上カードなら正しく機能＝SKILL.md既知の『filter.buddyは場外カードにfalse』の罠は本カードでは無関係、攻撃中の実体は必ず場に存在）+effects:[gainLife{amount:2}]+limit:{scope:turn}（無名『この能力は1ターンに1回だけ発動する』＝カード名指定なしのシンプルな自己インスタンス単位1ターン1回。isHandCastLimitAbility=false・fromHandOnly無指定のためabilityLimitKeyが自動でinstanceId付きキーを生成、shared/key指定不要）。grep自己検査: runFieldEventTriggers attack→allyAttack生成(src/09-attack.js:466-467)/eventCardMatches(src/13-abilities-core.js:1373-1376)/filter.buddy(src/17-targeting.js、matchesCardFilter)/gainLife(src/15-ability-effects.js:622)/limit scope turn 既定instance分離(src/15-ability-effects.js:3164-3182) 全実在確認。VM実測(x67-b7-verify.js): 装備コストでゲージ1消費／登録バディの自場モンスターが攻撃した時ライフ+2（同ターン2体目の攻撃・同一モンスターの2回攻撃では発動しない=1ターン1回）／バディでない自場モンスターの攻撃では発動しない、の3系統を確認。"
+    },
+    {
+      "id": "bf-x-ss03-0062",
+      "no": "X-SS03/0062",
+      "name": "ダメージ・コントロール",
+      "type": "spell",
+      "rarity": "デッキ商品",
+      "world": "ジェネリック",
+      "attributes": [
+        "戦神機",
+        "防御"
+      ],
+      "rules": [
+        "■『設置』（このカードは場に置いて使う）",
+        "■【対抗】【起動】相手のターン中、手札１枚を捨てる。捨てたら、そのターン中、次に君が受けるダメージを２減らす。捨てたカードが《戦神機》なら、かわりに、そのターン中、次に君が受けるダメージを４減らす。この能力は１ターンに１回だけ使える。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x-ss03-0062-reduce",
+          "kind": "activated",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "hand",
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "ダメージ・コントロール",
+              "lead": "捨てる手札を選んでください。",
+              "options": [
+                {
+                  "key": "sengineki",
+                  "label": "《戦神機》を捨てる（次に受けるダメージ−4）",
+                  "condition": {
+                    "op": "cardCount",
+                    "controller": "self",
+                    "pile": "hand",
+                    "filter": {
+                      "attribute": "戦神機"
+                    },
+                    "cmp": "gte",
+                    "amount": 1
+                  },
+                  "script": [
+                    {
+                      "op": "discardHand",
+                      "amount": 1,
+                      "filter": {
+                        "attribute": "戦神機"
+                      }
+                    },
+                    {
+                      "op": "reduceNextDamage",
+                      "amount": 4
+                    }
+                  ]
+                },
+                {
+                  "key": "other",
+                  "label": "手札１枚を捨てる（次に受けるダメージ−2）",
+                  "script": [
+                    {
+                      "op": "discardHand",
+                      "amount": 1
+                    },
+                    {
+                      "op": "reduceNextDamage",
+                      "amount": 2
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-h-bt01-0042-reduce"
+          }
+        }
+      ]
+    }
+  ]
+}
