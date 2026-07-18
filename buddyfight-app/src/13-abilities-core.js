@@ -267,6 +267,10 @@ async function useHandAbilityAction(card, ability, options = {}) {
   }
   state.selected = null;
   state.linkAttackers = [];
+  // E-XB42(X-BT04/0099 endCurrentTurn): 手札起動能力の即時解決経路（対抗窓を挟まない）で立った「現在ターン終了」
+  // 予約もこの unwind 点で消費する（field 版と対）。pending 中は保留され後の resolvePendingResolution で終える。
+  // 予約が無ければ no-op（後方互換）。
+  await maybeEndPendingCurrentTurn();
   render();
 }
 
@@ -346,6 +350,11 @@ async function useFieldAbilityAction(card, loc = null) {
   if (includeOpponentGauge) {
     player.nextActivatedCostMayUseOpponentGauge = false;
   }
+  if (ability.soulSpellCast) {
+    // E-XB45: 使用コスト支払い済み。ソウルの魔法を「使用」として spell の pendingAction へ流す（対抗窓→resolvePendingSpell）。
+    await finalizeSoulSpellCast(card, sourceCard, ability, owner, player, target);
+    return;
+  }
   addAbilityUseLog(player, sourceCard, ability);
   if (!hasPendingResolution() && !isCounterAbility(ability)) {
     beginPendingAction({
@@ -382,6 +391,43 @@ async function useFieldAbilityAction(card, loc = null) {
   markAbilityLimit(owner, sourceCard, ability);
   state.selected = null;
   state.linkAttackers = [];
+  // E-XB42(X-BT04/0099 endCurrentTurn): 対抗窓を挟まず即時解決した場の起動能力（0099 逆天殺 の即時 counter 等、
+  // hasPendingResolution が偽のイベント窓経路）で立った「現在ターン終了」予約をこの unwind 点で消費する。
+  // pending 中（通常の対抗中）は maybeEndPendingCurrentTurn が保留し、後の resolvePendingResolution で終える。
+  // 予約が無ければ no-op（後方互換）。useDropAbilityAction はこの関数へ委譲するためドロップ起動も同時に賄う。
+  await maybeEndPendingCurrentTurn();
+  render();
+}
+
+// E-XB45(エルシニアス): ソウルの魔法を「使用」として確定させる。使用コストは呼び出し元(useFieldAbilityAction)で支払い済み。
+// ソウルからホスト外へ抜き（＝使用後の行き先はドロップ。原文「魔法を使う」＝通常魔法と同じく解決後ドロップゾーンへ）、
+// spell の pendingAction を開いて相手へ対抗機会を与える。resolvePendingSpell(src/07)が本体解決・ドロップ着地・
+// 「君が魔法を使った時」(spellCast)誘発・named-once 記帳を賄う（手札魔法と同一の解決経路＝忠実）。
+async function finalizeSoulSpellCast(hostCard, spellCard, ability, owner, player, target) {
+  const soul = hostCard.soul || [];
+  const idx = soul.findIndex((c) => c.instanceId === spellCard.instanceId);
+  if (idx < 0) {
+    // 非同期誘発レースでソウルから抜けていたら中止（callMonster と同型のガード）。
+    addLog(`${spellCard.name}がソウルにないため、使用を中止しました。`);
+    return;
+  }
+  const removed = soul.splice(idx, 1)[0];
+  // named-once（「1ターンに1回だけ使える」）は宣言＝コスト支払い済みのこの時点で記帳（手札魔法 src/13:177 と同順序）。
+  markAbilityLimit(owner, removed, ability);
+  beginPendingAction({
+    kind: "spell",
+    owner,
+    responder: 1 - owner,
+    card: removed,
+    ability,
+    phase: state.phase,
+    // E-XB50(X-CBT01/0030 秘剣 斬流雷牙「『秘剣 絶命陣』のソウルから使われていたなら」): soul-cast の
+    // ホストカードを spell の pendingAction へ伝搬し、解決時に castFromSoulHostMatches で照合できるようにする。
+    // resolvePendingSpell が action.hostCard を context.hostCard へ渡す。ホストは場札＝両席可視でT13安全。
+    hostCard,
+    effectTargetValue: target ? encodeTarget(target.owner, target.zone) : "",
+  });
+  addLog(`${player.name}は${removed.name}（${hostCard.name}のソウル）の使用を宣言しました。対抗確認を行ってください。`);
   render();
 }
 
@@ -435,7 +481,7 @@ function findUsableFieldAbilities(card, owner = state.selected?.owner ?? state.a
   }
   const timing = state.pendingAttack || state.pendingAction ? "counter" : state.phase;
   const direct = (card.abilities || []).filter((ability) => fieldAbilityUsable(card, ability, owner, timing));
-  return [...direct, ...findUsableSoulAbilities(card, owner, timing)];
+  return [...direct, ...findUsableSoulAbilities(card, owner, timing), ...findCastableSoulSpells(card, owner, timing)];
 }
 
 function findUsableFieldAbility(card, owner = state.selected?.owner ?? state.active) {
@@ -527,6 +573,58 @@ function findUsableSoulAbility(hostCard, owner, timing) {
   return findUsableSoulAbilities(hostCard, owner, timing)[0] || null;
 }
 
+// E-XB45(X-CBT02/0075 “死灰魔導” エルシニアス): 「君はこのカードのソウルにある《病》の魔法を【使用コスト】を払って使える」。
+// fromDropZone 活性（墓場のDJ 0014）の兄弟＝「fromSoulOf(ホスト)」型のキャスト経路。host が top-level フィールド
+// soulSpellCast:{filter} を持つとき、ソウル内の filter 一致「魔法カード」を、その魔法自身の spell 能力（使用コスト＋効果）で
+// キャスト可能にする。合成能力を { ...spellAbility, fromSoul, soulSpellCast, soulSourceCard } として返し、
+// useFieldAbilityAction が spell の pendingAction（＝対抗窓・解決後ドロップ着地・spellCast 誘発・named-once 記帳）へ流す。
+// 未設定（soulSpellCast を持たない既存の全ホスト）は即空配列＝バイト不変（後方互換）。host 無効化時は呼び出し元
+// findUsableFieldAbilities が [] を返すため、この経路も自動的に停止する（能力無効化＝soul-cast も不可）。
+function findCastableSoulSpells(hostCard, owner, timing) {
+  const spec = hostCard?.soulSpellCast;
+  if (!spec) {
+    return [];
+  }
+  // 通常魔法はターンプレイヤーのメインフェイズのみ使用可（対抗窓/攻撃・ファイナルフェイズでは出さない）。
+  // 病の魔法（大魔法群・ワールド・パンデミック）は全てメイン魔法のため、この主枠に限定する（counter 魔法の soul-cast は将来対応）。
+  if (timing !== "main" || owner !== state.active) {
+    return [];
+  }
+  const result = [];
+  for (const soulCard of hostCard.soul || []) {
+    if (spec.filter && !matchesCardFilter(soulCard, spec.filter)) {
+      continue;
+    }
+    const spellAbility = (soulCard.abilities || []).find((ability) => ability.kind === "spell");
+    if (!spellAbility) {
+      continue;
+    }
+    // カードレベルの useConditions（例: 8枚以上）も手札キャストと同様にゲートする。
+    if (!checkCardConditions(soulCard.useConditions || [], owner, { card: soulCard, owner })) {
+      continue;
+    }
+    const synthetic = { ...spellAbility, fromSoul: true, soulSpellCast: true, soulSourceCard: soulCard };
+    if (isAbilityLimitUsed(owner, soulCard, synthetic)) {
+      continue; // named-once（「1ターンに1回だけ使える」）は spell の name ベースキー＝手札/ソウル複製で合算（既存規約）
+    }
+    if (
+      synthetic.target &&
+      !synthetic.target.allowMissingTarget &&
+      targetCandidatesFromSpec(synthetic.target, owner, { card: soulCard, ability: synthetic }).length === 0
+    ) {
+      continue;
+    }
+    if (!checkAbilityConditions(synthetic, owner, { card: soulCard, owner })) {
+      continue;
+    }
+    if (!canSatisfyAbilityScript(soulCard, synthetic, owner, {})) {
+      continue;
+    }
+    result.push(synthetic);
+  }
+  return result;
+}
+
 // 場のカードに使える起動能力が複数ある時、どれを使うか選ばせる。
 // 例: モンスタースペースのキャプテン・アンサーは「変身で装備」と「アンサークエスチョン」の両方が使える。
 async function chooseFieldAbility(card, abilities, owner) {
@@ -588,6 +686,7 @@ function describeAbilityCondition(condition) {
   if (condition.op === "phaseIs") return `${ABILITY_TIMING_LABELS[condition.phase] || condition.phase}フェイズ中`;
   if (condition.op === "turnOwnerIsSelf") return "自分のターン中";
   if (condition.op === "turnOwnerIsOpponent") return "相手のターン中";
+  if (condition.op === "reversalUsedThisFight") return "このファイト中に『逆天』を使っていること";
   if (condition.op === "deckMilledThisTurn") {
     const who = condition.deckOwner === "opponent" ? "相手" : "自分";
     const n = condition.amount ?? 1;
@@ -836,6 +935,10 @@ function checkCondition(condition, owner, context = {}) {
         else if (pile === "item") cards.push(...equippedItems(pl)); // 複数装備を全てカウント（「アイテム2枚装備なら」0042等）
         else if (pile === "center") { if (pl.field[pile]) cards.push(pl.field[pile]); }
         else if (pile === "soul") cards.push(...zones.flatMap((z) => pl.field[z]?.soul || []));
+        // E-XB46(X-CBT02 病5枚 0015/0027/0030/0032/0076「君の場のアイテムのソウルに《病》の魔法N枚以上」):
+        // アイテムゾーンのソウルだけを合算する（既存 pile:"soul" は全ゾーン横断＝モンスター/設置/アイテムの
+        // ソウルを混ぜる。itemSoul は itemZones のソウルに限定＝「アイテムのソウル」の正確カウント）。
+        else if (pile === "itemSoul") cards.push(...itemZones.flatMap((z) => pl.field[z]?.soul || []));
         else cards.push(...(pl[pile] || []));
         if (condition.excludeSource && context.card) {
           cards = cards.filter((c) => c.instanceId !== context.card.instanceId);
@@ -905,6 +1008,14 @@ function checkCondition(condition, owner, context = {}) {
   }
   if (condition.op === "turnOwnerIsOpponent") {
     return (context.turnOwner ?? state.active) !== owner;
+  }
+  if (condition.op === "reversalUsedThisFight") {
+    // E-XB41/R20(X-BT04/0069 天晶への覚醒): 「このファイト中、君が『逆天』を使っているなら使える」。
+    // 逆天(reversal)を使うと markAbilityLimit(src/15) が state.fightLimits[owner].reversal を記帳する
+    //（normalizedAbilityLimit の既定 scope:"fight"/key:"reversal"）。逆天殺は明示 limit.key:"reversalKill" で
+    // 別プールに記帳されるため本 op は false になる（R9/R20 の「逆天と逆天殺は独立プール」規約）。
+    // useConditions / ability.conditions / effect.conditions のいずれからも checkCardConditions 経由で評価される。
+    return Boolean(state.fightLimits?.[owner]?.reversal);
   }
   if (condition.op === "phaseIs") {
     return (state.pendingAction?.phase || state.phase) === condition.phase;
@@ -1068,6 +1179,27 @@ function checkCondition(condition, owner, context = {}) {
     const source = context.card || getSelectedCard();
     return (source?.soul || []).some((card) => (card.size || 0) === (context.enteredCard?.size || 0));
   }
+  if (condition.op === "selfStatGte" || condition.op === "selfStatLte") {
+    // E-XB51②(X-CBT01/0074 轟天覇王拳 ドラグランブル「このカードの攻撃力が10000以上なら」): 発生源カード自身の
+    // 現在値（visible stat＝印字＋バトル/ターン/継続バフ）の閾値判定。bare event:"attack" 等の文脈で
+    // context.card（＝攻撃したこのカード）を安全に読む。stat: power(攻撃力)/defense(防御力)/critical(打撃力)。
+    // powerGte が matchesTargetFilter 経由で sameInstanceAsSource を解釈しない穴を埋める source 限定版。
+    const source = condition.ref ? resolveEffectReference(condition.ref, context)?.card : (context.card || getSelectedCard());
+    if (!source) return false;
+    const stat = condition.stat || "power";
+    const value = stat === "defense" ? visibleDefense(source) : stat === "critical" ? visibleCritical(source) : visiblePower(source);
+    const amount = condition.amount ?? 0;
+    return condition.op === "selfStatLte" ? value <= amount : value >= amount;
+  }
+  if (condition.op === "sourceSoulWorldCountGte") {
+    // E-XB47(X-CBT01/0038 ぶんぶく師匠 本気モード！): 「このカードのソウルのカードのワールド名がN種類以上なら」。
+    // 発生源カード自身のソウルの distinct ワールド種類数（cardWorlds() で2ワールド持ちは両ワールドを算入＝
+    // cardCount の distinct:"distinctByWorld"／amountFrom distinctWorldCount と同ロジックの source 限定版）。
+    // 場の全モンスターのソウルを合算する pile:"soul" 系と違い、context.card のソウルだけを見る。
+    const source = context.card || getSelectedCard();
+    const n = new Set((source?.soul || []).flatMap((card) => cardWorlds(card))).size;
+    return n >= (condition.amount || 1);
+  }
   if (condition.op === "hostMatches") {
     return Boolean(
       context.hostCard &&
@@ -1078,6 +1210,13 @@ function checkCondition(condition, owner, context = {}) {
           condition.filter || {},
         ),
     );
+  }
+  if (condition.op === "castFromSoulHostMatches") {
+    // E-XB50(X-CBT01/0030 秘剣 斬流雷牙「このカードが『秘剣 絶命陣』のソウルから使われていたなら」):
+    // E-XB45 soul-cast のホスト（finalizeSoulSpellCast→pendingAction.hostCard→resolvePendingSpell の
+    // context.hostCard）を filter で照合する。通常の手札魔法（hostCard 無し）は false ＝当該条項が発火しない
+    // （後方互換: 手札から使った 0030 はこの節を満たさず、ゲージ加速の追加報酬を得ない）。nameIncludes 等対応。
+    return Boolean(context.hostCard && matchesCardFilter(context.hostCard, condition.filter || {}));
   }
   if (condition.op === "enteredCardMatches") {
     if (condition.excludeSource && context.enteredCard?.instanceId === context.card?.instanceId) {
@@ -1127,6 +1266,10 @@ function checkCondition(condition, owner, context = {}) {
   if (condition.op === "flagNameIs") {
     // E12(D-SS02/0005 未来占星術): ターン限定エイリアス（addTurnFlagNameAlias「フラッグは「X」としても扱う」）
     // も真とする。エイリアスは flagNameIs 専用で、カード使用可否(canUseCardForFlag)には効かない。
+    // E-XB44: フラッグが裏（flagFaceDown）ならフラッグ名は成立しない（機能停止＝フラッグに書かれた条件を満たさない）。
+    if (state.players[owner]?.flagFaceDown) {
+      return false;
+    }
     return (
       state.players[owner]?.flag?.name === condition.name ||
       (state.turnFlagNameAliases?.[owner] || []).includes(condition.name)
@@ -1376,6 +1519,14 @@ function checkCondition(condition, owner, context = {}) {
     // アプリの対抗ウィンドウはバトル解決前(pendingAttack中)のため、1回目のバトル(attacksThisTurn===1)の
     // 対抗ウィンドウで true を返す（厳密な「バトル終了時」より僅かに早いが、アタックフェイズ終了の意図は満たす）。
     return Boolean(state.pendingAttack) && (state.attacksThisTurn || 0) === 1;
+  }
+  if (condition.op === "isNthBattleEndWindow") {
+    // E-XB35(X-BT04/0092 フェイズシール・チェイン): 「相手のアタックフェイズ中、N回目のバトル終了時に使える」。
+    // isFirstBattleEndWindow(N=1) の一般化。対抗ウィンドウはバトル解決前(pendingAttack中)のため、N回目のバトルの
+    // 対抗ウィンドウ（attacksThisTurn===N）で true。連携攻撃は1回と数える（09-attack の加算箇所と同一カウンタ）。
+    // amount 省略時は1＝isFirstBattleEndWindow と同義。
+    const n = condition.amount ?? 1;
+    return Boolean(state.pendingAttack) && (state.attacksThisTurn || 0) === n;
   }
   if (condition.op === "ownDropDistinctAttributeCountGte") {
     const names = new Set(

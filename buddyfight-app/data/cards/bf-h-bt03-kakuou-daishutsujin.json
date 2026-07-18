@@ -1190,10 +1190,10 @@
           "target": {
             "type": "fieldCard",
             "controller": "self",
+            "excludeSource": true,
             "filter": {
               "cardType": "monster",
-              "attribute": "怒羅魂頭",
-              "excludeSource": true
+              "attribute": "怒羅魂頭"
             }
           },
           "effects": [
@@ -1253,7 +1253,8 @@
             "key": "bf-h-bt03-0018-revive-hand"
           }
         }
-      ]
+      ],
+      "_note": "R25(x73) 出荷済み是正: abilities[0]（起動・他の《怒羅魂頭》へ+5000/貫通）の target.filter.excludeSource は targetCandidatesFromSpecForOwner→matchesTargetFilter→matchesCardFilter(src/17) が黙殺＝『他の』が無効で自己対象化し、自身に+5000/貫通を付与できる実害があった。target 直下 excludeSource:true へ移動（src/17:218 が top-level を読む）。回帰は tests/effects-regression.test.js の testX73R25ExcludeSourceTopLevel（自己が候補から除外されること）。"
     },
     {
       "id": "bf-h-bt03-0019",

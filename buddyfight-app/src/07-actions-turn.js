@@ -1083,6 +1083,10 @@ async function resolvePendingResolution() {
         await endTurn();
       }
     }
+    // E-XB42(X-BT04/0099 endCurrentTurn): 対抗/能力解決が完全にアンワインドしたこの地点で「現在ターン終了」予約を
+    // 消費する（0099 逆天殺 の主経路＝相手のアタックフェイズ中の counter 起動→pendingAttack 解決後にここへ来る）。
+    // 予約が無ければ no-op（後方互換）。endFinalPhase 経路とは別フラグのため相互に干渉しない。
+    await maybeEndPendingCurrentTurn();
     render();
   }
 }
@@ -1149,6 +1153,7 @@ async function resolvePendingSpell(action) {
     player,
     owner: action.owner,
     target: getTargetInfoFromValue(action.effectTargetValue),
+    hostCard: action.hostCard || null, // E-XB50: soul-cast のホスト（castFromSoulHostMatches が参照）。通常魔法は null。
     costDiscardedCards: action.costDiscardedCards || [], // E-PR6: 宣言時に捨てたコスト札を解決の条件へ持ち越す
   };
   await executeAbilityBody(context);

@@ -891,6 +891,21 @@ function standAttackerForMultiAttack(card) {
   if (!card) {
     return;
   }
+  // E-XB43(X-CBT01/0070 バールバッツ・ドラグロイヤー): sextupleAttack（『６回攻撃』）。
+  // 選定理由（ruling R6）: 既存 double/triple/quadruple は「離散keyword＋閾値」で表現され、quadruple は triple の
+  // tripleAttackStandCount カウンタを閾値3で流用する確立形。6回攻撃は 5回スタンド＝同カウンタを閾値5で流用するのが
+  // 最小かつ自然な拡張（standPlayer の既存ターン開始リセット・22-ai/18-tooltip の keyword 集合にも同型で乗る）。
+  // 汎用 multiAttack:N 化も可だが、既存3keyword を N化に作り替えると後方互換の diff が広がるため、確立形の踏襲を優先した。
+  // 5回攻撃が対象内DBに存在しない（＝連番keywordの穴埋め不要）ことも離散keyword採用の後押し。赤ピン: 本分岐を消すと6回目以降も攻撃できず fail。
+  if (hasKeyword(card, "sextupleAttack")) {
+    card.tripleAttackStandCount = card.tripleAttackStandCount || 0;
+    if (card.tripleAttackStandCount < 5) {
+      card.used = false;
+      card.tripleAttackStandCount += 1;
+      addLog(`${card.name}は６回攻撃でスタンドしました。`);
+    }
+    return;
+  }
   // Z14(c)(S-UB-C03/0021): quadrupleAttack（『４回攻撃』）。tripleAttackと同じ
   // tripleAttackStandCountカウンタを流用（閾値のみ3に。standPlayerの既存ターン開始リセットに乗る）。
   if (hasKeyword(card, "quadrupleAttack")) {

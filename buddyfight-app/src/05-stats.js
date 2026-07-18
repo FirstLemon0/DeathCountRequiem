@@ -329,7 +329,9 @@ function activeContinuousEffects(sourceCard) {
 }
 
 function fieldSizeLimit(player) {
-  const base = player?.flag?.maxFieldSize ?? 3;
+  // E-XB44(X-CBT02/0076 ワールド・パンデミック): フラッグが裏（flagFaceDown）＝フラッグ機能停止。
+  // フラッグ由来の場サイズ上限（maxFieldSize）を失い規定値3へ戻す。未設定（既存の全state）は素通り＝バイト不変。
+  const base = player?.flagFaceDown ? 3 : (player?.flag?.maxFieldSize ?? 3);
   // 場のカードの継続 grantFieldSizeLimit(controller:self 既定)による上限加算（ドラゴンスローン「サイズの合計が4になるまで」等）。
   let bonus = 0;
   zones.forEach((zone) => {
@@ -352,6 +354,21 @@ function scheduledStatBonusAmount(card, stat) {
 }
 
 function visiblePower(card) {
+  // E-XB43(X-CBT01/0070 バールバッツ・ドラグロイヤー): 印字パワー∞。powerInfinity:true 型のフラグで表現し、
+  // stat 解決点で JS の Infinity を返す（数値サチュレーション＝999999 のような有限代用は不採用＝ルール裁定 R6）。
+  // 設計上の∞相互作用（すべて JS の Infinity 演算が自然に満たす。赤ピン: powerInfinity 分岐を消すと有限値に戻り fail）:
+  //  ・＋X 加算後も∞（Infinity + 有限 = Infinity。この short-circuit で加算/バフ/デバフを一切素通りさせ、常に∞を返す）。
+  //  ・減算でも∞（相手効果の打撃力減少 turnPowerBonus/battlePowerBonus は short-circuit で無視＝「打撃力は減らない」を内包）。
+  //  ・バトル比較（§10-battle-resolve の attackPower>=defense）は Infinity>=有限=true（∞は必ず貫く）。
+  //  ・statThreshold/動的しきい値（§17 passesStatThreshold・E-XB19系）は Infinity<=X=false / Infinity>=X=true / ===X=false。
+  //  ・∞同士は Infinity===Infinity=true（同値扱い）・Math.max(∞,∞)=∞。
+  //  ・注意（設計判断）: amountFrom の stat ソース（fieldCardStat/weaponPowerMax/itemPowerSum/soulStatSum＝§15）が
+  //    ∞カードの visiblePower を読むと Infinity が「支払い/加算量」へ伝播し、格納フィールドに入ると JSON 直列化で null 化する。
+  //    対象内DBに∞カードを stat ソースへ食わせる組み合わせは存在しない（バールバッツはドラゴンW モンスターで武器/アイテム系ソースの対象外）。
+  //    よって saturation を入れず、この既知エッジは「∞は stat ソースに使わない」を規約として明示（ruling R6 の指示どおりコメントで設計判断を固定）。
+  if (card?.powerInfinity) {
+    return Infinity;
+  }
   return Math.max(0,
     (card?.power || 0) +
     (card?.battlePowerBonus || 0) +
@@ -557,6 +574,7 @@ function continuousDistinctWorldCountAmount(effect, statKey, sourceOwner) {
   else if (pile === "item") cards = equippedItems(pl);
   else if (pile === "center") cards = pl?.field?.center ? [pl.field.center] : [];
   else if (pile === "soul") cards = zones.flatMap((zone) => pl?.field?.[zone]?.soul || []);
+  else if (pile === "itemSoul") cards = itemZones.flatMap((zone) => pl?.field?.[zone]?.soul || []); // E-XB46: アイテムゾーンのソウル限定
   else cards = pl?.[pile] || [];
   const matched = cards.filter((card) => matchesCardFilter(card, af.filter || {}));
   let count = new Set(matched.flatMap((card) => cardWorlds(card))).size;
@@ -686,7 +704,8 @@ function continuousStatBonus(card, statKey) {
   // player.flag に実体がある）ため専用ブロックで評価する。フラッグは能力無効化を受けない(Q2220)ため
   // isAbilitiesNullified は経由しない（activeContinuousEffects と異なりフラッグ自体はここでは
   // sourceCard として使わず、flag.continuous を直接読む）。
-  if (player.flag?.type === "flag" && player.flag.continuous?.length) {
+  // E-XB44: フラッグが裏（flagFaceDown）ならフラッグ継続効果は一切適用しない（「フラッグに書かれているカードは使えず」＝機能停止）。
+  if (player.flag?.type === "flag" && !player.flagFaceDown && player.flag.continuous?.length) {
     player.flag.continuous.forEach((effect) => {
       if (!continuousEffectAppliesForFlag(effect, card, slot.owner)) {
         return;
@@ -716,7 +735,10 @@ function continuousStatBonus(card, statKey) {
         const raw = effect[statKey] || 0;
         // Z4(c)(S-UB-C03/0056): grantStatDecreaseImmunity は「相手のカードの効果で減らない」
         // ＝越境デバフ(このループ)限定で保護する。自陣の負デルタ(上のown側ループ)は対象外。
-        bonus += raw < 0 && statDecreaseProtected(card, statKey) ? 0 : raw;
+        // E-XB51①(X-CBT01/0073): ターン限定 grantTurnProtection{kinds:["statDecrease"]} でも越境負デルタを保護する。
+        const protectedDecrease =
+          raw < 0 && (statDecreaseProtected(card, statKey) || turnProtectionBlocks(card, "statDecrease", statKey));
+        bonus += protectedDecrease ? 0 : raw;
       }
       bonus += continuousDropStatAmount(effect, statKey, state.players[crossOwner]);
       bonus += continuousSoulStatAmount(effect, statKey, sourceCard);
@@ -1051,6 +1073,10 @@ const PROTECTION_OP_BY_KIND = {
   rest: "grantRestImmunity",
   soulDiscard: "grantSoulDiscardImmunity",
   nullify: "grantNullifyImmunity",
+  // E-XB34(X-BT04/0040/0110 鏡面峡谷): 「別のエリアに置かれない」＝移動耐性。cardProtectedFrom(card,"moveArea",cause)
+  // が移動系op（moveTargetToDrop/putTargetToGauge/moveTargetToZone/EmptyZone 等）の実行点でゲートする。破壊/手札戻しは
+  // 別クローズ（grantDestroyImmunity/preventReturnToHand）が担う。from:{byOpponent:true} で「相手のカードの効果で」限定。
+  moveArea: "grantMoveAreaImmunity",
 };
 
 // Z4(a)(b)(d): 場の継続 grant*Immunity が対象カードに恒久的な耐性を与えているか。
@@ -1068,7 +1094,8 @@ function grantedProtectionBlocks(card, kind, cause) {
     // （the-chaos「サイズ30以上のモンスターは能力を無効化されない」等）は player.flag に実体があり
     // zones 走査に乗らないため明示的に加える。既存フラッグは grant*Immunity 継続を持たない＝後方互換。
     const sources = zones.map((zone) => ({ source: player.field[zone], zone }));
-    if (player.flag?.type === "flag") {
+    // E-XB44: 裏フラッグ（flagFaceDown）は grantNullifyImmunity 継続の発生源にならない（フラッグ機能停止）。
+    if (player.flag?.type === "flag" && !player.flagFaceDown) {
       sources.push({ source: player.flag, zone: null });
     }
     return sources.some(({ source, zone }) => {
@@ -1107,7 +1134,7 @@ function grantedProtectionBlocks(card, kind, cause) {
 // Z4(e): 【対抗】等でそのターン(または複数ターン)限定に付与される保護（state.turnProtections）。
 // エントリ形: {kinds:["rest"|"nullify"|"returnToHand"], owner, scope, filter, zoneIn, remainingTurnEnds}。
 // destroy専用の既存 state.turnDestroyImmunity/grantTurnDestroyImmunity は移行せずそのまま使う。
-function turnProtectionBlocks(card, kind) {
+function turnProtectionBlocks(card, kind, statKey) {
   const list = state.turnProtections;
   if (!list || !list.length) {
     return false;
@@ -1118,6 +1145,10 @@ function turnProtectionBlocks(card, kind) {
   }
   return list.some((entry) => {
     if (!entry.kinds?.includes(kind)) return false;
+    // E-XB51①(X-CBT01/0073 覇王紅蓮雷波): 選んだ1枚だけを束縛する instanceIds（filter/scope の広域一致ではなく
+    // 特定 instance 限定）。statDecrease 保護は entry.stats で対象 stat を絞れる（例 打撃力=critical のみ）。
+    if (entry.instanceIds && !entry.instanceIds.includes(card.instanceId)) return false;
+    if (kind === "statDecrease" && entry.stats && statKey && !entry.stats.includes(statKey)) return false;
     if (entry.scope === "self" && targetSlot.owner !== entry.owner) return false;
     if (entry.scope === "opponent" && targetSlot.owner === entry.owner) return false;
     if (entry.zoneIn && !entry.zoneIn.includes(targetSlot.zone)) return false;

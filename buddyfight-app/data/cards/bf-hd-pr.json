@@ -25404,10 +25404,14 @@
               "duration": "turn"
             }
           ],
-          "label": "逆天"
+          "label": "逆天",
+          "limit": {
+            "scope": "fight",
+            "key": "reversal"
+          }
         }
       ],
-      "_note": "【コールコスト】ゲージ1=costs.call:[payGauge(1)]。『君のターン中、場のこのカードは破壊されない』=destroyImmunity 2エントリ分割(fromなしconditions:[turnOwnerIsSelf]=効果破壊保護／from:{byBattle:true}conditions:[turnOwnerIsSelf]=バトル破壊保護)、X-BT01/0114『魔王竜 バッツ』(同雷帝軍/バッツ系列)と完全同型を踏襲。『逆天〔君のアタックフェイズ開始時、ゲージ2を払う〕そのターン中、このカードは『4回攻撃』を得る』=kind:triggered, event:attackStart, optional:true, conditions:[turnOwnerIsSelf](X-BT01/0114のattackStart+turnOwnerIsSelfパターン踏襲。任意コスト支払い型はH-EB02/0006・0017等のoptional:true+cost配列パターンに準拠), cost:[payGauge(2)], effects:[grantKeyword{target:$self, keyword:quadrupleAttack, duration:turn}](quadrupleAttackキーワード内部名はS-UB-C03/0021等で実在確認済み・『4回攻撃』表示alias=src/18-tooltip-format.js:473)。『2回攻撃』=keywords:[doubleAttack]。grep自己検査: destroyImmunity(src/11-destroy-turn.js:179-219)/turnOwnerIsSelf(src/13-abilities-core.js:891-893)/attackStart event(runPhaseStartTriggers, src/07-actions-turn.js:871)/optional+cost triggered ability(runTriggeredAbilities経路)/grantKeyword/quadrupleAttack(src/10-battle-resolve.js:869-871) 全実在確認。 ／【統括修正 2026-07-17（S7レビュー軽）】逆天能力に label:逆天 を付与（プロンプト/ログ識別性）。原文に「ファイト中に1回」括弧が無いため fight-limit 無しは print-literal で正（厳密ルール再現は残課題の申し送り）。"
+      "_note": "【コールコスト】ゲージ1=costs.call:[payGauge(1)]。『君のターン中、場のこのカードは破壊されない』=destroyImmunity 2エントリ分割(fromなしconditions:[turnOwnerIsSelf]=効果破壊保護／from:{byBattle:true}conditions:[turnOwnerIsSelf]=バトル破壊保護)、X-BT01/0114『魔王竜 バッツ』(同雷帝軍/バッツ系列)と完全同型を踏襲。『逆天〔君のアタックフェイズ開始時、ゲージ2を払う〕そのターン中、このカードは『4回攻撃』を得る』=kind:triggered, event:attackStart, optional:true, conditions:[turnOwnerIsSelf](X-BT01/0114のattackStart+turnOwnerIsSelfパターン踏襲。任意コスト支払い型はH-EB02/0006・0017等のoptional:true+cost配列パターンに準拠), cost:[payGauge(2)], effects:[grantKeyword{target:$self, keyword:quadrupleAttack, duration:turn}](quadrupleAttackキーワード内部名はS-UB-C03/0021等で実在確認済み・『4回攻撃』表示alias=src/18-tooltip-format.js:473)。『2回攻撃』=keywords:[doubleAttack]。grep自己検査: destroyImmunity(src/11-destroy-turn.js:179-219)/turnOwnerIsSelf(src/13-abilities-core.js:891-893)/attackStart event(runPhaseStartTriggers, src/07-actions-turn.js:871)/optional+cost triggered ability(runTriggeredAbilities経路)/grantKeyword/quadrupleAttack(src/10-battle-resolve.js:869-871) 全実在確認。 ／【統括修正 2026-07-17（S7レビュー軽）】逆天能力に label:逆天 を付与（プロンプト/ログ識別性）。原文に「ファイト中に1回」括弧が無いため fight-limit 無しは print-literal で正（厳密ルール再現は残課題の申し送り）。／【R23(x73) fix】素ラベル『逆天』もキーワード＝1ファイトに1回に確定（旧 print-literal＝無制限読みを上書き）。ただし本能力は kind:triggered のため keyword:\"reversal\" を付けると isFieldActivatedAbility(src/13:716-717) が真化し、timing 無し＝場での手動起動として全フェイズに誤露出する。よって keyword は付けず limit:{scope:\"fight\",key:\"reversal\"} のみ付与＝誘発経路(src/14:56,96)が isAbilityLimitUsed/markAbilityLimit で1ファイト1回に制限し state.fightLimits[owner].reversal を記帳（0069 と連動）。表示は既存 label:\"逆天\" が担う。"
     },
     {
       "id": "bf-pr-0469",
@@ -25895,6 +25899,7 @@
           "id": "bf-pr-0474-gyakuten",
           "label": "逆天",
           "kind": "activated",
+          "keyword": "reversal",
           "timing": [
             "main",
             "attack",
@@ -25913,10 +25918,14 @@
                 "source": "lastDestroyedCount"
               }
             }
-          ]
+          ],
+          "limit": {
+            "scope": "fight",
+            "key": "reversal"
+          }
         }
       ],
-      "_note": "【コールコスト】君の場のサイズ２の《炎竜》１枚を手札に戻し、ゲージ２を払う=costs.call（PR/0473と同型、sizeIn:[2]）。『【対抗】【起動】“爆炎再生”このファイト中、君のサイズ３の《炎竜》が破壊されているなら、手札の《炎竜》１枚を捨ててよい。捨てたら、ドロップゾーンのこのカードを【コールコスト】を払わずコールする。「爆炎再生」は１ターンに１回だけ使える。』はfromDropZone:true活性能力（H-BT03/0014墓場のDJブネ/H-EB03/0002ギシンギュウキ型、conditions:[sourceZoneIn:[drop]]）として実装。原文の『このファイト中、君のサイズ３の《炎竜》が破壊されているなら』は、本カード自身がまさにその『破壊された君のサイズ３の炎竜』としてドロップに存在している状態でのみこの能力が使える(sourceZoneIn:[drop]必須)ため、条件として同語反復（tautology）であり明示条件を追加しなくても意味的に充足される（本カード以外にサイズ3炎竜は本パックに存在しないため、他カード経由での充足パスも無い）。timing:[counter]のみで【起動】側もカバー（2018年6月以前ルールの『対抗を持つ能力は自分のメインフェイズでも使える』＝src/13-abilities-core.js:698-705、bf-pr-0358ジャムジャマの_note記載の確立慣例）。『手札の《炎竜》１枚を捨ててよい。捨てたら〜コールする』=任意コストはability.costにせずscript内selectCards(require:false)→moveSelected(to:drop)→ifSelection(then)で表現（CLAUDE.mdスキル『してよい』はoptional script）。コスト無し無償コールはcallSelected(payCost省略=既定無償、PR/0473と同型）。limit:{scope:turn,shared:true}=名前付き1ターン1回。『『逆天』〔君のターンに使える〕場のカード全てを破壊し、破壊した枚数分相手にダメージ！』は原文に『以外』の除外記載が無いため自分自身も含め場の全カードを破壊するkind:activated（fromDropZoneでは無い＝場にある間のみ使える通常の活性能力）: timing:[main,attack,final]（『君のターンに使える』を自ターン中の全行動可能フェイズで近似。draw/charge/defenseは自ターンの行動可能フェイズに含まれない）、effects:[destroy{scope:all,filter:{}}(bf-pr-0312型、excludeSource無し=このカードも破壊対象), dealDamage{player:opponent,amountFrom:{source:lastDestroyedCount}}(X-CP01/0020型のamountFrom lastDestroyedCount、src/15-ability-effects.js:2873)]。原文に『1回だけ』の制限句が無いためlimit無し。『移動』『貫通』『２回攻撃』=keywords:[move,penetrate,doubleAttack]。grep自己検査: fromDropZone+sourceZoneIn drop(H-BT03/0014,H-EB03/0002実例)/timing counter単独でmain併用(src/13-abilities-core.js:698-705)/ifSelection(src/14-ability-script.js:1123)/callSelected payCost省略無償(src/14:2485)/destroy scope:all(src/15:1296-1339,bf-hd-pr.json PR/0312実例)/dealDamage amountFrom lastDestroyedCount(src/15:2873-2880、bf-h-bt03-0020型) 全実在確認。VM検証: s7-b5-verify.js「PR/0474」で(a)コール時サイズ2炎竜を手札に戻しゲージ2消費、(b)ドロップにある状態で爆炎再生を使用→手札の炎竜を捨てると無償で場に戻る(1ターン1回)・捨てなければ不発、(c)場にある状態で逆天を使用→場の全カード(自分のこのカードも含む)を破壊し破壊枚数分のダメージが入ることを確認。"
+      "_note": "【コールコスト】君の場のサイズ２の《炎竜》１枚を手札に戻し、ゲージ２を払う=costs.call（PR/0473と同型、sizeIn:[2]）。『【対抗】【起動】“爆炎再生”このファイト中、君のサイズ３の《炎竜》が破壊されているなら、手札の《炎竜》１枚を捨ててよい。捨てたら、ドロップゾーンのこのカードを【コールコスト】を払わずコールする。「爆炎再生」は１ターンに１回だけ使える。』はfromDropZone:true活性能力（H-BT03/0014墓場のDJブネ/H-EB03/0002ギシンギュウキ型、conditions:[sourceZoneIn:[drop]]）として実装。原文の『このファイト中、君のサイズ３の《炎竜》が破壊されているなら』は、本カード自身がまさにその『破壊された君のサイズ３の炎竜』としてドロップに存在している状態でのみこの能力が使える(sourceZoneIn:[drop]必須)ため、条件として同語反復（tautology）であり明示条件を追加しなくても意味的に充足される（本カード以外にサイズ3炎竜は本パックに存在しないため、他カード経由での充足パスも無い）。timing:[counter]のみで【起動】側もカバー（2018年6月以前ルールの『対抗を持つ能力は自分のメインフェイズでも使える』＝src/13-abilities-core.js:698-705、bf-pr-0358ジャムジャマの_note記載の確立慣例）。『手札の《炎竜》１枚を捨ててよい。捨てたら〜コールする』=任意コストはability.costにせずscript内selectCards(require:false)→moveSelected(to:drop)→ifSelection(then)で表現（CLAUDE.mdスキル『してよい』はoptional script）。コスト無し無償コールはcallSelected(payCost省略=既定無償、PR/0473と同型）。limit:{scope:turn,shared:true}=名前付き1ターン1回。『『逆天』〔君のターンに使える〕場のカード全てを破壊し、破壊した枚数分相手にダメージ！』は原文に『以外』の除外記載が無いため自分自身も含め場の全カードを破壊するkind:activated（fromDropZoneでは無い＝場にある間のみ使える通常の活性能力）: timing:[main,attack,final]（『君のターンに使える』を自ターン中の全行動可能フェイズで近似。draw/charge/defenseは自ターンの行動可能フェイズに含まれない）、effects:[destroy{scope:all,filter:{}}(bf-pr-0312型、excludeSource無し=このカードも破壊対象), dealDamage{player:opponent,amountFrom:{source:lastDestroyedCount}}(X-CP01/0020型のamountFrom lastDestroyedCount、src/15-ability-effects.js:2873)]。原文に『1回だけ』の制限句が無いためlimit無し。『移動』『貫通』『２回攻撃』=keywords:[move,penetrate,doubleAttack]。grep自己検査: fromDropZone+sourceZoneIn drop(H-BT03/0014,H-EB03/0002実例)/timing counter単独でmain併用(src/13-abilities-core.js:698-705)/ifSelection(src/14-ability-script.js:1123)/callSelected payCost省略無償(src/14:2485)/destroy scope:all(src/15:1296-1339,bf-hd-pr.json PR/0312実例)/dealDamage amountFrom lastDestroyedCount(src/15:2873-2880、bf-h-bt03-0020型) 全実在確認。VM検証: s7-b5-verify.js「PR/0474」で(a)コール時サイズ2炎竜を手札に戻しゲージ2消費、(b)ドロップにある状態で爆炎再生を使用→手札の炎竜を捨てると無償で場に戻る(1ターン1回)・捨てなければ不発、(c)場にある状態で逆天を使用→場の全カード(自分のこのカードも含む)を破壊し破壊枚数分のダメージが入ることを確認。／【R23(x73) fix】素ラベル『逆天』もキーワード＝1ファイトに1回に確定（旧 print-literal＝無制限読みを上書き）。kind:activated のため keyword:\"reversal\"＋limit:{scope:\"fight\",key:\"reversal\"} を付与（bf-pr-0430 と同型）。使用で markAbilityLimit が state.fightLimits[owner].reversal を記帳＝X-BT04/0069 の reversalUsedThisFight 条件と連動。"
     },
     {
       "id": "bf-pr-0475",

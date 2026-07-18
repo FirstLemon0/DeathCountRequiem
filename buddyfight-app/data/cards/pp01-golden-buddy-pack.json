@@ -458,9 +458,9 @@
           "target": {
             "type": "fieldCard",
             "controller": "self",
+            "excludeSource": true,
             "filter": {
-              "cardType": "monster",
-              "excludeSource": true
+              "cardType": "monster"
             }
           },
           "effects": [
@@ -470,7 +470,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "R25(x73) 出荷済み是正: target.filter.excludeSource は targetCandidatesFromSpecForOwner→matchesTargetFilter→matchesCardFilter(src/17) が黙殺＝『他の』が無効で、場のこのカードを自身のソウルに入れる先として自己を選べる実害があった。target 直下 excludeSource:true へ移動（src/17:218 が top-level を読む）。rulings 記載の製品取り違え『H-PP01/0011』の正＝無印 pp01-golden-buddy-pack。回帰は tests/effects-regression.test.js の testX73R25ExcludeSourceTopLevel。"
     },
     {
       "id": "pp01-0012",

@@ -146,6 +146,12 @@ function canUseCardForFlag(player, card) {
     // ただし角王アイコンではない＝filter.deckAnyFlag(src/17 X18 の角王枚数判定)には波及しない別プロパティ。
     return true;
   }
+  if (player.flagFaceDown) {
+    // E-XB44(X-CBT02/0076 ワールド・パンデミック): フラッグが裏＝機能停止。「フラッグに書かれているカードは使えず」＝
+    // 機能しているフラッグが無いため、全フラッグ共通で使える札（上の deckAnyFlag/usableInAnyFlag で true 済み）以外は使えない。
+    // 未設定（既存の全 state/tests のプレイヤー）は falsy でこのブロックを素通り＝バイト不変。
+    return false;
+  }
   const flag = player.flag;
   if (!flag || flag.allowAllWorlds) {
     return true;
@@ -256,6 +262,9 @@ function createPlayer(name, profile) {
     // 既存 filter.buddy / player.partnerCalled とは別概念。読む側は必ず (player.buddyZoneFaceDown || []) で
     // ガードする（旧セーブ/権威サーバ再構築state等、本フィールドを持たない旧state との互換のため）。
     buddyZoneFaceDown: [],
+    // E-XB44(ワールド・パンデミック): フラッグ裏返し状態。state 常駐（player 上の boolean）＝JSON 直列化・viewFor 深コピー・
+    // リプレイ/room 復元で自然に往復する（T13 安全＝seed 非依存の公開情報）。対象内DBに表へ戻す効果は無いためワンウェイ。
+    flagFaceDown: false,
     field: {
       left: null,
       center: null,
@@ -314,6 +323,8 @@ function newGame(options = {}) {
     chargedThisTurn: false,
     drewThisTurn: true,
     attacksThisTurn: 0,
+    attacksThisTurnBySeat: [0, 0], // E-XB40(X-BT04/0008 天晶の祝福): 席別のターン内攻撃宣言回数（攻撃者席=state.active で加算）。
+    // resolveAmountFrom source:"attacksThisTurn" の controller 指定（"opponent" 等）が参照する。attacksThisTurn(全体)と同寿命でリセット。
     linkAttackers: [],
     buddyCallDeclared: null,
     pendingAttack: null,
@@ -348,6 +359,12 @@ function newGame(options = {}) {
     // 敗北確定点（checkWinner/declareDeckLoss/ライフリンク即死）が isSeatLossPrevented で参照し、
     // endTurn の expireLossPreventionForTurnStart が「相手ターン開始時」に除去して再判定する。
     lossPrevention: [[], []],
+    // E-XB32(X-BT04/0002 世界を繋ぐ壱の鍵 ドラゴウーノ): 席別の「予約敗北」ワンショット。相手ターン中の【対抗】で
+    // 積み、{ sinceTurnCount } を持つ。「次の君のターン終了時、君はファイトに敗北する」を表す。消費は
+    // finishAndAdvanceTurn の maybeApplyScheduledLoss（endingOwner==seat かつ turnCount>sinceTurnCount）。
+    // 期限到来時に lossPrevention(E-XB1)で保護中なら due:true を立てて保留し、失効時 applyDueScheduledLosses が
+    // 再判定して確定させる。JSON直列化のみ（room/replay 往復）・既存対戦では全 null＝挙動不変（後方互換）。
+    scheduledLoss: [null, null],
     lifeLinkEvents: [],
     specialCallOpportunities: [],
     counterEventWindow: null,

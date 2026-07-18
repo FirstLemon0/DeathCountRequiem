@@ -4424,7 +4424,7 @@
       "continuous": [
         {
           "op": "modifyStats",
-          "zones": [
+          "targetZones": [
             "item"
           ],
           "filter": {
@@ -4435,7 +4435,7 @@
         {
           "op": "modifyStats",
           "controller": "opponent",
-          "zones": [
+          "targetZones": [
             "item"
           ],
           "filter": {
@@ -4444,7 +4444,7 @@
           "power": 5000
         }
       ],
-      "_note": "『君と相手の場のアイテム全ての攻撃力+5000』は controller:\"both\" では実現できない(continuousStatBonusの越境ループはeffect.controller===\"opponent\"のみを拾い、\"both\"は自陣側にしか適用されないことをVMハーネスで実測確認=既存bt05-0060ワン・トゥ・ワンと同じ書式は不完全)。正しい両側適用は「controller無指定(自陣)」+「controller:\"opponent\"(越境)」の2エントリに分けて表現する(こちらもVMハーネスで両側+5000を実測確認済み)。"
+      "_note": "『君と相手の場のアイテム全ての攻撃力+5000』は controller:\"both\" では実現できない(continuousStatBonusの越境ループはeffect.controller===\"opponent\"のみを拾い、\"both\"は自陣側にしか適用されないことをVMハーネスで実測確認=既存bt05-0060ワン・トゥ・ワンと同じ書式は不完全)。正しい両側適用は「controller無指定(自陣)」+「controller:\"opponent\"(越境)」の2エントリに分けて表現する(こちらもVMハーネスで両側+5000を実測確認済み)。 ／R26(x73) 死キー正規化: continuous[0]/[1]（modifyStats）の zones:[\"item\"] は continuousEffectApplies(src/05:969) が targetZones のみ参照＝死キー。両エントリを targetZones:[\"item\"] へ正規化（挙動不変・filter:{cardType:\"item\"} で既に item 限定）。"
     },
     {
       "id": "bf-d-eb02-0060",

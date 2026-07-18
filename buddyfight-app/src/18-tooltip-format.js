@@ -201,6 +201,12 @@ function hasCost(cost = {}) {
 }
 
 function statLabel(value) {
+  // E-XB43(X-CBT01/0070 バールバッツ・ドラグロイヤー): 印字パワー∞は powerInfinity フラグ→visiblePower が
+  // JS の Infinity を返す設計（数値サチュレーション不採用）。表示は「∞」に落とす。tooltip(§18:71)・盤面(§12:495)は
+  // どちらも statLabel(visiblePower(card)) 経由なので、この1点で両表示点を賄う。赤ピン: これを消すと "Infinity" と表示される。
+  if (value === Infinity) {
+    return "∞";
+  }
   return value || value === 0 ? String(value) : "-";
 }
 
@@ -471,6 +477,10 @@ function keywordAliases(keyword) {
     doubleAttack: ["doubleAttack", "2回攻撃", "２回攻撃"],
     tripleAttack: ["tripleAttack", "3回攻撃", "３回攻撃"],
     quadrupleAttack: ["quadrupleAttack", "4回攻撃", "４回攻撃"], // Z14(c)(S-UB-C03/0021)
+    sextupleAttack: ["sextupleAttack", "6回攻撃", "６回攻撃"], // E-XB43(X-CBT01/0070 バールバッツ): 『６回攻撃』（quadruple の兄弟＝離散keyword）
+    // E-XB43: 『大逆天』は独立キーワード（『逆天』reversal とは別プール）。normalizedAbilityLimit で fight-limit key="greatReversal" を自動導出。
+    // isFieldActivatedAbility は "reversal" のみ真化させるため（別alias集合）、triggered な大逆天に付けても場起動へ誤露出しない。
+    greatReversal: ["greatReversal", "大逆天"],
     lifeLink: ["lifeLink"],
   }[keyword] || [keyword];
 }

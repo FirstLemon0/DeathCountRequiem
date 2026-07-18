@@ -359,6 +359,11 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     // FE1(D-CBT/0090): 手札→ドロップの場ブロードキャスト（ally/opponentHandDiscarded）をプローブへ公開。
     queueHandDiscardedTriggers,
     checkCondition,
+    // E-XB41(X-BT04/0069): 逆天/逆天殺の使用記帳（state.fightLimits[owner][key]）を実経路で叩き、
+    // reversalUsedThisFight 条件op が writer と同じ key を読むことを固定するため公開。
+    markAbilityLimit,
+    // E-XB42(X-BT04/0099): 現在ターン終了予約のドレイン(finishAndAdvanceTurn 直行)を単体で叩けるよう公開。
+    maybeEndPendingCurrentTurn,
     getState: () => state,
     legacyAbilityScriptDefinition,
     selectedCounterKind,
@@ -402,6 +407,15 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     cardProtectedFrom,
     findFieldCardSlot,
     checkCardConditions,
+    // E-XB32〜36 回帰用: 予約敗北の確定点・保護失効再判定・ターン境界・単騎攻撃制限・攻撃宣言を実経路で叩く
+    //（checkWinner/declareDeckLoss は下段で既公開）。
+    finishAndAdvanceTurn,
+    maybeApplyScheduledLoss,
+    applyDueScheduledLosses,
+    clearWinnerIfNoCurrentLoss,
+    linkAttackRestricted,
+    performAttackDeclaration,
+    moveTopDeckToGauge,
     damageReceivedReductionFor,
     setState: (nextState) => {
       state = nextState;

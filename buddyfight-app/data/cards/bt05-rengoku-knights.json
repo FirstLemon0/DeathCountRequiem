@@ -689,23 +689,20 @@
             "amount": 3
           },
           {
-            "op": "putCardToSoul",
-            "sources": [
-              "field"
-            ],
-            "min": 0,
-            "max": 3,
-            "amount": 3,
+            "op": "putSelectedOwnFieldCardsToSoul",
             "filter": {
               "attribute": "竜騎士"
-            }
+            },
+            "min": 0,
+            "max": 3
           }
         ]
       },
       "keywords": [
         "penetrate",
         "soulguard"
-      ]
+      ],
+      "_note": "R24(x73) 出荷済み是正: 【コールコスト】《竜騎士》3枚までをソウルへ入れる costs.call[1] は putCardToSoul{sources:[\"field\"]} だったが、cardToSoulCostCandidates(src/04:919-948) が field をオブジェクト扱いで常に候補0＝恒久沈黙不発だった。putSelectedOwnFieldCardsToSoul{filter:{attribute:\"竜騎士\"},min:0,max:3} へ変換（bf-x-bt01-0052/bf-x-cp01-0004 と同型・「まで」=min:0・up-to は src/04:1502-1503 が max 尊重）。実操作経路（callMonster）回帰は tests/effects-regression.test.js の testX73R24CallCostFieldToSoul。"
     },
     {
       "id": "bt05-0012",
@@ -2188,17 +2185,13 @@
             "amount": 3
           },
           {
-            "op": "putCardToSoul",
-            "sources": [
-              "field"
-            ],
-            "min": 0,
-            "max": 2,
-            "amount": 2,
+            "op": "putSelectedOwnFieldCardsToSoul",
             "filter": {
               "cardType": "monster",
               "attribute": "髑髏武者"
-            }
+            },
+            "min": 0,
+            "max": 2
           }
         ]
       },
@@ -2208,7 +2201,8 @@
       "keywords": [
         "penetrate",
         "soulguard"
-      ]
+      ],
+      "_note": "R24(x73) 出荷済み是正: 【コールコスト】《髑髏武者》2枚までをソウルへ入れる costs.call[1] の putCardToSoul{sources:[\"field\"]} は cardToSoulCostCandidates(src/04) の field 恒久不発。putSelectedOwnFieldCardsToSoul{filter:{cardType:\"monster\",attribute:\"髑髏武者\"},min:0,max:2} へ変換（「まで」=min:0）。"
     },
     {
       "id": "bt05-0040",
@@ -3383,7 +3377,7 @@
         {
           "op": "modifyStats",
           "controller": "both",
-          "zones": [
+          "targetZones": [
             "item"
           ],
           "filter": {
@@ -3413,7 +3407,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "R26(x73) 死キー正規化: continuous[0]（modifyStats）の zones:[\"item\"] は continuousEffectApplies(src/05:969) が targetZones のみ参照＝zones は死キー（挙動に無関与）。targetZones:[\"item\"] へ正規化（挙動不変・filter:{cardType:\"item\"} で既に item 限定のため掃討）。"
     },
     {
       "id": "bt05-0061",

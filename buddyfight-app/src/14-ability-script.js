@@ -2315,7 +2315,8 @@ async function equipSelectedAsItemForScript(step, context) {
     }
   }
   takeScriptSelectionCards([entry]); // ソース(デッキ/手札/場)から取り除く
-  await equipCardDirect(player, card, { byEffect: true }); // currentType="item" 化して装備（装備変更/装備時誘発も通る）
+  // E-XB53: step.allowExtra は主枠を奪わず追加枠へ並存装備（0062 の《英雄》2枚同時装備）。既定は従来どおり主枠装備。
+  await equipCardDirect(player, card, { byEffect: true, allowExtra: Boolean(step.allowExtra) }); // currentType="item" 化して装備（装備変更/装備時誘発も通る）
   return true;
 }
 
@@ -3351,6 +3352,8 @@ function isScriptEffectStep(step) {
     "discardRandomFromHand", // E-XB8(X-CP03/0058 ファントム・ゲッター): script 経由でも使えるよう許可（effect版 src/15 に委譲）
     "returnTargetSoulToHand", // E-XB11(X-SS03/0057 アトラ"SD"): script 経由でも使えるよう許可（dropTargetSoul と同格）
     "lookTopSelectToSoulRestToDrop", // X10(D-BT01/0044)
+    "lookTopSelectToCall", // E-XB39(X-BT04/0027/0053/0081 モンスターエッグ群): 非破壊look→コール→残りデッキ戻し（effect版 src/15 へ委譲）
+    "lookTopDistribute", // E-XB40(X-BT04/0008 天晶の祝福): 動的count(countFrom)の非破壊look→ゲージ/手札/デッキ下の3方向振り分け（effect版 src/15 へ委譲）
     "setConditionalSizeScope", // X11b(D-BT01/0131)
     "addTurnContinuous", // X19(D-BT01/0131)
     "putTopDeckToGauge",
@@ -3407,6 +3410,8 @@ function isScriptEffectStep(step) {
     "dropEventCard",
     "preventOwnMonsterAttacksThisTurn",
     "scheduleOpponentTurnSkip", // E-XB28(X-BT03/0102 逆天③): script 経由でも使えるよう許可（effect版 src/15 に委譲）
+    "scheduleLossAtNextOwnTurnEnd", // E-XB32(X-BT04/0002 ドラゴウーノ): 予約敗北（effect版 src/15 へ委譲）
+    "resetBoardToDeckAndRefill", // E-XB36(X-BT04/0103 ミセリア 逆天): 盤面リセット複合op（effect版 src/15 へ委譲）
     "cancelRecentLifeLink",
     "cancelLifeLink",
     "cancelCallOpportunityLifeLink",
@@ -3438,10 +3443,17 @@ function isScriptEffectStep(step) {
     "preventStandNextTurn", // E-XC10(X-CP02/0070 グラビトン・ジェネレーター): 次の相手スタートフェイズ 全体スタンド不可
     "returnSelfToDeckBottom", // E-XC11(X-CP02/0016 ネクタル): 場のこのカードをデッキの下へ（effect版 src/15 へ委譲）
     "nullifySelectedAbilities", // E-XC8(X-CP02/0040 マインドフェイカー): 選択1枚をそのターン中 能力無効化
+    // E-XB49②(X-CBT01/0008 逆天戦艦 サツキG 逆天後段): 「君の場のモンスター全ての能力を無効化し、〜無償コールできる」を
+    // 1つの ability(script) で両立させるため script 許可op に加える（effect版 src/15:1529 へ委譲）。script なら
+    // nullifyFieldAbilities（自身も無効化）→ 続くソウル無償コールstep を同一 script の連続実行で処理でき、
+    // findUsableFieldAbilities のカード単位 nullify ゲート（別ability だと後段が発見不能になる問題）を回避できる
+    //（実行中の script は再発見を経ないため自己無効化に阻まれない）。既存カードは script から未使用＝挙動不変。
+    "nullifyFieldAbilities",
     "dropSoulSourceCard", // E-XC13(X-CP02/0046 ビガーブレイブ): triggered soulAbility から発生源ソウル札をドロップへ
     "revealRandomHandThenBranch", // E-XU1(X-UB01/0057 パル子): 相手手札ランダム1枚公開＋種別分岐（effect版 src/15 へ委譲）
     "skipToFinalPhase", // E-XV2(X-UB02/0036): メイン→ファイナルへスキップ（effect版 src/15 へ委譲。script からも使用可）
     "endFinalPhase",
+    "endCurrentTurn", // E-XB42(X-BT04/0099 逆天殺 後段): 現在ターン即終了（effect版 src/15 へ委譲。script 断片からも使用可）
     "gainTemporaryWorldFromVar", // E-PR15(PR/0461): 選択カードのワールドを発生源へそのターン中付与（card.turnWorlds）
     "grantTemporaryDestroyImmunitySelected", // E-PR17(PR/0478): 選択カードへそのターン中の破壊耐性を付与（grantedTempDestroyImmunities）
   ].includes(step.op);

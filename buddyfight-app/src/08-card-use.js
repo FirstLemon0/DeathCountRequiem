@@ -160,7 +160,13 @@ function canEquipAsExtraItem(player, card) {
 async function equipCardDirect(player, card, options = {}) {
   const owner = state.players.indexOf(player);
   let targetZone;
-  if (canEquipAsExtraItem(player, card)) {
+  // E-XB53(X-CBT02/0062 選ばれし者へ「《英雄》のアイテム2枚までを装備」): options.allowExtra は既存装備がある
+  // かぎり主枠を奪わず空きスロットへ並存装備させる（canEquipAsExtraItem/allowExtraItemEquip 機構の一時流用＝
+  // 印字ルール付与を待たずこの装備1回だけ追加枠扱いにする）。1枚目は equippedItems 0＝主枠、2枚目以降が追加枠。
+  const useExtraSlot =
+    canEquipAsExtraItem(player, card) ||
+    (options.allowExtra && equippedItems(player).length > 0 && firstEmptyItemZone(player) !== null);
+  if (useExtraSlot) {
     // 追加アイテム: 主枠を空けず、空いているスロットへ装備する。
     targetZone = firstEmptyItemZone(player);
   } else {
@@ -285,6 +291,11 @@ async function arriveCard(selectedCard) {
   state.phase = "main";
   state.linkAttackers = [];
   addLog(`${player.name}は${card.name}を着任しました。`);
+  // E-XB49①(X-CBT01/0008 逆天戦艦 サツキG「君が『着任』した時、〜」): 着任を場イベントとして配信する。
+  // 攻撃(runAttackDeclarationTriggers)と同じ慣例＝着任カード自身へ event:"arrived"、場全体へ allyArrived/opponentArrived。
+  // リスナー（triggered ability の event:"arrived"/"allyArrived"）が無い既存カードは空振り＝挙動不変。
+  await runTriggeredAbilities(card, "arrived", { card, player, owner: state.active, zone: "item" });
+  await runFieldEventTriggers("arrived", state.active, card, "item");
   render();
 }
 

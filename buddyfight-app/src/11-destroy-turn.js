@@ -136,7 +136,8 @@ function grantedDestroyImmunityBlocks(card, cause) {
     // （the-chaos「サイズ30以上のモンスターは相手の効果で破壊されない」等）は player.flag に実体があり
     // zones 走査に乗らないため明示的に加える。既存フラッグは grantDestroyImmunity 継続を持たない＝後方互換。
     const sources = zones.map((zone) => ({ source: player.field[zone], zone }));
-    if (player.flag?.type === "flag") {
+    // E-XB44(ワールド・パンデミック): 裏フラッグ（flagFaceDown）は grantDestroyImmunity 継続の発生源にならない（機能停止）。
+    if (player.flag?.type === "flag" && !player.flagFaceDown) {
       sources.push({ source: player.flag, zone: null });
     }
     return sources.some(({ source, zone }) =>
@@ -259,6 +260,21 @@ function destroyTriggerUsesSoul(card) {
   );
 }
 
+// E-XB37(X-BT04/0051 氷血皇 ヴァン・グレイシア): 離場置換の成立後（コスト支払い→場残し）に replacement.effects
+// を「発生源カード基準」の context で実行する（「捨てたら、このカードを場に残し、相手にダメージ1！」の後段）。
+// effects 未指定の既存 leaveFieldReplacement 使用カードは空ループで一切走らない＝挙動不変（後方互換）。
+async function runLeaveFieldReplacementEffects(card, owner) {
+  const effects = card?.leaveFieldReplacement?.effects;
+  if (!Array.isArray(effects) || effects.length === 0) {
+    return;
+  }
+  const slot = findFieldCardSlot(card); // 場に残った発生源のゾーン（damage 等の context 基準）。
+  const context = { card, owner, zone: slot?.zone, player: state.players[owner] };
+  for (const effect of effects) {
+    await executeAbilityEffect(effect, context);
+  }
+}
+
 // X9(D-BT01/0131): 「このカードが場から離れる時、[コスト]を払ってよい。払ったら、このカードを場に残す」。
 // 主経路（破壊 destroyFieldCard・全体手札戻し returnAllToHand）は非同期版を使い、確認は confirmChoiceAsync
 //（権威サーバ往復・CPU seam・リプレイ記録を完備）、支払いは対話経路（payStructuredCostWithSelection）。
@@ -292,6 +308,8 @@ async function tryLeaveFieldReplacement(card, owner) {
     card.__leaveReplacementResolving = false;
   }
   addLog(`${card.name}はコストを払って場に残りました。`);
+  // E-XB37: 場残し成立後の後段効果（0051「相手にダメージ1」等）。effects 未指定なら no-op（後方互換）。
+  await runLeaveFieldReplacementEffects(card, owner);
   return true;
 }
 
@@ -331,6 +349,9 @@ function tryLeaveFieldReplacementSync(card, owner) {
     card.__leaveReplacementResolving = false;
   }
   addLog(`${card.name}はコストを払って場に残りました。`);
+  // E-XB37: 場残し成立後の後段効果。同期経路（単体手札戻し＝既存の意図的近似）でも発生源基準で発火する。
+  // dealDamage 等の同期 op は executeAbilityEffect の body が同期実行される時点で解決する（await 前に適用済み）。
+  runLeaveFieldReplacementEffects(card, owner);
   return true;
 }
 
@@ -1804,6 +1825,13 @@ function clearWinnerIfNoCurrentLoss() {
   if (!state.winner) {
     return;
   }
+  // 巻き戻せるのはライフ0/デッキ0 由来の暫定敗北だけ。効果による確定敗北（winGame の "effect"・
+  // E-XB32 予約敗北の "scheduledLoss"）はライフ/デッキ条件で表せないため、ここで誤って解除しない
+  // （winReason が life/deckout 以外なら即 return）。既存の巻き戻し経路は winReason が常に life/deckout の
+  // 場面でのみ呼ばれるため挙動不変（防御的な追加ガード）。
+  if (state.winReason && state.winReason !== "life" && state.winReason !== "deckout") {
+    return;
+  }
   // E-XB1(X-BT02/0113): 「ファイトに敗北しない」保護中の席は現在の敗北条件に数えない
   // （checkWinner のゲートと同じ判定。未設定時は isSeatLossPrevented=false ＝従来と完全一致）。
   const stillLost = state.players.some(
@@ -1846,7 +1874,55 @@ function expireLossPreventionForTurnStart() {
   });
   if (expired) {
     checkWinner();
+    // E-XB32: 保護失効で「期限到来済みだが保留中(due)」の予約敗北を再判定して確定させる。
+    applyDueScheduledLosses();
   }
+}
+
+// E-XB32(X-BT04/0002 ドラゴウーノ): 「次の君のターン終了時、君はファイトに敗北する」の確定点。
+// finishAndAdvanceTurn がターン終了処理の中で endingOwner を渡して呼ぶ。予約席の自ターン終了時
+// （turnCount>sinceTurnCount）に発火する。lossPrevention(E-XB1)で保護中なら消費せず due:true を立てて保留し、
+// 保護失効時に applyDueScheduledLosses が再判定する。既存対戦は scheduledLoss が常に null＝この関数は素通り。
+function maybeApplyScheduledLoss(endingOwner) {
+  const entry = state.scheduledLoss?.[endingOwner];
+  if (!entry) {
+    return;
+  }
+  // 「次の」君のターンに限定（予約した相手ターン中は endingOwner!=seat で来ないが、防御的に真に大なりで判定）。
+  if (!(state.turnCount > entry.sinceTurnCount)) {
+    return;
+  }
+  if (isSeatLossPrevented(endingOwner)) {
+    entry.due = true; // 期限到来済み・保護解除待ち（消費しない）。
+    return;
+  }
+  state.scheduledLoss[endingOwner] = null; // 消費（ワンショット）。
+  applyScheduledLossNow(endingOwner);
+}
+
+// E-XB32: 保護が外れた「due(期限到来済み)」の予約敗北を確定させる（expireLossPreventionForTurnStart から呼ぶ）。
+function applyDueScheduledLosses() {
+  if (!Array.isArray(state.scheduledLoss)) {
+    return;
+  }
+  state.scheduledLoss.forEach((entry, seat) => {
+    if (entry && entry.due && !isSeatLossPrevented(seat)) {
+      state.scheduledLoss[seat] = null;
+      applyScheduledLossNow(seat);
+    }
+  });
+}
+
+// E-XB32: 予約敗北の実行（seat がファイトに敗北＝相手の勝ち）。winReason="scheduledLoss" は
+// clearWinnerIfNoCurrentLoss で巻き戻らない確定敗北（ライフ/デッキ条件では表せないため）。
+function applyScheduledLossNow(seat) {
+  if (state.winner) {
+    return; // 既に決着済み。
+  }
+  state.winner = state.players[1 - seat]?.name || null;
+  state.winnerSeat = 1 - seat;
+  state.winReason = "scheduledLoss";
+  addLog(`${state.players[seat]?.name}は効果でファイトに敗北しました。`);
 }
 
 async function endTurn() {
@@ -1860,6 +1936,31 @@ async function endTurn() {
   await finishAndAdvanceTurn();
 }
 
+// E-XB42(X-BT04/0099 endCurrentTurn): 効果op が立てた「現在ターン終了」予約を、解決チェーンが完全にアンワインドした
+// 地点で1回だけ消費し、現在のターン(state.active)を終える。効果解決の途中で finishAndAdvanceTurn を直接呼ぶと、
+// 呼び出し元(resolvePendingAttack/executeAbilityBody 等)の後続処理がターン交代後の state を前提外に触る／turnEnd 誘発が
+// 再入する恐れがあるため、endFinalPhase(pendingEndTurn) と同じ「予約フラグ→unwind 点でドレイン」方式を一般化する。
+// endTurn の final フェイズ入口ガードは通さず finishAndAdvanceTurn へ直行する（相手ターン中の counter/main 起動でも
+// 「そのターン」を終える）。消費点は resolvePendingResolution(07) の finally と各起動能力アクション(13) の末尾。
+// hasPendingResolution/resolvingPending が真の間はまだ解決中＝終了を保留し、外側の unwind 点で再試行する。
+// 予約が無ければ即 return＝endCurrentTurn 未使用の全既存経路は完全に不変（後方互換）。
+async function maybeEndPendingCurrentTurn() {
+  if (!state.pendingCurrentTurnEnd) {
+    return;
+  }
+  if (state.winner) {
+    // 決着済みなら予約は無効化（勝敗確定が優先・次ターンへ持ち越さない）。
+    state.pendingCurrentTurnEnd = false;
+    return;
+  }
+  if (hasPendingResolution() || state.resolvingPending) {
+    // まだ解決チェーンの途中＝ここでは終了せず保留（外側の unwind 点で再試行する）。
+    return;
+  }
+  state.pendingCurrentTurnEnd = false; // 消費（finishAndAdvanceTurn 呼び出し前にクリア＝再入時の二重発火防止）
+  await finishAndAdvanceTurn();
+}
+
 // endTurn の本体（ターン終了処理→次ターンへ遷移→新ターン設定）。入口ガード(phase/winner/pending)は endTurn 側。
 // E-XB28(X-BT03/0102 逆天③): ターンスキップ予約の消費が「開始したターンを即終了して次へ」を表すため、
 // スキップ時はこの関数を末尾で再帰呼び出しする。予約は消費型ワンショット（消費前に null 化＝再帰は予約数=最大2席で
@@ -1869,6 +1970,9 @@ async function finishAndAdvanceTurn() {
   const endingOwner = state.active;
   await runPhaseStartTriggers("turnEnd", endingOwner);
   await runEndTurnEffects(state.active);
+  // E-XB32(X-BT04/0002 ドラゴウーノ): 「次の君のターン終了時、君はファイトに敗北する」。ターン終了処理の一環として
+  // 予約敗北を確定する（保護中なら保留＝maybeApplyScheduledLoss 内で判定）。既存対戦は scheduledLoss=null で素通り。
+  maybeApplyScheduledLoss(endingOwner);
   clearDamagePreventionForTurn(endingOwner);
   clearTurnModifiers();
   state.monsterAttackForbidden = [false, false];
@@ -1898,9 +2002,13 @@ async function finishAndAdvanceTurn() {
   state.chargedThisTurn = false;
   state.drewThisTurn = false;
   state.attacksThisTurn = 0;
+  state.attacksThisTurnBySeat = [0, 0]; // E-XB40(X-BT04/0008): 席別攻撃回数を attacksThisTurn と同時リセット
   // Z6(S-UB-C03/0054): endFinalPhase の保留フラグは通常はファイナルフェイズ解決で消費済みだが、
   // 勝敗確定等で消費されず残った場合に次ターンへ持ち越さないよう、ターン境界で明示クリアする（防御的）。
   state.pendingEndTurn = false;
+  // E-XB42(X-BT04/0099 endCurrentTurn): 現在ターン終了予約も同様に境界でクリア。通常は maybeEndPendingCurrentTurn が
+  // 消費するが、勝敗確定やドレイン点未到達で残った場合に次ターンへ漏らさない（防御的・後方互換=通常は常に false）。
+  state.pendingCurrentTurnEnd = false;
   state.attackDestroyedByAttribute = [{}, {}]; // 属性別の攻撃撃破数(このターン)をリセット
   state.destroyedCardsThisTurn = [[], []]; // このターン破壊されたカード記録(destroyedThisTurnMatchingCountGte用)をリセット
   syncMonstersDestroyedThisTurn(); // monstersDestroyedThisTurn は destroyedCardsThisTurn からの導出（リセットで[0,0]になる）

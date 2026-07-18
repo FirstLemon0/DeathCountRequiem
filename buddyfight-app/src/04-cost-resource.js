@@ -49,6 +49,29 @@ function drawCards(player, count = 1, shouldLog = true) {
   return drawn;
 }
 
+// E-XB52(X-CBT01/0009 天元晶竜 アトラ・アダマント 第3条項「君のカードの効果で相手に与えるダメージは減らない」):
+// ダメージ源(sourceOwner)の場に、継続 ownEffectDamageUnreducible を持つカードがアクティブに在るか。
+// 発生源側視点＝受け手の軽減系（damageReceivedReduction / damagePrevention キュー）をバイパスするゲート。
+// conditions（「センターにいるなら」等）があれば評価する（preventOpponentEffectDamage ガードと同じ配線）。
+function ownEffectDamageUnreducibleActive(sourceOwner) {
+  const src = state.players[sourceOwner];
+  if (!src) {
+    return false;
+  }
+  return zones.some((zone) => {
+    const fieldCard = src.field[zone];
+    return (
+      fieldCard &&
+      activeContinuousEffects(fieldCard).some(
+        (e) =>
+          e.op === "ownEffectDamageUnreducible" &&
+          (!e.conditions?.length ||
+            checkCardConditions(e.conditions, sourceOwner, { card: fieldCard, owner: sourceOwner, zone, player: src })),
+      )
+    );
+  });
+}
+
 function applyDamageToPlayer(owner, amount = 0, options = {}) {
   const player = state.players[owner];
   if (!player || amount <= 0) {
@@ -57,10 +80,20 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
   state.damagePrevention ||= [[], []];
   state.damagePrevention[owner] ||= [];
   let remaining = amount;
+  // E-XB52: ダメージ源側の ownEffectDamageUnreducible（アトラ・アダマント）が「効果ダメージ（!byAttack）を
+  // 相手（sourceOwner!==owner）へ与える」場合、受け手の軽減系だけをバイパスする。フル無効化
+  // （preventOpponentEffectDamage「受けない」）は「減らない」では貫通しない＝下の line で !options.ignorePrevention のまま。
+  const sourceUnreducible =
+    !options.ignorePrevention &&
+    !options.byAttack &&
+    Number.isInteger(options.sourceOwner) &&
+    options.sourceOwner !== owner &&
+    ownEffectDamageUnreducibleActive(options.sourceOwner);
+  const bypassReduction = options.ignorePrevention || sourceUnreducible;
   // 継続 damageReceivedReduction（装備者が受けるダメージを amount 減らす。
   // nonAttackOnly:true は攻撃以外のダメージ限定(マグナグレイス0011)、既定は全ダメージ(0056)。
   // byOpponent:true は相手席発のダメージ限定(X-UB01/0007 結晶魔王アトラ)＝options.sourceOwner を渡して判定）。
-  if (!options.ignorePrevention) {
+  if (!bypassReduction) {
     const cap = damageReceivedReductionFor(owner, Boolean(options.byAttack), remaining, options.sourceOwner, options.sourceCard);
     if (cap) {
       const reduced = Math.max(0, remaining - cap.amount);
@@ -111,7 +144,7 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
     resistEntries.some((e) => resistanceFilterMatches(e.filter, prevention.sourceCard, prevention.source));
   const queue = state.damagePrevention[owner];
   let i = 0;
-  while (!options.ignorePrevention && remaining > 0 && i < queue.length) {
+  while (!bypassReduction && remaining > 0 && i < queue.length) {
     const prevention = queue[i];
     if (isPreventionResisted(prevention)) {
       // この攻撃には適用しない（キューには残す）
@@ -444,16 +477,67 @@ async function payCardCostWithSelection(player, card, purpose, selectedCard = ca
   return payCostWithSelection(player, adjustedLegacyCost(player, card, purpose, card[legacyKey]), selectedCard);
 }
 
+// E-XB38(X-BT04/0006 "降魔王剣" レヴァンティン「君の手札のアイテム全ては、追加で【装備コスト】ゲージ1を払う。を得る」):
+// 場の継続 grantAdditionalCost が、指定パイル(既定 hand)の filter 一致カードへ purpose のコスト行を「追加で」与える。
+// costReduction（コスト減）とは独立レイヤで、canPay/pay の両方が通る cardCostSteps で合流する。既存カードは
+// grantAdditionalCost 継続を持たない＝additionalCostSteps は常に []＝コスト算出はバイト不変（後方互換）。
+function additionalCostSteps(player, card, purpose) {
+  const ownerIndex = state.players.indexOf(player);
+  if (ownerIndex < 0) {
+    return [];
+  }
+  const out = [];
+  state.players.forEach((sourcePlayer, sourceOwner) => {
+    zones.forEach((zone) => {
+      const source = sourcePlayer.field[zone];
+      activeContinuousEffects(source).forEach((e) => {
+        if (e.op !== "grantAdditionalCost") return;
+        if ((e.purpose || "equip") !== purpose) return;
+        // controller: self(既定)=発生源と同席の pile／opponent=相手席の pile。
+        const targetOwner = e.controller === "opponent" ? 1 - sourceOwner : sourceOwner;
+        if (targetOwner !== ownerIndex) return;
+        // pile: card が targetOwner の指定パイル（既定 hand）に実在するか（instanceId 照合）。
+        const pile = e.pile || "hand";
+        if (!(state.players[targetOwner]?.[pile] || []).some((c) => c.instanceId === card.instanceId)) return;
+        if (e.filter && !matchesCardFilter(card, e.filter)) return;
+        (e.steps || []).forEach((st) => out.push(deepClone(st)));
+      });
+    });
+  });
+  return out;
+}
+
+// E-XB38: レガシーコスト（card.equipCost/callCost/castCost = {gauge,life}）を構造化コスト step へ変換する。
+// 追加コスト継続が有るとき、印字レガシーコスト＋追加行を1本の構造化コストに合流させるために使う（軽減も反映）。
+function legacyCostToSteps(player, card, purpose) {
+  const legacyKey = { call: "callCost", cast: "castCost", equip: "equipCost" }[purpose];
+  const legacy = adjustedLegacyCost(player, card, purpose, card[legacyKey]);
+  const out = [];
+  if ((legacy.gauge || 0) > 0) out.push({ op: "payGauge", amount: legacy.gauge });
+  if ((legacy.life || 0) > 0) out.push({ op: "payLife", amount: legacy.life });
+  return out;
+}
+
 function cardCostSteps(player, card, purpose, context = {}) {
   const rawCost = card.costs?.[purpose] ?? context.cost;
-  if (!Array.isArray(rawCost)) {
-    return { exists: false, steps: [] };
+  const hasStructured = Array.isArray(rawCost);
+  const additional = additionalCostSteps(player, card, purpose); // E-XB38（無ければ [] ＝従来と完全一致）
+  if (additional.length === 0) {
+    if (!hasStructured) {
+      return { exists: false, steps: [] };
+    }
+    return {
+      exists: true,
+      // E-XU3: コール元ゾーン（context.callFromZone）を軽減判定へ橋渡し（「手札以外から」ゲート）。
+      steps: adjustedCostSteps(player, card, purpose, rawCost, { callFromZone: context.callFromZone }),
+    };
   }
-  return {
-    exists: true,
-    // E-XU3: コール元ゾーン（context.callFromZone）を軽減判定へ橋渡し（「手札以外から」ゲート）。
-    steps: adjustedCostSteps(player, card, purpose, rawCost, { callFromZone: context.callFromZone }),
-  };
+  // E-XB38: 追加コスト有り。印字コスト（構造化 or レガシー変換）＋追加行を1本の構造化コストに合流する
+  //（印字コスト無しアイテムには追加行だけが付く）。
+  const baseSteps = hasStructured
+    ? adjustedCostSteps(player, card, purpose, rawCost, { callFromZone: context.callFromZone })
+    : legacyCostToSteps(player, card, purpose);
+  return { exists: true, steps: [...baseSteps, ...additional] };
 }
 
 function fieldCostReductions(player) {
@@ -593,6 +677,18 @@ function canPayStructuredCost(player, costSteps = [], context = {}) {
       const minimum = step.min ?? amount;
       if (availableHand.length < minimum) {
         return { ok: false, reason: "ソウルに入れる手札が足りません。" };
+      }
+    }
+    if (step.op === "putHandToDeckTop") {
+      // E-XB48(X-CBT01/0037 トラクタービーム「【使用コスト】君の手札1枚を君のデッキの上に置く」):
+      // 手札 N 枚をデッキの上（＝配列末尾。drawCards は pop で末尾から引く）へ戻すコスト。putHandToSoul と同型の
+      // min/max・selectedCard 除外・filter を踏襲する（宛先だけソウル→デッキ上）。
+      const availableHand = player.hand.filter(
+        (card) => card.instanceId !== selectedCard?.instanceId && matchesCardFilter(card, step.filter || {}),
+      );
+      const minimum = step.min ?? amount;
+      if (availableHand.length < minimum) {
+        return { ok: false, reason: "デッキの上に置く手札が足りません。" };
       }
     }
     if (step.op === "putCardToSoul") {
@@ -1012,6 +1108,18 @@ function payStructuredCost(player, costSteps = [], context = {}) {
         }
       });
     }
+    if (step.op === "putHandToDeckTop") {
+      // E-XB48: 非対話（sync）経路。putHandToSoul の sync 版と同型で、宛先をデッキ上（push＝末尾）にする。
+      const availableHand = player.hand.filter(
+        (card) => card.instanceId !== selectedCard?.instanceId && matchesCardFilter(card, step.filter || {}),
+      );
+      availableHand.slice(-amount).forEach((card) => {
+        const index = player.hand.findIndex((candidate) => candidate.instanceId === card.instanceId);
+        if (index >= 0) {
+          player.deck.push(player.hand.splice(index, 1)[0]); // 配列末尾＝デッキの上
+        }
+      });
+    }
     if (step.op === "putCardToSoul") {
       const candidates = cardToSoulCostCandidates(player, step, selectedCard).slice(0, amount);
       moveCostEntriesToSoul(player, candidates, sourceCard, Boolean(step.faceDown)); // E-Y1(奇襲)
@@ -1229,6 +1337,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
   const reservedHandIds = new Set();
   const handDiscards = [];
   const handToSoulSelections = [];
+  const handToDeckTopSelections = []; // E-XB48(0037 トラクタービーム): 手札→デッキ上コストの対話選択
   const reservedCostZones = new Set();
   const dropOwnMonsterSelections = [];
   const fieldToGaugeSelections = [];
@@ -1308,6 +1417,38 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     }
     selected.forEach(({ card }) => reservedHandIds.add(card.instanceId));
     handToSoulSelections.push(selected);
+  }
+  for (const step of applicableCostSteps) {
+    if (step.op !== "putHandToDeckTop") {
+      continue;
+    }
+    // E-XB48(0037 トラクタービーム): 手札 N 枚をデッキの上へ戻すコストの対話選択。putHandToSoul の選択ループと同型
+    // （selectedCard 除外・予約済み手札除外・filter・min/max・promptSeat 支払い本人・CPU は最小価値）。
+    const amount = step.amount || step.max || 1;
+    const minimum = step.min ?? amount;
+    const maximum = Math.min(step.max ?? amount, amount);
+    const candidates = player.hand
+      .map((card, index) => ({ card, index }))
+      .filter(
+        ({ card }) =>
+          card.instanceId !== selectedCard?.instanceId &&
+          !reservedHandIds.has(card.instanceId) &&
+          matchesCardFilter(card, step.filter || {}),
+      );
+    const selected = await chooseCardEntries(candidates, {
+      title: `${context.sourceCard?.name || "コスト"}でデッキの上に置く手札`,
+      lead: `手札からデッキの上に置くカードを${minimum}～${maximum}枚選んでください。`,
+      min: minimum,
+      max: maximum,
+      forceDialog: true,
+      promptSeat: state.players.indexOf(player),
+      purpose: "cost",
+    });
+    if (!selected || selected.length < minimum) {
+      return { ok: false, reason: "コストでデッキの上に置く手札を選んでください。" };
+    }
+    selected.forEach(({ card }) => reservedHandIds.add(card.instanceId));
+    handToDeckTopSelections.push(selected);
   }
   for (const step of applicableCostSteps) {
     if (step.op !== "dropOwnMonster") {
@@ -1722,6 +1863,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
   }
   let discardStepIndex = 0;
   let handToSoulStepIndex = 0;
+  let handToDeckTopStepIndex = 0; // E-XB48(0037 トラクタービーム)
   let cardToSoulStepIndex = 0;
   let dropOwnMonsterStepIndex = 0;
   let fieldToGaugeStepIndex = 0;
@@ -1775,6 +1917,15 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
             ? `${player.name}はコストで${movedCards.length}枚を裏向きで${sourceCard.name}のソウルに入れました。`
             : `${player.name}はコストで${movedCards.map((card) => card.name).join("、")}を${sourceCard.name}のソウルに入れました。`,
         );
+      }
+    }
+    if (step.op === "putHandToDeckTop") {
+      // E-XB48(0037 トラクタービーム): 選んだ手札をデッキの上（push＝末尾）へ戻す。putHandToSoul 適用ブロックと同型。
+      const movedCards = removePileEntries(player.hand, handToDeckTopSelections[handToDeckTopStepIndex] || []);
+      handToDeckTopStepIndex += 1;
+      player.deck.push(...movedCards); // 配列末尾＝デッキの上
+      if (movedCards.length > 0) {
+        addLog(`${player.name}はコストで${movedCards.map((card) => card.name).join("、")}をデッキの上に置きました。`);
       }
     }
     if (step.op === "putCardToSoul") {

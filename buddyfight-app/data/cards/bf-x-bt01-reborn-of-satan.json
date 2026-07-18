@@ -270,10 +270,13 @@
             {
               "op": "selectCards",
               "var": "self",
-              "from": "hand",
+              "from": [
+                "hand",
+                "drop"
+              ],
               "controller": "self",
               "filter": {
-                "name": "灼熱怒涛番長 デュエルイェーガー “ダイナマイト”"
+                "sameInstanceAsSource": true
               },
               "amount": 1,
               "min": 1,
@@ -291,7 +294,7 @@
           ]
         }
       ],
-      "_note": "①『ドロップに竜王番長15枚以上あるならコールできる』=callConditions cardCount{pile:drop,filter:{cardType:monster,attribute:竜王番長},cmp:gte,amount:15}（bf-d-bt04-kagayake-super-sun-dragon-0101/bf-d-bt01-hanate-hissatsuryu-0070型・raw原文『枚』なのでdistinct無し=種類数ではなく実枚数）。②『このカードを君の場のカード名に「デュエルイェーガー」を含むモンスター1枚の上に重ね、ゲージ3を払う』=costs.call[payGauge3]+callStack{nameIncludes:デュエルイェーガー}（bf-d-ss01-0001ジャックナイフ“ネオ・ゴルドリッター”型・callStack併用時はcallCost表示キー省略も同型に倣った）。③『【対抗】【起動】手札のこのカードを、【コールコスト】を払ってコールする』は、②の【コールコスト】に『重ね』が含まれるためcallSelfFromHand（重ねを解釈しない・単純placeのみ）は不適合と判断し、X16(D-BT01/0020スターオルタネート)のzoneVarパターン+H-EB04/0004型のstackCallSelected{payCost:call}を自己対象で合成する新規複合（既存カードに完全一致の前例は0件だが構成要素は全て実在・precedent別々に確認済）: (a)selectCards{from:field,filter:nameIncludes:デュエルイェーガー}で重ね先を選択→var:t、(b)selectCards{from:hand,filter:{name:<完全一致>}}で手札の自身(または同名の別コピー)を選択→var:self（filter.sameInstanceAsSourceは非relative matcher(matchesCardFilter)経由だと常にtrueになる既知の落とし穴のため使わず、SKILL既定の『手札の「カード名」1枚を』selectCards+filter:name完全一致パターンを採用=複数コピー所持時はどれを残すか選べる点も原文と矛盾しない）、(c)stackCallSelected{var:self,zoneVar:t,payCost:\"call\"}でselfをtの場所へ重ねてコール、call costs(payGauge3)を自動支払い。timing:[\"counter\"]のみ（bf-h-bt04-mikado-evolution-0095/bf-s-ub-c03-0030と同型＝原文に対抗/起動を分ける追加制限が無いためhouse rule(abilityTimingIncludes:src/13-abilities-core.js:682-689 counterは自分メインでも使える)によりcounterのみで両方をカバー、mainを重複指定しない）。fromHandOnly:trueは同型カード群の慣例踏襲。grep自己検査: payGauge(src/04)/cardCount(src/13:多数)/callStack(src/07,17,20,22)/callConditions(src/07,13)/selectCards(src/14:493)/stackCallSelected(src/14:2567,442)/quadrupleAttack(src/10:753,src/18:466)/soulguard・lifeLink3(src/11:1364-1416, lifeLinkAmount) 全実在確認。"
+      "_note": "①『ドロップに竜王番長15枚以上あるならコールできる』=callConditions cardCount{pile:drop,filter:{cardType:monster,attribute:竜王番長},cmp:gte,amount:15}（bf-d-bt04-kagayake-super-sun-dragon-0101/bf-d-bt01-hanate-hissatsuryu-0070型・raw原文『枚』なのでdistinct無し=種類数ではなく実枚数）。②『このカードを君の場のカード名に「デュエルイェーガー」を含むモンスター1枚の上に重ね、ゲージ3を払う』=costs.call[payGauge3]+callStack{nameIncludes:デュエルイェーガー}（bf-d-ss01-0001ジャックナイフ“ネオ・ゴルドリッター”型・callStack併用時はcallCost表示キー省略も同型に倣った）。③『【対抗】【起動】手札のこのカードを、【コールコスト】を払ってコールする』は、②の【コールコスト】に『重ね』が含まれるためcallSelfFromHand（重ねを解釈しない・単純placeのみ）は不適合と判断し、X16(D-BT01/0020スターオルタネート)のzoneVarパターン+H-EB04/0004型のstackCallSelected{payCost:call}を自己対象で合成する新規複合（既存カードに完全一致の前例は0件だが構成要素は全て実在・precedent別々に確認済）: (a)selectCards{from:field,filter:nameIncludes:デュエルイェーガー}で重ね先を選択→var:t、(b)selectCards{from:hand,filter:{name:<完全一致>}}で手札の自身(または同名の別コピー)を選択→var:self（filter.sameInstanceAsSourceは非relative matcher(matchesCardFilter)経由だと常にtrueになる既知の落とし穴のため使わず、SKILL既定の『手札の「カード名」1枚を』selectCards+filter:name完全一致パターンを採用=複数コピー所持時はどれを残すか選べる点も原文と矛盾しない）、(c)stackCallSelected{var:self,zoneVar:t,payCost:\"call\"}でselfをtの場所へ重ねてコール、call costs(payGauge3)を自動支払い。timing:[\"counter\"]のみ（bf-h-bt04-mikado-evolution-0095/bf-s-ub-c03-0030と同型＝原文に対抗/起動を分ける追加制限が無いためhouse rule(abilityTimingIncludes:src/13-abilities-core.js:682-689 counterは自分メインでも使える)によりcounterのみで両方をカバー、mainを重複指定しない）。fromHandOnly:trueは同型カード群の慣例踏襲。grep自己検査: payGauge(src/04)/cardCount(src/13:多数)/callStack(src/07,17,20,22)/callConditions(src/07,13)/selectCards(src/14:493)/stackCallSelected(src/14:2567,442)/quadrupleAttack(src/10:753,src/18:466)/soulguard・lifeLink3(src/11:1364-1416, lifeLinkAmount) 全実在確認。 ／【R20(x74) fix・出荷済み是正】対抗即時解決の手札能力は script 実行前に自身が drop へ移動済み（src/13 counter 経路）のため、自己再選択 from:\"hand\" 単独は恒久不成立だった。x73 の 0048 と同修正＝from:[\"hand\",\"drop\"]＋filter:{sameInstanceAsSource:true} の二相へ是正（X-CBT01/0009 と同型）。VM実測: useHandAbilityAction(counter) で場のデュエルイェーガーへ重ねコール成立。"
     },
     {
       "id": "bf-x-bt01-0005",
@@ -8859,10 +8862,13 @@
             {
               "op": "selectCards",
               "var": "self",
-              "from": "hand",
+              "from": [
+                "hand",
+                "drop"
+              ],
               "controller": "self",
               "filter": {
-                "name": "灼熱怒涛番長 デュエルイェーガー “ダイナマイト”"
+                "sameInstanceAsSource": true
               },
               "amount": 1,
               "min": 1,

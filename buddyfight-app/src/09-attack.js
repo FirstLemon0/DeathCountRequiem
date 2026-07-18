@@ -232,6 +232,11 @@ async function performAttackDeclaration(attackers, targetValue, options = {}) {
   };
   state.counterHandOwner = targetOwner;
   state.attacksThisTurn += 1;
+  // E-XB40(X-BT04/0008 天晶の祝福): 席別の攻撃宣言回数（攻撃者席で加算）。攻撃はターンプレイヤーのみが行うため
+  // firstAttacker.owner は常に state.active。resolveAmountFrom source:"attacksThisTurn" の controller 指定が参照する
+  // （0008「相手のカードが攻撃した回数」＝相手席のカウンタ）。旧 state（room 復元前）にも ||= で安全初期化。
+  state.attacksThisTurnBySeat ||= [0, 0];
+  state.attacksThisTurnBySeat[firstAttacker.owner] += 1;
   for (const attacker of attackers) {
     await restFieldCard(attacker.owner, attacker.zone, attacker.card, { reason: "attack" });
   }

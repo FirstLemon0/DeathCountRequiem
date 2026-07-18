@@ -48,6 +48,24 @@ function putCardsToSoulWithTrigger(hostCard, owner, cards, fromZone, options = {
   queueSoulCardAddedTriggers(hostCard, owner, cards.length, cards[0] || null);
 }
 
+// E-XB44(ワールド・パンデミック): フラッグ裏返しに伴う「場のカードは全てドロップゾーンに置かれる」の一括処理。
+// 破壊ではなくルール上の場移動なので、破壊/離場誘発・ソウルガード・破壊置換は一切通さず、各枠のカードと
+// そのソウルを所有者のドロップへ順に移す（カード総数保存＝fuzz の card-conservation と整合）。
+function sweepFieldToDropForFlagFlip(player) {
+  for (const zone of zones) {
+    const card = player.field[zone];
+    if (!card) {
+      continue;
+    }
+    player.field[zone] = null;
+    if (Array.isArray(card.soul) && card.soul.length) {
+      player.drop.push(...card.soul);
+      card.soul = [];
+    }
+    player.drop.push(card);
+  }
+}
+
 // E-Y1(X-BT01 奇襲): ソウルに入れた cards を「裏向き」に印付けする共有ヘルパー。
 // - faceDown=true: viewFor が所有者以外へ伏せる対象（秘匿の核）。
 // - __soulHost: ホストの公開スナップショット。落下時 selfDroppedFromSoul の hostFilter 照合に使う
@@ -696,6 +714,167 @@ async function executeAbilityEffect(effect, context) {
       }
     }
   }
+  if (effect.op === "lookTopSelectToCall") {
+    // E-XB39(X-BT04/0027/0053/0081 モンスターエッグ群): デッキの上から count 枚を「見て」（非破壊＝ミル誘発を発火
+    //   させない）、その中の filter 一致モンスター1枚までを【コールコスト】を払ってコールし、残りを強制でデッキへ戻す。
+    //   rest:"shuffle"（0027/0053: デッキに戻してシャッフル）／rest:"bottomOrdered"（0081: デッキの下に好きな順で置く）。
+    //   秘匿性: 「見る」は自席のみ（promptSeat=context.owner・非コール札の名前は log に出さない＝T13 と同作法）。
+    //   現行の一時ミル近似（デッキ→ドロップ→戻し）が deckMilled 誘発を誤発火していた問題を、pop→（コール or デッキ戻し）で
+    //   ドロップを経由しない真の非破壊 look に是正する。保存則: revealed は全て「コール」か「デッキ戻し」で保存。
+    const seat = state.players.indexOf(player);
+    const count = effect.count || 6;
+    const revealed = [];
+    for (let i = 0; i < count && player.deck.length > 0; i += 1) revealed.push(player.deck.pop());
+    const candidates = revealed.filter((c) => matchesCardFilter(c, effect.filter || {}));
+    let called = null;
+    if (candidates.length > 0) {
+      const sel = await chooseCardEntries(candidates.map((c) => ({ card: c })), {
+        title: effect.title || context.card?.name,
+        lead: effect.lead || "コールするモンスターを選んでください（コールしなくてもよい）。",
+        min: 0, max: 1, forceDialog: true,
+        promptSeat: context.owner, // 能力主体の席へ（look の秘匿・CPU/権威サーバの誤配送防止）
+        purpose: "call",
+      });
+      const pick = (sel || [])[0]?.card;
+      if (pick) {
+        // コール先ゾーン選択（空きフィールドゾーン優先。空きが無ければ上書きコール＝既存カードをルールドロップ）。
+        const emptyZones = fieldZones.filter((z) => !player.field[z]);
+        const zoneChoices = emptyZones.length ? emptyZones : fieldZones;
+        let zone = zoneChoices[0];
+        if (zoneChoices.length > 1) {
+          const zsel = await chooseCardEntries(
+            zoneChoices.map((z) => ({ card: pick, owner: seat, zone: z, note: zoneLabel(z) })),
+            { title: effect.title || context.card?.name, lead: `${pick.name}のコール先を選んでください。`, min: 1, max: 1, forceDialog: true, promptSeat: context.owner, purpose: "call" },
+          );
+          zone = zsel?.[0]?.zone ?? zone;
+        }
+        // 【コールコスト】を払う（払えなければコールせず、pick は残りに合流してデッキへ戻る）。
+        const payment = await payCardCostWithSelection(player, pick, "call", pick, { sourceCard: pick, callFromZone: "deck" });
+        if (payment.ok && fieldZones.includes(zone)) {
+          if (player.field[zone]) dropFieldCardByRule(player, zone);
+          player.field[zone] = pick;
+          recordImpactMonsterCall(seat, pick);
+          pick.enteredFromZone = "deck";
+          // 「そのカードは場から離れるまで、サイズ0（0）になる」（grantConditionalSize。conditionalSize を先に付与してから
+          //  enforceSizeLimit＝サイズ0化前の実サイズでサイズ超過と誤判定しないため。callSelectedForScript と同順）。
+          if (effect.grantConditionalSize) {
+            pick.conditionalSize = {
+              size: effect.grantConditionalSize.size ?? 0,
+              granterInstanceId: context.card?.instanceId,
+              unconditional: Boolean(effect.grantConditionalSize.unconditional),
+            };
+          }
+          enforceSizeLimit(player, zone);
+          called = pick;
+          addLog(`${context.card?.name || "効果"}で${pick.name}を${zoneLabel(zone)}にコールしました。`);
+          await resolveOnEnter(pick, player, null, { byEffect: true, enterCauseCard: context.card });
+        } else if (!payment.ok) {
+          addLog(payment.reason || `${pick.name}のコールコストを払えませんでした。`);
+        }
+      }
+    }
+    // 残り（コールされなかった revealed 全て）を強制でデッキへ戻す（ドロップを経由しない＝deckMilled 誘発なし）。
+    const rest = revealed.filter((c) => c !== called);
+    if (effect.rest === "bottomOrdered") {
+      // 0081: 「残りのカードをデッキの下に好きな順番で置く」。2枚以上なら下での積み順を1枚ずつ選ばせる。
+      let ordered = rest;
+      if (rest.length >= 2) {
+        ordered = [];
+        let remaining = rest.map((c) => ({ card: c }));
+        while (remaining.length > 1) {
+          const pick2 = await chooseCardEntries(remaining, {
+            title: effect.title || context.card?.name,
+            lead: `デッキの下から${ordered.length + 1}番目に置くカードを選んでください。`,
+            min: 1, max: 1, forceDialog: true, promptSeat: context.owner, purpose: "scry",
+          });
+          const entry = pick2?.[0] || remaining[0];
+          ordered.push(entry.card);
+          remaining = remaining.filter((r) => r.card.instanceId !== entry.card.instanceId);
+        }
+        if (remaining.length) ordered.push(remaining[0].card);
+      }
+      ordered.forEach((c) => player.deck.unshift(c)); // 下バッチ: ordered[0] が先に引く側（既存 bottom 規約）。
+      queueDeckBottomPlacedTriggers(seat, ordered); // E-XB18: デッキ下流入（ミルではない）
+    } else {
+      // 既定/"shuffle": 0027/0053「デッキをシャッフルする」。残りをデッキへ戻してシャッフル（決定的 rngInt）。
+      rest.forEach((c) => player.deck.push(c));
+      if (rest.length > 0) shuffleInPlace(player.deck);
+    }
+    addLog(`${context.card?.name || "効果"}の効果でデッキの上${revealed.length}枚を見ました${called ? "" : "（コールなし）"}。`);
+  }
+  if (effect.op === "lookTopDistribute") {
+    // E-XB40(X-BT04/0008 天晶の祝福): デッキの上から count 枚を「見て」（非破壊＝ミル誘発を発火させない）、
+    //   その中を3方向へ振り分ける ― gaugeAmount 枚(既定1)→ゲージ／handMax 枚まで(既定2)→手札／残り→デッキの下に
+    //   好きな順。count は countFrom（amountFrom 互換・resolveAmountFrom）で動的化する（0008 は
+    //   countFrom:{source:"attacksThisTurn",controller:"opponent"}＝相手のカードが攻撃した回数＝席別カウンタ）。
+    //   非破壊 look の作法（pop→各宛先へ・ドロップ非経由＝deckMilled 非発火・保存則）は lookTopSelectToCall(E-XB39)/
+    //   lookTopSelectToHandRestToBottom と同一。秘匿: 「見る」は owner のみ開示（promptSeat=context.owner・
+    //   非取得札の名前を log に出さない＝T13 と同作法）。既存カードは lookTopDistribute op を持たない＝後方互換。
+    const seat = state.players.indexOf(player);
+    const count = effect.countFrom ? resolveAmountFrom(effect.countFrom, context) : (effect.count || 0);
+    const gaugeAmount = effect.gaugeAmount ?? 1;
+    const handMax = effect.handMax ?? 2;
+    const revealed = [];
+    for (let i = 0; i < count && player.deck.length > 0; i += 1) revealed.push(player.deck.pop());
+    if (revealed.length === 0) {
+      addLog(`${context.card?.name || "効果"}の効果で見るデッキのカードがありません。`);
+    } else {
+      let remaining = revealed.slice();
+      // (1) ゲージへ置く（gaugeAmount 枚まで＝見た枚数が少なければその分だけ。0008 は必ず1枚＝mandatory）。
+      let toGauge = [];
+      const gaugePick = Math.min(gaugeAmount, remaining.length);
+      if (gaugePick > 0) {
+        const sel = await chooseCardEntries(remaining.map((c) => ({ card: c })), {
+          title: effect.title || context.card?.name,
+          lead: effect.gaugeLead || "ゲージに置くカードを選んでください。",
+          min: gaugePick, max: gaugePick, forceDialog: true,
+          promptSeat: context.owner, // 「見る」＝能力主体の席のみへ開示（誤配送防止・秘匿）
+          purpose: "search",
+        });
+        toGauge = (sel || []).map((e) => e.card);
+        toGauge.forEach((c) => player.gauge.push(c));
+        noteGaugePlaced(seat, toGauge.length); // E-XB12: scry の選択分をゲージへ（gaugePlaced 誘発funnelは非経由）
+        remaining = remaining.filter((c) => !toGauge.includes(c));
+      }
+      // (2) 手札へ加える（handMax 枚まで・0枚可）。
+      let toHand = [];
+      if (remaining.length > 0 && handMax > 0) {
+        const handPickMax = Math.min(handMax, remaining.length);
+        const sel = await chooseCardEntries(remaining.map((c) => ({ card: c })), {
+          title: effect.title || context.card?.name,
+          lead: effect.handLead || `手札に加えるカードを選んでください（${handPickMax}枚まで）。`,
+          min: 0, max: handPickMax, forceDialog: true,
+          promptSeat: context.owner,
+          purpose: "search",
+        });
+        toHand = (sel || []).map((e) => e.card);
+        toHand.forEach((c) => player.hand.push(c));
+        remaining = remaining.filter((c) => !toHand.includes(c));
+      }
+      // (3) 残りをデッキの下へ好きな順（2枚以上なら下での積み順を1枚ずつ選ばせる）。
+      let rest = remaining;
+      if (rest.length >= 2) {
+        const ordered = [];
+        let pool = rest.map((c) => ({ card: c }));
+        while (pool.length > 1) {
+          const pick = await chooseCardEntries(pool, {
+            title: effect.title || context.card?.name,
+            lead: `デッキの下から${ordered.length + 1}番目に置くカードを選んでください。`,
+            min: 1, max: 1, forceDialog: true, promptSeat: context.owner, purpose: "scry",
+          });
+          const entry = pick?.[0] || pool[0];
+          ordered.push(entry.card);
+          pool = pool.filter((r) => r.card.instanceId !== entry.card.instanceId);
+        }
+        if (pool.length) ordered.push(pool[0].card);
+        rest = ordered;
+      }
+      rest.forEach((c) => player.deck.unshift(c)); // 下バッチ: rest[0] が先に引く側（既存 bottom 規約）
+      queueDeckBottomPlacedTriggers(seat, rest); // E-XB18: デッキ下流入（ミルではない）
+      // 秘匿: 枚数のみログ（カード名は出さない＝相手先読み防止）。
+      addLog(`${context.card?.name || "効果"}の効果でデッキの上${revealed.length}枚を見て、${toGauge.length}枚をゲージ・${toHand.length}枚を手札に加えました。`);
+    }
+  }
   if (effect.op === "lookTopSelectToBottomRestToTop") {
     // FE2/A8(D-BT04/0070 メガドロイド ヒュージー): デッキの上から count 枚を見て、選んだ任意枚数を
     //   選んだ順でデッキの下へ、残りを選んだ順でデッキの上へ。lookTopSelectToHandRestToBottom の
@@ -1274,6 +1453,34 @@ async function executeAbilityEffect(effect, context) {
       addLog(`${player.name}のフラッグは「${player.flag?.name || effect.flagId}」になりました。`);
     }
   }
+  if (effect.op === "flipFlagFaceDown") {
+    // E-XB44(X-CBT02/0076 究極大魔法 ワールド・パンデミック！): 「相手のフラッグを裏にする。（フラッグが裏になると、
+    // フラッグに書かれているカードは使えず、場のカードは全てドロップゾーンに置かれる）」。
+    // controller 既定は "opponent"（原文「相手の」）。self/both も汎用に受ける。
+    // フラッグ裏の意味論（公式カードテキスト＝本カードの括弧書きが一次資料。詳細ルール ver.2.05 と整合。WebSearch では
+    // ワールド・パンデミック個別裁定は見つからず、フラッグ裏＝カードがドロップへ置かれる一般則のみ確認）:
+    //   ①フラッグ能力の喪失: 裏フラッグは grant*Immunity・maxFieldSize・継続バフ等の発生源にならない
+    //     （src/05-stats・src/11-destroy-turn の各フラッグ走査を flagFaceDown でゲート）。
+    //   ②ワールド適合への影響: 「フラッグに書かれているカードは使えず」＝機能するフラッグが無い＝canUseCardForFlag が
+    //     deckAnyFlag/usableInAnyFlag 以外を不許可（src/03-setup）。flagNameIs 条件も不成立（src/13）。
+    //   ③裏のままファイト継続: フラッグ実体は player.flag に残す（表向きに戻さない＝ワンウェイ。対象内DBに戻す効果は無い）。
+    //     プレイヤーの残機/手札/デッキ/ゲージは無傷。裏返しと同時に「場のカードは全てドロップゾーンに置かれる」を実施する。
+    // 「置かれる」は破壊ではない（ルール処理の場移動）ため、破壊/離場誘発・ソウルガード・破壊置換は発火させない
+    //   （設計判断: フラッグ裏の一括処理は再入リスクが高く、対象内DBに opponent フラッグ裏の盤面一掃へ反応するカードは無い）。
+    const seat = effect.controller === "self" ? context.owner
+      : effect.controller === "both" ? null
+      : 1 - context.owner; // 既定 opponent
+    const seats = seat === null ? [0, 1] : [seat];
+    for (const s of seats) {
+      const victim = state.players[s];
+      if (!victim || victim.flagFaceDown) {
+        continue; // 既に裏なら再一掃しない（冪等）
+      }
+      victim.flagFaceDown = true;
+      sweepFieldToDropForFlagFlip(victim);
+      addLog(`${context.card?.name || "効果"}の効果で、${victim.name}のフラッグは裏になり、場のカードは全てドロップゾーンに置かれました。`);
+    }
+  }
   if (effect.op === "banDrawNextTurn") {
     // FE2(X-BT01/0124 ガエン『変身した時』): 「次の相手のターン中、相手はカードを引くことができない」。
     // 通常ドローステップも含めて封じる（drawCards が全経路を止める）。state.drawBans に owner を積み、
@@ -1463,6 +1670,11 @@ async function executeAbilityEffect(effect, context) {
   if (effect.op === "moveTargetToDrop" && target?.card) {
     const ownerPlayer = state.players[target.owner];
     const leaveCause = makeEffectCause(context, target.owner);
+    // E-XB34(X-BT04/0040/0110 鏡面峡谷): 「別のエリアに置かれない」＝相手効果によるドロップ送り（非破壊の再配置）を防ぐ。
+    if (cardProtectedFrom(target.card, "moveArea", leaveCause)) {
+      addLog(`${target.card.name}は効果で別のエリアに置かれません。`);
+      return;
+    }
     // E2(D-EB02/0031): 相手効果で場を離れる際、対象側の離場置換（バリア発動！等）が庇えば場に残す。
     // E4(D-SS03/0029): 対象のソウル内カードによる離場置換（バリアブル・ビット）も同様に庇える。
     if (!(
@@ -2018,6 +2230,13 @@ async function executeAbilityEffect(effect, context) {
   }
   if (effect.op === "putTargetToGaugeAtTurnEnd" && target?.card) {
     // 「ターン終了時、そのモンスターを君のゲージに置く」。フラグを立て runEndTurnEffects で移動。
+    // E-XB34(鏡面峡谷): 相手効果による「別のエリアに置かれない」なら予約自体を行わない（通常は自陣モンスター対象で
+    // cause.byOpponent=false＝素通り）。
+    const moveCause = makeEffectCause(context, target.owner);
+    if (cardProtectedFrom(target.card, "moveArea", moveCause)) {
+      addLog(`${target.card.name}は効果で別のエリアに置かれません。`);
+      return;
+    }
     target.card.putToGaugeAtEndOfTurnOwner = context.owner;
   }
   if (effect.op === "nullifyAttackersKeyword") {
@@ -2129,6 +2348,11 @@ async function executeAbilityEffect(effect, context) {
   if (effect.op === "putTargetToGauge" && target?.card) {
     const ownerPlayer = state.players[target.owner];
     const leaveCause = makeEffectCause(context, target.owner);
+    // E-XB34(鏡面峡谷): 「別のエリアに置かれない」＝相手効果によるゲージ送りを防ぐ。
+    if (cardProtectedFrom(target.card, "moveArea", leaveCause)) {
+      addLog(`${target.card.name}は効果で別のエリアに置かれません。`);
+      return;
+    }
     // E2(D-EB02/0031): 相手効果によるゲージ送りも離場置換の対象。庇えたら送らず場に残す。
     // E4(D-SS03/0029): 対象のソウル内カードによる離場置換（バリアブル・ビット）も庇える。
     if (!(
@@ -2426,6 +2650,11 @@ async function executeAbilityEffect(effect, context) {
   if (effect.op === "moveTargetToZone" && target?.card) {
     const ownerPlayer = state.players[target.owner];
     const destination = effect.zone;
+    // E-XB34(鏡面峡谷): 相手効果による別エリア移動を防ぐ（自分の『移動』は cause.byOpponent=false で素通り）。
+    if (cardProtectedFrom(target.card, "moveArea", makeEffectCause(context, target.owner))) {
+      addLog(`${target.card.name}は効果で別のエリアに置かれません。`);
+      return;
+    }
     if (!zones.includes(destination) || ownerPlayer.field[destination]) {
       addLog(`${context.card.name}の効果で移動できるエリアがありません。`);
       return;
@@ -2457,10 +2686,17 @@ async function executeAbilityEffect(effect, context) {
     // 全員を一旦退避してから、効果の使用者が1体ずつ再配置先を選ぶ（重複なし。元のゾーンにも置ける）。
     const relocOwner = effect.controller === "self" ? context.owner : 1 - context.owner;
     const relocPlayer = state.players[relocOwner];
+    // E-XB34(鏡面峡谷): 「別のエリアに置かれない」対象は再配置から除外（元エリアに残す）。相手モンスターを動かす
+    // 用途（H-BT04/0038 等）で cause.byOpponent=true のときのみ効く（自陣移動は素通り）。
+    const relocCause = makeEffectCause(context, relocOwner);
     const detached = [];
     fieldZones.forEach((zone) => {
       const fieldCard = relocPlayer.field[zone];
       if (fieldCard && effectiveCardType(fieldCard) === "monster" && matchesCardFilter(fieldCard, effect.filter || {})) {
+        if (cardProtectedFrom(fieldCard, "moveArea", relocCause)) {
+          addLog(`${fieldCard.name}は効果で別のエリアに置かれません。`);
+          return;
+        }
         relocPlayer.field[zone] = null;
         detached.push(fieldCard);
       }
@@ -2506,6 +2742,11 @@ async function executeAbilityEffect(effect, context) {
   }
   if (effect.op === "moveTargetToEmptyZone" && target?.card) {
     const ownerPlayer = state.players[target.owner];
+    // E-XB34(鏡面峡谷): 相手効果による別エリア移動を防ぐ。
+    if (cardProtectedFrom(target.card, "moveArea", makeEffectCause(context, target.owner))) {
+      addLog(`${target.card.name}は効果で別のエリアに置かれません。`);
+      return;
+    }
     const destinations = (effect.zones || fieldZones).filter((zone) => zones.includes(zone) && !ownerPlayer.field[zone]);
     if (destinations.length === 0) {
       addLog(`${context.card.name}の効果で移動できるエリアがありません。`);
@@ -2614,6 +2855,16 @@ async function executeAbilityEffect(effect, context) {
     state.scheduledTurnSkip[opponentSeat] = { schedulerSeat: context.owner };
     addLog(`次の${state.players[opponentSeat].name}のターンは開始時に終了します。`);
   }
+  if (effect.op === "scheduleLossAtNextOwnTurnEnd") {
+    // E-XB32(X-BT04/0002 世界を繋ぐ壱の鍵 ドラゴウーノ): 「次の君のターン終了時、君はファイトに敗北する」。
+    // 相手ターン中の【対抗】で使う想定＝発生源席(context.owner)は非アクティブ。席別ワンショットを積み、消費は
+    // finishAndAdvanceTurn の maybeApplyScheduledLoss（自ターン終了時。sinceTurnCount より真に後のターン）。
+    // controller:"opponent" 指定時は相手席へ（原文には無いが対称拡張。既定は自席）。
+    const seat = effect.controller === "opponent" ? 1 - context.owner : context.owner;
+    state.scheduledLoss ||= [null, null];
+    state.scheduledLoss[seat] = { sinceTurnCount: state.turnCount };
+    addLog(`${state.players[seat]?.name}は次の自分のターン終了時にファイトに敗北します。`);
+  }
   if (["cancelRecentLifeLink", "cancelLifeLink"].includes(effect.op)) {
     // E5'(D-EB03/0043): matchVar（script var）/matchInstanceId で「直前に手札へ戻した/離場したそのカード」の
     // イベントに限定して取消せる（一致イベントが無ければ no-op＝LL非持ちを戻した時に無関係な同ターン
@@ -2717,14 +2968,25 @@ async function executeAbilityEffect(effect, context) {
     // state.turnProtections はターン終了(clearTurnModifiers)の都度 remainingTurnEnds を1減算し、
     // 0で除去する（turns:2 = ターン終了2回分＝そのターン＋次のターン中）。
     state.turnProtections ||= [];
-    state.turnProtections.push({
+    const protectionEntry = {
       kinds: effect.kinds || [],
       owner: context.owner,
       scope: effect.scope === "both" ? undefined : effect.scope || "self",
       zoneIn: effect.zoneIn || null,
       filter: effect.filter || null,
       remainingTurnEnds: effect.turns || 1,
-    });
+    };
+    // E-XB51①(X-CBT01/0073 覇王紅蓮雷波): statDecrease(相手効果によるステ減少無視)保護。effect.stats で
+    // 対象 stat を限定（例 ["critical"]＝打撃力のみ「減らず」）。既定（stats 無し）は全stat保護＝後方互換。
+    if (effect.stats) protectionEntry.stats = effect.stats;
+    // effect.selected: filter/scope の広域一致ではなく「選んだ1枚」だけを束縛する。context.vars[effect.var]
+    //（selectCards の選択）または context.target を instanceIds に写す。既存2カードは selected 未指定＝挙動不変。
+    if (effect.selected) {
+      const sel = effect.var ? context.vars?.[effect.var] : null;
+      const entries = Array.isArray(sel) ? sel : sel ? [sel] : context.target ? [context.target] : [];
+      protectionEntry.instanceIds = entries.map((e) => e.card?.instanceId).filter(Boolean);
+    }
+    state.turnProtections.push(protectionEntry);
     addLog(`${context.card?.name || "効果"}の効果で保護を付与しました。`);
   }
   if (effect.op === "grantTurnDamageReduction") {
@@ -2755,6 +3017,17 @@ async function executeAbilityEffect(effect, context) {
     // stateを前提外に触ってしまう恐れがあるため、useCardActionの解決アンワインド完了地点
     // （08-card-use.js末尾）まで実行を遅延させるフラグだけを立てる。
     state.pendingEndTurn = true;
+  }
+  if (effect.op === "endCurrentTurn") {
+    // E-XB42/R21(X-BT04/0099 Cの超越者 ギアゴッド ver.Ø99 逆天殺 後段): 「このターンを終了する」。任意フェイズ・
+    // 任意席（0099 は相手ターン中の counter/main 起動）から現在のターン(state.active)を即終了する。ここで endTurn()
+    // を直接呼ぶと、解決チェーンの再入や pendingResolution 破綻（呼び出し元がターン交代後の state を前提外に触る）の
+    // 恐れがあるため、endFinalPhase(pendingEndTurn) と同型の予約フラグだけを立て、maybeEndPendingCurrentTurn(src/11)
+    // が「解決アンワインドが完了した地点」で finishAndAdvanceTurn を1回だけ呼ぶ。endFinalPhase と違い final フェイズ
+    // 入口ガード(endTurn)を通さず finishAndAdvanceTurn へ直行するので、相手ターン中でも「そのターン」を終えられる。
+    // E-XB28 scheduledTurnSkip は「次に来るターンを開始時に飛ばす」別機構＝こちらは「今のターンを終える」。
+    state.pendingCurrentTurnEnd = true;
+    addLog(`${context.card?.name || "効果"}の効果で、このターンを終了します。`);
   }
   if (effect.op === "setDelayedDestroyAtOpponentTurnEnd" && context.card) {
     context.card.destroyAtEndOfTurnOwner = 1 - context.owner;
@@ -2812,6 +3085,53 @@ async function executeAbilityEffect(effect, context) {
   if (effect.op === "takeExtraTurnAfterThis") {
     state.extraTurnOwner = context.owner;
     addLog(`${player.name}はこのターンの後に追加ターンを得ます。`);
+  }
+  if (effect.op === "resetBoardToDeckAndRefill") {
+    // E-XB36(X-BT04/0103 逆天の氷王 ミセリア): 「場のカードの能力全てを無効化し、このカード以外の、お互いの、手札、
+    // ゲージ、ドロップゾーン、場のカード全てを持ち主のデッキに戻し、そのデッキをシャッフルする！その後、お互いは、
+    // カード6枚を引き、デッキの上から2枚をゲージに置く！！」。
+    // 「能力全てを無効化」は、トリガー/離場置換/ライフリンクを一切発火させない“生の移動”でモデル化する（バリア等で
+    // 残らず・誘発が連鎖せず盤面が確実にリセットされる）。発生源（このカード）とそのソウルは場に残す。フラッグ/バディ
+    // ゾーン裏面パイルは「場のカード」に含めない（原文どおり据え置き）。設置/アイテムは zones 走査に含まれるため戻る。
+    // 保存則: 各席の {手札+ゲージ+ドロップ+場(発生源除く)+それらのソウル} をデッキへ→シャッフル(rng は state 常駐で
+    // 決定的)→6引き→上2枚ゲージ。survivor 以外は全て回収するので instanceId/枚数は保存される。
+    const survivorId = context.card?.instanceId;
+    const drawCount = effect.drawCount ?? 6;
+    const gaugeCount = effect.gaugeCount ?? 2;
+    state.players.forEach((resetPlayer) => {
+      const toDeck = [];
+      const collect = (movedCard) => {
+        if (!movedCard) {
+          return;
+        }
+        // デッキへ戻る際は変身/搭乗等の一時的な型上書きを解除する（returnSelfToDeckBottom と同方針）。
+        movedCard.currentType = movedCard.baseType || movedCard.type;
+        toDeck.push(movedCard);
+      };
+      resetPlayer.hand.splice(0).forEach(collect);
+      resetPlayer.gauge.splice(0).forEach(collect);
+      resetPlayer.drop.splice(0).forEach(collect);
+      zones.forEach((zone) => {
+        const fieldCard = resetPlayer.field[zone];
+        if (!fieldCard || fieldCard.instanceId === survivorId) {
+          return; // 発生源（ミセリア）は場に残す。
+        }
+        resetPlayer.field[zone] = null;
+        (fieldCard.soul || []).splice(0).forEach(collect); // 戻すモンスターのソウルも持ち主デッキへ。
+        fieldCard.soul = [];
+        resetLeftFieldCardState(fieldCard); // used/一時バフ/一時付与/currentType 等を場離脱の規約でクリア。
+        collect(fieldCard);
+      });
+      resetPlayer.arrivalCardId = null; // 着任アイテムは全て戻る＝参照を解除。
+      resetPlayer.deck.push(...toDeck);
+      shuffleInPlace(resetPlayer.deck); // 決定的シャッフル（rngInt→state.rngSeed/rngCounter）。
+    });
+    addLog(`${context.card?.name || "効果"}の効果で、お互いの手札・ゲージ・ドロップ・場（このカード以外）をデッキに戻してシャッフルしました。`);
+    state.players.forEach((refillPlayer) => {
+      drawCards(refillPlayer, drawCount, false); // デッキは満杯なのでデッキ切れは起きない（起きても declareDeckLoss で安全）。
+      moveTopDeckToGauge(refillPlayer, gaugeCount);
+    });
+    addLog(`お互いはカード${drawCount}枚を引き、デッキの上から${gaugeCount}枚をゲージに置きました。`);
   }
   if (effect.op === "winGame") {
     // state.winner はプレイヤー名文字列（checkWinner 等と統一）。席index を入れると席0で falsy になり終局しない。
@@ -3179,7 +3499,17 @@ function resolveAmountFrom(spec, context) {
     //（state.attacksThisTurn＝グローバルの攻撃回数カウンタ。攻撃はターンプレイヤーのみが行うため、
     // 自分の必殺技解決時点では「君のカードが攻撃した回数」と一致する＝条件op attacksThisTurnGte(Z7)と同じ根拠）。
     // ターン開始(startTurn/src/11)で0にリセット・room 復元(JSON往復)後も state 常駐で保たれる。per/max 対応（既定 ×1）。
-    const count = state.attacksThisTurn || 0;
+    // E-XB40(X-BT04/0008 天晶の祝福): controller 指定時は席別カウンタ attacksThisTurnBySeat[席] を読む
+    //（"opponent"＝1-owner・"self"＝owner）。0008 は相手ターン中に使う【対抗】＝この時点では
+    // state.attacksThisTurn(全体)も相手席カウンタと一致するが、「相手のカードが攻撃した回数」を席で明示して
+    // ターンゲートに依存しない正確な値にする（後方互換: controller 未指定は従来どおり全体カウンタ）。
+    let count;
+    if (spec.controller) {
+      const seat = spec.controller === "opponent" ? 1 - context.owner : context.owner;
+      count = (state.attacksThisTurnBySeat || [])[seat] || 0;
+    } else {
+      count = state.attacksThisTurn || 0;
+    }
     const capped = spec.max !== undefined ? Math.min(count, spec.max) : count;
     return capped * (spec.per ?? 1);
   }
@@ -3195,9 +3525,18 @@ function resolveAmountFrom(spec, context) {
     else if (pile === "item") cards = equippedItems(pl);
     else if (pile === "center") cards = pl?.field?.center ? [pl.field.center] : [];
     else if (pile === "soul") cards = zones.flatMap((zone) => pl?.field?.[zone]?.soul || []);
+    else if (pile === "itemSoul") cards = itemZones.flatMap((zone) => pl?.field?.[zone]?.soul || []); // E-XB46: アイテムゾーンのソウル限定
     else cards = pl?.[pile] || [];
     const matched = cards.filter((card) => matchesCardFilter(card, spec.filter || {}));
     const count = new Set(matched.flatMap((card) => cardWorlds(card))).size;
+    const capped = spec.max !== undefined ? Math.min(count, spec.max) : count;
+    return capped * (spec.per ?? 1);
+  }
+  if (spec.source === "sourceSoulWorldCount") {
+    // E-XB47(X-CBT01/0038 系「ソウルのワールド名の種類分」): 発生源カード自身のソウルの distinct ワールド種類数を
+    // 「量」として返す（sourceSoulWorldCountGte の amountFrom 版）。cardWorlds() で2ワールドは両算入。max/per 対応。
+    const source = context.card || getSelectedCard();
+    const count = new Set((source?.soul || []).flatMap((card) => cardWorlds(card))).size;
     const capped = spec.max !== undefined ? Math.min(count, spec.max) : count;
     return capped * (spec.per ?? 1);
   }
@@ -3245,7 +3584,13 @@ function modifyStatsDelta(effect, context) {
 // 条件付き(modifyStatsIfTarget*)の全ステ変更経路がこれを通すことで「相手のカードの効果で減らない」を
 // 一撃op全体に一貫適用する。cause省略/自効果(byOpponent=false)/正デルタは素通し（後方互換）。
 function guardStatDelta(targetCard, stat, value, cause) {
-  return cause?.byOpponent && value < 0 && statDecreaseProtected(targetCard, stat) ? 0 : value;
+  // E-XB51①(X-CBT01/0073): 相手発の負デルタは、恒久 grantStatDecreaseImmunity(statDecreaseProtected)に加え、
+  // ターン限定・選択カード束縛の grantTurnProtection{kinds:["statDecrease"]}(turnProtectionBlocks)でもゲートする。
+  const blocked =
+    cause?.byOpponent &&
+    value < 0 &&
+    (statDecreaseProtected(targetCard, stat) || turnProtectionBlocks(targetCard, "statDecrease", stat));
+  return blocked ? 0 : value;
 }
 
 function applyModifyStatsDelta(targetCard, duration, delta, cause = null) {
@@ -3326,6 +3671,13 @@ function normalizedAbilityLimit(ability) {
   }
   if (hasAbilityKeyword(ability, "reversal")) {
     return { scope: "fight", key: "reversal" };
+  }
+  // E-XB43(X-CBT01/0070 バールバッツ): 『大逆天』はファイト中1回のキーワード。key="greatReversal" で
+  // 『逆天』(key:"reversal") とは別プールに記帳する＝0069 等の reversalUsedThisFight（.reversal を読む）は満たさない。
+  // keyword:"greatReversal" を triggered な大逆天に付けても isFieldActivatedAbility は "reversal" alias のみ真化するため
+  // 場起動へ誤露出しない（reversalKill と同じく明示 limit を書いてもよいが、キーワード自動導出でDSLを対称に保つ）。
+  if (hasAbilityKeyword(ability, "greatReversal")) {
+    return { scope: "fight", key: "greatReversal" };
   }
   return null;
 }
