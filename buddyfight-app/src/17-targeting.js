@@ -515,6 +515,15 @@ function matchesCardFilter(card, filter = {}, options = {}) {
   if (filter.soulCountGte !== undefined && (card.soul?.length || 0) < filter.soulCountGte) {
     return false;
   }
+  // E-XB58(X-UB03/0016 起爆畳): 裏向きソウルを N 枚以上持つカードのみ。soulCountGte（表裏問わず）と別軸で、
+  //   「裏向きの」ソウル所持を厳密表現する（0016 の対抗対象「君の場のカード1枚の裏向きのソウル」）。faceDown フラグは
+  //   markSoulCardsFaceDown(src/15) で裏向き投入時に立つ。既存カードは未使用キー＝後方互換。
+  if (
+    filter.faceDownSoulCountGte !== undefined &&
+    (card.soul || []).filter((soulCard) => soulCard?.faceDown).length < filter.faceDownSoulCountGte
+  ) {
+    return false;
+  }
   // FE3/A7(D-BT04/0115 オリジン・ブレイカー): soulHasMatching — 候補カードのソウルに、指定 filter に
   //   一致する札が1枚以上あるか（「ソウルに『ジェムクローン』を含む必殺モンスター」等を厳密表現）。
   //   soul は raw 走査で足りる（有限）。既存カードは未使用キー＝後方互換。outer options（effectiveSizeOverride 等）は

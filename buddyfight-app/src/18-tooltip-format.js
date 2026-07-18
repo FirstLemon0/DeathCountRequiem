@@ -370,10 +370,15 @@ function isLifeGainByEffectPrevented(gainerOwner) {
 // コールしようとしているカードが allowFilter に一致しないものがあれば true（=コール不可）。
 function isCallRestricted(callerOwner, card) {
   // X6(D-BT01/0064): ターン限定コール制限（魔法など場に残らない発生源から。restrictCallThisTurn 効果opが積む）。
+  // allowFilter はコール可の例外ホワイトリスト。allowFilter 省略時は例外なし＝全面禁止（turnCallRestrictionBlocks と同仕様）。
+  // E-XB59①(X-UB03/0031): byEffectOnly:true のエントリは「カードの効果でのコールのみ」を禁止するため、
+  //   ここ（通常＝手打ちコールの可否判定）では読み飛ばす（効果コールは turnCallRestrictionBlocks(src/07) が別途禁止する）。
   if (
     (state.callRestrictionsThisTurn || []).some(
       (restriction) =>
-        restriction.owner === callerOwner && !matchesCardFilter(card, restriction.allowFilter || {}),
+        restriction.owner === callerOwner &&
+        !restriction.byEffectOnly &&
+        !(restriction.allowFilter && matchesCardFilter(card, restriction.allowFilter)),
     )
   ) {
     return true;
@@ -481,6 +486,9 @@ function keywordAliases(keyword) {
     // E-XB43: 『大逆天』は独立キーワード（『逆天』reversal とは別プール）。normalizedAbilityLimit で fight-limit key="greatReversal" を自動導出。
     // isFieldActivatedAbility は "reversal" のみ真化させるため（別alias集合）、triggered な大逆天に付けても場起動へ誤露出しない。
     greatReversal: ["greatReversal", "大逆天"],
+    // E-XB55(X-UB03/0001): 『逆天殺ReBOOT』は独立キーワード（reversal/reversalKill/greatReversal と別プール）。
+    // normalizedAbilityLimit が fight-limit key="reversalKillReboot" を自動導出する。素ラベル表示にも使う。
+    reversalKillReboot: ["reversalKillReboot", "逆天殺ReBOOT"],
     lifeLink: ["lifeLink"],
   }[keyword] || [keyword];
 }

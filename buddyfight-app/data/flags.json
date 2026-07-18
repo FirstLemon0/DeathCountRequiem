@@ -382,15 +382,76 @@
         {
           "op": "grantDestroyImmunity",
           "controller": "self",
-          "filter": { "cardType": "monster", "baseSizeGte": 30 },
-          "from": { "byEffect": true, "byOpponent": true }
+          "filter": {
+            "cardType": "monster",
+            "baseSizeGte": 30
+          },
+          "from": {
+            "byEffect": true,
+            "byOpponent": true
+          }
         },
         {
           "op": "grantNullifyImmunity",
           "controller": "self",
-          "filter": { "cardType": "monster", "baseSizeGte": 30 }
+          "filter": {
+            "cardType": "monster",
+            "baseSizeGte": 30
+          }
         }
       ]
+    },
+    {
+      "id": "infinity-the-chaos",
+      "name": "∞ the Chaos ∞",
+      "type": "flag",
+      "world": "ワールド",
+      "attributes": [
+        "フラッグ",
+        "カオス"
+      ],
+      "rarity": "共通",
+      "startSelectable": false,
+      "rules": [
+        "「∞ the Chaos ∞」はファイトの準備で、「the Chaos」の下に裏向きで１枚だけ置ける。",
+        "君は《カオス》のカードを使え、サイズの合計が∞までモンスターを置ける。",
+        "君の場のサイズ30以上のモンスター全ては、効果で破壊されず、能力は無効化されない。",
+        "このカードは君の場のカードとして扱い、破壊されず、フラッグエリアから離れず、能力が無効化されず、君のセンターにモンスターがいても攻撃できる！"
+      ],
+      "allowedAttributes": [
+        "カオス"
+      ],
+      "allowGeneric": false,
+      "startingLife": 10,
+      "startingHand": 4,
+      "startingGauge": 2,
+      "power": 10000,
+      "critical": 3,
+      "defense": 10000,
+      "maxFieldSizeInfinite": true,
+      "canAttackAsFlag": true,
+      "continuous": [
+        {
+          "op": "grantDestroyImmunity",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster",
+            "baseSizeGte": 30
+          },
+          "from": {
+            "byEffect": true
+          }
+        },
+        {
+          "op": "grantNullifyImmunity",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster",
+            "baseSizeGte": 30
+          }
+        }
+      ],
+      "_note": "E-XB54(X-UB03/0019)。統括修正: 印字「効果で破壊されず」は無限定（the-chaos の「相手の効果では」と異なる）＝from は byEffect のみ（自他の効果とも防ぐ・バトル破壊は防がない）。"
     },
     {
       "id": "ryuga-raitei",
@@ -445,23 +506,41 @@
           "kind": "triggered",
           "event": "turnEnd",
           "conditions": [
-            { "op": "turnOwnerIsSelf" },
-            { "op": "ownFieldHasBuddy" }
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "ownFieldHasBuddy"
+            }
           ],
           "effects": [
-            { "op": "gainLife", "amount": 1 },
-            { "op": "draw", "amount": 1 },
-            { "op": "putTopDeckToBuddyZoneFaceDown", "amount": 1 }
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            },
+            {
+              "op": "putTopDeckToBuddyZoneFaceDown",
+              "amount": 1
+            }
           ]
         }
       ],
       "continuous": [
         {
           "op": "modifyStats",
-          "filter": { "buddy": true },
+          "filter": {
+            "buddy": true
+          },
           "amountFrom": {
             "source": "buddyZoneCount",
-            "per": { "power": 2000, "defense": 2000 }
+            "per": {
+              "power": 2000,
+              "defense": 2000
+            }
           }
         }
       ]

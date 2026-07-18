@@ -939,7 +939,7 @@ function runAfterAttackTriggers(outcome) {
     return;
   }
   (outcome.attackers || []).forEach((slot) => {
-    standAttackerForMultiAttack(state.players[slot.owner]?.field[slot.zone]);
+    standAttackerForMultiAttack(attackerCardAt(slot.owner, slot.zone)); // E-XB54b: zone:"flag"→player.flag（∞ は多回攻撃keyword無し＝実質no-op）
   });
 }
 
@@ -1020,7 +1020,7 @@ function getPendingAttackers() {
     return [];
   }
   return getPendingAttackerSlots(pending)
-    .map((slot) => ({ ...slot, card: state.players[slot.owner]?.field[slot.zone] }))
+    .map((slot) => ({ ...slot, card: attackerCardAt(slot.owner, slot.zone) })) // E-XB54b: zone:"flag"→player.flag
     .filter((attacker) => attacker.card);
 }
 
@@ -1041,7 +1041,7 @@ function pendingBattleCardIds() {
     return ids;
   }
   getPendingAttackerSlots(pending).forEach((slot) => {
-    const card = state.players[slot.owner]?.field?.[slot.zone];
+    const card = attackerCardAt(slot.owner, slot.zone); // E-XB54b: zone:"flag"→player.flag
     if (card?.instanceId) {
       ids.add(card.instanceId);
     }
@@ -1056,11 +1056,15 @@ function pendingBattleCardIds() {
 }
 
 function getAttackDeclarationAttackers() {
+  // E-XB54b: source:"flag"（∞ the Chaos ∞ を攻撃者に選択）は zone を "flag" に固定する単騎スロット。
+  // 連携(linkAttackers)は場札のみが積まれる＝フラッグは常に単騎。既存の field 選択・連携は完全不変。
   const slots = state.linkAttackers?.length
     ? state.linkAttackers
     : state.selected?.source === "field"
       ? [{ owner: state.selected.owner, zone: state.selected.zone }]
-      : [];
+      : state.selected?.source === "flag"
+        ? [{ owner: state.selected.owner, zone: "flag" }]
+        : [];
   const seen = new Set();
   return slots
     .filter((slot) => {
@@ -1071,7 +1075,7 @@ function getAttackDeclarationAttackers() {
       seen.add(key);
       return slot.owner === state.active;
     })
-    .map((slot) => ({ ...slot, card: state.players[slot.owner]?.field[slot.zone] }))
+    .map((slot) => ({ ...slot, card: attackerCardAt(slot.owner, slot.zone) }))
     .filter((attacker) => attacker.card && !attacker.card.used && canDeclareAttack(attacker));
 }
 

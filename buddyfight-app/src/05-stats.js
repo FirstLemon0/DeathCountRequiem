@@ -329,6 +329,15 @@ function activeContinuousEffects(sourceCard) {
 }
 
 function fieldSizeLimit(player) {
+  // E-XB54c(X-UB03/0019 ∞ the Chaos ∞): 「サイズの合計が∞までモンスターを置ける」。JS の Infinity で表す
+  // （powerInfinity と同じ設計＝JSON は Infinity を null 化するので、フラッグ側は boolean マーカー
+  //  maxFieldSizeInfinite を持たせ、ここで Infinity を返す。room/replay の JSON 往復後もマーカーで復元できる）。
+  //  ∞ は 0001 ギアゴッド ver.1ØØØØ（サイズ10000）等を場に置くために必須（有限の the-chaos:99 では不足）。
+  //  裏フラッグ(flagFaceDown)＝機能停止なので規定値3へ戻す（∞ も失う）。赤ピン: この分岐を消すと ∞ が 3 になり
+  //  巨大サイズのカオスモンスターを一切コールできなくなる。
+  if (!player?.flagFaceDown && player?.flag?.maxFieldSizeInfinite) {
+    return Infinity;
+  }
   // E-XB44(X-CBT02/0076 ワールド・パンデミック): フラッグが裏（flagFaceDown）＝フラッグ機能停止。
   // フラッグ由来の場サイズ上限（maxFieldSize）を失い規定値3へ戻す。未設定（既存の全state）は素通り＝バイト不変。
   const base = player?.flagFaceDown ? 3 : (player?.flag?.maxFieldSize ?? 3);
@@ -779,6 +788,11 @@ function continuousStatBonus(card, statKey) {
         if (!effect.fieldWide || effect.op !== "modifyStats") {
           return;
         }
+        // E-XB60①(X-UB03/0053 伝染性弱化ガス③): crossOwner:true のソウル fieldWide は「ホスト逆側（相手）の場全体」に乗る
+        //   越境デバフ専用。ここ（同側＝ホスト持ち主の場）へは適用しない（下の cross-owner スキャンが逆側の card に適用する）。
+        if (effect.crossOwner) {
+          return;
+        }
         // E-XC7(X-CP02/0039 アトアリザール): fieldWide の条件評価に host（ソウルを持つ場札）を渡し、
         // hostMatches{nameIncludes:"ゾディアック"} 等でホスト名に応じて場全体バフを掛けられるようにする。
         if (!continuousEffectAppliesFromSoul(effect, card, sourceCard, slot.owner, host)) {
@@ -790,10 +804,59 @@ function continuousStatBonus(card, statKey) {
       });
     });
   }
+  // E-XB60①(X-UB03/0053 伝染性弱化ガス③): crossOwner:true のソウル fieldWide modifyStats は「ホスト逆側（＝相手）の場全体」に乗る。
+  // 上の同側 fieldWide スキャン(781-)は card と同じ側のホストのみ走査するため、越境デバフは card の**逆側**のホストを走査して
+  // card に適用する必要がある。既存の越境継続ループ(controller:"opponent" 等・上方)は場札の continuous だけでソウルを見ないので別建て。
+  // ゲート fieldHasCrossOwnerFieldWideSoulBonus で「逆側の場に crossOwner ソウル継続が無ければ丸ごとスキップ」＝既存盤面は挙動不変。
+  const crossFieldWideOwner = 1 - slot.owner;
+  const crossFieldWidePlayer = state.players[crossFieldWideOwner];
+  if (fieldHasCrossOwnerFieldWideSoulBonus(crossFieldWidePlayer)) {
+    zones.forEach((hostZone) => {
+      const host = crossFieldWidePlayer.field[hostZone];
+      if (!host?.soul?.length) {
+        return;
+      }
+      soulContinuousEffects(host, crossFieldWideOwner).forEach(({ effect, sourceCard }) => {
+        if (!effect.fieldWide || !effect.crossOwner || effect.op !== "modifyStats") {
+          return;
+        }
+        // 対象は card（ホストの逆側＝slot.owner 側）。conditions は host を渡して hostMatches（0053「《病》のソウルにあるなら」）を判定。
+        if (!continuousEffectAppliesFromSoul(effect, card, sourceCard, crossFieldWideOwner, host)) {
+          return;
+        }
+        const raw = effect[statKey] || 0;
+        // 相手発の負デルタ（デバフ）は grantStatDecreaseImmunity / turnProtection[statDecrease] の保護を尊重する（越境継続ループと同じ）。
+        const protectedDecrease =
+          raw < 0 && (statDecreaseProtected(card, statKey) || turnProtectionBlocks(card, "statDecrease", statKey));
+        bonus += protectedDecrease ? 0 : raw;
+        bonus += continuousModifyStatsAmountFrom(effect, statKey, crossFieldWidePlayer, sourceCard, crossFieldWideOwner);
+      });
+    });
+  }
   return bonus;
   } finally {
     statMemoEnd();
   }
+}
+
+// E-XB60①(X-UB03/0053): continuousStatBonus の cross-owner ソウル fieldWide スキャン用の軽量事前ゲート。
+// player（＝評価対象カードの逆側）の場のいずれかのホストのソウルに「fieldWide:true かつ crossOwner:true の modifyStats」
+// soulContinuous があるときだけ true。fieldHasFieldWideSoulBonus の crossOwner 版。既存カードで crossOwner ソウル継続は
+// 0件＝常に false ＝cross-owner スキャンを丸ごと省略でき、既存盤面のホットパスは無コスト（後方互換）。
+function fieldHasCrossOwnerFieldWideSoulBonus(player) {
+  if (!player) {
+    return false;
+  }
+  return zones.some((zone) => {
+    const host = player.field[zone];
+    return Boolean(
+      host?.soul?.some((sourceCard) =>
+        (sourceCard.soulContinuous || []).some(
+          (effect) => effect.fieldWide && effect.crossOwner && effect.op === "modifyStats",
+        ),
+      ),
+    );
+  });
 }
 
 function continuousPowerBonus(card) {
@@ -1174,7 +1237,52 @@ function cardProtectedFrom(card, kind, cause = {}) {
   if (kind === "nullify" && soulContinuousGrantsOp(card, "grantNullifyImmunity")) {
     return true;
   }
+  // E-XB60②(X-UB03/0032 侵蝕義肢③): 「このカードがモンスターのソウルにあるなら、君の場のモンスター全ては相手のカードの効果で
+  //   別のエリアに置かれない」= ソウル発の移動耐性(grantMoveAreaImmunity)。恒久 grant*Immunity は「場の継続」限定
+  //   (grantedProtectionBlocks) なので、ソウル発の付与は soulContinuousGrantsOp が担う（grantDestroyImmunity/preventReturnToHand と
+  //   同じ配線）。fieldWide（「場のモンスター全て」）は controller:self＋filter:{cardType:monster}＋hostOnly 無しで表現し、
+  //   soulContinuousGrantsOp が対象1枚ごとに filter/controller で判定するため自然に場全体へ乗る。from:{byOpponent:true} で
+  //   「相手のカードの効果で」限定。soulContinuous grantMoveAreaImmunity を持つ既存カードは0件＝挙動不変。
+  if (
+    kind === "moveArea" &&
+    soulContinuousGrantsOp(card, "grantMoveAreaImmunity", (effect) => {
+      if (effect.from) {
+        if (effect.from.byEffect && !cause.byEffect) return false;
+        if (effect.from.byOpponent && !cause.byOpponent) return false;
+      }
+      return true;
+    })
+  ) {
+    return true;
+  }
   return false;
+}
+
+// E-XB59②(X-UB03/0031 エニグマ・ウィルス②): ソウル内カード“自身”の自己保護。既存の grant*Immunity（cardProtectedFrom）は
+// 「場の継続を持つカードが対象カード群を守る」第三者付与型で、保護元は必ず場札(player.field[zone])から走査されるため、
+// ソウルの中にいるカードが自分自身を守る自己言及型は表現できなかった（bf-d-bt02-0099・x74 0056 と同族の欠落）。
+// これは soulCard 自身の印字プロパティ selfInSoulProtection:{kinds:[...], from:{byOpponent,byEffect}} を、ソウルドロップの
+// 実行点（dropTargetSoul/dropSelectedSoul）で候補除外に使う最小・後方互換の経路。selfInSoulProtection を持たない既存の
+// ソウル札は常に false（＝従来どおり除去される）＝挙動完全不変。cause は makeEffectCause 形（byOpponent/byEffect）。
+function soulCardSelfProtectedFrom(soulCard, kind, cause = {}) {
+  const spec = soulCard?.selfInSoulProtection;
+  if (!spec) {
+    return false;
+  }
+  const kinds = spec.kinds || (spec.kind ? [spec.kind] : []);
+  if (kinds.length && !kinds.includes(kind)) {
+    return false;
+  }
+  const from = spec.from;
+  if (from) {
+    if (from.byEffect && !cause.byEffect) {
+      return false;
+    }
+    if (from.byOpponent && !cause.byOpponent) {
+      return false;
+    }
+  }
+  return true;
 }
 
 // Z4(c)(S-UB-C03/0056): grantStatDecreaseImmunity{stats,scope,filter,conditions} が

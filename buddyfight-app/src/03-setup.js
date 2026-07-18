@@ -265,6 +265,14 @@ function createPlayer(name, profile) {
     // E-XB44(ワールド・パンデミック): フラッグ裏返し状態。state 常駐（player 上の boolean）＝JSON 直列化・viewFor 深コピー・
     // リプレイ/room 復元で自然に往復する（T13 安全＝seed 非依存の公開情報）。対象内DBに表へ戻す効果は無いためワンウェイ。
     flagFaceDown: false,
+    // E-XB54a(X-UB03/0019 ∞ the Chaos ∞): 「the Chaos の下に裏向きで置く控えフラッグ」。ファイトの準備で
+    // profile.flagReserve（flags.json のフラッグ id）が指定された時だけ実体化し、その他の全デッキでは常に []
+    // （＝既存の全 state/tests/fuzz レシピはバイト不変）。カード実体の配列にしておくことで:
+    //   ①state 常駐＝JSON 直列化・room 復元・リプレイ往復で自然に保たれる（クロージャに持たない）。
+    //   ②昇格(0058 promoteFlagReserve)で player.flag へ移し替える際、instanceId/soul ごと保存則を満たす。
+    //   ③viewFor(engine-host)は相手/観戦へ hiddenPile で「存在のみ・中身伏せ」（裏向き控え札＝内容は非公開）。
+    // 中身(∞ the Chaos ∞)は seed 非依存の決定的セットアップ物＝T13 のシード漏洩とは無関係（伏せは忠実性のため）。
+    flagReserve: profile.flagReserve ? [createCard(profile.flagReserve)] : [],
     field: {
       left: null,
       center: null,

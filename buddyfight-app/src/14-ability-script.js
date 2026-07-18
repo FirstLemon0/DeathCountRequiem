@@ -1826,14 +1826,31 @@ function putSelectedToGaugeForScript(step, context) {
 function dropSelectedSoulForScript(step, context) {
   const selected = scriptSelection(step, context);
   selected.forEach((entry) => {
-    const amount = Math.min(step.amount ?? entry.card?.soul?.length ?? 0, entry.card?.soul?.length || 0);
-    const movedCards = amount > 0 ? entry.card.soul.splice(0, amount) : [];
-    state.players[entry.owner ?? context.owner].drop.push(...movedCards);
+    const owner = entry.owner ?? context.owner;
+    const soul = entry.card?.soul || [];
+    // E-XB59②(X-UB03/0031 エニグマ・ウィルス②): ソウル内カード自身の自己保護（相手効果のソウルドロップから自身を守る
+    //   selfInSoulProtection）を候補から除外する。cause.byOpponent＝このドロップが相手発か（ソウル持ちカードの持ち主 owner と
+    //   効果主体 context.owner が別席なら相手発）。自発（自分のコスト等）は byOpponent:false で from:{byOpponent:true} を通さない。
+    const cause = { byEffect: true, byOpponent: owner !== context.owner };
+    let eligible = soul.filter((soulCard) => !soulCardSelfProtectedFrom(soulCard, "soulDrop", cause));
+    // E-XB58(X-UB03/0016 起爆畳): faceDown:true は裏向きソウルのみを候補にする（原文「裏向きのソウル1枚」）。
+    if (step.faceDown) {
+      eligible = eligible.filter((soulCard) => soulCard?.faceDown);
+    }
+    const amount = Math.min(step.amount ?? eligible.length, eligible.length);
+    const movedCards = [];
+    for (let i = 0; i < amount; i += 1) {
+      const idx = soul.indexOf(eligible[i]);
+      if (idx >= 0) {
+        movedCards.push(soul.splice(idx, 1)[0]);
+      }
+    }
+    state.players[owner].drop.push(...movedCards);
     if (movedCards.length > 0 && step.log !== false) {
       addLog(`${entry.card.name}のソウルから${movedCards.map((card) => card.name).join("、")}をドロップゾーンに置きました。`);
     }
     // E1/F2(D-BT02/0097等): ホスト存命のままソウルがドロップへ → soulCardDropped。
-    queueSoulCardDroppedTriggers(entry.card, entry.owner ?? context.owner, movedCards.length);
+    queueSoulCardDroppedTriggers(entry.card, owner, movedCards.length);
   });
   return true;
 }
@@ -3379,6 +3396,7 @@ function isScriptEffectStep(step) {
     // インフェルノ/ディミオスソード・ドラゴン/ミセリア等は、この許可が無いと「未実装のscript命令」で script が
     // 停止し報酬（スタンド＋後続破壊）が不発だった（F1 と同経路で露見した欠落・後方互換＝旧挙動は常に停止）。
     "standTarget",
+    "setLife", // E-XB56①(X-UB03/0001 ギアゴッド ver.1ØØØØ): 「ライフが3以下なら10にする」を無償複数コール(script専用op)と同一 ability で両立させるため script 許可op に加える（effect版 src/15:662 へ委譲）。ifCondition(script) の then に置いて条件付き代入する。未指定の既存カードは script から未使用＝挙動不変。
     "setLifeZeroSafeguard",
     "banEffectDrawTemporal", // E-PR14(PR/0380): script からも使えるよう許可（effect版 src/15 に委譲）
     "preventAllDamageThisTurn",

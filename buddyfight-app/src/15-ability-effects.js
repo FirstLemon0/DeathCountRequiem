@@ -135,6 +135,11 @@ function putCardsToDropWithTrigger(player, owner, cards, fromZone, options = {})
   if (["field", "deck"].includes(fromZone)) {
     cards.forEach((dropCard) => queueMovedToDropTriggers(dropCard, owner, fromZone));
   }
+  if (fromZone === "field") {
+    // E-XB57(X-UB03/0010 虹色特権): 場→ドロップの非破壊移動（script moveSelected 等）も field-wide movedToDrop を配送する。
+    // deck→ドロップ（ミル）は「場からドロップに置かれた時」に該当しないため対象外（queueMovedToDropField 内でも fromZone を再ガード）。
+    cards.forEach((dropCard) => queueMovedToDropFieldTriggers(dropCard, owner, fromZone));
+  }
   if (fromZone === "deck") {
     queueDeckMilledTriggers(owner, cards, options.cause || null);
   }
@@ -461,9 +466,17 @@ async function executeAbilityEffect(effect, context) {
     state.callRestrictionsThisTurn.push({
       owner: restricted,
       allowFilter: effect.allowFilter || null,
+      // E-XB59①(X-UB03/0031 エニグマ・ウィルス①): byEffectOnly:true は「カードの効果でのコールのみ」を禁止する
+      //   （手打ちの通常コールは許可）。効果コール5op を判定する turnCallRestrictionBlocks(src/07) は従来どおり掛かり、
+      //   通常コールを判定する isCallRestricted(src/18) は byEffectOnly エントリを読み飛ばす。未指定=従来の全面禁止（後方互換）。
+      byEffectOnly: Boolean(effect.byEffectOnly),
       sourceName: context.card?.name || "効果",
     });
-    addLog(`${state.players[restricted].name}はこのターン、コールできるカードが制限されます。`);
+    addLog(
+      effect.byEffectOnly
+        ? `${state.players[restricted].name}はこのターン、カードの効果でモンスターをコールできません。`
+        : `${state.players[restricted].name}はこのターン、コールできるカードが制限されます。`,
+    );
   }
   if (effect.op === "restrictCallCountPerTurn") {
     // E-XB7(X-SS03/0060 ロイヤルティ): 「そのターン中、相手はN枚以上モンスターをコールできない」。
@@ -1481,6 +1494,30 @@ async function executeAbilityEffect(effect, context) {
       addLog(`${context.card?.name || "効果"}の効果で、${victim.name}のフラッグは裏になり、場のカードは全てドロップゾーンに置かれました。`);
     }
   }
+  if (effect.op === "promoteFlagReserve") {
+    // E-XB54b(X-UB03/0058 ザ・カオス・アップグレード): 「君のフラッグの下にある裏向きのカード１枚までを、
+    // 君のフラッグの上に表向きで重ね（る）」＝控えフラッグ(player.flagReserve = ∞ the Chaos ∞)を表向きにして
+    // 現フラッグ(the Chaos)の上に重ね、以後の主フラッグ(player.flag)を ∞ the Chaos ∞ へ差し替える昇格 op。
+    // 旧フラッグの行き先（原文精査）: 「フラッグの上に重ね（る）」＝旧フラッグは捨てず新フラッグの“下”に残る。
+    //   FE1(ドラゴン・ドライ stackPlayerFlag) の確立形に倣い、旧フラッグ実体を新フラッグの soul に格納して保持する
+    //   （物理カードを消さない＝カード保存則。room/replay に直列化される）。soul は継続/ソウルガード等の対象では
+    //   ないフラッグ同士なので機能的に不活性。控えは1枚のみ（原文「１枚だけ」）＝先頭1枚を昇格し flagReserve を空にする。
+    // ゲート（flagNameIs "the Chaos"・ドロップ10枚以上・1ターン1回）は 0058 側の DSL（useConditions/limit）が担う。
+    // 昇格後: player.flag.name === "∞ the Chaos ∞" で flagNameIs（0012/0014）が成立し、maxFieldSizeInfinite で ∞ 場サイズ、
+    //   canAttackAsFlag でフラッグ攻撃が解禁される。控えが無い（0019 を仕込んでいない）なら何もしない（冪等）。
+    const reserve = (player.flagReserve || []);
+    if (reserve.length > 0) {
+      const promoted = reserve.shift(); // 先頭の控え札（∞ the Chaos ∞）を昇格
+      player.flagReserve = reserve;
+      const previousFlag = player.flag;
+      if (previousFlag) {
+        promoted.soul = [previousFlag, ...(promoted.soul || [])]; // 旧フラッグを下に重ねて保持（保存則）
+      }
+      promoted.used = false;
+      player.flag = promoted;
+      addLog(`${context.card?.name || "効果"}の効果で、${player.name}のフラッグは表向きの「${promoted.name}」になりました。`);
+    }
+  }
   if (effect.op === "banDrawNextTurn") {
     // FE2(X-BT01/0124 ガエン『変身した時』): 「次の相手のターン中、相手はカードを引くことができない」。
     // 通常ドローステップも含めて封じる（drawCards が全経路を止める）。state.drawBans に owner を積み、
@@ -2012,13 +2049,19 @@ async function executeAbilityEffect(effect, context) {
     if (amount <= 0) {
       return;
     }
-    const soulEntries = (target.card.soul || []).map((card, index) => ({
-      card,
-      index,
-      owner: target.owner,
-      source: "soul",
-      note: `${target.card.name}のソウル`,
-    }));
+    const soulEntries = (target.card.soul || [])
+      .map((card, index) => ({
+        card,
+        index,
+        owner: target.owner,
+        source: "soul",
+        note: `${target.card.name}のソウル`,
+      }))
+      // E-XB59②(X-UB03/0031 エニグマ・ウィルス②): 自己保護(selfInSoulProtection)されたソウル札は相手効果のドロップ候補から外す
+      //   （soulDiscardCause は上で makeEffectCause 済み＝byOpponent を含む）。自発(byOpponent:false)は from:{byOpponent:true} を通さない。
+      .filter((entry) => !soulCardSelfProtectedFrom(entry.card, "soulDrop", soulDiscardCause))
+      // E-XB58(X-UB03/0016 起爆畳): faceDown:true は裏向きソウルのみを候補にする（原文「裏向きのソウル」限定）。
+      .filter((entry) => !effect.faceDown || entry.card?.faceDown);
     const selected =
       soulEntries.length > amount
         ? await chooseCardEntries(soulEntries, {
@@ -3678,6 +3721,14 @@ function normalizedAbilityLimit(ability) {
   // 場起動へ誤露出しない（reversalKill と同じく明示 limit を書いてもよいが、キーワード自動導出でDSLを対称に保つ）。
   if (hasAbilityKeyword(ability, "greatReversal")) {
     return { scope: "fight", key: "greatReversal" };
+  }
+  // E-XB55(X-UB03/0001 究極に至るC ギアゴッド ver.1ØØØØ): 『逆天殺ReBOOT』はファイト中1回の独立キーワード。
+  // 大逆天(greatReversal)と同形で key="reversalKillReboot" を自動導出する。『逆天』(reversal)・『逆天殺』(reversalKill)
+  // とは別プールに記帳する（cross-reference するカードは対象内DBに無い＝独立keが安全。設計 R7）。keyword:"reversalKillReboot"
+  // は "reversal" alias 集合に含めないため isFieldActivatedAbility を勝手に真化させない（0001 は kind:"activated" で明示）。
+  // 非無効化＋相手対抗不可（原文括弧書き）は 0001 の effects 側（preventOpponentCounterThisTurn 等・既存op）が担う。
+  if (hasAbilityKeyword(ability, "reversalKillReboot")) {
+    return { scope: "fight", key: "reversalKillReboot" };
   }
   return null;
 }

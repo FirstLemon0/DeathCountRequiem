@@ -245,6 +245,11 @@ function renderFlagItemZone(zoneButton, player) {
 
   const flagLayer = document.createElement("span");
   flagLayer.className = "flag-layer";
+  // E-XB54b(∞ the Chaos ∞): 攻撃してレストしたフラッグは used 表示にする（実機のレスト=横向きの代替。
+  // 既存 .card.used と同じ淡色＋脱色）。通常フラッグは used が立たないため常に無印＝挙動不変。
+  if (player.flag.used) {
+    flagLayer.classList.add("used");
+  }
   // フラッグ絵（他のカードと同じ画像解決＝imgpack遅延読込→公式URL→テキスト の順にフォールバック）。
   // 画像が出せない/読込失敗時は showCardImageFallback が flag-layer から画像だけ外し、
   // 下のキャプション（フラッグ名）＝現行のテキスト表示へグレースフルに戻す。

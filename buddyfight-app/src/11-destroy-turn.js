@@ -8,6 +8,13 @@ function canDeclareAttack(attacker) {
     return false;
   }
   const player = state.players[attacker.owner];
+  // E-XB54b(X-UB03/0019 ∞ the Chaos ∞): フラッグが攻撃者になれるのは印字 canAttackAsFlag を持つフラッグだけ
+  // （∞ the Chaos ∞ は「君のセンターにモンスターがいても攻撃できる」＝自センター占有はゲートしない。フラッグは
+  //  item/monster ではないため以降の武器センターブロック/攻撃禁止(monster限定)にも掛からない）。裏フラッグは機能停止。
+  // 通常フラッグ（canAttackAsFlag 無し）や既存の全対戦はこの分岐に到達しない（攻撃者は常に場札）＝バイト不変。
+  if (effectiveCardType(attacker.card) === "flag") {
+    return Boolean(attacker.card.canAttackAsFlag) && !player?.flagFaceDown;
+  }
   // E-XB28(X-BT03/0102 逆天③): 「次の君のターン中、君の場のカードは攻撃できない」。ターンスキップ予約の消費時に
   // 立つ、この席のこのターン限定・無条件の攻撃禁止（原文「場のカード」＝モンスター/アイテム両種が対象。
   // ignore 系キーワードでも解除しない）。既存対戦では常に false＝素通り（後方互換）。
@@ -1181,6 +1188,45 @@ function queueMovedToDropTriggers(card, owner, fromZone) {
   );
 }
 
+// E-XB57(X-UB03/0010 虹色特権): 「（場の）カードがドロップゾーンに置かれた時」の **field-wide** ブロードキャスト。
+// 上の queueMovedToDropTriggers はドロップへ落ちたカード“自身”の movedToDrop 自己誘発だが、こちらは場の**他**の
+// カードが反応する ally/opponentMovedToDrop を場全体（set 枠含む）へ配送する（allyDestroyed/queueAllyDestroyedTriggers の
+// 非破壊版・鏡）。
+// 【重複発火の分担（設計固定）】破壊由来のドロップは既存の allyDestroyed/opponentDestroyed(queueAllyDestroyedTriggers)が
+//   担当する。この broadcast は destroyFieldCard からは呼ばない＝**非破壊のドロップ移動のみ**（コスト/効果由来。dropFieldCardByRule と
+//   putCardsToDropWithTrigger の fromZone==="field")。したがって 1回のドロップが destroyed と movedToDrop の両方を発火することは無い
+//   （破壊→allyDestroyed のみ／非破壊→movedToDrop のみ）。「破壊された時」と「（非破壊で）ドロップに置かれた時」を両方拾いたい
+//   カード（0010 等）は両イベントの listener を別 ability として持ち、shared limit で 1ターン1回に束ねる。
+// fromZone は "field" のみ対象（デッキ→ドロップのミルは「場からドロップに置かれた時」の語義に該当しないため配送しない）。
+// リスナー(ally/opponentMovedToDrop)を持つ場札が無ければ何もしない＝既存カードは配送ゼロで挙動完全不変。
+function queueMovedToDropFieldTriggers(card, owner, fromZone) {
+  if (fromZone !== "field" || !card) {
+    return;
+  }
+  const hasListener = [0, 1].some((playerIndex) =>
+    zones.some((fieldZone) => {
+      const sourceCard = state.players[playerIndex]?.field?.[fieldZone];
+      return (
+        cardHasTriggeredListener(sourceCard, "allyMovedToDrop") ||
+        cardHasTriggeredListener(sourceCard, "opponentMovedToDrop")
+      );
+    }),
+  );
+  if (!hasListener) {
+    return;
+  }
+  Promise.resolve()
+    .then(async () => {
+      await runFieldEventTriggers("movedToDrop", owner, card, "drop", { fromZone });
+      render();
+    })
+    .catch((error) => {
+      console.error(error);
+      addLog(`${card?.name ?? "カード"}のドロップ移動フィールド誘発の処理中にエラーが発生しました。`);
+      render();
+    });
+}
+
 // 「このカードが（場かドロップから）ソウルに入った時」の誘発（H-SS01 竜装機 チャージャー等）。
 // fromZone: "field" | "drop" | "hand"。ability.fromZones（省略時は全部）で絞る。
 // 対応経路: 星合体/ソウル投入 script（moveSelfToSelectedSoul/moveSelectedToSelectedSoul）・
@@ -1541,7 +1587,8 @@ function dropFieldCardByRule(player, zone) {
   player.field[zone] = null;
   // r3 L4(S-UB-C03/0066): destroyFieldCardと同様、裏向きトークンの印字値をドロップ到達時に復元する。
   restoreFaceDownMonsterPrint(card);
-  queueMovedToDropTriggers(card, state.players.indexOf(player), "field"); // 効果/ルールで場からドロップへ
+  queueMovedToDropTriggers(card, state.players.indexOf(player), "field"); // 効果/ルールで場からドロップへ（自己誘発）
+  queueMovedToDropFieldTriggers(card, state.players.indexOf(player), "field"); // E-XB57: 非破壊のドロップ移動→ally/opponentMovedToDrop（場全体）
   if (zone === "item" && player.arrivalCardId === card.instanceId) {
     player.arrivalCardId = null;
   }
@@ -2232,6 +2279,19 @@ function clearTurnModifiers() {
 }
 
 function standPlayer(player) {
+  // E-XB54b(X-UB03/0019 ∞ the Chaos ∞ ＝攻撃するフラッグ): 攻撃したフラッグは他のカードと同じくレスト(used=true)
+  // し、自分のスタートフェイズにスタンドする。フラッグは player.field ではなく player.flag に実体があり zones 走査に
+  // 乗らないため、ここで明示的にスタンドする。used=true になるのは攻撃したフラッグ（＝infinity-the-chaos）だけで、
+  // 通常フラッグは決して used にならない＝既存の全対戦ではこのブロックは何もしない（バイト不変）。
+  if (player.flag?.type === "flag" && player.flag.used) {
+    player.flag.used = false;
+    player.flag.battlePowerBonus = 0;
+    player.flag.battleDefenseBonus = 0;
+    player.flag.battleCriticalBonus = 0;
+    player.flag.counterattack = false;
+    player.flag.doubleAttackUsed = false;
+    player.flag.tripleAttackStandCount = 0;
+  }
   zones.forEach((zone) => {
     const card = player.field[zone];
     if (card) {

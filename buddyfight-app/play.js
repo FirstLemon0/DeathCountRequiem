@@ -751,6 +751,20 @@
     ]);
   }
 
+  // E-XB54b(∞ the Chaos ∞): 「攻撃するフラッグ」(canAttackAsFlag)を攻撃者に選ぶ。ui.selected を source:"flag" で
+  // 組み、以後は場札攻撃と同じ攻撃対象タップ→sendAction("attack",{selected,attackTarget}) 経路に乗る（サーバの
+  // setSelected→attackAction→getAttackDeclarationAttackers が source:"flag" を単騎攻撃者へ組み立てる＝engine-host は
+  // 共通エンジンで受理済み）。フラッグは連携/装備/能力を持たないので「攻撃（対象を選ぶ）」のみ。
+  function flagCardMenu(owner) {
+    const flag = state?.players?.[owner]?.flag;
+    if (!flag) return;
+    ui.selected = { source: "flag", owner, zone: "flag", instanceId: flag.instanceId };
+    ui.targeting = false;
+    showMenu([
+      { label: "攻撃（対象を選ぶ）", run: () => { ui.targeting = true; closeMenu(); setTargetingBanner("攻撃対象をタップ（本体は相手の『装備』枠）"); setStatus("攻撃対象をタップ：相手モンスター、または本体は相手の『装備』枠をタップ"); updateAttackHighlights(); } },
+    ]);
+  }
+
   // ---- 効果対象タップ（attackTargetタップと同型。対象を盤面カードでタップ→effectTarget送信）----
   function startEffectTargeting(sel, type, extra = {}) {
     ui.effectTargeting = { selected: sel, type, callZone: extra.callZone };
@@ -977,6 +991,25 @@
           ui.targeting = false;
           clearTargetingBanner();
           updateAttackHighlights();
+        }
+        return;
+      }
+      // E-XB54b(∞ the Chaos ∞): フラッグ絵(.flag-layer)タップ→攻撃するフラッグの攻撃メニュー。
+      // canAttackAsFlag ゲートで通常フラッグは素通り（従来どおり無反応）＝既存挙動不変。アイテム(.card[data-item-zone])
+      // タップは上の分岐で cardEl として処理されるため、ここはフラッグ絵専用。対象選択中(ui.targeting)は
+      // 攻撃者を選び直さない（相手∞フラッグへの本体攻撃タップは上の item ゾーン分岐が拾う）。
+      if (
+        !ui.targeting &&
+        zoneButton.dataset.zone === "item" &&
+        event.target?.closest?.(".flag-layer") &&
+        !event.target?.closest?.(".card[data-item-zone]") &&
+        typeof canAttackAsFlag === "function" &&
+        canAttackAsFlag(state?.players?.[owner])
+      ) {
+        if (owner === mySeat() && canActNow()) {
+          flagCardMenu(owner);
+        } else if (typeof openReadOnlyCardSheet === "function") {
+          openReadOnlyCardSheet(state.players[owner].flag); // 相手の∞フラッグ／自分の操作番外は詳細のみ
         }
         return;
       }

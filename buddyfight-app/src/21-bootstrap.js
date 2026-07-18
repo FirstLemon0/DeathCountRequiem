@@ -80,6 +80,18 @@ document.querySelectorAll(".zone.field").forEach((zoneButton) => {
       }
       return; // 候補外タップは無視（権威版と同じ。キャンセルはバナーのボタン）
     }
+    // E-XB54b(∞ the Chaos ∞): 「攻撃するフラッグ」(canAttackAsFlag)のフラッグ絵タップ→攻撃メニュー。
+    // canAttackAsFlag ゲートで通常フラッグは一切ここに入らず従来の item ゾーン処理へ素通り＝既存挙動完全不変。
+    // アイテム(.card[data-item-zone])ではなくフラッグ絵(.flag-layer)を押した時だけ拾う（アイテム操作は不変）。
+    if (
+      zone === "item" &&
+      event.target?.closest?.(".flag-layer") &&
+      !event.target?.closest?.(".card[data-item-zone]") &&
+      canAttackAsFlag(state.players[owner])
+    ) {
+      flagZoneMenuLocal(owner);
+      return;
+    }
     // 平時：操作可能なカードは下部アクションメニュー、相手/操作不可のカードは閲覧専用シート。
     // 空きマスのタップは無反応（権威版と同じ）。複数アイテム時はタップしたアイテムの実スロットを対象にする。
     const resolvedZone = resolveClickedItemZone(event, owner, zone);

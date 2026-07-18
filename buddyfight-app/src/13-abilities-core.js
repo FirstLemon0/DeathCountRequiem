@@ -201,6 +201,7 @@ async function useHandAbilityAction(card, ability, options = {}) {
     !options.counterTiming &&
     ability.kind === "activated" &&
     !isCounterAbility(ability) &&
+    !ability.noCounterWindow && // E-XB56②: 「相手は【対抗】できず」= 宣言時に対抗ウィンドウを開かず即時解決へ落とす（下の即時解決経路が後続処理を担う）。未指定は従来どおり。
     !hasPendingResolution()
   ) {
     markAbilityLimit(owner, usedCard, ability);
@@ -356,7 +357,12 @@ async function useFieldAbilityAction(card, loc = null) {
     return;
   }
   addAbilityUseLog(player, sourceCard, ability);
-  if (!hasPendingResolution() && !isCounterAbility(ability)) {
+  // E-XB56②(X-UB03/0001 ギアゴッド ver.1ØØØØ『逆天殺ReBOOT』の「相手は【対抗】できず」): ability.noCounterWindow が立つと
+  // 宣言時の対抗ウィンドウ(pendingAction)を開かず、下の即時解決経路へ落とす。即時解決経路は executeAbilityBody→markAbilityLimit→
+  // maybeEndPendingCurrentTurn→render を賄うため自席の後続処理は不変。triggered 型 preventOpponentCounterThisTurn では
+  // 「宣言そのもの」を遡れない（対抗ウィンドウが閉じた後にしか効かない）ため、宣言前バリアとして ability レベルにゲートする。
+  // 未指定（既存カード全て）は false 扱いで従来どおり対抗ウィンドウを開く＝後方互換。
+  if (!hasPendingResolution() && !isCounterAbility(ability) && !ability.noCounterWindow) {
     beginPendingAction({
       kind: "ability",
       owner,

@@ -352,6 +352,13 @@ class GameRoom {
       if (spectator || !own) {
         player.buddyZoneFaceDown = hiddenPile(player.buddyZoneFaceDown);
       }
+      // E-XB54a(X-UB03/0019 ∞ the Chaos ∞): フラッグの下に裏向きで置く控えフラッグ(flagReserve)は所有者本人のみ
+      // 中身を見られる。相手/観戦へは hiddenPile で「存在のみ・中身伏せ」（buddyZoneFaceDown と同じ扱い）。
+      // 中身は seed 非依存の決定的セットアップ物＝T13 のシード漏洩とは無関係だが、裏向き控え札の忠実な秘匿として伏せる。
+      // 既存の全対戦では flagReserve は空配列＝hiddenPile([]) も空配列で view は不変（後方互換・T13 影響なし）。
+      if (spectator || !own) {
+        player.flagReserve = hiddenPile(player.flagReserve);
+      }
       // Z13(S-UB-C03/0066他): 場の裏向きモンスター(faceDownMonster:true)は誰から見てもマスクする
       // （自席も含む。既存bt02-0035の同型リークもこれで同時に直る）。
       for (const zone of ["left", "center", "right"]) {

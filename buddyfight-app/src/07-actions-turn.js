@@ -55,7 +55,30 @@ function getSelectedCard() {
     // ドロップからの起動能力（権威版: setSelected で source:"drop" を渡す）。
     return player.drop.find((card) => card.instanceId === state.selected.instanceId) || null;
   }
+  if (state.selected.source === "flag") {
+    // E-XB54b(∞ the Chaos ∞): フラッグを攻撃者として選択（source:"flag"）。実体は player.flag。
+    return player.flag || null;
+  }
   return player.field[state.selected.zone];
+}
+
+// E-XB54b(X-UB03/0019 ∞ the Chaos ∞): フラッグを攻撃者として選択する（source:"flag"）。以後 attackAction /
+// computeAttackTargetCandidates / getAttackDeclarationAttackers がフラッグ攻撃者を組み立てる。攻撃可能な
+// フラッグ（canAttackAsFlag＝infinity-the-chaos）を持つ手番プレイヤーのみ選択できる。connectの CPU/権威席ロック
+// 中は受け付けない（selectFieldCard と同じガード）。既存フラッグは canAttackAsFlag を持たず選択不可＝挙動不変。
+function selectFlagCard(owner) {
+  if (typeof aiShouldLockHumanControls === "function" && aiShouldLockHumanControls()) {
+    return false;
+  }
+  const player = state.players[owner];
+  if (!player || !canAttackAsFlag(player) || owner !== state.active || hasPendingResolution()) {
+    return false;
+  }
+  state.selected = { source: "flag", owner, zone: "flag", instanceId: player.flag.instanceId };
+  state.linkAttackers = [];
+  state.buddyCallDeclared = null;
+  render();
+  return true;
 }
 
 function removeSelectedFromHand() {
@@ -253,8 +276,13 @@ function turnCallRestrictionBlocks(owner, card) {
   if (isCallCountCappedThisTurn(owner)) {
     return true;
   }
+  // allowFilter はコール可の例外ホワイトリスト。allowFilter 省略時は例外なし＝全面禁止（E-XB59① 0031 の byEffectOnly 単独指定で
+  // 「相手はカードの効果でモンスターをコールできない」を表す）。既存 D-BT01/0064 は allowFilter:{impactMonster} 保持で挙動不変。
+  // byEffectOnly の有無に関わらず効果コールはここで禁止する（byEffectOnly は「効果コールのみ」の意で、非効果=手打ちだけを isCallRestricted で許可する）。
   return (state.callRestrictionsThisTurn || []).some(
-    (restriction) => restriction.owner === owner && !matchesCardFilter(card, restriction.allowFilter || {}),
+    (restriction) =>
+      restriction.owner === owner &&
+      !(restriction.allowFilter && matchesCardFilter(card, restriction.allowFilter)),
   );
 }
 

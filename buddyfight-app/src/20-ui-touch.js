@@ -264,6 +264,31 @@ function fieldCardMenuLocal(owner, zone) {
   return true;
 }
 
+// E-XB54b(∞ the Chaos ∞): 「攻撃するフラッグ」(canAttackAsFlag)を自席の手番にタップ→攻撃メニュー。
+// selectFlagCard が「攻撃できるフラッグ・自ターン・対抗窓/AIロック外」を一括ゲートする（src/07）。選べた時だけ
+// 攻撃メニュー（フラッグは連携/装備/能力を持たないので「攻撃（対象を選ぶ）」のみ）を出し、以後は場札攻撃と
+// 同じ startAttackTargeting→attackAction 経路（getAttackDeclarationAttackers が source:"flag" を組み立てる）。
+// 選べない場合（相手の∞フラッグ／自ターン外／レスト等）はフラッグ詳細を閲覧専用で表示する。呼び出し側
+// （21-bootstrap.js）が canAttackAsFlag ゲート済みのため、通常フラッグはこの関数に到達しない＝挙動不変。
+function flagZoneMenuLocal(owner) {
+  const player = state.players[owner];
+  if (!player?.flag) {
+    return false;
+  }
+  // 進行中の対象選択と残留効果対象は破棄してから選び直す（fieldCardMenuLocal と同じ防御）。
+  uiTargeting = null;
+  elements.effectTarget.value = "";
+  if (!selectFlagCard(owner)) {
+    openReadOnlyCardSheet(player.flag); // 攻撃できないフラッグは従来どおり詳細表示のみ
+    return false;
+  }
+  showActionMenu(
+    [{ label: "攻撃（対象を選ぶ）", run: () => startAttackTargeting() }],
+    { onClose: clearLocalSelection },
+  );
+  return true;
+}
+
 // シート内に出す操作ボタンの定義（有効なものだけ既存ボタンへ委譲）
 function cardSheetActionSpecs() {
   const card = getSelectedCard();

@@ -3,6 +3,67 @@
 // 旧 app.js L3327-3776 由来。全モジュールはグローバルスコープを共有し、
 // HTML で番号順に <script> 読み込みする（連結すると旧 app.js とバイト等価）。
 // ==========================================================================
+// ==========================================================================
+// E-XB54b(X-UB03/0019 ∞ the Chaos ∞ ＝攻撃するフラッグ) 共有ヘルパー
+// ==========================================================================
+// 攻撃者スロット {owner, zone} からカード実体を引く。zone==="flag" のときだけ player.flag を返し、
+// それ以外は従来どおり player.field[zone]（"flag" は zones/fieldZones に含めないので既存の場走査は不変）。
+// これにより攻撃解決系（getPendingAttackers/runAfterAttackTriggers/pendingBattleCardIds）が
+// フラッグ攻撃者を一様に扱える。既存の攻撃は zone が left/center/right/set/item のみ＝挙動完全不変。
+function attackerCardAt(owner, zone) {
+  if (zone === "flag") {
+    return state.players[owner]?.flag || null;
+  }
+  return state.players[owner]?.field?.[zone] || null;
+}
+
+// このフラッグが「攻撃するフラッグ」か（印字 canAttackAsFlag＝flags.json infinity-the-chaos のみ真）。
+// 裏フラッグ(flagFaceDown)は機能停止＝攻撃できない。未設定の全既存フラッグは false＝フラッグ攻撃経路に一切乗らない。
+function canAttackAsFlag(player) {
+  const flag = player?.flag;
+  return Boolean(flag && flag.type === "flag" && flag.canAttackAsFlag && !player.flagFaceDown);
+}
+
+// 攻撃者集合にフラッグ攻撃者が含まれるか。フラッグは連携できず常に単騎宣言（source:"flag"）だが、
+// 一般化して some で判定する（将来の複数フラッグ拡張にも耐える）。
+function attackersIncludeFlag(attackers) {
+  return (attackers || []).some((attacker) => attacker.zone === "flag");
+}
+
+// E-XB54b(X-UB03/0013 侵蝕コード666 ゼノ・C・ダークネス「君の『∞ the Chaos ∞』が攻撃した時」):
+// フラッグが攻撃者として宣言された直後、フラッグ所有者の場札へ triggered event "flagAttacked" を配信する。
+// runFighterAttackedTriggers（防御側の場へ "fighterAttacked" を直接配る）と同じ「専用ブロードキャスト」慣例。
+// フラッグ攻撃は infinity-the-chaos だけが起こせる＝既存対戦では発火経路が存在せず後方互換（配信自体が発生しない）。
+// 0013 側は conditions:[{op:"flagNameIs", name:"∞ the Chaos ∞"}] でフラッグ名を確認（設計上は保証済みだが明示）。
+async function runFlagAttackTriggers(flagAttacker) {
+  if (!flagAttacker || flagAttacker.zone !== "flag") {
+    return;
+  }
+  const owner = flagAttacker.owner;
+  const flag = state.players[owner]?.flag;
+  if (!flag) {
+    return;
+  }
+  for (const zone of zones) {
+    const card = state.players[owner]?.field?.[zone];
+    if (!card) {
+      continue;
+    }
+    if (!(card.abilities || []).some((ability) => ability.kind === "triggered" && ability.event === "flagAttacked")) {
+      continue;
+    }
+    await runTriggeredAbilities(card, "flagAttacked", {
+      card,
+      player: state.players[owner],
+      owner,
+      zone,
+      attackers: [flagAttacker],
+      attack: state.pendingAttack,
+      flagCard: flag,
+    });
+  }
+}
+
 // ファイナルフェイズに攻撃宣言できるカードか。ver2.05では攻撃はアタックフェイズのみで、
 // 例外は「このカードは君のファイナルフェイズ中にも攻撃できる」を持つ必殺モンスター（カード注記）。
 // 将来「ファイナルフェイズにも攻撃できる」を印字する通常カードが出たら canAttackInFinalPhase フラグで表す。
@@ -262,6 +323,12 @@ async function performAttackDeclaration(attackers, targetValue, options = {}) {
   await runAttackDeclarationTriggers(attackers);
   await runAttackedTriggers(attackers);
   await runFighterAttackedTriggers(attackers);
+  // E-XB54b: フラッグ攻撃なら "flagAttacked" を所有者の場へ配信（0013）。attackers に flag スロットが
+  // 含まれる時だけ（＝infinity-the-chaos のフラッグ攻撃時だけ）走る。runAttackDeclarationTriggers 側では
+  // フラッグ自身の "attack"／場全体の ally/opponentAttack も既に配信済み（フラッグは「君の場のカード」扱い）。
+  if (attackersIncludeFlag(attackers)) {
+    await runFlagAttackTriggers(attackers.find((attacker) => attacker.zone === "flag"));
+  }
   if (applyAttackTaxes()) {
     render();
     return true;
