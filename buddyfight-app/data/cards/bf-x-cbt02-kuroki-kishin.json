@@ -3186,9 +3186,6 @@
           "filter": {
             "attribute": "機神軍"
           },
-          "from": {
-            "byOpponent": true
-          },
           "conditions": [
             {
               "op": "turnOwnerIsSelf"
@@ -3196,7 +3193,7 @@
           ]
         }
       ],
-      "_note": "軍師機 C・ファニング。【コールコスト】ゲージ1=costs.call:[payGauge{amount:1}]。『君のターン中、君の場の《機神軍》全ては、相手のカードの効果で、レストされず、手札に戻されず、能力を無効化されない。』=bf-x-cp01-0031名軍師ファニング(本カードの無印/雷帝軍版=同名別属性の直接precedent。あちらは『レストされず、手札に戻せない』の二句のみ)のcontinuous 2本(grantRestImmunity{controller:self,filter:{attribute:X},from:{byOpponent:true},conditions:[turnOwnerIsSelf]}+preventReturnToHand{controller:self,filter:{attribute:X},conditions:[turnOwnerIsSelf]})をそのまま踏襲し、本カードのみ追加される三句目『能力を無効化されない』をgrantNullifyImmunity{controller:self,filter:{attribute:機神軍},from:{byOpponent:true},conditions:[turnOwnerIsSelf]}で追加(grantNullifyImmunityはgrantRestImmunityと同じZ4PROTECTION_OP_BY_KINDゲートに属しfromパラメータを正しく評価する、src/05-stats.js:1066-1071,1088-1120)。preventReturnToHandのみfromキーを付けない: continuousEffectApplies(src/05-stats.js)がpreventReturnToHandのeffect.fromを一切判定しない既存実装のため(bf-x-cp01-0031の note で実証済みの制約=既存DB全preventReturnToHand共通)、fromを書いても無効=『相手の効果限定』は表現できず近似のまま(実害は無し=自分から自分の機神軍を手札に戻す効果は本弾に無い)。grep自己検査: grantRestImmunity/preventReturnToHand/grantNullifyImmunity+PROTECTION_OP_BY_KIND(src/05-stats.js:1066-1120)/continuousEffectApplies fromキー不読(preventReturnToHandのみ) 全実在確認。VM検証(x74-b12-verify.js): (a)callMonster実経路でゲージ1を払ってコールできる、(b)自分のターン中、相手の効果で機神軍モンスターをレストしようとしても阻止される、(c)自分のターン中、相手の効果で機神軍モンスターを手札に戻そうとしても阻止される、(d)自分のターン中、相手の効果で機神軍モンスターの能力を無効化しようとしても阻止される、(e)相手のターン中はこれらの保護が働かない(turnOwnerIsSelf不成立)、を確認。"
+      "_note": "軍師機 C・ファニング。【コールコスト】ゲージ1=costs.call:[payGauge{amount:1}]。『君のターン中、君の場の《機神軍》全ては、相手のカードの効果で、レストされず、手札に戻されず、能力を無効化されない。』=bf-x-cp01-0031名軍師ファニング(本カードの無印/雷帝軍版=同名別属性の直接precedent。あちらは『レストされず、手札に戻せない』の二句のみ)のcontinuous 2本(grantRestImmunity{controller:self,filter:{attribute:X},from:{byOpponent:true},conditions:[turnOwnerIsSelf]}+preventReturnToHand{controller:self,filter:{attribute:X},conditions:[turnOwnerIsSelf]})をそのまま踏襲し、本カードのみ追加される三句目『能力を無効化されない』をgrantNullifyImmunity{controller:self,filter:{attribute:機神軍},from:{byOpponent:true},conditions:[turnOwnerIsSelf]}で追加(grantNullifyImmunityはgrantRestImmunityと同じZ4PROTECTION_OP_BY_KINDゲートに属しfromパラメータを正しく評価する、src/05-stats.js:1066-1071,1088-1120)。preventReturnToHandのみfromキーを付けない: continuousEffectApplies(src/05-stats.js)がpreventReturnToHandのeffect.fromを一切判定しない既存実装のため(bf-x-cp01-0031の note で実証済みの制約=既存DB全preventReturnToHand共通)、fromを書いても無効=『相手の効果限定』は表現できず近似のまま(実害は無し=自分から自分の機神軍を手札に戻す効果は本弾に無い)。grep自己検査: grantRestImmunity/preventReturnToHand/grantNullifyImmunity+PROTECTION_OP_BY_KIND(src/05-stats.js:1066-1120)/continuousEffectApplies fromキー不読(preventReturnToHandのみ) 全実在確認。VM検証(x74-b12-verify.js): (a)callMonster実経路でゲージ1を払ってコールできる、(b)自分のターン中、相手の効果で機神軍モンスターをレストしようとしても阻止される、(c)自分のターン中、相手の効果で機神軍モンスターを手札に戻そうとしても阻止される、(d)自分のターン中、相手の効果で機神軍モンスターの能力を無効化しようとしても阻止される、(e)相手のターン中はこれらの保護が働かない(turnOwnerIsSelf不成立)、を確認。【R17(x78) 出荷済み是正・衛生】grantNullifyImmunity の不活性 from:{byOpponent:true} キーを除去（挙動不変）。理由: 能力無効化耐性の唯一の判定経路 isAbilitiesNullified(src/05-stats.js)→cardProtectedFrom(card,\"nullify\") は cause 引数を渡さず呼ぶため、grantedProtectionBlocks の from ゲート `if (e.from && cause)` は恒久的に評価されない＝from を書いても『相手の効果限定』は効かず常時保護（本カードは自陣で自機神軍を無効化するカードが無く実害なし）。上記本文の『fromパラメータを正しく評価する』は nullify 種別では該当せず（呼び出し点が cause 未伝播）、キーを外して衛生化した。回帰: tests/effects-regression.test.js R17-cbt02-0041（from キー不在の構造断言）。"
     },
     {
       "id": "bf-x-cbt02-0042",

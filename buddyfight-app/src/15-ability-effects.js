@@ -571,7 +571,24 @@ async function executeAbilityEffect(effect, context) {
       }
     }
   }
-  if (effect.op === "addTurnContinuous") {
+  if (effect.op === "addTurnContinuous" && effect.anchor === "player") {
+    // E-XB64(X2-BT01/0052 逆雷の源泉③): プレイヤー単位のターン限定継続（発生源カードに縛られない匿名アンカー）。
+    //   「そのターン中、君の場にカード名に『ヤミゲドウ』を含むモンスターがいるなら、君のカードの効果で相手に与える
+    //   ダメージは減らない」＝魔法（解決後ドロップへ移り場に残らない）から張る player-wide 継続。card-anchored な
+    //   turnContinuous では魔法自身が場を離れて消えるため、state.turnPlayerContinuous[owner] に格納する（state 常駐＝
+    //   room 復元/リプレイで往復・JSON 直列化可）。継続側 conditions（ownFieldCardExists 等）はスキャナが毎評価する
+    //   ため「ヤミゲドウが在場のあいだだけ」効く。clearTurnModifiers（src/11）がターン境界で破棄する。
+    //   スキャナ（例 ownEffectDamageUnreducibleActive・src/04）が effect.op を op として読むため、item は素の
+    //   {op, conditions, ...} を積む（deep-copy して発生源の後続変更から隔離）。既存カードは anchor 未指定＝この分岐を踏まない。
+    state.turnPlayerContinuous ||= [[], []];
+    const seat = context.owner;
+    if ((seat === 0 || seat === 1) && effect.continuous) {
+      const items = Array.isArray(effect.continuous) ? effect.continuous : [effect.continuous];
+      state.turnPlayerContinuous[seat] ||= [];
+      items.forEach((item) => state.turnPlayerContinuous[seat].push(JSON.parse(JSON.stringify(item))));
+      addLog(`${context.card?.name || "効果"}のターン中の継続効果を適用しました。`);
+    }
+  } else if (effect.op === "addTurnContinuous") {
     // X19(D-BT01/0131 レビュー修正): ターン中の継続効果を発生源カードに一時付与する
     //（「そのターン中、君のレフトとライトのサイズ2以下の《百鬼》はサイズ0になる」= 発動後にコールした
     //  カードにも適用されるルール変更。activeContinuousEffects が turnContinuous を合流し、
@@ -849,20 +866,46 @@ async function executeAbilityEffect(effect, context) {
         noteGaugePlaced(seat, toGauge.length); // E-XB12: scry の選択分をゲージへ（gaugePlaced 誘発funnelは非経由）
         remaining = remaining.filter((c) => !toGauge.includes(c));
       }
-      // (2) 手札へ加える（handMax 枚まで・0枚可）。
+      // (2) 手札へ加える（handMax 枚まで・0枚可）。E-XB74②(X2-SP/0040 角王の共鳴): handFilter 指定時は一致札のみ提示。
+      //     未指定は remaining 全体＝既存 X-BT04/0008 と完全に同一挙動（後方互換）。
       let toHand = [];
       if (remaining.length > 0 && handMax > 0) {
-        const handPickMax = Math.min(handMax, remaining.length);
-        const sel = await chooseCardEntries(remaining.map((c) => ({ card: c })), {
-          title: effect.title || context.card?.name,
-          lead: effect.handLead || `手札に加えるカードを選んでください（${handPickMax}枚まで）。`,
-          min: 0, max: handPickMax, forceDialog: true,
-          promptSeat: context.owner,
-          purpose: "search",
-        });
-        toHand = (sel || []).map((e) => e.card);
-        toHand.forEach((c) => player.hand.push(c));
-        remaining = remaining.filter((c) => !toHand.includes(c));
+        const handEligible = effect.handFilter ? remaining.filter((c) => matchesCardFilter(c, effect.handFilter)) : remaining;
+        const handPickMax = Math.min(handMax, handEligible.length);
+        if (handPickMax > 0) {
+          const sel = await chooseCardEntries(handEligible.map((c) => ({ card: c })), {
+            title: effect.title || context.card?.name,
+            lead: effect.handLead || `手札に加えるカードを選んでください（${handPickMax}枚まで）。`,
+            min: 0, max: handPickMax, forceDialog: true,
+            promptSeat: context.owner,
+            purpose: "search",
+          });
+          toHand = (sel || []).map((e) => e.card);
+          toHand.forEach((c) => player.hand.push(c));
+          remaining = remaining.filter((c) => !toHand.includes(c));
+        }
+      }
+      // (2b) ドロップゾーンへ置く（dropMax 枚まで・0枚可・dropFilter 指定時は一致札のみ）。E-XB74②(0040 角王3枚まで
+      //      ドロップ)。既存の gauge/hand/bottom 呼び出しは dropMax 未指定＝この段まるごとスキップ＝不変。
+      //      「見た」札を置く扱いのため、非破壊 look の作法に合わせ deckMilled/movedToDrop 誘発は発火させない
+      //      （意図的近似＝この op の gauge/hand/bottom 各段と同じく funnel を経由しない・保存則は player.drop へ直接移す）。
+      let toDrop = [];
+      const dropMax = effect.dropMax ?? 0;
+      if (remaining.length > 0 && dropMax > 0) {
+        const dropEligible = effect.dropFilter ? remaining.filter((c) => matchesCardFilter(c, effect.dropFilter)) : remaining;
+        const dropPickMax = Math.min(dropMax, dropEligible.length);
+        if (dropPickMax > 0) {
+          const sel = await chooseCardEntries(dropEligible.map((c) => ({ card: c })), {
+            title: effect.title || context.card?.name,
+            lead: effect.dropLead || `ドロップゾーンに置くカードを選んでください（${dropPickMax}枚まで）。`,
+            min: 0, max: dropPickMax, forceDialog: true,
+            promptSeat: context.owner,
+            purpose: "search",
+          });
+          toDrop = (sel || []).map((e) => e.card);
+          toDrop.forEach((c) => player.drop.push(c));
+          remaining = remaining.filter((c) => !toDrop.includes(c));
+        }
       }
       // (3) 残りをデッキの下へ好きな順（2枚以上なら下での積み順を1枚ずつ選ばせる）。
       let rest = remaining;
@@ -884,8 +927,9 @@ async function executeAbilityEffect(effect, context) {
       }
       rest.forEach((c) => player.deck.unshift(c)); // 下バッチ: rest[0] が先に引く側（既存 bottom 規約）
       queueDeckBottomPlacedTriggers(seat, rest); // E-XB18: デッキ下流入（ミルではない）
-      // 秘匿: 枚数のみログ（カード名は出さない＝相手先読み防止）。
-      addLog(`${context.card?.name || "効果"}の効果でデッキの上${revealed.length}枚を見て、${toGauge.length}枚をゲージ・${toHand.length}枚を手札に加えました。`);
+      // 秘匿: 枚数のみログ（カード名は出さない＝相手先読み防止）。E-XB74②: ドロップ分は toDrop>0 の時だけ付記
+      //（dropMax 未指定の既存 gauge/hand/bottom 呼び出しは toDrop=0＝ログ byte 不変）。
+      addLog(`${context.card?.name || "効果"}の効果でデッキの上${revealed.length}枚を見て、${toGauge.length}枚をゲージ・${toHand.length}枚を手札${toDrop.length > 0 ? `・${toDrop.length}枚をドロップ` : ""}に加えました。`);
     }
   }
   if (effect.op === "lookTopSelectToBottomRestToTop") {
@@ -1334,7 +1378,18 @@ async function executeAbilityEffect(effect, context) {
   }
   if (effect.op === "setNextActivatedCostMayUseOpponentGauge") {
     player.nextActivatedCostMayUseOpponentGauge = true;
-    addLog(`${context.card.name}の効果で、次に君の場のモンスターの【起動】でゲージを払う時、相手のゲージからも払えます。`);
+    // E-XB73(X2-SP/0041 ガッチャ！(捕まえたぜ！)): includeSpellCost:true で「次の君の魔法の【使用コスト】」でも
+    // 相手ゲージを払えるようにする。旧ガッチャ(bt03-0033)は 起動 のみ＝includeSpellCost 未指定＝従来どおり
+    // spell flag を立てない（魔法 使用コストへは波及しない）。両者は「魔法か起動どちらか1回」の共有ワンショットで、
+    // 先にゲージを払った側が両フラグを消費する（useHandAbilityAction / useFieldAbilityAction 双方が両フラグを落とす）。
+    if (effect.includeSpellCost) {
+      player.nextSpellCostMayUseOpponentGauge = true;
+    }
+    addLog(
+      effect.includeSpellCost
+        ? `${context.card.name}の効果で、次に君の魔法の【使用コスト】か君の場のモンスターの【起動】でゲージを払う時、相手のゲージからも払えます。`
+        : `${context.card.name}の効果で、次に君の場のモンスターの【起動】でゲージを払う時、相手のゲージからも払えます。`,
+    );
   }
   if (effect.op === "eachPlayerTopDeckToDropThenDamageOrLife") {
     for (const owner of [context.owner, 1 - context.owner]) {
@@ -1391,6 +1446,21 @@ async function executeAbilityEffect(effect, context) {
   if (effect.op === "rockPaperScissorsDamageLosers") {
     const result = await resolveRockPaperScissors(context);
     const amount = effect.amount || 1;
+    // E-XB72(X2-SP/0036 トバク・ジバク！): drawPerWin 指定時、勝ったファイターが drawPerWin 枚ドローする
+    // （1回のジャンケンで完結＝別途 rockPaperScissors ゲートで2回目を発生させない）。アイコ（draw）は勝者不在
+    // ＝ドローなし。勝者は result="win"→使用者・"lose"→相手。カード文面順（勝者ドロー→敗者ダメージ）に合わせ先に処理。
+    if (effect.drawPerWin) {
+      const winnerSeat = result === "win" ? context.owner : result === "lose" ? 1 - context.owner : null;
+      if (winnerSeat !== null) {
+        if (isDrawByEffectPrevented(winnerSeat)) {
+          addLog(`${state.players[winnerSeat].name}はカードの効果でカードを引けません。`);
+        } else {
+          drawCards(state.players[winnerSeat], effect.drawPerWin);
+          addLog(`${context.card?.name || "効果"}: ${state.players[winnerSeat].name}はジャンケンに勝ち、${effect.drawPerWin}枚引きました。`);
+          await runFieldEventTriggers("drawByEffect", winnerSeat);
+        }
+      }
+    }
     // 既定: アイコは両ファイターが敗者(BT03/0065 大入りパンドラ「勝てなかった＝アイコも被弾」)。
     // noDrawDamage:true のカード(EB02/0063「負けたファイター」)ではアイコで誰も被弾しない。
     const drawHitsBoth = result === "draw" && !effect.noDrawDamage;
@@ -1400,6 +1470,26 @@ async function executeAbilityEffect(effect, context) {
     if (result === "lose" || drawHitsBoth) {
       applyDamageToPlayer(context.owner, amount, { sourceName: context.card?.name, sourceCard: context.card, sourceOwner: context.owner });
     }
+  }
+  if (effect.op === "rockPaperScissorsBranch") {
+    // E-XB74①(X2-SP/0013 再来の勇者 ドラム): 相手と1回だけジャンケンし、結果(win/lose/draw)に対応するサブ effects 配列を
+    // 順に解決する（単発ロール→複数帰結）。effect.rockPaperScissors ゲート（executeAbilityEffect 冒頭）は「1効果=1ロール」で
+    // 複数帰結には別々のロールが要り「相手とジャンケンする」1回に反するため、この op で1ロール完結にする。0013 は
+    // winEffects=[draw1・modifyStats{$self,turn,power:5000,critical:2}・grantKeyword{$self,turn,penetrate}]。
+    // loseEffects/drawEffects も任意（結果分岐の一般形）。既存カードは未使用＝後方互換。ジャンケンは既存 RNG 経路
+    // （resolveRockPaperScissors）を通す＝シード addLog なし・T13/リプレイ安全。
+    const rpsBranchResult = await resolveRockPaperScissors(context);
+    const branch =
+      rpsBranchResult === "win" ? effect.winEffects
+        : rpsBranchResult === "lose" ? effect.loseEffects
+          : rpsBranchResult === "draw" ? effect.drawEffects
+            : null;
+    if (Array.isArray(branch)) {
+      for (const sub of branch) {
+        await executeAbilityEffect(sub, context);
+      }
+    }
+    return;
   }
   if (effect.op === "topTwoRevealOneOpponentRandomToHandOrGauge") {
     await resolveTopTwoRevealOneOpponentRandomToHandOrGauge(effect, context);
@@ -3592,6 +3682,16 @@ function resolveAmountFrom(spec, context) {
     const count = (context.costDiscardedCards || []).filter((c) => matchesCardFilter(c, spec.filter || {})).length;
     return count * (spec.per ?? 1);
   }
+  if (spec.source === "monstersDestroyedByMeThisTurn") {
+    // E-XB70(X2-SP/0044 ランペイジ・ブラスター・レッドヒート！): このターン中に指定側(controller・既定self)の
+    // カードが破壊したモンスターの枚数。destroyFieldCard が破壊者席別に累計した state.destroyedByOwnerThisTurn を
+    // 参照（ターン境界でリセット）。「＋２」は plus:2（fieldCardCount と同じ plus オフセット慣例）。max/per 対応。
+    // controller は破壊“した”側の視点で解く（"self"=自席が破壊した数・"opponent"=相手が破壊した数）。
+    const owner = ownerOf(spec.controller || "self");
+    const count = (state.destroyedByOwnerThisTurn || [0, 0])[owner] || 0;
+    const capped = spec.max !== undefined ? Math.min(count, spec.max) : count;
+    return capped * (spec.per ?? 1) + (spec.plus || 0);
+  }
   return 0;
 }
 
@@ -3671,6 +3771,23 @@ function matchesRelativeCardFilter(card, filter = {}, context = {}) {
   return matchesCardFilter(card, cardFilter);
 }
 
+// E-XB61(X2-BT01/0001 完全竜化 竜牙王): fight-limit の count 化。
+// `state.fightLimits[owner][key]` は歴史的に boolean（true=このファイト中使用済み）。これを回数記帳へ後方互換で拡張する。
+// 読み手は boolean(true) と 数値の双方を「使用回数」として解釈する（既存 state / 進行中部屋 / リプレイ golden との混在互換）:
+//   undefined/false → 0回, true → 1回, 数値N → N回。
+function fightLimitUseCount(value) {
+  if (value === true) return 1;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  return 0;
+}
+
+// limit.count（fight スコープの許容使用回数）。未指定/不正は 1（＝既存全カードと同一挙動）。
+function normalizedFightLimitMax(limit) {
+  const n = Number(limit && limit.count);
+  if (Number.isFinite(n) && n >= 1) return Math.floor(n);
+  return 1;
+}
+
 function isAbilityLimitUsed(owner, card, ability) {
   const limit = normalizedAbilityLimit(ability);
   if (!limit) {
@@ -3678,7 +3795,9 @@ function isAbilityLimitUsed(owner, card, ability) {
   }
   const key = abilityLimitKey(card, ability, limit);
   if (limit.scope === "fight") {
-    return Boolean(state.fightLimits?.[owner]?.[key]);
+    // count 未指定は max=1 ＝ 0回なら未使用/1回以上で使用済み（従来の Boolean 判定と完全一致）。
+    // count:N は N 回まで許可（N回目までは false＝使用可、N回到達で true＝ブロック）。
+    return fightLimitUseCount(state.fightLimits?.[owner]?.[key]) >= normalizedFightLimitMax(limit);
   }
   if (limit.scope === "turn") {
     return Boolean(state.players[owner].oncePerTurn[key]);
@@ -3696,7 +3815,14 @@ function markAbilityLimit(owner, card, ability) {
   }
   const key = abilityLimitKey(card, ability, limit);
   if (limit.scope === "fight") {
-    state.fightLimits[owner][key] = true;
+    const max = normalizedFightLimitMax(limit);
+    if (max <= 1) {
+      // count 未指定/1 は従来どおり boolean true を書き込む（既存全カード・既存 golden とバイト互換を保つ）。
+      state.fightLimits[owner][key] = true;
+    } else {
+      // count:N のときだけ数値カウンタで記帳（max を上限に飽和）。
+      state.fightLimits[owner][key] = Math.min(fightLimitUseCount(state.fightLimits[owner][key]) + 1, max);
+    }
   }
   if (limit.scope === "turn") {
     state.players[owner].oncePerTurn[key] = true;

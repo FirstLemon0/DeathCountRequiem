@@ -474,12 +474,24 @@ async function destroyFieldCard(owner, zone, options = {}) {
   // sizeAtDestroy は recordDestroyedEventWindow と同じ frozenSizeAtDestroy で算出（conditionalSize未クリアのこの時点）。
   // wasMonster は破壊時点の実効カード種を凍結（monstersDestroyedThisTurn の導出元）。
   state.destroyedCardsThisTurn = state.destroyedCardsThisTurn || [[], []];
+  const wasMonsterAtDestroy = effectiveCardType(card) === "monster";
   state.destroyedCardsThisTurn[owner].push({
     card,
     sizeAtDestroy: frozenSizeAtDestroy(card),
-    wasMonster: effectiveCardType(card) === "monster",
+    wasMonster: wasMonsterAtDestroy,
   });
   syncMonstersDestroyedThisTurn();
+  // E-XB70(X2-SP/0044 ランペイジ・ブラスター・レッドヒート！): 破壊“した”側（destroyer）の席別モンスター破壊数を
+  // 累計する。破壊者は cause.sourceOwner（戦闘=攻撃側席・効果=発生源席）。この行に到達するのは各種置換/ソウルガードを
+  // 通過した“実破壊”のみ＝実際に破壊したモンスターだけを数える。sourceOwner を持たない破壊（ルール上のドロップ等は
+  // そもそも destroyFieldCard を通らない／cause 無しの破壊）は加算しない＝帰属不明分は数えない忠実側。
+  if (wasMonsterAtDestroy) {
+    const destroyerOwner = options.cause?.sourceOwner;
+    if (destroyerOwner === 0 || destroyerOwner === 1) {
+      state.destroyedByOwnerThisTurn = state.destroyedByOwnerThisTurn || [0, 0];
+      state.destroyedByOwnerThisTurn[destroyerOwner] += 1;
+    }
+  }
   if (zone === "item" && player.arrivalCardId === card.instanceId) {
     player.arrivalCardId = null;
   }
@@ -611,16 +623,39 @@ async function applyAllyDestroyReplacement(card, owner, options = {}) {
       if (rule.from.byEffect && !options.cause?.byEffect) continue;
       if (rule.from.byOpponent && !options.cause?.byOpponent) continue;
     }
-    const cost = adjustedCostSteps(player, replacer, "destroyReplacement", rule.cost || [{ op: "dropSource" }]);
+    // E-XB62(X2-BT01/0076 オルコスソード・ドラゴン②): redirectTo:"sourceSoul" は「破壊されてドロップに置かれる」を
+    //   「発生源（replacer）のソウルに入れる」へ置換する（庇い＝カードは破壊されず replacer のソウルへ移る）。コスト無し
+    //   （replacer 自身のドロップ送り＝dropSource は起こさない）ため既定コストを空にする。saveTo/場残しの既定 dropSource とは別扱い。
+    const defaultCost = rule.redirectTo ? [] : [{ op: "dropSource" }];
+    const cost = adjustedCostSteps(player, replacer, "destroyReplacement", rule.cost || defaultCost);
     if (!canPayStructuredCost(player, cost, { sourceCard: replacer, selectedCard: replacer }).ok) {
       continue;
     }
-    if (rule.optional && !(await confirmChoiceAsync(owner, `${replacer.name}を置いて${card.name}を場に残しますか？`, { purpose: "destroy-replacement" }))) {
+    const confirmMessage = rule.redirectTo === "sourceSoul"
+      ? `${card.name}を${replacer.name}のソウルに入れますか？`
+      : `${replacer.name}を置いて${card.name}を場に残しますか？`;
+    if (rule.optional && !(await confirmChoiceAsync(owner, confirmMessage, { purpose: "destroy-replacement" }))) {
       continue;
     }
     const payment = payStructuredCost(player, cost, { sourceCard: replacer, selectedCard: replacer });
     if (!payment.ok) {
       continue;
+    }
+    if (rule.redirectTo === "sourceSoul") {
+      // 第三者被破壊カード card を、発生源 replacer のソウルへ移す（破壊のかわり＝ドロップに置かれない）。
+      // card 自身のソウルは通常の破壊同様ドロップへ（ソウル札は自分のソウルを持てない＝保存則）。enteredSoul/
+      // ソウル加入誘発は putCardsToSoulWithTrigger（funnel）で正しく発火する。card は破壊/離場としては数えない。
+      const slot = findFieldCardSlot(card);
+      if (slot) {
+        player.drop.push(...(card.soul || []));
+        card.soul = [];
+        card.currentType = card.baseType || card.type;
+        player.field[slot.zone] = null;
+        restoreFaceDownMonsterPrint(card);
+        putCardsToSoulWithTrigger(replacer, owner, [card], "field");
+      }
+      addLog(`${card.name}は破壊されず${replacer.name}のソウルに入りました。`);
+      return true;
     }
     if (rule.saveTo) {
       // 破壊のかわりに saveTo（手札等）へ移す（紅蓮のリング 0031「そのアイテムを手札に戻す」）。
@@ -2059,6 +2094,7 @@ async function finishAndAdvanceTurn() {
   state.attackDestroyedByAttribute = [{}, {}]; // 属性別の攻撃撃破数(このターン)をリセット
   state.destroyedCardsThisTurn = [[], []]; // このターン破壊されたカード記録(destroyedThisTurnMatchingCountGte用)をリセット
   syncMonstersDestroyedThisTurn(); // monstersDestroyedThisTurn は destroyedCardsThisTurn からの導出（リセットで[0,0]になる）
+  state.destroyedByOwnerThisTurn = [0, 0]; // E-XB70(X2-SP/0044): 破壊者席別のターン内モンスター破壊数もターン境界でリセット
   state.calledCardNamesThisTurn = [{}, {}]; // 「1ターンにN枚だけコール」(竜騎士 トモエ 0012 等)のカウンタをリセット
   state.impactMonsterCallsThisTurn = [0, 0]; // 必殺モンスター「1ターンに1枚」コール数をリセット
   state.callsThisTurn = [0, 0]; // E-XB7(X-SS03/0060): ターン内の総コール枚数（席別）をリセット
@@ -2151,6 +2187,7 @@ async function runEndTurnEffects(endingOwner) {
 function clearTurnModifiers() {
   state.spiritStrikeDamageBonus = [0, 0]; // 霊撃ブースト（ターンスコープ）をリセット
   state.standedByEffectThisTurn = [[], []]; // E-PR16(PR/0470): このターン効果でスタンドしたカード履歴をリセット
+  state.movedThisTurn = [[], []]; // E-XB69(X2-SP/0014,0027): このターン『移動』したモンスターの席別 instanceId 履歴をリセット
   state.turnDeckMilled = [0, 0]; // E8(D-CBT/PR-0330): ターン内デッキ→ドロップ ミル枚数(席別)をリセット
   state.gaugePlacedThisTurn = [0, 0]; // E-XB12(X-CP03/0069): ターン内ゲージ流入枚数(席別)をリセット
   state.turnDamageTaken = [0, 0]; // E-X2(X-SD02/0016): ターン内被ダメージ(席別)をリセット
@@ -2161,6 +2198,7 @@ function clearTurnModifiers() {
   state.callCountCapsThisTurn = []; // E-XB7(X-SS03/0060): ターン内総コール枚数キャップをリセット
   state.turnFlagNameAliases = [[], []]; // E12(D-SS02/0005): ターン限定フラッグ名エイリアスをリセット
   state.turnNullifies = []; // E2(D-SS03/0010): ターン限定の全体能力無効化(nullifyFieldAbilities)をリセット
+  state.turnPlayerContinuous = [[], []]; // E-XB64(X2-BT01/0052): プレイヤー単位のターン限定継続（匿名アンカー・魔法発）をリセット
   // X11b(D-BT01/0131): ターンスコープのサイズ上書き(setConditionalSizeScope turnScoped)と
   // X19 ターン限定継続(turnContinuous)を解除。
   state.players.forEach((player) => {
@@ -2233,6 +2271,7 @@ function clearTurnModifiers() {
   });
   state.players.forEach((player) => {
     player.nextActivatedCostMayUseOpponentGauge = false;
+    player.nextSpellCostMayUseOpponentGauge = false; // E-XB73(X2-SP/0041): 魔法【使用コスト】用の相手ゲージ許可もターン終了で失効
     player.setLockedIdsThisTurn = []; // 「そのターン中は『設置』できない」ロック(発進準備OK！等)をターン終了で解除
     zones.forEach((zone) => {
       const card = player.field[zone];
@@ -2330,6 +2369,41 @@ function stackPlayerFlag(player, flagId) {
   return true;
 }
 
+// E-XB71(X2-SP/0024): lifeZeroReplacement / lifeZeroSafeguard の追加 effects を同期実行する共通ディスパッチ。
+// resolveLifeZeroReplacements は同期経路（applyDamageToPlayer 等の非同期を使わない）ため、ライフ/手札の直接操作と
+// 同期プリミティブ（drawCards / addNextDamagePrevention）のみ扱う。lifeZeroSafeguard の従来インライン4op
+// （discardAllHand / dealDamage / gainLife / draw）を関数化し、preventAllDamageThisTurn（「そのターン中、君は
+// ダメージを受けない」= 0024 の魔法ヒット時ボーナス）を追加した上位集合。sourceCard 省略時（プレイヤー単位の
+// safeguard）はログを player 名へフォールバックさせ、従来 safeguard の出力を byte 一致で保つ（後方互換）。
+function applyLifeZeroReplacementEffects(effects, owner, sourceCard = null) {
+  const player = state.players[owner];
+  for (const eff of effects || []) {
+    if (eff.op === "discardAllHand") {
+      const discarded = player.hand.splice(0);
+      player.drop.push(...discarded);
+      if (discarded.length) addLog(`${player.name}は手札を全て捨てました。`);
+    } else if (eff.op === "dealDamage") {
+      const receiver = eff.player === "opponent" ? state.players[1 - owner] : player;
+      receiver.life -= eff.amount || 0;
+      addLog(`${sourceCard?.name || player.name}の効果で${receiver.name}に${eff.amount || 0}ダメージ！`);
+    } else if (eff.op === "gainLife") {
+      player.life += eff.amount || 0;
+    } else if (eff.op === "draw") {
+      // E-XC16(X-CP01/0062 バディトゥギャザー！): drawCards 直呼び（同期経路の作法。誘発は内部で queue）。
+      drawCards(player, eff.amount || 1);
+    } else if (eff.op === "preventAllDamageThisTurn") {
+      // src/15 の同名 op と同意味論（once:false + preventAll・untilTurnOwner=state.active で当該ターン終了に失効）。
+      addNextDamagePrevention(owner, {
+        preventAll: true,
+        once: false,
+        source: sourceCard?.name,
+        sourceCard: sourceCard || null,
+      });
+      addLog(`${sourceCard?.name || "効果"}により、このターン中${player.name}はダメージを受けません。`);
+    }
+  }
+}
+
 function resolveLifeZeroReplacements() {
   state.players.forEach((player, owner) => {
     if (player.life > 0) {
@@ -2388,26 +2462,10 @@ function resolveLifeZeroReplacements() {
         player.lifeZeroSafeguard = null;
         player.life = safeguard.life || 1;
         addLog(`${player.name}は「実は生きていた！」でライフが${player.life}になりました。`);
-        // 追加効果（蒼舞天滝陣 0037: 手札全捨て＋相手にダメージ2）を同期実行する。
-        // resolveLifeZeroReplacements は同期経路のため、ここでは applyDamageToPlayer 等の非同期を使わず
-        // ライフ/手札の直接操作のみ対応する（相手ライフ0は後続の checkWinner 本体が捕捉する）。
-        for (const eff of safeguard.effects || []) {
-          if (eff.op === "discardAllHand") {
-            const discarded = player.hand.splice(0);
-            player.drop.push(...discarded);
-            if (discarded.length) addLog(`${player.name}は手札を全て捨てました。`);
-          } else if (eff.op === "dealDamage") {
-            const receiver = eff.player === "opponent" ? state.players[1 - owner] : player;
-            receiver.life -= eff.amount || 0;
-            addLog(`${player.name}の効果で${receiver.name}に${eff.amount || 0}ダメージ！`);
-          } else if (eff.op === "gainLife") {
-            player.life += eff.amount || 0;
-          } else if (eff.op === "draw") {
-            // E-XC16(X-CP01/0062 バディトゥギャザー！): 「かわりにライフは2になり、さらにカード1枚を引く」。
-            // drawCards 直呼び（同期経路の作法＝applyDamageToPlayer 等の非同期は使わない。誘発は内部で queue）。
-            drawCards(player, eff.amount || 1);
-          }
-        }
+        // 追加効果（蒼舞天滝陣 0037: 手札全捨て＋相手にダメージ2 等）を同期実行する。共通ディスパッチ
+        // applyLifeZeroReplacementEffects（E-XB71 で lifeZeroReplacement と共有）へ委譲。sourceCard は
+        // プレイヤー単位のため渡さず（ログは従来どおり player 名フォールバック）。
+        applyLifeZeroReplacementEffects(safeguard.effects, owner);
       }
       return;
     }
@@ -2484,6 +2542,10 @@ function resolveLifeZeroReplacements() {
       drawCards(player, replacement.draw || 0);
     }
     addLog(`${card.name}の効果で${player.name}のライフは${player.life}になりました。`);
+    // E-XB71(X2-SP/0024 グローリー・シーカー "奇跡よ再び"): 置換成立（topDeckFilter=魔法一致 等の hasRequiredSoul）
+    // 時に追加 effects を解決する。0024 は preventAllDamageThisTurn（「そのターン中、君はダメージを受けない」）。
+    // 既存 lifeZeroReplacement は effects 未保持＝空ループ＝完全後方互換。owner は forEach 添字。
+    applyLifeZeroReplacementEffects(replacement.effects, owner, card);
   });
 }
 

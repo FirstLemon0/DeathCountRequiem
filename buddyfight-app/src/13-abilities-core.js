@@ -157,15 +157,25 @@ async function useHandAbilityAction(card, ability, options = {}) {
     abilityCostPurpose(ability),
     abilityCostSteps(card, ability),
   );
+  // E-XB73(X2-SP/0041): 魔法の【使用コスト】でゲージを払う場合、nextSpellCostMayUseOpponentGauge が立っていれば
+  // 相手ゲージからも払える（起動能力の useFieldAbilityAction:331 と同型・spell 限定）。共有ワンショットのため成立時は
+  // 両フラグ（spell/activated）を消費する。0033 は spell flag を立てない＝魔法へは波及しない（起動側の挙動は不変）。
+  const spellUsesGaugeCost = ability.kind === "spell" && costSteps.some((step) => step.op === "payGauge" && step.amount > 0);
+  const includeOpponentGauge = Boolean(spellUsesGaugeCost && player.nextSpellCostMayUseOpponentGauge);
   const deckBeforeCost = player.deck.length;
   const lifeBeforeCost = player.life;
   const payment = await payStructuredCostWithSelection(player, costSteps, {
     sourceCard: card,
     selectedCard: card,
+    includeOpponentGauge,
   });
   if (!payment.ok) {
     addLog(payment.reason);
     return;
+  }
+  if (includeOpponentGauge) {
+    player.nextSpellCostMayUseOpponentGauge = false;
+    player.nextActivatedCostMayUseOpponentGauge = false; // 共有ワンショット（魔法か起動どちらか1回）
   }
   const usedCard = removeSelectedFromHand();
   // 非同期誘発レースで選択カードが手札を離れていたら使用中止（callMonster と同型・fuzzer seed915）。
@@ -350,6 +360,9 @@ async function useFieldAbilityAction(card, loc = null) {
   }
   if (includeOpponentGauge) {
     player.nextActivatedCostMayUseOpponentGauge = false;
+    // E-XB73(X2-SP/0041): 「魔法か起動のどちらか1回」の共有ワンショット。起動でゲージを払った側が spell flag も
+    // 落とす（0033 は spell flag を立てないため常に no-op＝既存の起動挙動は不変）。
+    player.nextSpellCostMayUseOpponentGauge = false;
   }
   if (ability.soulSpellCast) {
     // E-XB45: 使用コスト支払い済み。ソウルの魔法を「使用」として spell の pendingAction へ流す（対抗窓→resolvePendingSpell）。
@@ -1519,6 +1532,24 @@ function checkCondition(condition, owner, context = {}) {
       .filter((card) => card && ids.includes(card.instanceId) && matchesCardFilter(card, condition.filter || {}))
       .length;
     return matched >= (condition.amount || 1);
+  }
+  if (condition.op === "monsterMovedThisTurn") {
+    // E-XB69(X2-SP/0014 旋撃のドラム,0027 奮起のハルバード・ドラゴン): このターン中に controller 側の場のモンスターが
+    // 『移動』しているか。記帳は moveFieldCard(src/07)＝『移動』キーワード（src/09）と効果移動（src/15）の唯一の
+    // choke point。standedByEffectThisTurnMatches の sibling で、原文「君の場のモンスターが移動しているなら」に忠実なよう、
+    // 記帳した instanceId が現在も controller の場に在るものだけを見る（移動後に場を離れたカードは対象外）。
+    // controller/player 省略時は自席（0014/0027 は「君の場」＝self）／"opponent" で相手席。
+    // filter 省略時は種別不問（0014）／filter 指定でカード名等を絞る（0027=nameIncludes「迅雷」）。
+    const ctrl = condition.controller ?? condition.player;
+    const idx = ctrl === "opponent" ? 1 - owner : owner;
+    const ids = state.movedThisTurn?.[idx] || [];
+    if (ids.length === 0) {
+      return false;
+    }
+    const controllerPlayer = state.players[idx];
+    return zones
+      .map((zone) => controllerPlayer?.field?.[zone])
+      .some((card) => card && ids.includes(card.instanceId) && matchesCardFilter(card, condition.filter || {}));
   }
   if (condition.op === "isFirstBattleEndWindow") {
     // 「(相手のターン中、)1回目のバトル終了時に使える」(ヴァイシュタッツ 0095) の近似。

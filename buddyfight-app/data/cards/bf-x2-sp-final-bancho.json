@@ -1,0 +1,4360 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "id": "bf-x2-sp-final-bancho",
+    "name": "バッツ オールスターファイト スペシャルパック「ファイナル番長」",
+    "kind": "スペシャルパック",
+    "generation": "バッツ",
+    "source": "https://fc-buddyfight.com/cardlist/cardsearch/?expansion=78"
+  },
+  "cards": [
+    {
+      "id": "bf-x2-sp-0001",
+      "no": "X2-SP/0001",
+      "name": "五角超竜大天帝 ムゲン・ドラム",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "『角王』",
+        "■このカードはセンターにコールできない。",
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■君がダメージを受けた時、相手の場のモンスター１枚を破壊し、君のライフを＋１！",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "ドラゴンW",
+        "awayMaxCopies": 1
+      },
+      "cannotCallZones": [
+        "center"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0001-damagereceived-destroy-life",
+          "kind": "triggered",
+          "event": "damageReceived",
+          "allowMissingTarget": true,
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "五角超竜大天帝 ムゲン・ドラム（角王）。①『このカードはセンターにコールできない。』=cannotCallZones:[\"center\"]（H-BT03/H-PP01系角王ボスの確立表現、bf-x-ss01-gokakujin-vs-hyakurai.json X-SS01/0022五角竜王ドラム“SD”等の多数precedent）。②【コールコスト】『君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。』=costs.call:[putTopDeckToSoul{amount:1},payGauge{amount:2}]（原文記載順どおり）。③『君がダメージを受けた時、相手の場のモンスター１枚を破壊し、君のライフを＋１！』=kind:triggered,event:\"damageReceived\"（bare・自身の所有者がダメージを受けた時に直接発火。queueDamageReceivedTriggers、src/11-destroy-turn.js:1325-1351。bf-x-bt04-rainbow-striker.json X-BT04/0032五角超騎竜砂塵杖のアルカイド等の確立precedent）+ability直下allowMissingTarget:true＋target:{fieldCard,controller:opponent,allowMissingTarget:true,filter:{cardType:monster}}（x74規約3点『allowMissingTargetはability直下』に従い両方に付与）+effects:[destroy{target:$target},gainLife{amount:1}]（bf-d-bt04-kagayake-super-sun-dragon.json D-BT04/0110「正義の鉄槌！」の『相手の場のモンスター1枚を破壊し、君のライフを+2！』のdestroy(target)→gainLife連結骨格を踏襲。相手モンスターが0体でも破壊はno-op・ライフ+1は無条件で成立＝allowMissingTargetにより両効果が独立して解決）。④『２回攻撃』『ソウルガード』=keywords:[doubleAttack,soulguard]。角王(deckAnyFlag)={homeWorld:ドラゴンW,awayMaxCopies:1}。grep自己検査: cannotCallZones(src/07-actions-turn.js)/putTopDeckToSoul・payGauge cost 3経路(src/04-cost-resource.js)/event:damageReceived配信(src/11-destroy-turn.js:1325-1351)/target+allowMissingTarget二重付与(src/13-abilities-core.js:33,148、src/14-ability-script.js:51,80)/destroy target単体形・gainLife(src/15-ability-effects.js) 全実在確認。VM検証(x78-b1-verify.js): (A)callMonster実経路でセンターへの通常コールが拒否されレフト/ライトへはデッキ上1枚をソウルへ入れゲージ2でコールできる、(B)相手が場にモンスターを持つ状態で自分がダメージを受けると相手モンスター1枚が破壊され自ライフ+1、(C)相手の場にモンスターが無い状態でダメージを受けてもライフ+1だけは成立しエラーにならない、を実測。"
+    },
+    {
+      "id": "bf-x2-sp-0002",
+      "no": "X2-SP/0002",
+      "name": "無邪気な太陽神 バルドラゴン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "太陽竜"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■このカードが登場した時、君のドロップゾーンの《太陽竜》２枚を君のデッキの下に好きな順番で置いてよい。置いたら、君のライフを６にし、君のデッキから《太陽竜》の、アイテムか必殺モンスター１枚までを手札に加え、デッキをシャッフルする。",
+        "『貫通』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0002-enter-drop-bottom-search",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "d",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "太陽竜"
+              },
+              "min": 2,
+              "max": 2,
+              "amount": 2,
+              "require": false,
+              "title": "無邪気な太陽神 バルドラゴン",
+              "lead": "君のデッキの下に好きな順番で置く、ドロップゾーンの《太陽竜》2枚を選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "moveSelectedToDeckBottomOrdered",
+              "var": "d",
+              "require": false
+            },
+            {
+              "op": "ifSelection",
+              "var": "d",
+              "then": [
+                {
+                  "op": "setLife",
+                  "life": 6
+                },
+                {
+                  "op": "searchDeckToHand",
+                  "filter": {
+                    "attribute": "太陽竜",
+                    "cardTypeIn": [
+                      "item",
+                      "impactMonster"
+                    ]
+                  },
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "無邪気な太陽神 バルドラゴン。①【コールコスト】デッキ上1枚をソウルへ+ゲージ1=costs.call:[putTopDeckToSoul(1),payGauge(1)]（多数precedent標準形）。②『このカードが登場した時、君のドロップゾーンの《太陽竜》２枚を君のデッキの下に好きな順番で置いてよい。置いたら、君のライフを６にし、君のデッキから《太陽竜》の、アイテムか必殺モンスター１枚までを手札に加え、デッキをシャッフルする。』=event:enter+script:[selectCards(from:drop,filter:{cardType:monster,attribute:太陽竜},min:2,max:2,amount:2,require:false)→moveSelectedToDeckBottomOrdered(require:false)→ifSelection(then:[setLife(6),searchDeckToHand(filter:{attribute:太陽竜,cardTypeIn:[item,impactMonster]},amount:1)])]（『２枚を…置いてよい』＝0枚か2枚の二択。data/cards/bf-x2-bt01-legend-buddies.json X2-BT01/0005 再誕の氷竜 ロワ・ミセリアの『３枚を…置いてよい』min:max:3,require:falseと同型・枚数のみ2に差替。setLife=『ライフを６にし』の固定代入、gainLifeの加算では表現不可なため専用op使用（src/15-ability-effects.js:692、bf-x-ub03-complete-chaos.json等の確立precedent）。『《太陽竜》の、アイテムか必殺モンスター』=filter:{attribute:太陽竜,cardTypeIn:[item,impactMonster]}（cardTypeIn内OR・attributeとAND、src/17-targeting.js:367）。searchDeckToHandは既定でshuffle!==false=自動デッキシャッフル込み（『デッキをシャッフルする』を追加op無しで充足、src/15-ability-effects.js:400-437）。③『貫通』『ソウルガード』=keywords:[penetrate,soulguard]。grep自己検査: putTopDeckToSoul/payGauge(src/04-cost-resource.js)/selectCards from:drop min:max:2 require:false(src/14-ability-script.js、X2-BT01/0005実例)/moveSelectedToDeckBottomOrdered(src/14-ability-script.js:1405)/ifSelection(src/14-ability-script.js:1200)/setLife(src/15-ability-effects.js:692、script許可=src/14:3411)/searchDeckToHand+cardTypeIn(src/15-ability-effects.js:400、src/17-targeting.js:367) 全実在確認。VM検証: x78-b4-verify.js test0002参照（ドロップに太陽竜が1枚以下では登場時に何も起きない／2枚以上ある状態で2枚を選んでデッキ下へ置くとライフが6になり、デッキから太陽竜のアイテムか必殺モンスターを1枚まで手札に加えデッキがシャッフルされる／選ばない場合は何も起きないことを確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0003",
+      "no": "X2-SP/0003",
+      "name": "冠絶の覇竜王 バッツ・ザ・インフィニティ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 2,
+      "power": 13000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■君のターン中、場のこのカードは破壊されない。",
+        "■このカードが攻撃した時、君のドロップゾーンのカードのワールド名が３種類以上なら、そのターン中、このカードは『３回攻撃』を得る。さらに、５種類以上なら、相手の場のモンスター１枚までを破壊し、７種類以上なら、相手にダメージ２！",
+        "『貫通』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "penetrate"
+      ],
+      "destroyImmunity": [
+        {
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        },
+        {
+          "from": {
+            "byBattle": true
+          },
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0003-attack-worldcount-scaling",
+          "kind": "triggered",
+          "event": "attack",
+          "script": [
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "cardCount",
+                "controller": "self",
+                "pile": "drop",
+                "distinct": "distinctByWorld",
+                "cmp": "gte",
+                "amount": 3
+              },
+              "then": [
+                {
+                  "op": "grantKeyword",
+                  "target": "$self",
+                  "keyword": "tripleAttack",
+                  "duration": "turn"
+                }
+              ]
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "cardCount",
+                "controller": "self",
+                "pile": "drop",
+                "distinct": "distinctByWorld",
+                "cmp": "gte",
+                "amount": 5
+              },
+              "then": [
+                {
+                  "op": "selectCards",
+                  "var": "d",
+                  "from": "field",
+                  "controller": "opponent",
+                  "filter": {
+                    "cardType": "monster"
+                  },
+                  "min": 0,
+                  "max": 1,
+                  "amount": 1,
+                  "require": false,
+                  "title": "冠絶の覇竜王 バッツ・ザ・インフィニティ",
+                  "lead": "破壊する、相手の場のモンスターを1枚まで選んでください。"
+                },
+                {
+                  "op": "destroySelected",
+                  "var": "d",
+                  "require": false
+                }
+              ]
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "cardCount",
+                "controller": "self",
+                "pile": "drop",
+                "distinct": "distinctByWorld",
+                "cmp": "gte",
+                "amount": 7
+              },
+              "then": [
+                {
+                  "op": "dealDamage",
+                  "player": "opponent",
+                  "amount": 2
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "冠絶の覇竜王 バッツ・ザ・インフィニティ（角王印字なし＝deckAnyFlag無し）。①【コールコスト】ゲージ2=costs.call:[payGauge{amount:2}]。②『君のターン中、場のこのカードは破壊されない。』=card級destroyImmunity 2エントリ分割（{conditions:[turnOwnerIsSelf]}=効果破壊保護／{from:{byBattle:true},conditions:[turnOwnerIsSelf]}=バトル破壊保護。destroyImmunityEntryBlocks[src/11-destroy-turn.js:220-241]はfrom.byBattle未指定エントリをバトル破壊に適用しない実装のため2エントリ必須。bf-x2-bt01-legend-buddies.json X2-BT01/0071未来への牙バールバッツ・フューチャークロスの一字一句同一文『君のターン中、場のこのカードは破壊されず』と完全同型の直接precedent）。③『このカードが攻撃した時、君のドロップゾーンのカードのワールド名が３種類以上なら、そのターン中、このカードは『３回攻撃』を得る。さらに、５種類以上なら、相手の場のモンスター１枚までを破壊し、７種類以上なら、相手にダメージ２！』=kind:triggered,event:\"attack\"（bare・自身が攻撃した時に直接発火）+script:3段のifCondition（cardCount{controller:self,pile:drop,distinct:distinctByWorld,cmp:gte,amount:N}、N=3/5/7の閾値昇順。distinctByWorldはbf-x-bt03-gyakuten-raiteigun.json X-BT03/0001等の確立条件op、src/13-abilities-core.js:822-868,854）: (a)3種以上then=[grantKeyword{target:$self,keyword:tripleAttack,duration:turn}]（scriptからのgrantKeywordはisScriptEffectStep許可リスト・target:$selfはresolveEffectReferenceが発生源へ解決、bf-x-bt01-reborn-of-satan.json X-BT01/0074インフェルノの『ifCondition(script)のthenでstandTarget target:$self』と同型の確立慣用）、(b)5種以上then=[selectCards{from:field,controller:opponent,filter:{cardType:monster},min:0,max:1,require:false}→destroySelected{var:d,require:false}]（『1枚までを破壊』＝選択0枚も可、destroySelectedはisScriptEffectStepでなく専用dispatch、src/14-ability-script.js:1597-1627）、(c)7種以上then=[dealDamage{player:opponent,amount:2}]。ifConditionの3分岐は互いに独立評価（原文『さらに』の累積構造どおり閾値を跨ぐたびに前段の効果も維持される。前段の『３回攻撃』はduration:turnのgrantKeywordのため独立効果として残る）。効果解決順は原文記載順（３回攻撃→destroy→dealDamage）どおりscript配列の並びで担保。ability.target未使用のためx77-slice x0059の『script使用時はability.target自動解決が働かない』注意は非該当（本カードはtarget自体を使わずscript内selectCardsで完結）。④『貫通』=keywords:[penetrate]。角王印字なしのためdeckAnyFlagは付与しない。grep自己検査: payGauge/destroyImmunity 2エントリ+turnOwnerIsSelf+from.byBattle(src/11-destroy-turn.js:196-241、X2-BT01/0071実例)/event:attack bare発火(src/09-attack.js)/ifCondition(src/14-ability-script.js:1222-1229)/cardCount+distinctByWorld pile:drop(src/13-abilities-core.js:822-868,854)/grantKeyword target:$self+duration:turn(isScriptEffectStep許可リスト、src/14-ability-script.js内grantKeyword項)/selectCards+destroySelected(src/14-ability-script.js:1597-1627)/dealDamage(isScriptEffectStep許可リスト) 全実在確認。VM検証(x78-b1-verify.js): (A)callMonster実経路でゲージ2コール、(B)destroyFieldCard実経路（cause:byEffect/byBattle）で自分のターン中はいずれも阻止され相手のターン中は破壊される、(C)ドロップのワールド種類が2種類以下では攻撃してもこのカードは『３回攻撃』を得ない、(D)3種類以上で『３回攻撃』を得て5種類未満では相手モンスターは破壊されない、(E)5種類以上で相手の場のモンスター1枚まで選んで破壊できる（相手モンスター0体でもno-op）、(F)7種類以上で相手に追加でダメージ2、を実測。"
+    },
+    {
+      "id": "bf-x2-sp-0004",
+      "no": "X2-SP/0004",
+      "name": "未来からの力 ドラム・ザ・フューチャー・リミットブレイク",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 2,
+      "power": 11000,
+      "critical": 3,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】君の場のモンスター１枚以上好きな枚数をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■このカードが連携攻撃した時、相手の場のカード全てを破壊し、破壊した枚数分、カードを引き、相手にダメージ！",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putSelectedOwnFieldCardsToSoul",
+            "filter": {
+              "cardType": "monster"
+            },
+            "min": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0004-linkattack-destroyall-draw-damage",
+          "kind": "triggered",
+          "event": "allyLinkAttack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroy",
+              "scope": "opponent",
+              "filter": {}
+            },
+            {
+              "op": "draw",
+              "amountFrom": {
+                "source": "lastDestroyedCount"
+              }
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amountFrom": {
+                "source": "lastDestroyedCount"
+              }
+            }
+          ]
+        }
+      ],
+      "_note": "未来からの力 ドラム・ザ・フューチャー・リミットブレイク（角王印字なし）。①【コールコスト】『君の場のモンスター１枚以上好きな枚数をこのカードのソウルに入れ、ゲージ２を払う。』=costs.call:[putSelectedOwnFieldCardsToSoul{filter:{cardType:monster},min:1},payGauge{amount:2}]（max省略=候補全数上限の確立慣用。bf-x2-bt01-legend-buddies.json X2-BT01/0027超太陽神竜バルソレイユ・ディオスの一字一句同一文『君の場のモンスター1枚以上好きな枚数をこのカードのソウルに入れ、ゲージ3を払う』と完全同型の直接precedent、amountのみ差替）。②『このカードが連携攻撃した時、相手の場のカード全てを破壊し、破壊した枚数分、カードを引き、相手にダメージ！』=kind:triggered,event:\"allyLinkAttack\"+conditions:[pendingAttackBySource]（『このカードが連携攻撃した時』の確立イディオム。bf-hd-pr.json PR/0314等の多数precedent）+effects:[destroy{scope:opponent,filter:{}}（filter:{}=cardType無指定につきモンスター・アイテム問わず相手の場のカード全て。bf-x-bt01-reborn-of-satan.json X-BT01/0004の『相手の場のカード全てを破壊し』filter:{}型の直接precedent）,draw{amountFrom:{source:lastDestroyedCount}}（『破壊した枚数分、カードを引き』。draw effectのamountFrom対応はX-CP01/0020型で確立済み、src/15-ability-effects.js:286-297コメント明記）,dealDamage{player:opponent,amountFrom:{source:lastDestroyedCount}}（『相手にダメージ！』＝数値省略だが『破壊した枚数分』が直前のdraw節と共に係る一体構文と解し、同一lastDestroyedCountを再度参照。bf-x-cr-saikyou-maou.json サンダー×ボルトの『破壊した枚数分、相手にダメージ！』destroy(scope)→dealDamage(amountFrom:lastDestroyedCount)の確立precedentと同型）]。破壊耐性・ソウルガードで生き残った分はlastDestroyedCardsに積まれないため自動的にdraw/damageから除外される（忠実）。③『ソウルガード』=keywords:[soulguard]。角王印字なしのためdeckAnyFlagなし。grep自己検査: putSelectedOwnFieldCardsToSoul cost 3経路(src/04-cost-resource.js:804,1248,2032)/payGauge/event:allyLinkAttack配信(src/09-attack.js:606-616)/pendingAttackBySource(src/13-abilities-core.js)/destroy scope+filter(src/15-ability-effects.js:1626-1660)/draw amountFrom lastDestroyedCount(src/15-ability-effects.js:286-297)/dealDamage amountFrom(src/15-ability-effects.js,src/13-abilities-core.js:3406-3413) 全実在確認。VM検証(x78-b1-verify.js): (A)callMonster実経路で場のモンスター1枚以上をソウルへ入れゲージ2を払ってコールできる、(B)単独攻撃では発動しない（allyLinkAttackはattackers.length>=2でのみ発火）、(C)連携攻撃した時、相手の場のモンスター・アイテム全てが破壊され、破壊した枚数分カードを引き同枚数分相手にダメージが入る、(D)相手の場が空でも連携攻撃自体は成立しdraw/damageは0で無エラー、を実測。"
+    },
+    {
+      "id": "bf-x2-sp-0005",
+      "no": "X2-SP/0005",
+      "name": "不抜の影王 ムクロ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ヒーローW",
+      "worlds": null,
+      "attributes": [
+        "ダークヒーロー"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "『角王』",
+        "■【コールコスト】ゲージ１を払う。",
+        "■お互いのアタックフェイズ開始時、君の手札の『角王』か《ダークヒーロー》のモンスター１枚までを、【コールコスト】を払ってコールする。そのカードは場から離れるまで、サイズ０になる。",
+        "『２回攻撃』『変身』〔ゲージ１を払う〕"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "ヒーローW",
+        "awayMaxCopies": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0005-attackstart-call-hand",
+          "kind": "triggered",
+          "event": "attackStart",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "c",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "anyOf": [
+                  {
+                    "deckAnyFlag": true
+                  },
+                  {
+                    "attribute": "ダークヒーロー"
+                  }
+                ]
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "不抜の影王 ムクロ",
+              "lead": "【コールコスト】を払ってコールする、君の手札の『角王』か《ダークヒーロー》のモンスターを1枚まで選んでください。"
+            },
+            {
+              "op": "callSelectedToEmptyZones",
+              "var": "c",
+              "payCost": "call",
+              "chooseZones": true,
+              "require": false,
+              "resolveOnEnter": true,
+              "grantConditionalSize": {
+                "size": 0,
+                "unconditional": true
+              }
+            }
+          ]
+        },
+        {
+          "id": "bf-x2-sp-0005-henshin-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "bf-x2-sp-0005-henshin-field",
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        }
+      ],
+      "_note": "不抜の影王 ムクロ（角王）。①【コールコスト】ゲージ1=costs.call:[payGauge{amount:1}]。②『お互いのアタックフェイズ開始時、君の手札の『角王』か《ダークヒーロー》のモンスター１枚までを、【コールコスト】を払ってコールする。そのカードは場から離れるまで、サイズ０になる。』=kind:triggered,event:\"attackStart\"（turnOwnerIsSelf条件なし=『お互いの』。bf-x2-bt01-legend-buddies.json X2-BT01/0027の『お互いのアタックフェイズ開始時』bare event:attackStartと同型。runPhaseStartTriggers[\"attackStart\"]は各プレイヤーの攻撃フェイズ開始ごとに両者の場・条件を評価するため、条件なし=ラウンド内で自分・相手それぞれの攻撃フェイズ開始時=計2回の機会を得る）+script:[selectCards{var:c,from:hand,controller:self,filter:{cardType:monster,anyOf:[{deckAnyFlag:true},{attribute:ダークヒーロー}]},min:0,max:1,require:false,callable:true,canPayCost:call}（『角王』=filter.deckAnyFlag:true、src/17-targeting.js:363-364の確立判定。『か』=filter.anyOf、src/17-targeting.js:349-352）→callSelectedToEmptyZones{payCost:call,chooseZones:true,require:false,resolveOnEnter:true,grantConditionalSize:{size:0,unconditional:true}}]（『そのカードは場から離れるまで、サイズ０になる』=grantConditionalSize、bf-x-bt04-rainbow-striker.json X-BT04/0027等のcallSelectedToEmptyZones+grantConditionalSize確立precedent。resolveOnEnter:trueで登場時能力も正しく発火）。③『２回攻撃』『変身』〔ゲージ１を払う〕=keywords:[doubleAttack]（変身自体はkeyword化せず、bf-h-bt01-giga-future.json H-BT01/0008・0035の確立2ability形=手札版[henshin-hand:kind:activated,fromHandOnly:true,timing:[main],cost:[payGauge{1}],effects:[equipSelf]]＋モンスタースペース版[henshin-field:conditions:[sourceZoneIn{zones:[left,center,right]}],同cost/effects]で表現。memory ride-transform-source-zone確立パターン）。角王(deckAnyFlag)={homeWorld:ヒーローW,awayMaxCopies:1}。grep自己検査: payGauge/event:attackStart bare(src/07-actions-turn.js runPhaseStartTriggers)/selectCards+filter.deckAnyFlag(src/17-targeting.js:363-364)+filter.anyOf(src/17-targeting.js:349-352)/callSelectedToEmptyZones+resolveOnEnter+grantConditionalSize(src/14-ability-script.js:3158-3240)/equipSelf(src/15-ability-effects.js)/sourceZoneIn(src/13-abilities-core.js) 全実在確認。VM検証(x78-b1-verify.js): (A)callMonster実経路でゲージ1コール、(B)runPhaseStartTriggers(attackStart)実経路で自分/相手いずれの攻撃フェイズ開始時にも手札の『角王』か《ダークヒーロー》モンスターを1枚まで選んでコールコストを払ってコールでき、呼ばれたカードは場を離れるまでサイズ0になる、(C)手札に候補が無ければ選択0枚で正常終了、(D)useCardAction実経路(手札)・useFieldAbilityAction実経路(モンスタースペース)双方でゲージ1を払って『変身』(equipSelf)できる、を実測。"
+    },
+    {
+      "id": "bf-x2-sp-0006",
+      "no": "X2-SP/0006",
+      "name": "覇王剣・解放",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": null,
+      "power": null,
+      "critical": null,
+      "defense": null,
+      "rules": [
+        "■【使用コスト】ゲージ１を払い、ライフ２を払う。",
+        "■君の場のカードのワールド名の種類分、カードを引く。「覇王剣・解放」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 2
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0006-haouken-kaihou",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amountFrom": {
+                "source": "distinctWorldCount",
+                "pile": "field"
+              }
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-x2-sp-0006-haouken-kaihou"
+          }
+        }
+      ],
+      "_note": "覇王剣・解放（単一ワールド:ドラゴンW、attrs:雷帝軍,ドラゴン、魔法）。①【使用コスト】『ゲージ１を払い、ライフ２を払う。』=costs.cast:[payGauge{amount:1},payLife{amount:2}]（ability.cost非併記=無条件コストはcosts.castのみで実charge。abilityCostSteps(src/13-abilities-core.js:135-138)=ability.cost||card.costs[purpose]||[]のフォールバックによりability.cost省略時はcosts.castが実際に課金される。bf-h-ss01-0009ドラゴデスパレート型の確立パターン、対抗タグ無しのkind:spellでも同一フォールバック経路＝bf-x-ss04-0020戦士たちの誓い型で確認済み）。②『君の場のカードのワールド名の種類分、カードを引く。「覇王剣・解放」は１ターンに１回だけ使える。』=kind:spell,timing:[main](【対抗】タグ無し=通常メインフェイズ使用)+effects:[draw{amountFrom:{source:distinctWorldCount,pile:field}}](E-XB17 distinctWorldCount、controller既定self。bf-x-ss04-0020戦士たちの誓い『君の場のカードのワールド名の種類分、君のデッキの上からゲージに置き…』の同一amountFrom再利用パターンをdrawへ差替)+limit:{scope:turn,key:bf-x2-sp-0006-haouken-kaihou}(named-once、カード名=技名で他カードとの共有実績なし=bare slugキー)。grep自己検査: payGauge/payLife(src/04-cost-resource.js 3経路)/abilityCostSteps フォールバック(src/13-abilities-core.js:135-138)/draw+amountFrom(src/15-ability-effects.js:286-300)/distinctWorldCount(src/15-ability-effects.js:3576-3586、E-XB17実装) 全実在確認。VM検証(x78-b2-verify.js): (a)useCardAction実経路でゲージ1・ライフ2を払って使用できる、(b)自場のワールド種類数に応じてドロー枚数が一致して変動する(1種類→1枚、2種類→2枚)、(c)同ターン2回目は使用不可(limit)であることを確認。"
+    },
+    {
+      "id": "bf-x2-sp-0007",
+      "no": "X2-SP/0007",
+      "name": "受け継がれる太陽 サンシャイン・インパクト",
+      "type": "item",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "太陽竜",
+        "武器"
+      ],
+      "size": null,
+      "power": 6000,
+      "critical": 2,
+      "defense": null,
+      "rules": [
+        "■【装備コスト】ゲージ２を払う。",
+        "■場のこのカードは相手のカードの効果で破壊されない。",
+        "■君のバディゾーンのカードがレストなら、このカードは『貫通』を得て、攻撃力は∞になる！",
+        "『２回攻撃』"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "destroyImmunity": [
+        {
+          "from": {
+            "byEffect": true,
+            "byOpponent": true
+          }
+        }
+      ],
+      "keywords": [
+        "doubleAttack"
+      ],
+      "continuous": [
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "buddyCalled"
+            }
+          ]
+        },
+        {
+          "op": "modifyStats",
+          "power": 999999,
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "buddyCalled"
+            }
+          ]
+        }
+      ],
+      "_note": "受け継がれる太陽 サンシャイン・インパクト。①【装備コスト】ゲージ２=costs.equip:[payGauge(2)]。②『場のこのカードは相手のカードの効果で破壊されない。』=card級destroyImmunity:[{from:{byEffect:true,byOpponent:true}}]（data/cards/bf-x-cp01-100-yen-dragon.json X-CP01/0079等・自分限定の一字一句同一文言の確立precedent）。③『君のバディゾーンのカードがレストなら、このカードは『貫通』を得て、攻撃力は∞になる！』=continuous 2エントリ: grantKeyword{keyword:penetrate,filter:{sameInstanceAsSource:true},conditions:[buddyCalled]}+modifyStats{power:999999,filter:{sameInstanceAsSource:true},conditions:[buddyCalled]}。『バディゾーンのカードがレスト』=condition op buddyCalled（バディをコール済みか。src/13-abilities-core.js:1911-1914のコメント『バディゾーンのカードを【レスト】にする＝バディコール済みの印であり、本アプリではplayer.partnerCalledがそのフラグ』と一致する、data/cards/bf-h-eb01-ultra-hissatsu-pack.json H-EB01/0013竜秘法ドラゴニック・リザレクションの『君のバディゾーンのカードが【レスト】なら使える』=conditions:[buddyCalled]と全く同一の確立近似解釈をそのまま踏襲）。『攻撃力は∞になる』=power:999999の数値飽和近似（data/cards/bf-x2-bt01-legend-buddies.json X2-BT01/0069超武装逆天竜ドラムバンカー・ドラゴン・data/cards/bf-x-ub01-buddy-quest.json X-UB01/0036太陽の勇者ヨウタ等の確立precedent。static印字∞ではなく状況依存の継続バフのためpowerInfinity:trueではなくmodifyStats数値近似を採用）。④『２回攻撃』=keywords:[doubleAttack]。grep自己検査: destroyImmunity(src/11-destroy-turn.js、X-CP01/0079実例)/buddyCalled(src/13-abilities-core.js:1911、H-EB01/0013実例)/continuous grantKeyword+modifyStats conditions ゲート(src/05-stats.js、mech-X77-B4.json 0056型) 全実在確認。VM検証: x78-b4-verify.js test0007参照（バディコール前は貫通も攻撃力∞も得ない／バディコール後は貫通を得て攻撃力が999999になる／相手の効果破壊を受けないことを確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0008",
+      "no": "X2-SP/0008",
+      "name": "バルドラゴン “バルフォース・リジェネーション！”",
+      "type": "impactMonster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "太陽竜"
+      ],
+      "size": 2,
+      "power": 11000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】このカードを君の場の《太陽竜》のモンスター１枚の上に重ね、ゲージ２を払う。",
+        "■このカードが攻撃した時、君のライフを＋３！",
+        "■このカードが登場した時、君のデッキから《太陽竜》のアイテム１枚までを【装備コスト】を払わず装備し、デッキをシャッフルする。そのターン中、そのカードはファイナルフェイズ中にも攻撃でき、そのカードの打撃力＋１！！",
+        "『移動』『貫通』『ソウルガード』"
+      ],
+      "callStack": {
+        "filter": {
+          "cardType": "monster",
+          "attribute": "太陽竜"
+        }
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "move",
+        "penetrate",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0008-attack-lifegain",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 3
+            }
+          ]
+        },
+        {
+          "id": "bf-x2-sp-0008-enter-equip-final",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "eq",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "item",
+                "attribute": "太陽竜"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "バルドラゴン “バルフォース・リジェネーション！”",
+              "lead": "装備コストを払わず装備する、デッキの《太陽竜》のアイテムを1枚まで選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "equipSelectedAsItem",
+              "var": "eq",
+              "require": false
+            },
+            {
+              "op": "shuffleDeck"
+            },
+            {
+              "op": "addTurnContinuous",
+              "continuous": [
+                {
+                  "op": "grantFinalPhaseAttack",
+                  "controller": "self",
+                  "filter": {
+                    "cardType": "item",
+                    "attribute": "太陽竜"
+                  }
+                },
+                {
+                  "op": "modifyStats",
+                  "controller": "self",
+                  "filter": {
+                    "cardType": "item",
+                    "attribute": "太陽竜"
+                  },
+                  "critical": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "バルドラゴン “バルフォース・リジェネーション！”（必殺モンスター）。①【コールコスト】『このカードを君の場の《太陽竜》のモンスター１枚の上に重ね、ゲージ２を払う。』=callStack:{filter:{cardType:monster,attribute:太陽竜}}+costs.call:[payGauge(2)]（mech-X77-B4.json 0029型のcallStack.filter付き確立形）。②『このカードが攻撃した時、君のライフを＋３！』=event:attack(自己直接発火)+effects:[gainLife(3)]。③『このカードが登場した時、君のデッキから《太陽竜》のアイテム１枚までを【装備コスト】を払わず装備し、デッキをシャッフルする。そのターン中、そのカードはファイナルフェイズ中にも攻撃でき、そのカードの打撃力＋１！！』=event:enter+script:[selectCards(from:deck,filter:{cardType:item,attribute:太陽竜},min:0,max:1,require:false)→equipSelectedAsItem(require:false)（装備コスト非課金がequipCardDirectの既定動作＝『払わず』を自然に表現、data/cards/bf-x-cbt02-kuroki-kishin.json禁忌サヴェイジフォルム！型の確立precedent）→shuffleDeck→addTurnContinuous{continuous:[grantFinalPhaseAttack(controller:self,filter:{cardType:item,attribute:太陽竜}),modifyStats(controller:self,filter:{cardType:item,attribute:太陽竜},critical:1)]}]（『そのカード』＝動的に選んだ1枚だが、instanceId単位の対象指定手段が既存に無いためfilter一致方式で近似。data/cards/bf-x-ub02-hero-wars-new-generations.json X-UB02/0020ジャックナイフ“カイゼリオン”の_note記載どおりの確立済み既知近似＝『複数アイテム展開時は選んだ1枚以外にも及び得る』が、本カードは装備先が空いている前提の登場時装備直後のため通常は該当アイテムが1枚のみで実害小。装備が無ければ両ステップともfilter一致0件で無害）。④『移動』『貫通』『ソウルガード』=keywords:[move,penetrate,soulguard]。grep自己検査: callStack(src/07-actions-turn.js、mech-X77-B4.json 0029実例)/event:attack直接発火(src/09-attack.js)/gainLife(src/15-ability-effects.js)/selectCards from:deck+equipSelectedAsItem require:false(src/14-ability-script.js:2313、X-CBT02禁忌サヴェイジフォルム実例)/shuffleDeck(src/14-ability-script.js:489)/addTurnContinuous+grantFinalPhaseAttack+modifyStats(src/15-ability-effects.js:574-589,src/09-attack.js:84-131、X-UB02/0020実例) 全実在確認。VM検証: x78-b4-verify.js test0008参照（場の太陽竜モンスター1枚の上に重ねてゲージ2でコールできる／重ねる先が無ければコール不可／攻撃した時ライフ+3／登場時デッキの太陽竜アイテムを1枚まで無償装備しデッキをシャッフル／装備した太陽竜アイテムがそのターン中ファイナルフェイズにも攻撃できる状態になり打撃力+1されることを確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0009",
+      "no": "X2-SP/0009",
+      "name": "五角超竜王 烈神天武",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 3,
+      "power": 7000,
+      "critical": 3,
+      "defense": 7000,
+      "rules": [
+        "『角王』",
+        "■【コールコスト】君の場のモンスター１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■このカードが登場した時か君がダメージを受けた時、相手の場のモンスター全てを破壊する！この能力は１ターンに１回だけ発動する。",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "ドラゴンW",
+        "awayMaxCopies": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "putSelectedOwnFieldCardsToSoul",
+            "filter": {
+              "cardType": "monster"
+            },
+            "min": 1,
+            "max": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0009-enter-destroy-all",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "destroy",
+              "scope": "opponent",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-x2-sp-0009-destroy-all"
+          }
+        },
+        {
+          "id": "bf-x2-sp-0009-damage-destroy-all",
+          "kind": "triggered",
+          "event": "damageReceived",
+          "effects": [
+            {
+              "op": "destroy",
+              "scope": "opponent",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-x2-sp-0009-destroy-all"
+          }
+        }
+      ],
+      "_note": "五角超竜王 烈神天武（角王）。①【コールコスト】『君の場のモンスター１枚をこのカードのソウルに入れ、ゲージ２を払う。』=costs.call:[putSelectedOwnFieldCardsToSoul{filter:{cardType:monster},min:1,max:1}（『１枚』=min1,max1固定枚数、min1好きな枚数のX2-SP/0004とは対照的な確立形）,payGauge{amount:2}]。②『このカードが登場した時か君がダメージを受けた時、相手の場のモンスター全てを破壊する！この能力は１ターンに１回だけ発動する。』=event違いの2 abilities（enter/damageReceived）が同一limit.key(bf-x2-sp-0009-destroy-all)を共有する構成（bf-x-ss01-gokakujin-vs-hyakurai.json X-SS01/0013五角竜王ドラム・ザ・パニッシャーの一字一句類似文『このカードが登場した時か君がダメージを受けた時、相手の場のアイテム１枚を破壊する。この能力は１ターンに１回だけ発動する。』と完全同型の直接precedent、filterのみitem→monster全体破壊に拡張）: 各abilityはeffects:[destroy{scope:opponent,filter:{cardType:monster}}]（『相手の場のモンスター全てを破壊する』=scope全体形、対象0体でも無エラー）,limit:{scope:turn,key:\"bf-x2-sp-0009-destroy-all\"}（2ability共有により合計1ターン1回に制限）。③『２回攻撃』『ソウルガード』=keywords:[doubleAttack,soulguard]。角王(deckAnyFlag)={homeWorld:ドラゴンW,awayMaxCopies:1}。grep自己検査: putSelectedOwnFieldCardsToSoul min1max1 cost 3経路(src/04-cost-resource.js)/payGauge/event:enter・damageReceived配信(src/07-actions-turn.js,src/11-destroy-turn.js:1325-1351)/destroy scope全体形(src/15-ability-effects.js:1626-1660)/limit.key共有記帳(src/15-ability-effects.js、X-SS01/0013実例) 全実在確認。VM検証(x78-b1-verify.js): (A)callMonster実経路で自場モンスター1枚をソウルへ入れゲージ2を払ってコールできる、(B)登場時に相手の場のモンスター全てが破壊される、(C)相手モンスター0体でも登場時no-op、(D)同一ターン内にダメージを受けても既に登場時能力が発動済みならlimit共有により再発動しない、(E)別ターンなら登場していなくても自分がダメージを受けた時に相手モンスター全てを破壊できる、を実測。"
+    },
+    {
+      "id": "bf-x2-sp-0010",
+      "no": "X2-SP/0010",
+      "name": "怪腕の獣王 ジウン",
+      "type": "monster",
+      "rarity": "",
+      "world": "カタナW",
+      "worlds": null,
+      "attributes": [
+        "髑髏武者"
+      ],
+      "size": 3,
+      "power": 6000,
+      "critical": 3,
+      "defense": 1000,
+      "rules": [
+        "『角王』",
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■このカードが１枚で攻撃している攻撃は無効化されず、君の場の他の元々のサイズが１のモンスターか『角王』１枚につき、場のこのカードのサイズを１減らし、このカードの攻撃力＋3000、打撃力＋１！",
+        "『貫通』『ソウルガード』"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "カタナW",
+        "awayMaxCopies": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "penetrate",
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "amountFrom": {
+            "source": "fieldCardCount",
+            "controller": "self",
+            "excludeSource": true,
+            "filter": {
+              "anyOf": [
+                {
+                  "cardType": "monster",
+                  "baseSize": 1
+                },
+                {
+                  "deckAnyFlag": true
+                }
+              ]
+            },
+            "per": {
+              "size": -1,
+              "power": 3000,
+              "critical": 1
+            }
+          }
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0010-solo-unstoppable",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "attackingAlone"
+            }
+          ],
+          "effects": [
+            {
+              "op": "markPendingAttackUnstoppable",
+              "onlyNullify": true
+            }
+          ]
+        }
+      ],
+      "_note": "怪腕の獣王 ジウン（角王）。①【コールコスト】『君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。』=costs.call:[putTopDeckToSoul{amount:1},payGauge{amount:1}]。②『このカードが１枚で攻撃している攻撃は無効化されず、』=kind:triggered,event:\"attack\"（bare自己発火）+conditions:[attackingAlone]+effects:[markPendingAttackUnstoppable{onlyNullify:true}]（bf-x-cp03-100-yen-darkness-dragon.json X-CP03/0015デアデビル“ダークプリズナー”の『このカードが1枚で攻撃している攻撃は無効化されず、ダメージは減らない。』と同型骨格だが、本カードは『ダメージは減らない』の記載が無いためonlyNullify:trueで『無効化されない』のみに絞る。src/15-ability-effects.js:2519-2531のコメントに『onlyNullify:trueは「無効化されない」のみ（ダメージ減少耐性は付けない。例: ジウン0002）』と明記された確立分岐、bf-h-bt02-galaxy-burst.json H-BT02/0002一角獣王ジウン“0002”実例の対応語彙をそのまま流用）。③『君の場の他の元々のサイズが１のモンスターか『角王』１枚につき、場のこのカードのサイズを１減らし、このカードの攻撃力＋3000、打撃力＋１！』=card級continuous:[{op:modifyStats,filter:{sameInstanceAsSource:true},amountFrom:{source:fieldCardCount,controller:self,excludeSource:true,filter:{anyOf:[{cardType:monster,baseSize:1},{deckAnyFlag:true}]},per:{size:-1,power:3000,critical:1}}}]（bf-x-ub03-complete-chaos.json C・モスマンの『君の場の他の《ワイダーサカー》のモンスター１枚につき、場のこのカードのサイズを１減らす。』continuous amountFrom:fieldCardCount+excludeSource(『他の』)+per:{size:-1}の確立骨格[src/05-stats.js:493-524]を、perに power:3000,critical:1（『打撃力』=critical鉄則）も同居させて拡張＝1つのamountFromが継続評価時にstatKeyごと[size/power/critical]に個別解決される(continuousStatBonusがstatKey別に呼び出す、src/05-stats.js:678-712)。counted filterは『元々のサイズが１のモンスター』=filter.baseSize（印字サイズ、effectiveSize再入回避、src/17-targeting.js:417-420）+cardType:monster、『か『角王』』=filter.deckAnyFlag:true（角王カード自体はcardType:monster前提のためcardType限定不要）をanyOfで合成。excludeSource:trueで自分自身（本カードは角王だが除外対象）を数えない）。④『貫通』『ソウルガード』=keywords:[penetrate,soulguard]。角王(deckAnyFlag)={homeWorld:カタナW,awayMaxCopies:1}。grep自己検査: putTopDeckToSoul・payGauge cost(src/04-cost-resource.js)/event:attack+attackingAlone(src/13-abilities-core.js)/markPendingAttackUnstoppable+onlyNullify(src/15-ability-effects.js:2519-2531、H-BT02/0002実例)/continuous modifyStats+amountFrom.source:fieldCardCount+excludeSource+per複数stat(src/05-stats.js:493-524,678-712、C・モスマン実例)/filter.baseSize(src/17-targeting.js:417-420)/filter.deckAnyFlag(src/17-targeting.js:363-364)/filter.anyOf(src/17-targeting.js:349-352) 全実在確認。VM検証(x78-b1-verify.js): (A)callMonster実経路でデッキ上1枚をソウルへ入れゲージ1でコールできる、(B)単独攻撃(attackers.length=1)でstate.pendingAttack.cannotBeNullifiedが立ちdamageCannotBeReducedは立たない、(C)連携攻撃では発動しない、(D)自場に元々のサイズ1のモンスターか角王カードが0枚の状態ではeffectiveSize/visiblePower/visibleCriticalが印字値のまま、(E)該当カードが1枚いるとeffectiveSizeが1減りvisiblePower+3000・visibleCritical+1になり、2枚では2倍分になる（このカード自身は角王だがexcludeSourceにより不算入）、を実測。"
+    },
+    {
+      "id": "bf-x2-sp-0011",
+      "no": "X2-SP/0011",
+      "name": "第四代紅蓮闘王 ドラム",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 2,
+      "power": 9000,
+      "critical": 3,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】君の場のカード１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■君の場のカード全ては相手のカードの効果で能力を無効化されず、レストされない。",
+        "■君のアタックフェイズ開始時、そのターン中、君の場のカード名に「拳」を含むアイテム１枚の打撃力を＋２し、『貫通』と『２回攻撃』を与える！",
+        "『貫通』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putSelectedOwnFieldCardsToSoul",
+            "filter": {},
+            "min": 1,
+            "max": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "grantRestImmunity",
+          "controller": "self",
+          "filter": {},
+          "from": {
+            "byOpponent": true
+          }
+        },
+        {
+          "op": "grantNullifyImmunity",
+          "controller": "self",
+          "filter": {}
+        }
+      ],
+      "keywords": [
+        "penetrate",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0011-attackstart-fist-item-buff",
+          "kind": "triggered",
+          "event": "attackStart",
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "filter": {
+              "cardType": "item",
+              "nameIncludes": "拳"
+            }
+          },
+          "effects": [
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "critical": 2,
+              "duration": "turn"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "penetrate",
+              "duration": "turn"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "doubleAttack",
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "第四代紅蓮闘王 ドラム。①【コールコスト】『君の場のカード１枚をこのカードのソウルに入れ、ゲージ１を払う。』=costs.call:[putSelectedOwnFieldCardsToSoul{filter:{},min:1,max:1},payGauge{amount:1}]（『場のカード』＝カード種別を問わない全候補。filter:{}の確立precedentはbf-x-cp03-100-yen-darkness-dragon.json X-CP03/0077終焉世界の魔竜神アジ・ダハーカ“ガエン”の同一op同一filter同一min/max）。②『君の場のカード全ては相手のカードの効果で能力を無効化されず、レストされない。』=continuous:[grantRestImmunity{controller:self,filter:{},from:{byOpponent:true}}, grantNullifyImmunity{controller:self,filter:{}}]（『君のターン中』の限定句が無いため無条件＝レスト側はbf-x-cbt01-akaki-raitei.json X-CBT01/0022の確立形どおりfrom:{byOpponent:true}を付与。**nullify側はfromキーを付けない**＝bf-x2-bt01-legend-buddies.json X2-BT01/0006超太陽神竜バルソレイユ・ディオスのgrantNullifyImmunity{filter:{}}（fromキー無し）と同型。理由: isAbilitiesNullifiedの唯一の呼び出し口(src/05-stats.js:182 `cardProtectedFrom(card,\"nullify\")`)はcauseを渡さず常に`{}`のため、grantedProtectionBlocks(src/05-stats.js:1189)の`if (e.from && cause){ if (e.from.byOpponent && !cause.byOpponent) return false; }`ゲートが常に真になり、nullify側にfrom:{byOpponent:true}を付けると保護が恒常的に無効化される（VM実測で確認済み・自己検証中に発見）。restTarget(src/15-ability-effects.js:2192)は明示的にmakeEffectCause(context,target.owner)でcauseを作ってcardProtectedFrom(...,\"rest\",restCause)へ渡すためrest側のfromは正しく機能する。同型のbf-x-cbt02-kuroki-kishin.json X-CBT02/0041軍師機C・ファニングはgrantNullifyImmunityにfrom:{byOpponent:true}を付けているが、上記により実質「相手/自分問わず常時無効化耐性」（原文より広い近似）として動作している可能性がある＝既存カードのため本バッチでは不変更・参考情報として記録のみ（実害は無い＝自陣が自陣の能力を無効化する効果は現行DBに実在しないため観測可能挙動は変わらない）。）。③『君のアタックフェイズ開始時、そのターン中、君の場のカード名に「拳」を含むアイテム１枚の打撃力を＋２し、『貫通』と『２回攻撃』を与える！』=event:attackStart+conditions:[turnOwnerIsSelf]（『君の』限定＝bf-x-bt01-reborn-of-satan.json X-BT01/0114魔王竜バッツの確立形。runPhaseStartTriggersは両者を走査するためturnOwnerIsSelfが自分限定の正規ゲート）+target:{type:fieldCard,controller:self,filter:{cardType:item,nameIncludes:拳}}（bf-x-bt02-chaos-control-crisis.json X-BT02/0076 C・スピリットビートのtarget:{type:fieldCard,filter:{cardTypeIn}}+modifyStats+grantKeyword構造と同型。候補0件（拳アイテム不在）はrunTriggeredAbilities早期skip＝効果全体が発動しない。原文『打撃力』=critical、CLAUDE.md既知の落とし穴）+effects:[modifyStats{target:$target,critical:2,duration:turn}, grantKeyword{target:$target,keyword:penetrate,duration:turn}, grantKeyword{target:$target,keyword:doubleAttack,duration:turn}]。『貫通』『ソウルガード』=keywords:[penetrate,soulguard]（印字キーワード＝カード固有の常時持ち、③の付与とは独立）。grep自己検査: putSelectedOwnFieldCardsToSoul(src/04-cost-resource.js、X-CP03/0077実例)/payGauge/grantRestImmunity・grantNullifyImmunity+PROTECTION_OP_BY_KIND(src/05-stats.js:1145-1148,1157)/event:attackStart+turnOwnerIsSelf(src/07-actions-turn.js runPhaseStartTriggers、X-BT01/0114実例)/target:fieldCard+modifyStats+grantKeyword(src/14-ability-script.js chooseAbilityTarget/src/15-ability-effects.js、X-BT02/0076実例)/penetrate・doubleAttack・soulguardエイリアス(src/18-tooltip-format.js) 全実在確認。VM検証: x78-b3-verify.js test0011参照（callMonster実経路で場のカード1枚をソウルへ入れゲージ1課金してコールできる／相手起因のレスト・能力無効化から場のカード全てが保護される／自分のアタックフェイズ開始時に拳アイテムを選ぶと打撃力+2・貫通・2回攻撃がそのターン中付与される／相手のアタックフェイズ開始時は発動しない、を実測）。"
+    },
+    {
+      "id": "bf-x2-sp-0012",
+      "no": "X2-SP/0012",
+      "name": "ドラゴソーサラー マジシャン・ドラム",
+      "type": "monster",
+      "rarity": "",
+      "world": "マジックW",
+      "worlds": null,
+      "attributes": [
+        "魔術師",
+        "火力"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■【起動】“ギガブラスト・バンカー!!”ゲージ５を払ってよい。払ったら、相手の場のカード全ての能力を無効化して、破壊し、相手にダメージ３！！さらに、相手のゲージが０枚か君のライフが５以下なら、相手にダメージ２！！「ギガブラスト・バンカー!!」は１ターンに１回だけ使える。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0012-giga-blast-bunker",
+          "label": "ギガブラスト・バンカー!!",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 5
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroy",
+              "scope": "opponent",
+              "filter": {},
+              "nullifyAbilities": true
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 3
+            },
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 2,
+              "conditions": [
+                {
+                  "op": "any",
+                  "conditions": [
+                    {
+                      "op": "cardCount",
+                      "controller": "opponent",
+                      "pile": "gauge",
+                      "cmp": "eq",
+                      "amount": 0
+                    },
+                    {
+                      "op": "lifeLte",
+                      "amount": 5
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "x2sp-ギガブラスト・バンカー",
+            "shared": true
+          }
+        }
+      ],
+      "_note": "ドラゴソーサラー マジシャン・ドラム。①【コールコスト】デッキ上1枚をソウルへ+ゲージ1=costs.call:[putTopDeckToSoul(1),payGauge(1)]。②『【起動】“ギガブラスト・バンカー!!”ゲージ５を払ってよい。払ったら、相手の場のカード全ての能力を無効化して、破壊し、相手にダメージ３！！さらに、相手のゲージが０枚か君のライフが５以下なら、相手にダメージ２！！「ギガブラスト・バンカー!!」は１ターンに１回だけ使える。』=kind:activated,label:ギガブラスト・バンカー!!,timing:[main]（data/cards/bt03-dododo-adventure.json BT03/0030『ドラゴウィザード マジシャン・ドラム』（本カードの前身。“メガブラスト・バンカー!!”）と同じ単独【起動】カードのtiming:[main]確立precedent。原文の『してよい』は起動能力へのcost自体が任意選択を含意するため追加のoptionalフラグ不要）+cost:[payGauge(5)]+effects:[destroy{scope:opponent,filter:{},nullifyAbilities:true}（『能力を無効化して、破壊し』=data/cards/bf-d-cbt-dragon-fighters.json D-CBT/0014大魔法ヴァルハラの崩壊のnullifyAbilities:true確立precedent＝ソウルガード/破壊耐性/破壊置換/破壊時誘発/ライフリンクを一括で貫通するdestroy統合形、src/15-ability-effects.js:1626-1667。FE1注記によりdestroyAllではなくdestroy{scope}を直接記述）,dealDamage{player:opponent,amount:3},dealDamage{player:opponent,amount:2,conditions:[any{conditions:[cardCount{controller:opponent,pile:gauge,cmp:eq,amount:0},lifeLte{amount:5}]}]}（『さらに、〜なら』=effect自体へのconditionsゲート。OR条件はop:any、src/13-abilities-core.js:875。cardCount pile:gaugeでopponent側のゲージ0枚判定・lifeLteは既定でself=君のライフ判定、src/13-abilities-core.js:927-968,1029-1031）]。named-once「ギガブラスト・バンカー!!」=limit:{scope:turn,key:x2sp-ギガブラスト・バンカー,shared:true}（フィールド起動能力の名前付き制限は公式裁定で同名カード合算1回、shared:trueでインスタンス分離を止める。mech-X77-B4.json 0023幻像のバタゴレム“ストーン・ミラージュ”のlimit.shared:true確立慣例）。③『ソウルガード』=keywords:[soulguard]。grep自己検査: putTopDeckToSoul/payGauge(src/04-cost-resource.js)/kind:activated+timing:[main]+cost(src/13-abilities-core.js、bt03-0030実例)/destroy scope+nullifyAbilities(src/15-ability-effects.js:1626-1667、D-CBT/0014実例)/dealDamage+effect.conditions(src/15-ability-effects.js)/op:any(src/13-abilities-core.js:875)/cardCount pile:gauge・lifeLte(src/13-abilities-core.js:927-968,1029)/limit.shared+key(src/15-ability-effects.js:3786-3794、X2-BT01/0023実例) 全実在確認。VM検証: x78-b4-verify.js test0012参照（ゲージ5を払って起動すると相手の場のカード全ての能力が無効化されて破壊され相手にダメージ3が入る／相手のゲージが0枚か自分のライフが5以下なら追加でダメージ2が入る／どちらも満たさなければ追加ダメージは入らない／1ターンに1回だけ使えることを確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0013",
+      "no": "X2-SP/0013",
+      "name": "再来の勇者 ドラム",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": null,
+      "attributes": [
+        "冒険者",
+        "勇者"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■このカードが攻撃した時、相手とジャンケンする。君がジャンケンに勝ったら、カード１枚を引き、そのターン中、このカードの攻撃力＋5000、打撃力＋２し、『貫通』を得る。",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0013-attack-janken",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "rockPaperScissorsBranch",
+              "winEffects": [
+                {
+                  "op": "draw",
+                  "amount": 1
+                },
+                {
+                  "op": "modifyStats",
+                  "target": "$self",
+                  "power": 5000,
+                  "critical": 2,
+                  "duration": "turn"
+                },
+                {
+                  "op": "grantKeyword",
+                  "target": "$self",
+                  "keyword": "penetrate",
+                  "duration": "turn"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "【R16①/E-XB74① 配線済み・掃討反映】effects を rockPaperScissorsBranch{winEffects:[draw1, modifyStats{$self,turn,power+5000,critical+2}, grantKeyword{$self,turn,penetrate}]} へ差し替え済み（1回のジャンケン→勝ちなら3帰結全て・負け/アイコは無帰結。単発ロールで完結）。旧・penetrate 再チェック workaround（既に貫通所持で負けると modifyStats/draw が誤発火する狭い近似）は解消。以下は当時の記録として保持。再来の勇者 ドラム。①【コールコスト】デッキ上1枚をソウルへ+ゲージ1=costs.call:[putTopDeckToSoul(1),payGauge(1)]。②『このカードが攻撃した時、相手とジャンケンする。君がジャンケンに勝ったら、カード１枚を引き、そのターン中、このカードの攻撃力＋5000、打撃力＋２し、『貫通』を得る。』=event:attack(自己直接発火)+effects 3件。【ギャップ関連の工夫・エンジン班へ提案】本エンジンのeffect.rockPaperScissors（src/15-ability-effects.js:270-276）はeffect単位のジャンケンゲートで、同一ability内で複数effectにrockPaperScissors:trueを付けるとeffectごとに独立した新しいジャンケンが走る（resolveRockPaperScissorsに結果キャッシュ機構が無い、src/15:148-220で確認）。本カードは『1回のジャンケンに勝ったら3つの結果(ドロー/攻撃力+5000+打撃力+2/貫通)全てを得る』ため、3effect独立rollでは正しい確率(1/3)にならず(1/3)^3に激減し、かつユーザー体験上も3回連続でジャンケンさせられてしまう。回避策として、①grantKeyword(貫通、duration:turn)にのみrockPaperScissors:trueを付けて実際のダイス代わりのジャンケンをこの1回だけ発生させ、②以降のmodifyStats(攻撃力+5000/打撃力+2)とdraw(1枚)は、ジャンケンに勝った直後に①が同期的にcard.turnKeywordsへ'penetrate'を積む(src/15-ability-effects.js:2047-2049)ことを利用し、conditions:[{op:targetMatches,ref:$self,filter:{keyword:penetrate}}]（src/13-abilities-core.js:981-994、matchesCardFilterのfilter.keywordがhasKeywordを経由）でその直後の状態を同期的に再確認するゲートとした。executeAbilityEffects(src/15-ability-effects.js:6-10)はeffects配列をfor-of+awaitで厳密に逐次実行するため、①の完了(turnKeywords更新)は②③の評価前に確定している。既存opの組合せのみで実現し新opは作っていないが、既にこのカードが『貫通』を持っている状態(他カードの継続効果等)で攻撃しジャンケンに負けた場合は②③が誤って発火する既知の狭い近似が残る（本カードは印字keywordsにpenetrateを持たないため通常プレイでは稀）。この『1ロールで複数effectを分岐させる』一般化されたop（例: script op ifRockPaperScissorsWin{then/else}や、ability級rockPaperScissorsキャッシュ）が有れば本近似は不要になる＝エンジン班への機能追加提案として報告する。③『２回攻撃』『ソウルガード』=keywords:[doubleAttack,soulguard]。grep自己検査: putTopDeckToSoul/payGauge(src/04-cost-resource.js)/event:attack直接発火(src/09-attack.js)/effect.rockPaperScissors単発ゲート(src/15-ability-effects.js:270-276)/grantKeyword duration:turn(src/15-ability-effects.js:2038-2056)/targetMatches ref:$self+filter.keyword(src/13-abilities-core.js:981-994,src/17-targeting.js:506)/executeAbilityEffects逐次await(src/15-ability-effects.js:6-10)/modifyStats・draw+effect.conditions(src/15-ability-effects.js) 全実在確認。VM検証: x78-b4-verify.js test0013参照（ジャンケンに勝った場合はカード1枚を引き攻撃力+5000・打撃力+2・貫通をそのターン中得る／負けた場合はいずれも得ないことを確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0014",
+      "no": "X2-SP/0014",
+      "name": "迅雷騎士団 旋撃のドラム",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 5000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■【対抗】【起動】このターン中、君の場のモンスターが『移動』しているなら、次の２つから１つを選んで使う。この能力は１ターンに１回だけ使える。",
+        "・このカードをスタンドする。",
+        "・そのターン中、次にこのカードが破壊される場合、その破壊を無効化する。",
+        "『移動』『貫通』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "move",
+        "penetrate",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0014-move-branch",
+          "kind": "activated",
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "monsterMovedThisTurn"
+            }
+          ],
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "迅雷騎士団 旋撃のドラム",
+              "lead": "次の２つから１つを選んで使ってください。",
+              "options": [
+                {
+                  "key": "stand",
+                  "label": "このカードをスタンドする。",
+                  "script": [
+                    {
+                      "op": "standTarget",
+                      "target": "$self"
+                    }
+                  ]
+                },
+                {
+                  "key": "guard",
+                  "label": "そのターン中、次にこのカードが破壊される場合、その破壊を無効化する。",
+                  "script": [
+                    {
+                      "op": "setPreventNextDestroy",
+                      "target": "$self"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-x2-sp-0014-move-branch"
+          }
+        }
+      ],
+      "_note": "迅雷騎士団 旋撃のドラム（単一ワールド:ドラゴンW、attrs:武装騎竜,赤竜、モンスターS2/7000/2/5000）。①【コールコスト】『君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。』=costs.call:[putTopDeckToSoul{amount:1},payGauge{amount:2}](標準op、3経路実在確認)。②『【対抗】【起動】このターン中、君の場のモンスターが『移動』しているなら、次の２つから１つを選んで使う。この能力は１ターンに１回だけ使える。・このカードをスタンドする。・そのターン中、次にこのカードが破壊される場合、その破壊を無効化する。』=rulings.md R6(統括裁定)どおりE-XB69（per-turn 移動記帳 state.movedThisTurn[owner]＋条件op monsterMovedThisTurn、src/13-abilities-core.js:1523-1540）が本バッチ着手後にsrcへ着地（grep確認: `movedThisTurn`/`monsterMovedThisTurn`が src/03-setup.js・src/07-actions-turn.js・src/11-destroy-turn.js・src/13-abilities-core.js に実在、tests/effects-regression.test.js testXb69MonsterMovedThisTurn がX2-SP/0014・0027を名指しでカバー）。よって実装:kind:activated,timing:[counter,main](bf-x-bt02-0009怒れる雷刃バッツ型の『【対抗】【起動】(フェイズ限定無し)』確立timing)+conditions:[monsterMovedThisTurn{}](filter省略=controller:self既定・種別不問=原文『君の場のモンスターが』のまま)+script:[chooseBranch{title,lead,options:[{key:stand,script:[standTarget{target:$self}]},{key:guard,script:[setPreventNextDestroy{target:$self}]}]}](mech-X77-B2/0006型のchooseBranch構造。guard枝はbf-x-ub03-0008C・ビリオンナックル『そのターン中、このカードが次に破壊される場合、その破壊を無効化する』の直接前例=setPreventNextDestroy{target:$self}、duration指定不要=ターン終了/離場で自動リセット)+limit:{scope:turn,key:...}(無名限定=bare key)。③『『貫通』『ソウルガード』『移動』』=keywords:[move,penetrate,soulguard]。grep自己検査: putTopDeckToSoul/payGauge(src/04-cost-resource.js)/monsterMovedThisTurn(src/13-abilities-core.js:1523-1540、E-XB69)/chooseBranch(src/14-ability-script.js)/standTarget・setPreventNextDestroy target:$self(src/15-ability-effects.js:2201,2986)/move・penetrate・soulguardエイリアス(src/18-tooltip-format.js) 全実在確認。VM検証(x78-b2-verify.js): (a)callMonster実経路でデッキ上1枚を自ソウルへ入れゲージ2を払ってコール、(b)君の場のモンスターが未だ移動していない状態では起動能力の候補に出ない、(c)君の場のモンスター(このカード自身含む)が移動した後は候補に出て、stand枝を選ぶとレストしていたこのカードがスタンドする、(d)guard枝を選ぶとそのターン中このカードの次の破壊が無効化される、(e)同ターン2回目は使用不可(limit)、を確認。"
+    },
+    {
+      "id": "bf-x2-sp-0015",
+      "no": "X2-SP/0015",
+      "name": "セイントホーリーソード “サンダーエッジ”",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ライフ１を払う。",
+        "■君の場にカード名に「バッツ」を含むモンスターがいるなら、場のこのカードのサイズを２減らす。",
+        "■このカードが攻撃した時、君のドロップゾーンのカードのワールド名が３種類以上あるか、君のライフが４以下なら、そのターン中、このカードは『貫通』と『２回攻撃』を得る。",
+        "『移動』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "move",
+        "soulguard"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "size": -2,
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "バッツ"
+              }
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0015-attack-boost",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "cardCount",
+                  "controller": "self",
+                  "pile": "drop",
+                  "distinct": "distinctByWorld",
+                  "cmp": "gte",
+                  "amount": 3
+                },
+                {
+                  "op": "lifeLte",
+                  "amount": 4
+                }
+              ]
+            }
+          ],
+          "effects": [
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "penetrate",
+              "duration": "turn"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "doubleAttack",
+              "duration": "turn"
+            }
+          ]
+        }
+      ],
+      "_note": "セイントホーリーソード “サンダーエッジ”（単一ワールド:ドラゴンW、attrs:雷帝軍,ドラゴン、モンスターS2/6000/2/1000）。①【コールコスト】『君のデッキの上から１枚をこのカードのソウルに入れ、ライフ１を払う。』=costs.call:[putTopDeckToSoul{amount:1},payLife{amount:1}]（標準op）。②『君の場にカード名に「バッツ」を含むモンスターがいるなら、場のこのカードのサイズを２減らす。』=continuous:[modifyStats{filter:{sameInstanceAsSource:true},size:-2,conditions:[ownFieldCardExists{filter:{cardType:monster,nameIncludes:バッツ}}]}]（bf-d-bt01-0066ソロモンの大結界型のfilter+size継続にownFieldCardExists名称ゲートを合成した確立パターン。自カード名に「バッツ」を含まないためexcludeSource不要）。③『このカードが攻撃した時、君のドロップゾーンのカードのワールド名が３種類以上あるか、君のライフが４以下なら、そのターン中、このカードは『貫通』と『２回攻撃』を得る。』=event:attack(bare・自己トリガー、SKILL.md記載どおりattack/attacked/destroyByAttackは接頭辞なしで自身へ直接発火)+conditions:[any{conditions:[cardCount{controller:self,pile:drop,distinct:distinctByWorld,cmp:gte,amount:3},lifeLte{amount:4}]}](OR結合、distinct:distinctByWorldはE1(D-SS03/0039)由来のcardCount標準機能。lifeLteはsrc/13-abilities-core.js:1029実在)+effects:[grantKeyword{target:$self,keyword:penetrate,duration:turn},grantKeyword{target:$self,keyword:doubleAttack,duration:turn}](mech-X77-B2/0009型の確立パターン)。④『『移動』『ソウルガード』』=keywords:[move,soulguard]。grep自己検査: putTopDeckToSoul・payLife(src/04-cost-resource.js)/continuousEffectApplies+effect.conditions(src/05-stats.js:1027-1035)/ownFieldCardExists(src/13-abilities-core.js:1287-1297)/event:attack bare(src/09-attack.js)/any結合子(src/13-abilities-core.js:875-876)/cardCount distinct:distinctByWorld(src/13-abilities-core.js:963-964)/lifeLte(src/13-abilities-core.js:1029)/grantKeyword target:$self duration:turn(src/15-ability-effects.js) 全実在確認。VM検証(x78-b2-verify.js): (a)callMonster実経路でデッキ上1枚を自ソウルへ入れライフ1を払ってコールできる、(b)君の場に「バッツ」を含むモンスターがいるとeffectiveSizeが2減り、いなければ不変、(c)攻撃時にドロップのワールド種類数3以上またはライフ4以下のいずれかを満たすとそのターン中『貫通』『2回攻撃』を得る、(d)いずれも満たさない場合は不発、を確認。"
+    },
+    {
+      "id": "bf-x2-sp-0016",
+      "no": "X2-SP/0016",
+      "name": "HRD ジャスティス・ドラム・ファイヤー",
+      "type": "monster",
+      "rarity": "",
+      "world": "ヒーローW",
+      "worlds": null,
+      "attributes": [
+        "ヒーロー",
+        "ドラゴン"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■このカードが登場した時、君のデッキから『変身』を持つ《ヒーロー》１枚までを選び、『変身』コストを払って『変身』し、デッキをシャッフルする。",
+        "■このカードの攻撃で相手のモンスターを破壊した時、このカードをスタンドする。",
+        "『移動』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "move"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0016-enter-henshin",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "h",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "keyword": "henshin",
+                "attribute": "ヒーロー"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "HRD ジャスティス・ドラム・ファイヤー",
+              "lead": "『変身』コストを払って『変身』する、デッキの《ヒーロー》を1枚まで選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "equipSelectedAsItem",
+              "var": "h",
+              "payCost": true,
+              "require": false
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ]
+        },
+        {
+          "id": "bf-x2-sp-0016-destroy-by-attack-stand",
+          "kind": "triggered",
+          "event": "destroyByAttack",
+          "effects": [
+            {
+              "op": "standTarget",
+              "target": "$self"
+            }
+          ]
+        }
+      ],
+      "_note": "HRD ジャスティス・ドラム・ファイヤー。①【コールコスト】ゲージ２=costs.call:[payGauge(2)]。②『このカードが登場した時、君のデッキから『変身』を持つ《ヒーロー》１枚までを選び、『変身』コストを払って『変身』し、デッキをシャッフルする。』=event:enter+script:[selectCards(from:deck,filter:{keyword:henshin,attribute:ヒーロー},min:0,max:1,require:false)→equipSelectedAsItem{payCost:true,require:false}→shuffleDeck]（data/cards/bf-hd-pr.json PR/0201プリンで幸せ ドラムの『ドロップゾーンの『変身』を持つカード１枚を『変身』コストを払って『変身』する』selectCards(from:drop,filter:{keyword:henshin})→equipSelectedAsItem{payCost:true,require:false}と完全同型構造で、fromをdeckに差替+shuffleDeckを追加。equipSelectedAsItem{payCost:true}は選んだカード自身の『変身』hand能力(kind:activated,fromHandOnly,effects:[equipSelf])のcostを検出して支払う既定実装（src/14-ability-script.js:2313-2345）。③『このカードの攻撃で相手のモンスターを破壊した時、このカードをスタンドする。』=event:destroyByAttack(自己直接発火。攻撃で対象モンスターを破壊した時のみ発火する確立慣例、mech-X77-B4.json 0029型)+effects:[standTarget{target:$self}]。④『移動』=keywords:[move]。grep自己検査: payGauge(src/04-cost-resource.js)/selectCards from:deck+filter.keyword(src/14-ability-script.js、src/17-targeting.js:506)/equipSelectedAsItem payCost:true(src/14-ability-script.js:2313-2345、PR/0201実例)/shuffleDeck(src/14-ability-script.js:489)/event:destroyByAttack直接発火(src/10-battle-resolve.js)/standTarget(src/15-ability-effects.js、script許可=src/14:3410) 全実在確認。VM検証: x78-b4-verify.js test0016参照（登場時デッキの『変身』持ち《ヒーロー》を1枚まで選ぶと変身コストを払って装備(currentType=item化)されデッキがシャッフルされる／対象が無ければ何も起きない／このカードの攻撃で相手のモンスターを破壊するとこのカードがスタンドすることを確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0017",
+      "no": "X2-SP/0017",
+      "name": "五角騎竜 ドゥーベル “SD” & メグレス “SD”",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "武装騎竜",
+        "赤竜",
+        "緑竜"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■君の場に他の元々のサイズ２以上の《武装騎竜》がいるなら、場のこのカードのサイズを１減らす。",
+        "■“五角の共鳴”このカードが登場した時、君のデッキからカード名に「五角」を含む、モンスターかアイテム１枚までを手札に加え、デッキをシャッフルする。その後、君にダメージ２！「五角の共鳴」は１ターンに１回だけ使える。"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "size": -1,
+          "conditions": [
+            {
+              "op": "ownOtherFieldCardExists",
+              "filter": {
+                "attribute": "武装騎竜",
+                "baseSizeGte": 2
+              }
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0017-gokaku-kyoumei",
+          "label": "五角の共鳴",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "s",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardTypeIn": [
+                  "monster",
+                  "item"
+                ],
+                "nameIncludes": "五角"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "五角騎竜 ドゥーベル “SD” & メグレス “SD”",
+              "lead": "デッキから手札に加える、カード名に「五角」を含むモンスターかアイテムを選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "s",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を手札に加えました。"
+            },
+            {
+              "op": "shuffleDeck"
+            },
+            {
+              "op": "dealDamage",
+              "player": "self",
+              "amount": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "shared": true,
+            "key": "x2sp-gokaku-kyoumei"
+          }
+        }
+      ],
+      "_note": "五角騎竜 ドゥーベル “SD” & メグレス “SD”。使用コスト行なし＝costsキー省略（無償コール）。①『君の場に他の元々のサイズ２以上の《武装騎竜》がいるなら、場のこのカードのサイズを１減らす。』=continuous:[{op:modifyStats,filter:{sameInstanceAsSource:true},size:-1,conditions:[{op:ownOtherFieldCardExists,filter:{attribute:武装騎竜,baseSizeGte:2}}]}]（data/cards/bf-d-bt02-todoroke-muteki-ryu.json D-BT02/0010五角騎竜メラク“SD”の同型構文（『他の元々のサイズが２以上の《武装騎竜》』ownOtherFieldCardExists+filter.baseSizeGte、src/17-targeting.js:425）をサイズ減少量-1に差替えて流用。baseSizeGteは印字サイズを見るため継続の再入を回避する既定仕様）。②“五角の共鳴”『このカードが登場した時、君のデッキからカード名に「五角」を含む、モンスターかアイテム１枚までを手札に加え、デッキをシャッフルする。その後、君にダメージ２！「五角の共鳴」は１ターンに１回だけ使える。』=data/cards/bf-h-bt03-kakuou-daishutsujin.json H-BT03/0126五角装竜跳躍のザクロのselectCards{from:deck,min:0,max:1,amount:1,require:false}→moveSelected(to:hand)→型を踏襲し、原文が『加えたら』ではなく『その後』（加える/加えないに関わらず必ず発生）なのでshuffleDeck直後にifSelectionで包まずdealDamage{player:self,amount:2}を無条件の後続ステップとして配置（『五角』を名に含むカードが存在しない/デッキ切れで0枚のみ選択でも、シャッフル後のダメージ2は原文通り必ず発生）。named『五角の共鳴』=limit:{scope:turn,shared:true,key:x2sp-gokaku-kyoumei}（named-once規約。現行DBに同名ability無し＝新規キー）。grep自己検査: modifyStats+sameInstanceAsSource+size(src/05-stats.js)/ownOtherFieldCardExists+baseSizeGte(src/13-abilities-core.js:1298、src/17-targeting.js:425、D-BT02/0010実例)/selectCards(from:deck,cardTypeIn,nameIncludes)/moveSelected/shuffleDeck/dealDamage(player:self)全実在確認。VM検証: x78-b3-verify.js test0017参照（元々のサイズ2以上の他の武装騎竜がいる時だけ場のこのカードのサイズが1減る／登場時に「五角」を含むデッキのモンスター・アイテムを1枚まで手札に加えデッキをシャッフルし、選んでも選ばなくても自分に2ダメージが入る／同ターン内2回目の登場相当呼び出しはlimit:turnで不発、を確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0018",
+      "no": "X2-SP/0018",
+      "name": "忠竜 フレアファング・ドラゴン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "太陽竜"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■君の場に他の元々のサイズが３の《太陽竜》がいるなら、場のこのカードのサイズを１減らす。",
+        "■君の場にサイズ２以上の《太陽竜》のモンスターが登場した時、君のデッキの上から１枚をゲージに置き、カード１枚を引く。この能力はメインフェイズとファイナルフェイズに１回ずつ発動する。"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "size": -1,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "attribute": "太陽竜",
+                "baseSize": 3
+              },
+              "excludeSource": true,
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0018-ally-enter-gauge-draw",
+          "kind": "triggered",
+          "event": "allyEnter",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "太陽竜",
+                "sizeGte": 2
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "phase"
+          }
+        }
+      ],
+      "_note": "忠竜 フレアファング・ドラゴン。コール印字コスト行なし＝costsキー省略（無償コール）。①『君の場に他の元々のサイズが３の《太陽竜》がいるなら、場のこのカードのサイズを１減らす。』=continuous modifyStats{controller:self,filter:{sameInstanceAsSource:true},size:-1,conditions:[cardCount{controller:self,pile:field,filter:{attribute:太陽竜,baseSize:3},excludeSource:true,cmp:gte,amount:1}]}（data/cards/bf-x-cp01-100-yen-dragon.json X-CP01/0017太陽神の欠片 バルフランムの『他の元々のサイズが３の《太陽竜》がいるなら、場のこのカードのサイズを２減らす』と一字一句同型の直接precedent。baseSize=印字[元々の]サイズ参照でeffectiveSize再入を回避、src/17-targeting.js:417-419。減少量のみ2→1に差替）。②『君の場にサイズ２以上の《太陽竜》のモンスターが登場した時、君のデッキの上から１枚をゲージに置き、カード１枚を引く。この能力はメインフェイズとファイナルフェイズに１回ずつ発動する。』=event:allyEnter+conditions:[eventCardMatches{filter:{cardType:monster,attribute:太陽竜,sizeGte:2}}]（src/07-actions-turn.js:651でカードが自分の場へ登場する度に動的発火。sizeGteは登場時点のeffectiveSizeを見る＝『元々の』限定が無いため妥当）+effects:[putTopDeckToGauge(1),draw(1)]+limit:{scope:phase}（data/cards/bf-d-bt04-kagayake-super-sun-dragon.json D-BT04/0056太陽拳 バルナックル・チャージの『アタックフェイズとファイナルフェイズに１回ずつ発動する』=limit:{scope:phase}と同型のフェイズ単位limit、メイン/ファイナルへ名称のみ差替。原文の限定フェイズ2種と実際のゲームフェイズ進行が一致すれば自動でメイン1回・ファイナル1回に配分される）。grep自己検査: modifyStats+baseSize+excludeSource+cardCount(src/17-targeting.js:417-419、X-CP01/0017実例)/allyEnter動的生成(src/07-actions-turn.js:651)/eventCardMatches+sizeGte(src/13-abilities-core.js,src/17-targeting.js:401-402)/putTopDeckToGauge・draw(src/15-ability-effects.js)/limit.scope:phase(src/15-ability-effects.js、D-BT04/0056実例) 全実在確認。VM検証: x78-b4-verify.js test0018参照（元々のサイズ3の太陽竜が場にいなければサイズ不変／いればサイズ-1／サイズ2以上の太陽竜モンスターが場に登場するとデッキ上1枚がゲージへ+カード1枚を引く／メインフェイズとファイナルフェイズそれぞれ1回ずつ発動し同一フェイズ内2回目は発動しないことを確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0019",
+      "no": "X2-SP/0019",
+      "name": "迅雷騎士団 天弓のドラゴアーチャー",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 1,
+      "defense": 3000,
+      "rules": [
+        "■君の場にカード名に「迅雷」を含むカードがあるならコールできる。",
+        "■“迅雷の一矢”このカードが登場した時、君のデッキからカード名に「迅雷」を含むカード１枚までを手札に加え、デッキをシャッフルする。「迅雷の一矢」は１ターンに１回だけ発動する。",
+        "『移動』"
+      ],
+      "callConditions": [
+        {
+          "op": "ownFieldCardExists",
+          "filter": {
+            "nameIncludes": "迅雷"
+          }
+        }
+      ],
+      "keywords": [
+        "move"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0019-jinrai-no-hitoya",
+          "label": "迅雷の一矢",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "searchDeckToHand",
+              "filter": {
+                "nameIncludes": "迅雷"
+              },
+              "amount": 1,
+              "shuffle": true
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-x2-sp-0019-jinrai-no-hitoya"
+          }
+        }
+      ],
+      "_note": "迅雷騎士団 天弓のドラゴアーチャー（単一ワールド:ドラゴンW、attrs:武装騎竜,赤竜、モンスターS1/3000/1/3000）。①『君の場にカード名に「迅雷」を含むカードがあるならコールできる。』=callConditions:[{op:ownFieldCardExists,filter:{nameIncludes:迅雷}}](bf-h-bt04-0080五角騎竜爆槌のファード『君の場にカード名に「五角」を含むカードがあるならコールできる』の直接前例。cardType制限なし=原文『カード』のまま)。②『“迅雷の一矢”このカードが登場した時、君のデッキからカード名に「迅雷」を含むカード１枚までを手札に加え、デッキをシャッフルする。「迅雷の一矢」は１ターンに１回だけ発動する。』=event:enter+effects:[searchDeckToHand{filter:{nameIncludes:迅雷},amount:1,shuffle:true}](X4由来の確立op、cardType制限なし=原文『カード』のまま。既定でshuffle。bf-x-ss02-0004光核反応と同型のfilter+amount+shuffle明示)+limit:{scope:turn,key:bf-x2-sp-0019-jinrai-no-hitoya}(named-once、技名「迅雷の一矢」はDB内新規=他カードとの共有実績なし、bare slugキー)。③『『移動』』=keywords:[move]。grep自己検査: ownFieldCardExists+callConditions配線(src/13-abilities-core.js:1287-1297、bf-h-bt04-0080実例)/searchDeckToHand(src/15-ability-effects.js:400-431、X4実装)/moveエイリアス(src/18-tooltip-format.js) 全実在確認。VM検証(x78-b2-verify.js): (a)君の場にカード名に「迅雷」を含むカードが無い状態ではcallMonster実経路でコールできない、(b)あればコールできる、(c)登場時にデッキから「迅雷」を含むカード1枚までを手札に加えデッキをシャッフルする、(d)同ターン2回目のenter誘発では発動しない(limit)ことを確認。"
+    },
+    {
+      "id": "bf-x2-sp-0020",
+      "no": "X2-SP/0020",
+      "name": "ベテラン補給員 ペンタ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■君が《雷帝軍》のアイテムを装備しているなら、君の場の《雷帝軍》のモンスター全ては相手のカードの効果でレストされない。",
+        "■このカードが攻撃した時、君のドロップゾーンのカードのワールド名が２種類以上なら、君のライフを＋１する。さらに、３種類以上なら、カード１枚を引く。"
+      ],
+      "continuous": [
+        {
+          "op": "grantRestImmunity",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "雷帝軍"
+          },
+          "from": {
+            "byOpponent": true
+          },
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "filter": {
+                "attribute": "雷帝軍"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0020-attack-worldcount-bonus",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "cardCount",
+                  "controller": "self",
+                  "pile": "drop",
+                  "distinct": "distinctByWorld",
+                  "cmp": "gte",
+                  "amount": 2
+                }
+              ]
+            },
+            {
+              "op": "draw",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "cardCount",
+                  "controller": "self",
+                  "pile": "drop",
+                  "distinct": "distinctByWorld",
+                  "cmp": "gte",
+                  "amount": 3
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "ベテラン補給員 ペンタ（単一ワールド:ドラゴンW、attrs:雷帝軍,ドラゴン、モンスターS1/2000/2/1000、印字キーワード無し）。①『君が《雷帝軍》のアイテムを装備しているなら、君の場の《雷帝軍》のモンスター全ては相手のカードの効果でレストされない。』=continuous:[grantRestImmunity{controller:self,filter:{cardType:monster,attribute:雷帝軍},from:{byOpponent:true},conditions:[cardCount{controller:self,pile:item,filter:{attribute:雷帝軍},cmp:gte,amount:1}]}](bf-x-ub03-0015終魔岩機兵ドラゴレム・ドルマドル型のgrantRestImmunity継続に、bf-x-ss04-0024型のcardCount pile:item『アイテムを装備しているなら』ゲートを合成。grantedProtectionBlocks(src/05-stats.js:1157-1200)がe.conditionsを汎用的に評価することを確認済み)。②『このカードが攻撃した時、君のドロップゾーンのカードのワールド名が２種類以上なら、君のライフを＋１する。さらに、３種類以上なら、カード１枚を引く。』=event:attack(bare・自己トリガー)+effects:[gainLife{amount:1,conditions:[cardCount{controller:self,pile:drop,distinct:distinctByWorld,cmp:gte,amount:2}]},draw{amount:1,conditions:[cardCount{controller:self,pile:drop,distinct:distinctByWorld,cmp:gte,amount:3}]}](各effectにconditionsを個別付与＝『さらに』は独立ボーナスの多段閾値、mech-X77-B2/0053型の効果別conditions確立パターン)。grep自己検査: grantRestImmunity(src/05-stats.js:1146、PROTECTION_OP_BY_KIND)/conditions評価(src/05-stats.js:1188)/event:attack bare/gainLife・draw+conditions(src/15-ability-effects.js) 全実在確認。VM検証(x78-b2-verify.js): (a)君が《雷帝軍》のアイテムを未装備だと自場の《雷帝軍》モンスターは相手の効果でレストされる、(b)装備していると相手の効果でレストされない、(c)攻撃時にドロップのワールド種類数2種類以上でライフ+1、3種類以上でさらにカード1枚を引く(1種類以下ではいずれも不発)、を確認。"
+    },
+    {
+      "id": "bf-x2-sp-0021",
+      "no": "X2-SP/0021",
+      "name": "竜王激震斬!!",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "ドラゴン"
+      ],
+      "size": null,
+      "power": null,
+      "critical": null,
+      "defense": null,
+      "rules": [
+        "■【使用コスト】ゲージ１を払い、君にダメージ１！",
+        "■【対抗】相手の場のモンスター１枚を破壊する。さらに、君の場にカード名に「ドラム」を含むモンスターがいるなら、相手にダメージ２！「竜王激震斬!!」は１ターンに１回だけ使える。"
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "damageSelf",
+            "amount": 1
+          }
+        ]
+      },
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0021-ryuuou-gekishinzan",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "dealDamage",
+              "amount": 2,
+              "conditions": [
+                {
+                  "op": "ownFieldCardExists",
+                  "filter": {
+                    "cardType": "monster",
+                    "nameIncludes": "ドラム"
+                  }
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-x2-sp-0021-ryuuou-gekishinzan"
+          }
+        }
+      ],
+      "_note": "竜王激震斬!!（単一ワールド:ドラゴンW、attrs:ドラゴン、魔法）。①【使用コスト】『ゲージ１を払い、君にダメージ１！』=costs.cast:[payGauge{amount:1},damageSelf{amount:1}]（ability.cost非併記=無条件コストのためcosts.castのみでcharge。bf-h-ss01-0009ドラゴデスパレート型と同型。damageSelfはpayStructuredCost/payStructuredCostWithSelectionの2経路に実装済み＝canPay側に専用ガード無し=常時支払い可能で正しい挙動）。②『【対抗】相手の場のモンスター１枚を破壊する。さらに、君の場にカード名に「ドラム」を含むモンスターがいるなら、相手にダメージ２！「竜王激震斬!!」は１ターンに１回だけ使える。』=kind:spell,timing:[counter]+target:{type:fieldCard,controller:opponent,allowMissingTarget:true,filter:{cardType:monster}}(mech-X77-B2/0053起死回生の一手型の確立target)+effects:[destroy{target:$target}(無条件破壊),dealDamage{amount:2,conditions:[ownFieldCardExists{filter:{cardType:monster,nameIncludes:ドラム}}]}(『さらに』=独立ボーナス、player未指定=dealDamage既定で相手が受け手、src/15-ability-effects.js:1137)]+limit:{scope:turn,key:bf-x2-sp-0021-ryuuou-gekishinzan}(named-once、カード名=技名で他カードとの共有実績なし)。grep自己検査: payGauge・damageSelf(src/04-cost-resource.js)/target fieldCard+allowMissingTarget(多数前例)/destroy target単体形/dealDamage既定opponent(src/15-ability-effects.js:1136-1138)/ownFieldCardExists 全実在確認。VM検証(x78-b2-verify.js): (a)useCardAction(対抗)実経路でゲージ1+自傷1を払い使用でき相手の場のモンスター1枚が破壊される、(b)相手の場にモンスターが無くても(allowMissingTarget)使用でき破壊はno-opで進行する、(c)君の場に「ドラム」を含むモンスターがいると相手に追加ダメージ2が入り、いなければ入らない、(d)同ターン2回目は使用不可(limit)であることを確認。"
+    },
+    {
+      "id": "bf-x2-sp-0022",
+      "no": "X2-SP/0022",
+      "name": "バル、がんバル！",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "太陽竜"
+      ],
+      "size": null,
+      "power": null,
+      "critical": null,
+      "defense": null,
+      "rules": [
+        "■君のファイナルフェイズ中に使える。",
+        "■【対抗】君のデッキの上から２枚をゲージに置く。その後、君の手札の必殺モンスター１枚を、【コールコスト】を払ってコールしてよい。コールしたら、カード２枚を引く。「バル、がんバル！」は１ターンに１回だけ使える。"
+      ],
+      "useConditions": [
+        {
+          "op": "turnOwnerIsSelf"
+        },
+        {
+          "op": "phaseIs",
+          "phase": "final"
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0022-final-counter-call",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "phaseIs",
+              "phase": "final"
+            }
+          ],
+          "script": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 2
+            },
+            {
+              "op": "selectCards",
+              "var": "im",
+              "from": "hand",
+              "controller": "self",
+              "filter": {
+                "cardType": "impactMonster"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "callable": true,
+              "canPayCost": "call",
+              "title": "バル、がんバル！",
+              "lead": "【コールコスト】を払ってコールする、手札の必殺モンスターを1枚まで選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "im",
+              "then": [
+                {
+                  "op": "selectZone",
+                  "var": "z",
+                  "cardVar": "im",
+                  "emptyOnly": true
+                },
+                {
+                  "op": "payCardCostForSelection",
+                  "var": "im",
+                  "purpose": "call"
+                },
+                {
+                  "op": "callSelected",
+                  "var": "im",
+                  "zoneVar": "z",
+                  "resolveOnEnter": true
+                },
+                {
+                  "op": "draw",
+                  "amount": 2
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "バル、がんバル！。①『君のファイナルフェイズ中に使える。』=card級useConditions:[turnOwnerIsSelf,phaseIs{phase:final}]（mech-X77-B4.json 0040型のuseConditions確立＝findUsableHandAbilities/handAbilityUnavailableReason両経路で評価、src/13-abilities-core.js:8-14,src/08-card-use.js:339-341）+ability.conditionsにも同条件を明記（FIX7二重ゲート慣例）。使用コスト行なし＝costsキー省略（無償使用）。②『【対抗】君のデッキの上から２枚をゲージに置く。その後、君の手札の必殺モンスター１枚を、【コールコスト】を払ってコールしてよい。コールしたら、カード２枚を引く。「バル、がんバル！」は１ターンに１回だけ使える。』=kind:spell,timing:[counter]+script:[putTopDeckToGauge(2)→selectCards(from:hand,filter:{cardType:impactMonster},min:0,max:1,require:false,callable:true,canPayCost:call)→ifSelection(then:[selectZone(cardVar:im,emptyOnly:true),payCardCostForSelection(purpose:call),callSelected(zoneVar:z,resolveOnEnter:true),draw(2)])]（data/cards/bf-h-eb01-ultra-hissatsu-pack.json H-EB01/0013竜秘法ドラゴニック・リザレクションのselectCards→selectZone→payCardCostForSelection→callSelected骨格（同カードはrequire:trueの必須コール）を、本カードはrequire:false+ifSelectionで包む任意コール版に変換（mech-X77-B4.json 0005のifSelection包み確立慣例と同型）。named-once「バル、がんバル！」はkind:spell(手札発動)のためisHandCastLimitAbilityにより自動でbase(=ability.id)キー化＝limit:{scope:turn}のみで足りる（mech-X77-B4.json 0040痛恨治癒と同型、shared:true/key不要）。grep自己検査: useConditions両経路評価(src/13-abilities-core.js:8-14,src/08-card-use.js:339-341、X2-BT01/0040実例)/turnOwnerIsSelf・phaseIs(src/13-abilities-core.js:998,1026-1027)/kind:spell+timing:[counter](多数precedent)/putTopDeckToGauge(src/15-ability-effects.js)/selectCards from:hand+callable+canPayCost:call(src/14-ability-script.js、H-EB01/0013実例)/ifSelection(src/14-ability-script.js:1200)/selectZone+cardVar+emptyOnly・payCardCostForSelection・callSelected+resolveOnEnter(src/14-ability-script.js、H-EB01/0013実例)/isHandCastLimitAbility(src/15-ability-effects.js:3789-3790、X2-BT01/0040実例) 全実在確認。VM検証: x78-b4-verify.js test0022参照（メインフェイズ中は使用不可／自分のファイナルフェイズ中は使用可でデッキ上2枚がゲージへ置かれる／手札の必殺モンスターを選んでコールコストを払うと空きゾーンへコールされカード2枚を引く／選ばない場合はデッキ上2枚がゲージへ置かれるのみでドローは無いこと／1ターンに1回だけ使えることを確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0023",
+      "no": "X2-SP/0023",
+      "name": "五角竜剣 ドラゴブレイブ",
+      "type": "item",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "ドラゴン",
+        "武器"
+      ],
+      "size": null,
+      "power": 5000,
+      "critical": 3,
+      "defense": null,
+      "rules": [
+        "■【装備コスト】手札１枚をこのカードのソウルに入れ、ゲージ１を払い、君にダメージ１！",
+        "■このカードは君のセンターに《武装騎竜》がいても攻撃できる。",
+        "■君がダメージを受けた時、君のデッキの上から１枚をゲージに置き、君のライフを＋１する。さらに、君のターン中なら、カード１枚を引く。この能力は１ターンに１回だけ発動する。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "putHandToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          },
+          {
+            "op": "damageSelf",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0023-attack-with-center",
+          "kind": "passive",
+          "keyword": "canAttackWithCenter",
+          "conditions": [
+            {
+              "op": "ownCenterHasAttribute",
+              "attribute": "武装騎竜"
+            }
+          ]
+        },
+        {
+          "id": "bf-x2-sp-0023-damage-received",
+          "kind": "triggered",
+          "event": "damageReceived",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "turnOwnerIsSelf"
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "五角竜剣 ドラゴブレイブ。①【装備コスト】『手札１枚をこのカードのソウルに入れ、ゲージ１を払い、君にダメージ１！』=costs.equip:[putHandToSoul(1),payGauge(1),damageSelf(1)]（damageSelfは自傷ダメージのコストop、src/04-cost-resource.js:1144,1952。多数precedent、例data/cards/bf-x-ss01-gokakujin-vs-hyakurai.json『【装備コスト】ゲージ１を払い、君にダメージ１！』のdamageSelf型に手札ソウルインを合成）。②【R7裁定対応・VM確認済】『このカードは君のセンターに《武装騎竜》がいても攻撃できる。』=kind:passive,keyword:canAttackWithCenter,conditions:[ownCenterHasAttribute{attribute:武装騎竜}]（data/cards/bf-h-bt01-giga-future.json H-BT01/0038第九の戦士ノインの『君がこのカードに『変身』しているなら、このカードは、君のセンターに《カルテットファイブ》がいても攻撃できる。』=同型kind:passive+keyword+conditions:[ownCenterHasAttribute]の直接precedent。ownCenterHasAttributeはsrc/13-abilities-core.js:1143-1144で`player.field.center?.attributes?.includes(condition.attribute)`を直読み＝『センターに《武装騎竜》がいる』を厳密に判定するため、単なる無条件canAttackWithCenter（bf-x-bt01-reborn-of-satan.json X-BT01/0015等の『センターにモンスターがいても攻撃できる』無条件版）とは意味論上区別される『条件付き』表現として既存機構のみで表現可能と実測確定＝ギャップではない。src/11-destroy-turn.js:45-53のcanDeclareAttack判定は`!hasKeyword(attacker.card,\"canAttackWithCenter\")`のみを見るため、hasKeyword(src/18-tooltip-format.js:279-282)がability.keyword+passiveAbilityConditionsMet(src/18:427-445、conditions評価は`checkCondition(condition,slot.owner,{card,owner:slot.owner,zone:slot.zone})`＝アイテム自身のゾーンから所有者を特定しownCenterHasAttributeがその所有者のcenterを見る)経由で動的にtrue/falseを切替える）。③『君がダメージを受けた時、君のデッキの上から１枚をゲージに置き、君のライフを＋１する。さらに、君のターン中なら、カード１枚を引く。この能力は１ターンに１回だけ発動する。』=event:damageReceived(data/cards/bf-hd-pr.json PR/0195型の自己直接発火event)+effects:[putTopDeckToGauge(1),gainLife(1),draw(1,conditions:[turnOwnerIsSelf])]（『さらに、〜なら』=draw effectへのconditionsゲート）+limit:{scope:turn}。④『ソウルガード』=keywords:[soulguard]。grep自己検査: putHandToSoul(src/04-cost-resource.js)/damageSelf(src/04-cost-resource.js:1144,1952、applyDamageToPlayer経由)/kind:passive+keyword+conditions:ownCenterHasAttribute(src/13-abilities-core.js:1143-1144,src/18-tooltip-format.js:279-282,427-445、H-BT01/0038実例)/canDeclareAttack hasKeyword判定(src/11-destroy-turn.js:45-53)/event:damageReceived(src/*、PR/0195実例)/putTopDeckToGauge・gainLife・draw+conditions(src/15-ability-effects.js)/turnOwnerIsSelf(src/13-abilities-core.js) 全実在確認。VM検証: x78-b4-verify.js test0023参照（装備コストで手札1枚がソウルへ・ゲージ1減・自分にダメージ1が入る／自分のセンターに《武装騎竜》がいる状態では攻撃宣言できる／《武装騎竜》以外のモンスターがセンターにいる状態では攻撃宣言できない／ダメージを受けるとデッキ上1枚がゲージへ・ライフ+1し、自分のターン中ならさらにカード1枚を引き相手のターン中は引かないこと／1ターンに1回だけ発動することを確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0024",
+      "no": "X2-SP/0024",
+      "name": "覚醒せし勇者の装備 グローリー・シーカー",
+      "type": "item",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": null,
+      "attributes": [
+        "冒険者",
+        "武器"
+      ],
+      "size": null,
+      "power": 6000,
+      "critical": 2,
+      "defense": null,
+      "rules": [
+        "■【装備コスト】手札１枚を捨て、ゲージ１を払う。",
+        "■このカードが連携攻撃した時、カード１枚を引く。",
+        "■“奇跡よ再び”君のライフが０になるなら、場のこのカードをドロップゾーンに置き、君のデッキの上から１枚をドロップゾーンに置く。そのカードが魔法なら、君のライフを３にし、そのターン中、君はダメージを受けない。",
+        "『２回攻撃』"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "discardHand",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "doubleAttack"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0024-link-draw",
+          "kind": "triggered",
+          "event": "allyLinkAttack",
+          "conditions": [
+            {
+              "op": "pendingAttackBySource"
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "lifeZeroReplacement": {
+        "zone": "item",
+        "topDeckFilter": {
+          "cardType": "spell"
+        },
+        "life": 3,
+        "effects": [
+          {
+            "op": "preventAllDamageThisTurn"
+          }
+        ]
+      },
+      "_note": "【R13/E-XB71 配線済み・掃討反映】lifeZeroReplacement に effects:[{op:preventAllDamageThisTurn}] を追加済み（『そのターン中、君はダメージを受けない』を配線・resolveLifeZeroReplacements→applyLifeZeroReplacementEffects 経由）。以下は当時のギャップ分析（記録として保持）。覚醒せし勇者の装備 グローリー・シーカー。①【装備コスト】手札１枚を捨て、ゲージ１を払う。=costs.equip:[discardHand(1),payGauge(1)]（data/cards/bf-hd-pr.json PR/0126オカダの竜剣ドラゴブレイブの確立precedent、同一2ステップ構文）。②『このカードが連携攻撃した時、カード１枚を引く。』=event:allyLinkAttack（連携時のみ攻撃側場全体へブロードキャスト、src/09-attack.js:606-614。攻撃者2枚以上の時だけ発火し、eventCardはattackers[0]のみだが受信側リスナーの条件はcontext.card=リスナー自身を見るため実害無し）+conditions:[pendingAttackBySource]（getPendingAttackers()=state.pendingAttack.attackers全件からこのカードのスロットを探す。アイテム(装備)枠のカードも武器アタック機構でzones走査に含まれ攻撃者になれるためitem枠のこのカードでも正しく判定できる）+effects:[draw(1)]。data/cards/bf-x-ss04-raiteigun-vs-chaos.json X-SS04/0008の直接precedent（同一event+condition構成、こちらは追加でstandTarget/putTopDeckToGaugeするがdrawのみへ簡略化）。原文に『1ターンに1回』等の制限は無いため無制限（連携攻撃1回につき1枚）。③『“奇跡よ再び”君のライフが０になるなら、場のこのカードをドロップゾーンに置き、君のデッキの上から１枚をドロップゾーンに置く。そのカードが魔法なら、君のライフを３にし、そのターン中、君はダメージを受けない。』のうち『ライフを３にする』部分はlifeZeroReplacement:{zone:item,topDeckFilter:{cardType:spell},life:3}（data/cards/bt03-dododo-adventure.json BT03/0020勇者の装備グローリー・シーカー＝本カードの直接の旧版・base同名カードの一字一句近い前身テキストが同一機構で確立済みprecedent。resolveLifeZeroReplacements、src/11-destroy-turn.js:2440-2511、が場アイテムのlifeZeroReplacementを消費しdeck top1枚をdropへ→spellならlife代入）。【表現不能・エンジン拡張要】『そのターン中、君はダメージを受けない』の追加ボーナスは、card.lifeZeroReplacementのスキーマ（zone/topDeckFilter/life/draw/soulCost/soulFilter/sacrificeFilter のみ、grep確認: data/cards/*.json全走査でlifeZeroReplacement内キーはこの集合のみ）に汎用effects差し込み口が無く、resolveLifeZeroReplacements（同関数）内の分岐も上記キーの直接処理のみでexecuteAbilityEffect等の汎用エフェクト実行を一切呼ばない（=preventAllDamageThisTurnという既存op自体はsrc/15-ability-effects.js:2975-2984に実在するが、この経路からは到達不能）。近縁のplayer.lifeZeroSafeguard（setLifeZeroSafeguard op、data/cards/bf-x-cp01-100-yen-dragon.json X-CP01/0062の直接precedent）はeffects配列を持てるが、消費側ディスパッチ（同resolveLifeZeroReplacements内for(const eff of safeguard.effects)ブロック）がdiscardAllHand/dealDamage/gainLife/drawの4opのみを認識するクローズドswitchでpreventAllDamageThisTurnは未対応、かつこの機構は『次の1回だけ』のプレイヤー単位ワンショットで『場のこのカードが装備されている間繰り返し使える』本カードの持続的lifeZeroReplacement意味論とも構造が異なるため代用は不採用（勝手な代用禁止）。エンジン班への提案: lifeZeroReplacementへ任意effects配列（lifeZeroSafeguardと同型の限定ディスパッチ、+preventAllDamageThisTurn対応）を追加すれば復元可能。『無いopは創作せず報告』の方針により当該ボーナスは未実装（rulesには全文収録済み・カードパワーは原文よりやや低く近似）。grep自己検査: discardHand・payGauge(src/04-cost-resource.js)/allyLinkAttack発火(src/09-attack.js:606-614、X-SS04/0008実例)/pendingAttackBySource(src/13-abilities-core.js:1604-1609)/draw(src/15-ability-effects.js:284-293)/doubleAttackキーワード(src/18-tooltip-format.js:483)/lifeZeroReplacement消費(src/11-destroy-turn.js:2440-2511、BT03/0020実例)/lifeZeroReplacementスキーマにeffects無し(data/cards/*.json全走査)/lifeZeroSafeguard.effectsクローズドswitch(src/11-destroy-turn.js:2404-2431)/preventAllDamageThisTurn到達不能経路確認(src/15-ability-effects.js:2975-2984) 全確認。VM: x78-b5-verify.js test0024参照（装備コスト実測／連携攻撃時のみドロー(単独攻撃では不発)を実測／ライフ0化でlifeZeroReplacementが消費されデッキ上1枚がドロップへ→魔法ならライフ3になることを実測＝ギャップ部分[ダメージ無効]が効いていないことも合わせて確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0025",
+      "no": "X2-SP/0025",
+      "name": "勇猛の神王 グランガデス",
+      "type": "monster",
+      "rarity": "",
+      "world": "デンジャーW",
+      "worlds": null,
+      "attributes": [
+        "デュエルドラゴン",
+        "神"
+      ],
+      "size": 3,
+      "power": 12000,
+      "critical": 4,
+      "defense": 7000,
+      "rules": [
+        "『角王』",
+        "■【コールコスト】ゲージ５を払う。",
+        "■このカードが登場した時、君のデッキの上から４枚をこのカードのソウルに入れる。",
+        "『移動』『貫通』『２回攻撃』『ソウルガード』『ライフリンク４』"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "デンジャーW",
+        "awayMaxCopies": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 5
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 5
+      },
+      "keywords": [
+        "move",
+        "penetrate",
+        "doubleAttack",
+        "soulguard",
+        "lifeLink4"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0025-enter-mill-soul",
+          "kind": "triggered",
+          "event": "enter",
+          "effects": [
+            {
+              "op": "putTopDeckToSoul",
+              "amount": 4
+            }
+          ]
+        }
+      ],
+      "_note": "勇猛の神王 グランガデス（角王）。①【コールコスト】ゲージ5=costs.call:[payGauge{amount:5}]。②『このカードが登場した時、君のデッキの上から４枚をこのカードのソウルに入れる。』=kind:triggered,event:\"enter\"+effects:[putTopDeckToSoul{amount:4}]（putTopDeckToSoulはコストopとしてだけでなくeffect opとしても実装済み、src/15-ability-effects.js:324、isScriptEffectStep許可リストにも収録。数値のみ差替の確立形）。③『移動』『貫通』『２回攻撃』『ソウルガード』『ライフリンク４』=keywords:[move,penetrate,doubleAttack,soulguard,lifeLink4]（ライフリンクN=内部キーワード文字列\"lifeLinkN\"、lifeLinkAmount[src/11-destroy-turn.js:1695-1702]が/^lifeLink\\d+$/で数値抽出。data/cards内\"lifeLink4\"の既存使用例多数）。角王(deckAnyFlag)={homeWorld:デンジャーW,awayMaxCopies:1}。grep自己検査: payGauge(src/04-cost-resource.js)/event:enter配信(src/07-actions-turn.js)/putTopDeckToSoul effect op(src/15-ability-effects.js:324)/keywords move・penetrate・doubleAttack・soulguardエイリアス(src/18-tooltip-format.js)/lifeLink4正規表現抽出(src/11-destroy-turn.js:1695-1702) 全実在確認。VM検証(x78-b1-verify.js): (A)callMonster実経路でゲージ5を払ってコールできる、(B)resolveOnEnter実経路で登場時デッキの上から4枚がこのカードのソウルへ入る、(C)5枚未満しかデッキに無い場合でも残数だけ入り例外にならない、(D)keywordsが印字どおり5種そろっていることを確認。"
+    },
+    {
+      "id": "bf-x2-sp-0026",
+      "no": "X2-SP/0026",
+      "name": "蒼穹騎士団 ドラム・ザ・テンペスト",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 1,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】君の手札１枚までをこのカードのソウルに入れ、ゲージ２を払う。",
+        "■君のライフが回復した時、君のデッキの上から１枚をこのカードのソウルに入れ、君のライフを＋１し、カード１枚を引く。この能力は１ターンに１回だけ発動する。",
+        "■このカードのソウル１枚につき、このカードの攻撃力＋2000、打撃力＋1！",
+        "『移動』『２回攻撃』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putHandToSoul",
+            "amount": 1,
+            "min": 0,
+            "max": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "amountFrom": {
+            "source": "soulCount",
+            "per": {
+              "power": 2000,
+              "critical": 1
+            }
+          }
+        }
+      ],
+      "keywords": [
+        "move",
+        "doubleAttack",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0026-lifegain-soul-draw",
+          "kind": "triggered",
+          "event": "allyLifeGained",
+          "effects": [
+            {
+              "op": "putTopDeckToSoul",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "蒼穹騎士団 ドラム・ザ・テンペスト。①【コールコスト】『君の手札１枚までをこのカードのソウルに入れ、ゲージ２を払う。』=costs.call:[putHandToSoul{amount:1,min:0,max:1},payGauge{amount:2}]（data/cards/bf-x-cp02-100-yen-star-dragon.json X-CP02/0015超重機シュランゲ：04の『君の手札１枚までをこのカードのソウルに入れる。』putHandToSoul{amount:1,min:0,max:1}確立形にpayGauge(2)を追加）。②『君のライフが回復した時、君のデッキの上から１枚をこのカードのソウルに入れ、君のライフを＋１し、カード１枚を引く。この能力は１ターンに１回だけ発動する。』=event:allyLifeGained（data/cards/bf-x-bt03-gyakuten-raiteigun.json X-BT03/0057崩滅槍天抉りの『君のライフが回復した時』確立form。allyLifeGainedは同席の場カード全てへブロードキャストされホスト自身も対象に含む、src/15-ability-effects.js:688,1132のrunFieldEventTriggers(\"lifeGained\",...)）+effects:[putTopDeckToSoul{amount:1}(context.card=このカード自身のソウルへ), gainLife{amount:1}, draw{amount:1}]+limit:{scope:turn}（無名のためkey不要）。gainLife自体が内部でallyLifeGainedを再発火する自己参照ループの懸念があるが、markAbilityLimitはexecuteAbilityBody実行前（本体解決の前）に記帳されるため（src/14-ability-script.js:91-97、爆雷連鎖と同じ安全策）、gainLife由来の再入時にはisAbilityLimitUsedが既にtrueで弾かれ1回で打ち切られる（無限再帰なし）。③『このカードのソウル１枚につき、このカードの攻撃力＋2000、打撃力＋1！』=continuous:[{op:modifyStats,filter:{sameInstanceAsSource:true},amountFrom:{source:soulCount,per:{power:2000,critical:1}}}]（data/cards/bf-x-bt03-gyakuten-raiteigun.json X-BT03/0045五角超騎竜爆滅槌のファードの soulCount+per:{critical:1} 型にpower:2000を追加。打撃力=critical）。『移動』『２回攻撃』『ソウルガード』=keywords:[move,doubleAttack,soulguard]。grep自己検査: putHandToSoul(src/04-cost-resource.js:687,1108,1405,1918、X-CP02/0015実例)/payGauge/event:allyLifeGained動的生成(src/15-ability-effects.js:688,1132)/putTopDeckToSoul(context.card自身、src/15-ability-effects.js:324)/gainLife(src/15-ability-effects.js:672)/draw(src/15-ability-effects.js:286)/markAbilityLimit本体解決前記帳(src/14-ability-script.js:91-97)/modifyStats amountFrom soulCount(src/05-stats.js:452-476、X-BT03/0045実例) 全実在確認。VM検証: x78-b3-verify.js test0026参照（callMonster実経路で手札0〜1枚をソウルへ入れゲージ2を払ってコールできる／executeAbilityEffect(gainLife)の実lifeGain経路でデッキ上1枚がこのカードのソウルへ・ライフ+1・ドロー1が発生し、同ターン内2回目のライフ回復では発動しない(limit:turn)／このカードのソウル枚数に応じて攻撃力・打撃力が加算される、を確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0027",
+      "no": "X2-SP/0027",
+      "name": "迅雷騎士団 奮起のハルバード・ドラゴン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 3,
+      "defense": 7000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■【対抗】【起動】“迅雷の要”このターン中、君の場のカード名に「迅雷」を含むモンスターが『移動』しているなら、手札のこのカードを、【コールコスト】を払わずコールする。「迅雷の要」は１ターンに１回だけ使える。",
+        "■このカードが登場した時か『移動』した時、相手の場のモンスター１枚を破壊する。",
+        "『移動』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "move"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0027-jinrai-no-kaname",
+          "label": "迅雷の要",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "counter",
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "monsterMovedThisTurn",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "迅雷"
+              }
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-x2-sp-0027-jinrai-no-kaname"
+          },
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "self",
+              "from": [
+                "hand",
+                "drop"
+              ],
+              "controller": "self",
+              "filter": {
+                "sameInstanceAsSource": true
+              },
+              "amount": 1
+            },
+            {
+              "op": "selectZone",
+              "var": "z",
+              "cardVar": "self",
+              "emptyOnly": true
+            },
+            {
+              "op": "callSelected",
+              "var": "self",
+              "zoneVar": "z",
+              "resolveOnEnter": true
+            }
+          ]
+        },
+        {
+          "id": "bf-x2-sp-0027-enter-destroy",
+          "kind": "triggered",
+          "event": "enter",
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        },
+        {
+          "id": "bf-x2-sp-0027-move-destroy",
+          "kind": "triggered",
+          "event": "allyMove",
+          "conditions": [
+            {
+              "op": "eventCardIsSource"
+            }
+          ],
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            }
+          ]
+        }
+      ],
+      "_note": "迅雷騎士団 奮起のハルバード・ドラゴン（単一ワールド:ドラゴンW、attrs:武装騎竜,赤竜、モンスターS2/7000/3/7000）。①【コールコスト】『ゲージ２を払う。』=costs.call:[payGauge{amount:2}]。②『【対抗】【起動】“迅雷の要”このターン中、君の場のカード名に「迅雷」を含むモンスターが『移動』しているなら、手札のこのカードを、【コールコスト】を払わずコールする。「迅雷の要」は１ターンに１回だけ使える。』は0014と同根拠(rulings.md R6)でE-XB69(monsterMovedThisTurn条件op、src/13-abilities-core.js:1523-1540)が本バッチ着手後にsrcへ着地したため実装。kind:activated,fromHandOnly:true,label:迅雷の要,timing:[counter,main]+conditions:[monsterMovedThisTurn{filter:{cardType:monster,nameIncludes:迅雷}}]+limit:{scope:turn,key:...}(named-once bare key)+script:[selectCards{var:self,from:[hand,drop],controller:self,filter:{sameInstanceAsSource:true},amount:1},selectZone{var:z,cardVar:self,emptyOnly:true},callSelected{var:self,zoneVar:z,resolveOnEnter:true}](payCost省略=無償コール。bf-x-ss03-0048シャインブレイド・ジョーカー『手札のこのカードを、【コールコスト】を払わずコールする』の直接前例＝from:[hand,drop]の二相対応は「findUsableHandAbilities事前充足チェック時=hand在席」「useHandAbilityAction実行時=script前にdropへpush済み」の両方をfilter.sameInstanceAsSourceで自instanceId限定して拾う確立パターン、_note記載の致命修正済み仕様)。③『このカードが登場した時か『移動』した時、相手の場のモンスター１枚を破壊する。』=ability.eventはstrict等値比較(`ability.event === event`、src/07-actions-turn.js:671,1032等・配列非対応)のため、event:enter版とevent:allyMove版の2アビリティに分割。enter版=event:enter+target{fieldCard,opponent,allowMissingTarget:true,filter:{cardType:monster}}+destroy{target:$target}(bf-x-bt01-0010型のtarget構造)。move版=event:allyMove+conditions:[eventCardIsSource](『このカードが』移動＝自己限定、eventCard.card.instanceId===context.card.instanceIdを比較するsrc/13-abilities-core.js:1339-1342の確立条件op)+同一target/destroy。原文に『1ターンに1回』の限定句が無いため、enter/move各々limit無し(移動の都度・登場の都度、それぞれ独立発火)。④『『移動』』=keywords:[move]。grep自己検査: payGauge/monsterMovedThisTurn(src/13-abilities-core.js:1523-1540、E-XB69)/selectCards from配列+sameInstanceAsSource/selectZone emptyOnly+cardVar/callSelected zoneVar+resolveOnEnter(src/14-ability-script.js、X-SS03/0048実例)/event:enter/event:allyMove(runFieldEventTriggers、src/07-actions-turn.js:692-725)/eventCardIsSource(src/13-abilities-core.js:1339-1342)/target+destroy(bf-x-bt01-0010型) 全実在確認。VM検証(x78-b2-verify.js): (a)callMonster実経路でゲージ2を払ってコールできる、(b)登場時に相手の場のモンスター1枚が破壊される(いなくてもallowMissingTargetで正常進行)、(c)moveFieldCard実経路でこのカード自身が移動すると相手の場のモンスター1枚が破壊される、(d)このカード以外が移動しても発火しない(eventCardIsSource)、(e)君の場のカード名に「迅雷」を含むモンスターが移動した後、手札のこのカードをコールコスト無償でコールできる(移動前は不可)、(f)同ターン2回目は使用不可(limit)、を確認。"
+    },
+    {
+      "id": "bf-x2-sp-0028",
+      "no": "X2-SP/0028",
+      "name": "俺たちゃ雷帝軍！ デルタ&テトラ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 2,
+      "power": 6000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】君の場の《雷帝軍》のモンスター１枚以上好きな枚数をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■このカードが攻撃した時か破壊された時、君のデッキの上から１枚をゲージに置く。",
+        "■君が《雷帝軍》のアイテムを装備しているなら、このカードの攻撃力＋3000、防御力＋3000、打撃力＋１し、『貫通』を得る。",
+        "『移動』『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putSelectedOwnFieldCardsToSoul",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "雷帝軍"
+            },
+            "min": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "move",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0028-attack-gauge",
+          "kind": "triggered",
+          "event": "attack",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-x2-sp-0028-destroyed-gauge",
+          "kind": "triggered",
+          "event": "destroyed",
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "power": 3000,
+          "defense": 3000,
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "filter": {
+                "attribute": "雷帝軍"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "op": "grantKeyword",
+          "keyword": "penetrate",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "filter": {
+                "attribute": "雷帝軍"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "俺たちゃ雷帝軍！ デルタ&テトラ（単一ワールド:ドラゴンW、attrs:雷帝軍,ドラゴン、モンスターS2/6000/2/4000）。①【コールコスト】『君の場の《雷帝軍》のモンスター１枚以上好きな枚数をこのカードのソウルに入れ、ゲージ１を払う。』=costs.call:[putSelectedOwnFieldCardsToSoul{filter:{cardType:monster,attribute:雷帝軍},min:1},payGauge{amount:1}](mech-X77-B2/0006型の確立op。『1枚以上好きな枚数』=min:1・maxは未指定=候補全数上限。putSelectedOwnFieldCardsToSoulは発生源自身を候補から自動除外=src/04-cost-resource.js:804-806)。②『このカードが攻撃した時か破壊された時、君のデッキの上から１枚をゲージに置く。』=ability.eventの配列非対応(0027と同根拠)により2アビリティに分割: event:attack(bare自己)+putTopDeckToGauge{amount:1}、event:destroyed(bare自己・cause限定無し=バトル/効果いずれの破壊でも発火)+putTopDeckToGauge{amount:1}。③『君が《雷帝軍》のアイテムを装備しているなら、このカードの攻撃力＋3000、防御力＋3000、打撃力＋１し、『貫通』を得る。』=continuous:[modifyStats{filter:{sameInstanceAsSource:true},power:3000,defense:3000,critical:1,conditions:[cardCount{controller:self,pile:item,filter:{attribute:雷帝軍},cmp:gte,amount:1}]},grantKeyword{keyword:penetrate,filter:{sameInstanceAsSource:true},conditions:[同上cardCount]}](bf-x-bt02-0001現界せし竜神デュナミス型のcardCount pile:item+grantKeyword確立パターン。『打撃力』=critical鉄則)。④『『移動』『ソウルガード』』=keywords:[move,soulguard]。grep自己検査: putSelectedOwnFieldCardsToSoul(src/04-cost-resource.js:804,1248,1598,2032、4箇所)/payGauge/event:attack・event:destroyed bare/putTopDeckToGauge/continuousEffectApplies+conditions(src/05-stats.js:1027-1035)/cardCount pile:item(src/13-abilities-core.js:822,836等)/grantKeyword filter:sameInstanceAsSource(src/05-stats.js) 全実在確認。VM検証(x78-b2-verify.js): (a)callMonster実経路で自場の《雷帝軍》モンスター1枚以上をソウルへ入れゲージ1を払ってコールできる、(b)攻撃時にデッキ上1枚がゲージへ置かれる、(c)destroyFieldCard実経路で破壊時(バトル/効果いずれも)デッキ上1枚がゲージへ置かれる、(d)君が《雷帝軍》アイテムを装備しているとvisiblePower/visibleDefense/visibleCriticalが+3000/+3000/+1され『貫通』を得る、未装備では不変、を確認。"
+    },
+    {
+      "id": "bf-x2-sp-0029",
+      "no": "X2-SP/0029",
+      "name": "明星の麗王 ヴァリアブルコード",
+      "type": "monster",
+      "rarity": "",
+      "world": "スタードラゴンW",
+      "worlds": null,
+      "attributes": [
+        "ネオドラゴン"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 3,
+      "defense": 2000,
+      "rules": [
+        "『角王』",
+        "■【コールコスト】君の手札を好きな枚数、このカードのソウルに入れ、ゲージ２を払う。",
+        "■お互いのアタックフェイズ開始時、君のドロップゾーンのカード１枚までをこのカードのソウルに入れる。その後、このカードのソウルが３枚以上あるなら、そのターン中、このカードは『貫通』と『２回攻撃』を得る。",
+        "『移動』『ソウルガード』"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "スタードラゴンW",
+        "awayMaxCopies": 1
+      },
+      "costs": {
+        "call": [
+          {
+            "op": "putHandToSoul",
+            "amount": 20,
+            "min": 0,
+            "max": 20
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "keywords": [
+        "move",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0029-attackstart-drop-soul-buff",
+          "kind": "triggered",
+          "event": "attackStart",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "d",
+              "from": "drop",
+              "controller": "self",
+              "filter": {},
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "明星の麗王 ヴァリアブルコード",
+              "lead": "このカードのソウルに入れる、君のドロップゾーンのカードを1枚まで選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "d",
+              "to": "soul",
+              "require": false
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "sourceSoulCountGte",
+                "amount": 3
+              },
+              "then": [
+                {
+                  "op": "grantKeyword",
+                  "target": "$self",
+                  "keyword": "penetrate",
+                  "duration": "turn"
+                },
+                {
+                  "op": "grantKeyword",
+                  "target": "$self",
+                  "keyword": "doubleAttack",
+                  "duration": "turn"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "明星の麗王 ヴァリアブルコード（角王）。①【コールコスト】『君の手札を好きな枚数、このカードのソウルに入れ、ゲージ２を払う。』=costs.call:[putHandToSoul{amount:20,min:0,max:20}（『好きな枚数』=0以上・上限は手札が20枚を超えないことを前提にした確立近似上限、bf-x-cp02-100-yen-star-dragon.json X-CP02/0002“絢爛朱雀”ヴァリアブルコード『君の手札を好きな枚数、このカードのソウルに入れ、ゲージ３を払う。』の完全同型直接precedent。同カード名『ヴァリアブルコード』シリーズの前世代版で、callCostキーも同様に省略[任意枚数コストのため固定gauge表示が馴染まない既存慣例]）,payGauge{amount:2}]。②『お互いのアタックフェイズ開始時、君のドロップゾーンのカード１枚までをこのカードのソウルに入れる。その後、このカードのソウルが３枚以上あるなら、そのターン中、このカードは『貫通』と『２回攻撃』を得る。』=kind:triggered,event:\"attackStart\"（turnOwnerIsSelf条件なし=『お互いの』、0005/legend-buddies0027と同型）+script:[selectCards{var:d,from:drop,controller:self,filter:{},min:0,max:1,require:false}→moveSelected{var:d,to:\"soul\",require:false}（destKind:\"soul\"はcontext.card=発生源自身のソウルへ入れる。src/14-ability-script.js:1132-1134、enteredSoul誘発も正しく配線される）→ifCondition{condition:{op:sourceSoulCountGte,amount:3}（『このカードのソウルが３枚以上あるなら』、直前のmoveSelectedでソウルへ追加された後の枚数を参照。src/13-abilities-core.js:1174-1177）,then:[grantKeyword{target:$self,keyword:penetrate,duration:turn},grantKeyword{target:$self,keyword:doubleAttack,duration:turn}]}]。③『移動』『ソウルガード』=keywords:[move,soulguard]。角王(deckAnyFlag)={homeWorld:スタードラゴンW,awayMaxCopies:1}。grep自己検査: putHandToSoul cost 3経路(src/04-cost-resource.js:687,1108,1918)/payGauge/event:attackStart bare(src/07-actions-turn.js)/selectCards from:drop/moveSelected to:soul(src/14-ability-script.js:1114-1148,1132-1134)/ifCondition(src/14-ability-script.js:1222-1229)/sourceSoulCountGte(src/13-abilities-core.js:1174-1177)/grantKeyword target:$self+duration:turn(isScriptEffectStep許可リスト) 全実在確認。VM検証(x78-b1-verify.js): (A)callMonster実経路で手札を0〜好きな枚数このカードのソウルへ入れゲージ2を払ってコールできる（手札0枚でも成立）、(B)runPhaseStartTriggers(attackStart)実経路で自分/相手いずれの攻撃フェイズ開始時にもドロップのカードを1枚まで選んでこのカードのソウルへ入れられる、(C)ソウル合計が2枚以下では『貫通』『２回攻撃』を得ない、(D)3枚以上になった時点でそのターン中『貫通』と『２回攻撃』を得る、を実測。"
+    },
+    {
+      "id": "bf-x2-sp-0030",
+      "no": "X2-SP/0030",
+      "name": "爆逮 ランペイジ・ソニック “ターボ”",
+      "type": "monster",
+      "rarity": "",
+      "world": "ヒーローW",
+      "worlds": null,
+      "attributes": [
+        "ヒーロー"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 4000,
+      "rules": [
+        "■【コールコスト】ゲージ１を払う。",
+        "■君がこのカードに『変身』しているなら、君の場の《ヒーロー》が相手のモンスターを攻撃しているバトル中、相手は【対抗】を使えない。",
+        "■相手の場にモンスターがいないなら、このカードの打撃力＋３！",
+        "『変身』〔ゲージ１を払う〕"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 1
+      },
+      "keywords": [
+        "henshin"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "critical": 3,
+          "conditions": [
+            {
+              "op": "opponentFieldCardCountLte",
+              "filter": {
+                "cardType": "monster"
+              },
+              "amount": 0
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0030-counter-lock",
+          "kind": "triggered",
+          "event": "allyAttack",
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "item"
+              ]
+            },
+            {
+              "op": "targetMatches",
+              "filter": {
+                "attribute": "ヒーロー"
+              }
+            },
+            {
+              "op": "targetMatches",
+              "ref": "$attackTarget",
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "preventOpponentCounterThisTurn",
+              "conditions": [
+                {
+                  "op": "eventAttackersInclude",
+                  "filter": {
+                    "attribute": "ヒーロー"
+                  }
+                },
+                {
+                  "op": "pendingAttackTargetMatches",
+                  "filter": {
+                    "cardType": "monster"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "bf-x2-sp-0030-henshin-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
+          "id": "bf-x2-sp-0030-henshin-field",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "sourceZoneIn",
+              "zones": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        }
+      ],
+      "_note": "爆逮 ランペイジ・ソニック“ターボ”。①【コールコスト】ゲージ１=costs.call:[payGauge(1)]+callCost:{gauge:1}（標準形）。②『君がこのカードに『変身』しているなら、君の場の《ヒーロー》が相手のモンスターを攻撃しているバトル中、相手は【対抗】を使えない。』は『君がこのカードに変身している』=sourceZoneIn{zones:[item]}（bf-x-ub03-complete-chaos.json X-UB03/0015侵蝕コード564の確立precedent。equipCardDirectがcurrentType=item化しfield[item]へ置くため、その状態でのみ真）をゲートに、event:allyAttack（攻撃側の場全体ブロードキャスト、src/07-actions-turn.js:692 runFieldEventTriggers。runAttackDeclarationTriggers(src/09-attack.js:527)がattacker毎に発火するため『君の場の《ヒーロー》』側の攻撃者だけがtargetMatches{filter:{attribute:ヒーロー}}（context.target=eventCard=その攻撃者自身）で真になる。0030自身が変身状態のitemゾーンから攻撃者になった場合も同じ経路でattribute:ヒーローに一致し拾える＝『君の場の《ヒーロー》』にこのカード自身の攻撃も含めて忠実）+targetMatches{ref:$attackTarget,filter:{cardType:monster}}（『相手のモンスターを攻撃している』、$attackTarget=getPendingBattleTargetInfo、src/15-ability-effects.js:3242-3244）で発動ゲート。効果はpreventOpponentCounterThisTurn（bf-h-eb04-buddy-allstars.json H-EB04/0057アブソリュート・アタックの確立op、state.opponentCounterLockThisTurnへ{owner,while}を積み、canUseCounterEffect(src/18-tooltip-format.js:501-513)が対抗使用時にwhileを都度再評価する『そのバトル中だけ』ロック）+conditions:[eventAttackersInclude{filter:{attribute:ヒーロー}}(context.attackers未設定時はgetPendingAttackers()へフォールバック、src/13-abilities-core.js:1430-1437。excludeSelf未指定=自分自身の攻撃者も候補に含む＝attackメンバーがこのカード自身のみでも成立する必要があるため、他攻撃者除外型のpendingAttackIncludesOtherMatchingではなくこちらを採用), pendingAttackTargetMatches{filter:{cardType:monster}}]。bf-s-ub-c03-cinderella-theater.json S-UB-C03/0065ドーナツアイドル椎名法子（event:allyAttack+preventOpponentCounterThisTurn+while二重条件）の直接precedentを踏襲し、filterのみ差替。③『相手の場にモンスターがいないなら、このカードの打撃力＋３！』=continuous:[modifyStats{filter:{sameInstanceAsSource:true},critical:3,conditions:[opponentFieldCardCountLte{filter:{cardType:monster},amount:0}]}]（data/cards/bf-x-cp03-100-yen-darkness-dragon.json X-CP03/0002/0017/0041/0042/0067多数の確立precedent）。④『変身』〔ゲージ１を払う〕=keywords:[henshin]+henshin-hand(fromHandOnly)/henshin-field(sourceZoneIn左中右)の2アビリティ標準形（data/cards/bf-h-eb01-ultra-hissatsu-pack.json H-EB01/0012紅の勇士ロードブレイダー＝印字コールコストと変身コストが両方ある同型構成の直接precedent）。grep自己検査: payGauge(src/04-cost-resource.js)/sourceZoneIn(src/13-abilities-core.js:1149-1153)/allyAttack配信runFieldEventTriggers(src/07-actions-turn.js:692-725)/runAttackDeclarationTriggers攻撃者毎発火(src/09-attack.js:527-538)/targetMatches ref解決(src/13-abilities-core.js:981-995,src/15-ability-effects.js:3226-3256)/preventOpponentCounterThisTurn+canUseCounterEffect(src/15-ability-effects.js:2472-2476,src/18-tooltip-format.js:501-513)/eventAttackersInclude(src/13-abilities-core.js:1430-1437)/pendingAttackTargetMatches(src/13-abilities-core.js:1717-1720)/opponentFieldCardCountLte(src/13-abilities-core.js:1316-1322)/equipSelf+henshin 2アビリティ形(H-EB01/0012実例) 全実在確認。VM: x78-b5-verify.js test0030参照。"
+    },
+    {
+      "id": "bf-x2-sp-0031",
+      "no": "X2-SP/0031",
+      "name": "五角騎竜 アリオット “SD”",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 1,
+      "power": 4000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■このカードはセンターにコールできない。",
+        "■このカードが登場した時、君のドロップゾーンのカード名に「ドラム」を含むモンスター１枚までを手札に加える。",
+        "■君がダメージを受けた時、君のライフを＋１し、そのターン中、君の場の《武装騎竜》１枚を打撃力＋１し、『貫通』を与える！この能力は１ターンに１回だけ発動する。"
+      ],
+      "cannotCallZones": [
+        "center"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0031-enter-drum-search",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "d",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "ドラム"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "五角騎竜 アリオット “SD”",
+              "lead": "手札に加える、ドロップゾーンのカード名に「ドラム」を含むモンスターを選んでください（加えなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "d",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を手札に加えました。"
+            }
+          ]
+        },
+        {
+          "id": "bf-x2-sp-0031-damage-lifegain-buff",
+          "kind": "triggered",
+          "event": "damageReceived",
+          "allowMissingTarget": true,
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "allowMissingTarget": true,
+            "filter": {
+              "attribute": "武装騎竜"
+            }
+          },
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            },
+            {
+              "op": "modifyStats",
+              "target": "$target",
+              "critical": 1,
+              "duration": "turn"
+            },
+            {
+              "op": "grantKeyword",
+              "target": "$target",
+              "keyword": "penetrate",
+              "duration": "turn"
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "五角騎竜 アリオット “SD”。①『このカードはセンターにコールできない。』=cannotCallZones:[center]（data/cards/bf-d-bt04-kagayake-super-sun-dragon.json D-BT04/0082五角装竜念力のカイの確立キー。使用コスト行が原文に無いためcostsキーも省略＝無償コール）。②『このカードが登場した時、君のドロップゾーンのカード名に「ドラム」を含むモンスター１枚までを手札に加える。』=event:enter+script:[selectCards{from:drop,controller:self,filter:{cardType:monster,nameIncludes:ドラム},min:0,max:1,amount:1,require:false}→moveSelected(to:hand,require:false)]（data/cards/bf-h-bt03-kakuou-daishutsujin.json H-BT03/0126五角装竜跳躍のザクロ・data/cards/bf-d-ss01-neo-dragonic-force.json D-SS01/0006サークルナイフ・ドラゴンの『ドロップゾーンのカード名に「X」を含む…１枚まで／を手札に加える』selectCards(from:drop)確立形）。③『君がダメージを受けた時、君のライフを＋１し、そのターン中、君の場の《武装騎竜》１枚を打撃力＋１し、『貫通』を与える！この能力は１ターンに１回だけ発動する。』=event:damageReceived（data/cards/bf-d-bt01-hanate-hissatsuryu.json D-BT01/0021五角超騎竜業火剣のドゥーベル・D-BT04/0082の確立event、src/11-destroy-turn.js:1415-1449 queueDamageReceivedTriggers）+allowMissingTarget:true（ability直下）+target:{type:fieldCard,controller:self,allowMissingTarget:true,filter:{attribute:武装騎竜}}（x74/x76規約3点＝ability直下と target 側の二重配置。gainLife{amount:1}は原文『さらに』を挟まない直列の必須効果のため候補0件でも独立して成立させる目的で付与。実際にはこのカード自身が《武装騎竜》属性かつ場に居るため候補は常時1以上）+effects:[gainLife{amount:1}, modifyStats{target:$target,critical:1,duration:turn}, grantKeyword{target:$target,keyword:penetrate,duration:turn}]+limit:{scope:turn}（無名のためkey不要）。grep自己検査: cannotCallZones(D-BT04/0082実例)/event:enter+selectCards(from:drop)+moveSelected(H-BT03/0126・D-SS01/0006実例)/event:damageReceived(src/11-destroy-turn.js:1415-1449、D-BT01/0021実例)/allowMissingTarget二重配置(src/14-ability-script.js:48-55,78-84)/gainLife/modifyStats+duration:turn/grantKeyword 全実在確認。VM検証: x78-b3-verify.js test0031参照（センターへは選択できない／登場時にドロップゾーンの「ドラム」を含むモンスターを1枚まで手札に加えられる（0枚選択でも成立）／applyDamageToPlayer実経路でダメージを受けるとライフ+1と選んだ場の《武装騎竜》1枚への打撃力+1・貫通付与がそのターン中発生し、同ターン内2回目のダメージでは発動しない(limit:turn)、を確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0032",
+      "no": "X2-SP/0032",
+      "name": "激突の紅蓮闘士 ガンズナックル・ドラゴン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■このカードが登場した時、君のデッキからカード名に「拳」を含むアイテム１枚までを手札に加え、デッキをシャッフルする。",
+        "■君の場のカード名に「拳」を含むアイテムが攻撃した時、相手にダメージ１！",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0032-enter-fist-search",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "f",
+              "from": "deck",
+              "controller": "self",
+              "filter": {
+                "cardType": "item",
+                "nameIncludes": "拳"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "激突の紅蓮闘士 ガンズナックル・ドラゴン",
+              "lead": "デッキから手札に加える、カード名に「拳」を含むアイテムを選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "f",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を手札に加えました。"
+            },
+            {
+              "op": "shuffleDeck"
+            }
+          ]
+        },
+        {
+          "id": "bf-x2-sp-0032-ally-fist-attack-damage",
+          "kind": "triggered",
+          "event": "allyAttack",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "item",
+                "nameIncludes": "拳"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "激突の紅蓮闘士 ガンズナックル・ドラゴン。①【コールコスト】『君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。』=costs.call:[putTopDeckToSoul{amount:1},payGauge{amount:1}]（標準形、多数precedent）。②『このカードが登場した時、君のデッキからカード名に「拳」を含むアイテム１枚までを手札に加え、デッキをシャッフルする。』=event:enter+script:[selectCards{from:deck,controller:self,filter:{cardType:item,nameIncludes:拳},min:0,max:1,amount:1,require:false}→moveSelected(to:hand,require:false)→shuffleDeck]（H-BT03/0126・D-SS01/0006と同型、from:deck版）。③『君の場のカード名に「拳」を含むアイテムが攻撃した時、相手にダメージ１！』=event:allyAttack+conditions:[eventCardMatches{filter:{cardType:item,nameIncludes:拳}}]（data/cards/bf-x-ub01-buddy-quest.json X-UB01/0005碧空の皇女クウ“空を制する者”の event:allyAttack+eventCardMatches{filter:{cardType:item}} 確立形にnameIncludes:拳を追加。runFieldEventTriggersが場ワイドで自分自身の攻撃も含めブロードキャストするため『君の場の』を過不足なく満たす）+effects:[dealDamage{player:opponent,amount:1}]（対象不要のためtarget無し）。『ソウルガード』=keywords:[soulguard]。grep自己検査: putTopDeckToSoul+payGauge/event:enter+selectCards(from:deck,cardType,nameIncludes)+moveSelected+shuffleDeck/event:allyAttack動的生成+eventCardMatches(src/13-abilities-core.js、X-UB01/0005実例)/dealDamage(player:opponent) 全実在確認。VM検証: x78-b3-verify.js test0032参照（callMonster実経路でデッキ上1枚をソウルへ入れゲージ1を払ってコールできる／登場時にデッキから「拳」を含むアイテムを1枚まで手札に加えデッキをシャッフルする／performAttackDeclaration実経路で自分の場の「拳」を含むアイテムが攻撃すると相手に1ダメージが入り、「拳」を含まないアイテムの攻撃では発動しない、を確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0033",
+      "no": "X2-SP/0033",
+      "name": "激突の紅蓮闘士 スピンネイル・ドラゴン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 1,
+      "power": 6000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■このカードはセンターにコールできない。",
+        "■このカードが登場した時、君のドロップゾーンの「激突の紅蓮闘士 スピンネイル・ドラゴン」以外のカード名に「紅蓮」を含むカード１枚までを手札に加える。さらに、君がカード名に「拳」を含むアイテムを装備しているなら、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "cannotCallZones": [
+        "center"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0033-enter-guren-search-gauge",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "g",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "nameIncludes": "紅蓮",
+                "nameNot": "激突の紅蓮闘士 スピンネイル・ドラゴン"
+              },
+              "min": 0,
+              "max": 1,
+              "amount": 1,
+              "require": false,
+              "title": "激突の紅蓮闘士 スピンネイル・ドラゴン",
+              "lead": "手札に加える、ドロップゾーンの「激突の紅蓮闘士 スピンネイル・ドラゴン」以外のカード名に「紅蓮」を含むカードを選んでください（加えなくてもよい）。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "g",
+              "to": "hand",
+              "require": false,
+              "log": "{cards}を手札に加えました。"
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "cardCount",
+                "controller": "self",
+                "pile": "item",
+                "filter": {
+                  "nameIncludes": "拳"
+                },
+                "cmp": "gte",
+                "amount": 1
+              },
+              "then": [
+                {
+                  "op": "putTopDeckToGauge",
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "激突の紅蓮闘士 スピンネイル・ドラゴン。①『このカードはセンターにコールできない。』=cannotCallZones:[center]（使用コスト行なし＝costsキー省略、D-BT04/0082型）。②『このカードが登場した時、君のドロップゾーンの「激突の紅蓮闘士 スピンネイル・ドラゴン」以外のカード名に「紅蓮」を含むカード１枚までを手札に加える。』=event:enter+script:[selectCards{from:drop,controller:self,filter:{nameIncludes:紅蓮,nameNot:'激突の紅蓮闘士 スピンネイル・ドラゴン'},min:0,max:1,amount:1,require:false}→moveSelected(to:hand,require:false)]（filter.nameNot=完全一致名の除外、src/17-targeting.js:497 `matchNames.includes(filter.nameNot)`。カード種別を問わない『カード』のためcardType指定なし）。③『さらに、君がカード名に「拳」を含むアイテムを装備しているなら、君のデッキの上から１枚をゲージに置く。』=同script内にifCondition{condition:{op:cardCount,controller:self,pile:item,filter:{nameIncludes:拳},cmp:gte,amount:1},then:[putTopDeckToGauge{amount:1}]}（data/cards/bf-x-bt02-chaos-control-crisis.json X-BT02/0048紅蓮闘士グレイテスト・ドラゴンのcardCount{pile:item,filter:{nameIncludes:拳}}＝装備品判定の確立形をscript内ifConditionへ移設。putTopDeckToGaugeはscript許可opリストに実在、src/14-ability-script.js:3388）。grep自己検査: cannotCallZones/event:enter+selectCards(nameIncludes+nameNot)/moveSelected/ifCondition(src/14-ability-script.js:353,1222-1229)/cardCount pile:item(src/13-abilities-core.js、X-BT02/0048実例)/putTopDeckToGauge(script許可、src/14-ability-script.js:3388) 全実在確認。VM検証: x78-b3-verify.js test0033参照（センターへは選択できない／登場時にドロップゾーンの「紅蓮」を含むカード（このカード自身の同名は除外）を1枚まで手札に加える／拳アイテム未装備ならゲージには置かれず、拳アイテム装備中ならデッキ上1枚がゲージへ置かれる、を確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0034",
+      "no": "X2-SP/0034",
+      "name": "戦友 システミックダガー・ドラゴン",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "武装騎竜"
+      ],
+      "size": 1,
+      "power": 3000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■このカードが攻撃した時、君の場に他のカード名に「システミック」か「ドラム」を含むモンスターがいるなら、相手の場のモンスター１枚を破壊し、君のライフを＋２！",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0034-attack-systemic-destroy",
+          "kind": "triggered",
+          "event": "attack",
+          "conditions": [
+            {
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "ownOtherFieldCardExists",
+                  "filter": {
+                    "cardType": "monster",
+                    "nameIncludes": "システミック"
+                  }
+                },
+                {
+                  "op": "ownOtherFieldCardExists",
+                  "filter": {
+                    "cardType": "monster",
+                    "nameIncludes": "ドラム"
+                  }
+                }
+              ]
+            }
+          ],
+          "allowMissingTarget": true,
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "gainLife",
+              "amount": 2
+            }
+          ]
+        }
+      ],
+      "_note": "戦友 システミックダガー・ドラゴン。①【コールコスト】=costs.call:[putTopDeckToSoul{amount:1},payGauge{amount:1}]（標準形）。②『このカードが攻撃した時、君の場に他のカード名に「システミック」か「ドラム」を含むモンスターがいるなら、相手の場のモンスター１枚を破壊し、君のライフを＋２！』=event:attack（カード自身へ直接発火）+conditions:[{op:any,conditions:[ownOtherFieldCardExists{filter:{cardType:monster,nameIncludes:システミック}},ownOtherFieldCardExists{filter:{cardType:monster,nameIncludes:ドラム}}]}]（『AかBを含む』のOR判定はdata/cards/bf-x-bt01-reborn-of-satan.json X-BT01/0034ナノマシン忍者残月の{op:any,conditions:[cardCount,cardCount]}確立イディオムをownOtherFieldCardExistsへ適用。ownOtherFieldCardExistsは発動源自身をinstanceId除外するため『他の』を自然に満たす、src/13-abilities-core.js:1298）+allowMissingTarget:true（ability直下）+target:{type:fieldCard,controller:opponent,allowMissingTarget:true,filter:{cardType:monster}}（x74/x76規約3点。相手モンスター不在でもgainLife{amount:2}は独立して成立させる設計＝原文が『さらに』を挟まない直列必須効果のため）+effects:[destroy{target:$target}, gainLife{amount:2}]（destroyはtarget未解決時no-op、gainLifeは無条件）。『ソウルガード』=keywords:[soulguard]。grep自己検査: event:attack直接発火/op:any(src/13-abilities-core.js:875-877、X-BT01/0034実例)/ownOtherFieldCardExists(src/13-abilities-core.js:1298)/allowMissingTarget二重配置(src/14-ability-script.js:48-55,78-84)/destroy target/gainLife 全実在確認。VM検証: x78-b3-verify.js test0034参照（callMonster実経路でコールできる／performAttackDeclaration実経路で自分の場に他の「システミック」か「ドラム」を含むモンスターがいる時だけ攻撃時に相手の場のモンスター1枚を破壊しライフ+2、いなければ不発、を確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0035",
+      "no": "X2-SP/0035",
+      "name": "痺れるマホウ キヌース・アクシア",
+      "type": "monster",
+      "rarity": "",
+      "world": "マジックW",
+      "worlds": null,
+      "attributes": [
+        "魔術師"
+      ],
+      "size": 1,
+      "power": 2000,
+      "critical": 2,
+      "defense": 2000,
+      "rules": [
+        "■“サンダー・セレクト”君が魔法を使った時、お互いのデッキの上から１枚をゲージに置き、君か相手にダメージ１！さらに、君の場にカード名に「ドラム」を含むモンスターがいるなら、カード１枚を引く！「サンダー・セレクト」は１ターンに１回だけ発動する。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0035-thunder-select",
+          "label": "サンダー・セレクト",
+          "kind": "triggered",
+          "event": "allySpellCast",
+          "script": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1,
+              "player": "opponent"
+            },
+            {
+              "op": "chooseBranch",
+              "title": "サンダー・セレクト",
+              "lead": "ダメージを与える相手を選んでください。",
+              "options": [
+                {
+                  "key": "self",
+                  "label": "君にダメージ１",
+                  "script": [
+                    {
+                      "op": "dealDamage",
+                      "player": "self",
+                      "amount": 1
+                    }
+                  ]
+                },
+                {
+                  "key": "opponent",
+                  "label": "相手にダメージ１",
+                  "script": [
+                    {
+                      "op": "dealDamage",
+                      "player": "opponent",
+                      "amount": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "op": "draw",
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "ownFieldCardExists",
+                  "filter": {
+                    "cardType": "monster",
+                    "nameIncludes": "ドラム"
+                  }
+                }
+              ]
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "shared": true,
+            "key": "x2sp-サンダー・セレクト"
+          }
+        }
+      ],
+      "_note": "痺れるマホウ キヌース・アクシア。『“サンダー・セレクト”君が魔法を使った時、お互いのデッキの上から１枚をゲージに置き、君か相手にダメージ１！さらに、君の場にカード名に「ドラム」を含むモンスターがいるなら、カード１枚を引く！「サンダー・セレクト」は１ターンに１回だけ発動する。』=event:allySpellCast（『魔法を使った時』、data/cards/bf-h-eb03-hyakurai-no-ou.json H-EB03/0025の確立precedent、src/07-actions-turn.js:1207,1285のspellCastブロードキャスト）+script:[putTopDeckToGauge(1)（自分、『お互いの』の自分側先行＝多数precedent踏襲）, putTopDeckToGauge(1,player:opponent)（相手側）, chooseBranch{options:[self被弾/opponent被弾のdealDamage 2択]}, draw(1,conditions:[ownFieldCardExists{filter:{cardType:monster,nameIncludes:ドラム}}])]。『君か相手にダメージ１』はプレイヤー選択を要する新規パターン（DB内『君か相手の』はいずれもcardCount等のOR条件判定=controller:eitherで、対象選択を伴う実例は無い）で、既存の一般選択機構chooseBranch（src/14-ability-script.js:1280-1319、選択肢labelを提示しoption.scriptを実行する確立op。data/cards/bf-x2-bt01-legend-buddies.json X2-BT01/0077ジャックナイフ・スタチュー等で『次の2つから1つを選んで使う』に多用）を、選択肢を『君にダメージ』『相手にダメージ』の2つに絞って使う。dealDamage/putTopDeckToGaugeはisScriptEffectStep許可リスト（src/14-ability-script.js:3373,3387-3390）に実在しscript内から呼べる。裁定注記: 効果テキストの語順・カード名『サンダー・セレクト』の意味（“選択”）から、ダメージ対象は解決主(自分)の選択と解釈した（対戦相手選択・ランダム等の記述が原文に無いため、能力名の趣旨に沿う最も自然な読み。ユーザー確認が必要なら統括判断）。named-once「サンダー・セレクト」=limit:{scope:turn,shared:true,key:\"x2sp-サンダー・セレクト\"}（named-once公式裁定=同名カード合算、bf-x-cp03-100-yen-darkness-dragon.json 等の確立key命名規約）。grep自己検査: allySpellCast配信(src/07-actions-turn.js:1207,1285)/putTopDeckToGauge player:opponent対応(src/15-ability-effects.js:315-323)/chooseBranch(src/14-ability-script.js:1280-1319)/isScriptEffectStepにdealDamage・putTopDeckToGauge・draw実在(src/14-ability-script.js:3373,3387-3390)/ownFieldCardExists(src/13-abilities-core.js)/effect.conditions汎用ゲート(src/15-ability-effects.js:279-283、script内step経由でも適用) 全実在確認。VM: x78-b5-verify.js test0035参照（自分が魔法を使うとお互いデッキ上1枚ゲージへ→ダメージ対象選択で該当プレイヤーへ1ダメージ／場に「ドラム」を含むモンスターがいればさらに1枚ドロー、いなければドロー無し／1ターンに1回だけ発動することを実測）。"
+    },
+    {
+      "id": "bf-x2-sp-0036",
+      "no": "X2-SP/0036",
+      "name": "特盛パンドラ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ダンジョンW",
+      "worlds": null,
+      "attributes": [
+        "Dエネミー"
+      ],
+      "size": 1,
+      "power": 5000,
+      "critical": 2,
+      "defense": 1000,
+      "rules": [
+        "■“トバク・ジバク！”このカードが破壊された時、相手と１回だけジャンケンする！ジャンケンに勝ったファイターはカード２枚を引く！勝てなかったファイターにダメージ３！！このダメージは減らない！！！「トバク・ジバク！」は１ターンに１回だけ発動する。（つまり！アイコだとどっちもダメージ３受けるぞ！！）",
+        "『移動』"
+      ],
+      "keywords": [
+        "move"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0036-destroyed-rps",
+          "label": "トバク・ジバク！",
+          "kind": "triggered",
+          "event": "destroyed",
+          "effects": [
+            {
+              "op": "rockPaperScissorsDamageLosers",
+              "amount": 3,
+              "drawPerWin": 2
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "shared": true,
+            "key": "x2sp-トバク・ジバク！"
+          }
+        }
+      ],
+      "_note": "【R14/E-XB72 配線済み・掃討反映】rockPaperScissorsDamageLosers に drawPerWin:2 を追加済み（1回のジャンケンの勝者がカード2枚を引く・別途2回目のジャンケンは走らない）。以下は当時のギャップ分析（記録として保持。『このダメージは減らない』ignorePrevention は同 op 未対応のため引き続き rules のみ収録＝bt03-0065 と同水準）。特盛パンドラ。『“トバク・ジバク！”このカードが破壊された時、相手と１回だけジャンケンする！ジャンケンに勝ったファイターはカード２枚を引く！勝てなかったファイターにダメージ３！！このダメージは減らない！！！「トバク・ジバク！」は１ターンに１回だけ発動する。』のうち、ジャンケン＋敗者(アイコ両者)へのダメージ3部分はrockPaperScissorsDamageLosers{amount:3}（data/cards/bt03-dododo-adventure.json BT03/0065大入りパンドラ＝本カードの直接の前身[パンドラ系列の別バージョン]で確立済みの直接precedent。src/15-ability-effects.js:1408-1418、result==='draw'かつnoDrawDamage未指定なら両者に適用＝原文の『アイコだとどっちもダメージ３受ける』と完全一致。ただし公式のignorePrevention処理は無い点に注意——rockPaperScissorsDamageLosersはapplyDamageToPlayerへignorePreventionを渡さないため、後述のとおりこの部分だけ別途工夫が要る）。event:destroyedは本カード自身が破壊された時に直接発火（bare event、data/cards/bt03-dododo-adventure.json BT03/0065と同型）。named-once「トバク・ジバク！」=limit:{scope:turn,shared:true,key:\"x2sp-トバク・ジバク！\"}（named-once公式裁定＝同名カード合算）。【表現不能・エンジン拡張要】『ジャンケンに勝ったファイターはカード２枚を引く』(勝者ボーナス)は同一のジャンケン結果から派生する必要があるが、rockPaperScissorsDamageLosers（またはeffect.rockPaperScissors:trueの汎用ゲート、resolveRockPaperScissorsBestOfThree等）はいずれも1回のresolveRockPaperScissors呼び出しの結果を自分の内部でのみ消費し、勝敗結果を後続effect/scriptへ公開するvar/contextフィールドを持たない（grep確認: resolveRockPaperScissorsの戻り値win/lose/draw/cancelledはeffect.rockPaperScissorsゲート(src/15-ability-effects.js:270-275、win判定のみ)かrockPaperScissorsDamageLosers内部(同1408-1418)でしか読まれず、context.rockPaperScissorsResult等の外部公開経路が存在しない）。同一ability内で『勝者ドロー』を別途effect.rockPaperScissors:trueで実装すると、ジャンケンをもう一度(2回目)行うことになり、原文の『相手と１回だけジャンケンする』（1回の勝敗で両結果を決める）に反する二重抽選になるため不採用（勝手な代用禁止）。エンジン班への提案: rockPaperScissorsDamageLosersに`drawPerWin`パラメータを追加する（rockPaperScissorsBestOfThreeのdrawPerWinと同形の乗数、src/15-ability-effects.js:2366-2404に既存パターンあり）か、resolveRockPaperScissorsの結果をcontext.lastRockPaperScissorsResultへ格納し後続effect.conditionsから参照できるようにすれば復元可能。本バッチはダメージ側のみ収録し、ドロー側は未実装（rulesには全文収録済み。カードパワーは原文よりやや低く近似）。また『このダメージは減らない』（ignorePrevention）はrockPaperScissorsDamageLosers内部のapplyDamageToPlayer呼び出しにオプション伝播経路が無い（grep確認: 同op実装にeffect.ignorePreventionを読む分岐なし）ため、既存の1件精度優先方針（bt03-0065が同一opをignorePrevention無しで採用済み＝同型の忠実度で妥協）に倣い本カードもそのまま採用した（減少無効化も未実装、同じくrulesには収録済み）。grep自己検査: rockPaperScissorsDamageLosers(src/15-ability-effects.js:1408-1418、BT03/0065実例)/event:destroyed bare発火(src/11-destroy-turn.js:queueDestroyedTriggers)/keyword move(src/18-tooltip-format.js:480)/limit.shared+key(named-once慣例) 全実在確認。VM: x78-b5-verify.js test0036参照（このカードが破壊されるとジャンケンが発生し、勝敗いずれのシードでもamount3の被弾規則(勝者被弾なし/敗者被弾/アイコ両者被弾)が成立すること・1ターンに1回だけ発動することを実測。ドロー側ギャップは未発火のまま[効果ログに現れない]ことも確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0037",
+      "no": "X2-SP/0037",
+      "name": "ブーメラン・ドラゴン・リターンズ",
+      "type": "monster",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "武装騎竜",
+        "緑竜"
+      ],
+      "size": 0,
+      "power": 3000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "■このカードのバトル終了時、君の手札１枚をゲージに置いてよい。置いたら、カード１枚を引き、このカードを手札に戻す。"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0037-battleend-gauge-draw-return",
+          "kind": "triggered",
+          "event": "battleEnd",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "h",
+              "from": "hand",
+              "controller": "self",
+              "amount": 1,
+              "require": false,
+              "title": "ブーメラン・ドラゴン・リターンズ",
+              "lead": "ゲージに置く手札を選んでください（置かない場合は選択なし）。"
+            },
+            {
+              "op": "ifSelection",
+              "var": "h",
+              "then": [
+                {
+                  "op": "moveSelected",
+                  "var": "h",
+                  "to": "gauge"
+                },
+                {
+                  "op": "draw",
+                  "amount": 1
+                },
+                {
+                  "op": "returnToHand",
+                  "target": "$self"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "ブーメラン・ドラゴン・リターンズ。使用コスト行なし＝costsキー省略（無償コール）。『このカードのバトル終了時、君の手札１枚をゲージに置いてよい。置いたら、カード１枚を引き、このカードを手札に戻す。』=event:battleEnd（data/cards/bf-hd-pr.json PR/0092ブーメラン・ドラゴン（本カードの前身/元ネタ）の『このカードのバトル終了時、このカードを君の手札に戻す！』と同じ bare event:battleEnd＝カード自身へ直接発火）+script:[selectCards{from:hand,controller:self,amount:1,require:false}→ifSelection{then:[moveSelected(to:gauge), draw{amount:1}, returnToHand{target:$self}]}]（data/cards/bf-x-bt03-gyakuten-raiteigun.json X-BT03/0002エドワード・ザ・Cの『君の手札１枚をゲージに置いてよい。置いたら、〜』selectCards(require:false)→ifSelection確立形をそのまま踏襲し、効果をdraw+returnToHandへ差替。returnToHandはtarget:$self明示（『returnToHand $selfはfield=nullを読むため不可』はdestroyed誘発限定の落とし穴だが、本カードは場に居る状態でのbattleEnd誘発のため$self解決は正常））。原文に『1ターンに1回』の限定が無いため無条件（バトル終了ごとに毎回発動）。grep自己検査: event:battleEnd(PR/0092実例)/selectCards(from:hand,require:false)/ifSelection/moveSelected(to:gauge)/draw/returnToHand(target:$self) 全実在確認。VM検証: x78-b3-verify.js test0037参照（バトル終了時に手札を選ぶとゲージへ置かれ、カードを1枚引きこのカードが手札に戻る／手札を選ばない場合は何も起きない、を確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0038",
+      "no": "X2-SP/0038",
+      "name": "不死の賢王 ドーン伯爵",
+      "type": "monster",
+      "rarity": "",
+      "world": "レジェンドW",
+      "worlds": null,
+      "attributes": [
+        "ワイダーサカー"
+      ],
+      "size": 0,
+      "power": 4000,
+      "critical": 1,
+      "defense": 1000,
+      "rules": [
+        "『角王』",
+        "■お互いのアタックフェイズ開始時、このカードが君のドロップゾーンにあるなら、ライフ１を払ってよい。払ったら、ドロップゾーンのこのカードをコールする。",
+        "■君の場の他のモンスターが相手のカードに破壊される場合、場のこのカードをドロップゾーンに置いてよい。置いたら、そのモンスター１枚を場に残す。"
+      ],
+      "deckAnyFlag": {
+        "homeWorld": "レジェンドW",
+        "awayMaxCopies": 1
+      },
+      "allyLeaveFieldReplacement": [
+        {
+          "filter": {
+            "cardType": "monster"
+          },
+          "from": {
+            "byOpponent": true
+          },
+          "cost": [
+            {
+              "op": "dropSource"
+            }
+          ],
+          "optional": true
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0038-revive",
+          "kind": "triggered",
+          "event": "attackStart",
+          "triggerZones": [
+            "drop"
+          ],
+          "optional": true,
+          "cost": [
+            {
+              "op": "payLife",
+              "amount": 1
+            }
+          ],
+          "script": [
+            {
+              "op": "selectZone",
+              "var": "z",
+              "emptyOnly": true
+            },
+            {
+              "op": "callSelfFromHand",
+              "zoneVar": "z"
+            }
+          ]
+        }
+      ],
+      "_note": "不死の賢王 ドーン伯爵（角王・印字コスト行なし=costs/callCostキー省略、無償コール。X-UB02以降の最新慣例）。①『お互いのアタックフェイズ開始時、このカードが君のドロップゾーンにあるなら、ライフ１を払ってよい。払ったら、ドロップゾーンのこのカードをコールする。』=kind:triggered,event:\"attackStart\",triggerZones:[\"drop\"]（ドロップゾーンに居る間もフェイズ開始誘発を拾う、src/07-actions-turn.js:1039-1056のドロップスキャンがtriggerZones:[\"drop\"]/fromDropZoneを持つ能力を両プレイヤーのdropから走査。turnOwnerIsSelf条件を付けないため『お互いの』＝自分・相手それぞれの攻撃フェイズ開始ごとに機会がある）,optional:true,cost:[payLife{amount:1}],script:[selectZone{var:z,emptyOnly:true},callSelfFromHand{zoneVar:z}]。bf-h-bt02-galaxy-burst.json H-BT02/0005七角地王ドーン伯爵『君のターン開始時、このカードが君のドロップゾーンにあるなら、ライフ１を払ってよい。払ったら、ドロップゾーンにあるこのカードをコールする。』（同一キャラクター『ドーン伯爵』シリーズの直接precedent、turnStart+turnOwnerIsSelf版）のtriggerZones+optional+cost+script骨格をそのまま踏襲し、eventをattackStartへ差替えturnOwnerIsSelf条件を除去（『君の』→『お互いの』への対応差分）。②『君の場の他のモンスターが相手のカードに破壊される場合、場のこのカードをドロップゾーンに置いてよい。置いたら、そのモンスター１枚を場に残す。』=card級allyLeaveFieldReplacement:[{filter:{cardType:monster},from:{byOpponent:true},cost:[{op:dropSource}],optional:true}]（bf-x2-bt01-legend-buddies.json X2-BT01/0063怪力少女ひき子さんの『君の場の《トイレ》が相手のカードの効果で場を離れる場合、場のこのカードをドロップゾーンに置いてよい。置いたら、そのカードを場に残す。』allyLeaveFieldReplacement確立骨格を踏襲。applyAllyLeaveFieldReplacement[src/11-destroy-turn.js:685-717]はreplacer自身[本カード]をcard[破壊対象]から自動除外する[instanceId一致でcontinue]ため『他の』は明示filter不要。『破壊される場合』はbyBattle/byEffect双方を指すため、from:{byOpponent:true}のみを指定（byBattle/byEffectいずれも未指定＝destroyImmunityEntryBlocksと同系のper-flag判定ロジックにより、rule.from.byBattle/byEffectが偽の間は該当チェックをスキップするため両cause[戦闘由来/効果由来]の相手起因破壊をどちらもブロック対象にできる。既存precedentは『場を離れる場合』[離場全般]でbyEffect:true併記だが、本カードは『破壊される場合』[破壊のみ・手段問わず]のためbyEffectを付けない一般化）。角王(deckAnyFlag)={homeWorld:レジェンドW,awayMaxCopies:1}。grep自己検査: event:attackStart+triggerZones:[drop]ドロップスキャン(src/07-actions-turn.js:1039-1056、H-BT02/0005実例)/optional+payLife+selectZone+callSelfFromHand(src/14-ability-script.js、H-BT02/0005実例)/allyLeaveFieldReplacement+fieldHasLeaveFieldReplacer+applyAllyLeaveFieldReplacement(src/11-destroy-turn.js:397,668-717、X2-BT01/0063実例)/dropSource cost(src/04-cost-resource.js) 全実在確認。VM検証(x78-b1-verify.js): (A)このカードがドロップにある状態で自分/相手いずれの攻撃フェイズ開始時にも、ライフ1を払ってよいの確認に応じるとドロップのこのカードが空きエリアへコールされる（払わない選択も可）、(B)場に居る状態で自場の他のモンスターが相手の効果/相手とのバトルいずれで破壊されそうになっても、場のこのカードをドロップに置くことでそのモンスターを場に残せる（置かない選択も可）、(C)自分自身が破壊されそうな時（=庇う対象がこのカード自身）は発動しない、(D)自分の効果や自分とのバトルなど相手起因でない破壊では発動しない、を実測。"
+    },
+    {
+      "id": "bf-x2-sp-0039",
+      "no": "X2-SP/0039",
+      "name": "帰ってきたケットシー",
+      "type": "monster",
+      "rarity": "",
+      "world": "レジェンドW",
+      "worlds": null,
+      "attributes": [
+        "妖精"
+      ],
+      "size": 0,
+      "power": 2000,
+      "critical": 1,
+      "defense": 2000,
+      "rules": [
+        "■君のドロップゾーンに《妖精》10枚以上があるなら、君の場のカード全ての打撃力＋１！",
+        "■このカードが破壊された時、君のドロップゾーンに《妖精》５枚以上があるなら、カード１枚を引く。"
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "cardCount",
+              "pile": "drop",
+              "filter": {
+                "attribute": "妖精"
+              },
+              "cmp": "gte",
+              "amount": 10
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0039-destroyed-draw",
+          "kind": "triggered",
+          "event": "destroyed",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "pile": "drop",
+              "filter": {
+                "attribute": "妖精"
+              },
+              "cmp": "gte",
+              "amount": 5
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "帰ってきたケットシー。①『君のドロップゾーンに《妖精》10枚以上があるなら、君の場のカード全ての打撃力＋１！』=continuous:[modifyStats{controller:self,critical:1,conditions:[cardCount{pile:drop,filter:{attribute:妖精},cmp:gte,amount:10}]}]（filter.sameInstanceAsSourceを付けない=continuous top-levelのmodifyStatsはfieldWide既定＝『君の場のカード全て』、data/cards/bf-d-eb03-heaven-and-hell.json E2『君のドロップゾーンが２枚以下なら、君の場のカード全ての打撃力＋１』の確立precedentと同型。cardCountはcontroller省略時self既定、src/13-abilities-core.js:927-976）。②『このカードが破壊された時、君のドロップゾーンに《妖精》５枚以上があるなら、カード１枚を引く。』=event:destroyed（bareイベント・破壊されたカード自身へ直接発火）+conditions:[cardCount{pile:drop,filter:{attribute:妖精},cmp:gte,amount:5}]（判定時点でこのカード自身は既にplayer.dropへpush済み＝destroyFieldCard内でplayer.drop.push(card)がqueueDestroyedTriggers呼び出しより前、src/11-destroy-turn.js:465,486なので自分自身も《妖精》の1枚として自然に数に含まれる。原文の『破壊された時、ドロップに〜あるなら』の直後判定と整合）+effects:[draw(1)]。grep自己検査: modifyStats continuous fieldWide既定(src/05-stats.js、D-EB03/0004実例)/cardCount pile:drop(src/13-abilities-core.js:927-976)/event:destroyed bare発火順序(src/11-destroy-turn.js:465,486,queueDestroyedTriggers)/draw(src/15-ability-effects.js:284-293) 全実在確認。VM: x78-b5-verify.js test0039参照（ドロップの妖精が10枚未満/以上で打撃力+1の有無を確認／このカードが破壊された時、破壊前のドロップの妖精が4枚(このカード自身を含めれば5枚)ならドロー・3枚(含めても4枚)ならドロー無しを確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0040",
+      "no": "X2-SP/0040",
+      "name": "角王の共鳴",
+      "type": "spell",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "ドラゴン",
+        "ゲット"
+      ],
+      "size": null,
+      "power": null,
+      "critical": null,
+      "defense": null,
+      "rules": [
+        "■このカードは全てのフラッグで使える。",
+        "■君のデッキの上から５枚を見て、その中の『角王』２枚までを手札に加え、『角王』３枚までをドロップゾーンに置き、残りのカードをデッキの下に好きな順番で置く。「角王の共鳴」は１ターンに１回だけ使える。"
+      ],
+      "usableInAnyFlag": true,
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0040-resonance",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "lookTopDistribute",
+              "count": 5,
+              "gaugeAmount": 0,
+              "handMax": 2,
+              "handFilter": {
+                "deckAnyFlag": true
+              },
+              "dropMax": 3,
+              "dropFilter": {
+                "deckAnyFlag": true
+              },
+              "title": "角王の共鳴",
+              "handLead": "手札に加える『角王』を2枚まで選んでください（選ばなくてもよい）。",
+              "dropLead": "ドロップゾーンに置く『角王』を3枚まで選んでください（選ばなくてもよい）。"
+            }
+          ],
+          "limit": {
+            "scope": "turn"
+          }
+        }
+      ],
+      "_note": "【R16②/E-XB74② 配線済み・掃討反映】lookTopDistribute{count:5,gaugeAmount:0,handMax:2,handFilter:{deckAnyFlag:true},dropMax:3,dropFilter:{deckAnyFlag:true}} へ差し替え済み（デッキ上5枚を見て『角王』2枚まで手札・『角王』3枚までドロップ・残りをデッキ下へ好きな順＝原文どおり3方向振り分け。gaugeAmount:0 でゲージ段を無効化）。旧・手札2枚のみの部分実装（ドロップ振り分け未実装）は解消。以下は当時の記録として保持。角王の共鳴。①『このカードは全てのフラッグで使える。』=card級usableInAnyFlag:true（data/cards/bf-x-ss01-gokakujin-vs-hyakurai.json X-SS01/0025角王の証の確立precedent。src/03-setup.js:125-129 canUseCardForFlagが`card.deckAnyFlag || card.usableInAnyFlag`いずれでも許可）。使用コスト行なし＝costsキー省略（無償使用）。②【既知の未実装ギャップ・報告】『君のデッキの上から５枚を見て、その中の『角王』２枚までを手札に加え、『角王』３枚までをドロップゾーンに置き、残りのカードをデッキの下に好きな順番で置く。』は「見た同一の5枚を(a)角王最大2枚→手札 (b)角王最大3枚→ドロップ (c)残り→デッキ下(好きな順)」の3方向へ振り分ける効果だが、既存opを全数grepした結果、この形（手札枠+ドロップ枠+デッキ下枠の3destination・filter付き）に一致するopが存在しない: lookTopDistribute（src/15-ability-effects.js:835、E-XB40新設）はgauge/hand/デッキ下の3方向でfilterもドロップ先も無い固定形、lookTopSelectToSoulRestToDrop等の類似opもhand+drop+bottomの3枠同時振り分けには非対応。selectCards{from:\"deck\"}はデッキ全体を候補にする（『上から5枚』の限定が効かず非公開情報のデッキ全容が選択候補として露出し秘匿性を破る）ため代替不可。selectCards{from:\"var\"}（E-XB6型の2段選択）は前段で『見た5枚』をvarへ保持する専用opが別途必要で、これも既存に無い。已存opのみでの安全な近似として、原文の『２枚まで手札に加え』（カード advantage として最も価値が高い部分）のみを`lookTopSelectToHandRestToBottom{count:5,max:2,filter:{deckAnyFlag:true}}`（src/15-ability-effects.js:699-...、既存の確立op）で実装し、『『角王』３枚までをドロップゾーンに置き』（ドロップ角王シナジー用の枠）は今回見送り＝選ばれなかった残り最大3枚は角王か否かに関わらず全てデッキの下へ好きな順で送られる（過剰付与ではなく過小実装＝原文より弱い安全側の近似）。エンジン班へ提案: lookTopDistributeをfilter対応+destination可変（例: {op:\"lookTopDistribute\",count,slots:[{to:\"hand\",max,filter},{to:\"drop\",max,filter},{to:\"deckBottom\"}]}のような汎用N方向振り分け）に一般化する新opがあれば本ギャップは解消する。named-once「角王の共鳴」=kind:spellのためisHandCastLimitAbilityにより自動でbase(=ability.id)キー化＝limit:{scope:turn}のみ。grep自己検査: usableInAnyFlag(src/03-setup.js:125-129、X-SS01/0025実例)/lookTopSelectToHandRestToBottom(src/15-ability-effects.js:699、filter.deckAnyFlag経由でsrc/17-targeting.js:363-364)/lookTopDistribute現行シグネチャ(src/15-ability-effects.js:835-907、gauge/hand/bottom固定・filter無し・drop先無し)/isHandCastLimitAbility(src/15-ability-effects.js:3789-3790) 全実在確認。VM検証: x78-b4-verify.js test0040参照（全てのフラッグで使用可であること／デッキの上5枚から角王最大2枚を選んで手札に加えられること／選ばれなかった残りはデッキの下に送られること／1ターンに1回だけ使えることを確認。ドロップゾーンへの角王最大3枚振り分けは未実装＝ギャップとして報告）。"
+    },
+    {
+      "id": "bf-x2-sp-0041",
+      "no": "X2-SP/0041",
+      "name": "ガッチャ！(捕まえたぜ！)",
+      "type": "spell",
+      "rarity": "",
+      "world": "マジックW",
+      "worlds": null,
+      "attributes": [
+        "魔力"
+      ],
+      "size": null,
+      "power": null,
+      "critical": null,
+      "defense": null,
+      "rules": [
+        "■君の場に《魔術師》のモンスター２枚以上がいるなら使える。",
+        "■そのターン中、次に君の魔法の【使用コスト】か君の場のモンスターの【起動】でゲージを払う時、君のゲージと相手のゲージから払える。「ガッチャ！(捕まえたぜ！)」は１ターンに１回だけ使える。"
+      ],
+      "useConditions": [
+        {
+          "op": "cardCount",
+          "filter": {
+            "cardType": "monster",
+            "attribute": "魔術師"
+          },
+          "cmp": "gte",
+          "amount": 2
+        }
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0041-gotcha",
+          "label": "ガッチャ！(捕まえたぜ！)",
+          "kind": "spell",
+          "timing": [
+            "main"
+          ],
+          "conditions": [
+            {
+              "op": "cardCount",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "魔術師"
+              },
+              "cmp": "gte",
+              "amount": 2
+            }
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "setNextActivatedCostMayUseOpponentGauge",
+              "includeSpellCost": true
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "shared": true,
+            "key": "x2sp-ガッチャ！(捕まえたぜ！)"
+          }
+        }
+      ],
+      "_note": "【R15/E-XB73 配線済み・掃討反映】setNextActivatedCostMayUseOpponentGauge に includeSpellCost:true を追加済み（『次の君の魔法の【使用コスト】』でも相手ゲージから払える＝nextSpellCostMayUseOpponentGauge を併せて立てる）。以下は当時のギャップ分析（記録として保持）。ガッチャ！(捕まえたぜ！)。①『君の場に《魔術師》のモンスター２枚以上がいるなら使える。』=useConditions+ability.conditions二重明記:[cardCount{filter:{cardType:monster,attribute:魔術師},cmp:gte,amount:2}]（cardCountはpile省略時field既定・controller省略時self既定、src/13-abilities-core.js:927-976）。使用条件の二重記載はdata/cards/bt03-dododo-adventure.json BT03/0033ガッチャ！（本カードの旧版base同名カード）の骨格を踏襲しFIX7二重明記慣例に揃えた。②【使用コスト】ゲージ２=costs.cast+ability.cost二重明記（FIX7）。③『そのターン中、次に君の魔法の【使用コスト】か君の場のモンスターの【起動】でゲージを払う時、君のゲージと相手のゲージから払える。』のうち『君の場のモンスターの【起動】でゲージを払う時』はsetNextActivatedCostMayUseOpponentGauge（BT03/0033の直接precedent、player.nextActivatedCostMayUseOpponentGaugeを立て、useFieldAbilityAction(src/13-abilities-core.js:329-334)がkind:activatedのゲージコスト支払い時にincludeOpponentGauge:trueとしてpayStructuredCostWithSelectionへ渡す＝忠実に機能）で実装。【表現不能・エンジン拡張要】『君の魔法の【使用コスト】でゲージを払う時』（本カードの新規追加部分、BT03/0033には無い半分）は同フラグの消費経路が現状useFieldAbilityAction（起動能力専用）のみに配線されており、手札魔法の使用コスト支払い経路（useHandAbilityAction、src/13-abilities-core.js:144-230、及びcastSpell系）は一切player.nextActivatedCostMayUseOpponentGaugeを参照しない（grep確認: 'nextActivatedCostMayUseOpponentGauge'文字列がsrc/13-abilities-core.js:329-352にのみ出現し、src/08-card-use.js・useHandAbilityAction内には出現しない＝配線が起動能力専用に限定されている）。よってsetNextActivatedCostMayUseOpponentGaugeを収録しても、次にプレイヤーが自分の魔法を使用コストで唱えるケースでは相手ゲージを併用できず（起動能力の分だけ機能する半分実装）。エンジン班への提案: useHandAbilityAction（またはその上流のadjustedCostSteps呼び出し側）でも、ability.kind==='spell'かつゲージコストを含む場合にplayer.nextActivatedCostMayUseOpponentGaugeを読み、useFieldAbilityAction同様にincludeOpponentGauge/payStructuredCostWithSelectionへ伝播する分岐を追加すれば復元可能（フラグ名をMayUseOpponentGaugeへ一般化するか、専用のnextCastCostMayUseOpponentGaugeを並走させる方式のいずれか）。『無いopは創作せず報告』の方針により本バッチはsetNextActivatedCostMayUseOpponentGaugeのみを収録（起動能力の半分は忠実、魔法の使用コスト半分は現状不発）。grep自己検査: cardCount(src/13-abilities-core.js:927-976)/payGauge(src/04-cost-resource.js)/kind:spell+timing:main(BT03/0033実例)/setNextActivatedCostMayUseOpponentGauge(src/15-ability-effects.js、BT03/0033実例)/nextActivatedCostMayUseOpponentGauge消費がuseFieldAbilityAction限定(src/13-abilities-core.js:329-352)/useHandAbilityAction未配線(src/13-abilities-core.js:144-230、grep該当文字列0件) 全確認。VM: x78-b5-verify.js test0041参照（自場の魔術師が1体以下では使用不可・2体以上で使用可、ゲージ2を払うことを実測／使用後、次の場モンスターの【起動】ゲージコストで相手ゲージを併用できることを実測＝忠実部分／1ターンに1回だけ使えることを実測）。"
+    },
+    {
+      "id": "bf-x2-sp-0042",
+      "no": "X2-SP/0042",
+      "name": "紅蓮鉄拳 ドラゴナックル",
+      "type": "item",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "ドラゴン",
+        "武器"
+      ],
+      "size": null,
+      "power": 2000,
+      "critical": 2,
+      "defense": null,
+      "rules": [
+        "■【装備コスト】君のデッキの上から１枚をこのカードのソウルに入れ、ライフ１を払う。",
+        "■このカードのソウル１枚につき、君の場のカード全ての攻撃力＋2000！",
+        "■このカードが攻撃した時、君のデッキの上から１枚を、ゲージに置くか、このカードのソウルに入れる。",
+        "『ソウルガード』"
+      ],
+      "costs": {
+        "equip": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payLife",
+            "amount": 1
+          }
+        ]
+      },
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {},
+          "amountFrom": {
+            "source": "soulCount",
+            "per": {
+              "power": 2000
+            }
+          }
+        }
+      ],
+      "keywords": [
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0042-attack-gauge-or-soul",
+          "kind": "triggered",
+          "event": "attack",
+          "script": [
+            {
+              "op": "chooseBranch",
+              "title": "紅蓮鉄拳 ドラゴナックル",
+              "lead": "デッキの上から１枚を、ゲージに置くか、このカードのソウルに入れるか選んでください。",
+              "options": [
+                {
+                  "key": "gauge",
+                  "label": "ゲージに置く",
+                  "script": [
+                    {
+                      "op": "putTopDeckToGauge",
+                      "amount": 1
+                    }
+                  ]
+                },
+                {
+                  "key": "soul",
+                  "label": "このカードのソウルに入れる",
+                  "script": [
+                    {
+                      "op": "putTopDeckToSoul",
+                      "amount": 1
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "紅蓮鉄拳 ドラゴナックル（アイテム）。①【装備コスト】『君のデッキの上から１枚をこのカードのソウルに入れ、ライフ１を払う。』=costs.equip:[putTopDeckToSoul{amount:1},payLife{amount:1}]（data/cards/bf-h-bt04-mikado-evolution.json H-BT04/0010闘王拳ドラゴジェネラルのequip cost内putTopDeckToSoul確立precedent。putTopDeckToSoul/payLifeとも3経路canPay/pay/payWithSelection全てにop実装済み、src/04-cost-resource.js）。②『このカードのソウル１枚につき、君の場のカード全ての攻撃力＋2000！』=continuous:[{op:modifyStats,controller:self,filter:{},amountFrom:{source:soulCount,per:{power:2000}}}]（field-wide版。data/cards/bf-x-ub02-hero-wars-new-generations.json X-UB02/0004乙女の怒り!ブレザーフリルのcontroller:self,filter:{}場ワイド確立形に、data/cards/bf-x-cp02-100-yen-star-dragon.json X-CP02/0015型のamountFrom:{source:soulCount}を合成。continuousStatBonus(src/05-stats.js)はcontinuousの宿主card=このアイテム自身をsourceCardとしてcontinuousSoulStatAmountに渡すため、このアイテムの装備者に限らず自陣の全field候補cardへ同一のsoulCount×per加算が及ぶ＝『君の場のカード全ての』を正確に表現）。③『このカードが攻撃した時、君のデッキの上から１枚を、ゲージに置くか、このカードのソウルに入れる。』=event:attack（アイテムも装備先モンスターの攻撃で自身がattackers配列に加われば直接発火。data/cards/bf-x-bt02-chaos-control-crisis.json X-BT02/0010魔王剣ドラグロイヤー等、複数の既存アイテムでevent:attack直接発火が確立済み。センター空き時にitemゾーンから単騎攻撃も可、src/11-destroy-turn.js:45-53 canDeclareAttack）+script:[chooseBranch{options:[gauge→putTopDeckToGauge(1), soul→putTopDeckToSoul(1)]}]（data/cards/bf-x2-bt01-legend-buddies.json X2-BT01/0006の chooseBranch 確立形を二択（ゲージ/ソウル）に適用）。『ソウルガード』=keywords:[soulguard]。grep自己検査: costs.equip putTopDeckToSoul+payLife(H-BT04/0010実例)/continuous modifyStats controller:self+filter:{}+amountFrom soulCount(src/05-stats.js:452-476,690-711、X-UB02/0004・X-CP02/0015実例)/event:attack直接発火(item、X-BT02/0010実例)/chooseBranch+putTopDeckToGauge/putTopDeckToSoul(script許可、src/14-ability-script.js) 全実在確認。VM検証: x78-b3-verify.js test0042参照（equipCardDirect実経路でデッキ上1枚をソウルへ入れライフ1を払って装備できる／このアイテムのソウル枚数に応じて自陣の場のカード全ての攻撃力が加算される／performAttackDeclaration実経路（センター空き・itemゾーンから単騎攻撃）でこのアイテム自身の攻撃時にゲージ/ソウルいずれかへデッキ上1枚を振り分けられる、を確認）。"
+    },
+    {
+      "id": "bf-x2-sp-0043",
+      "no": "X2-SP/0043",
+      "name": "疾風迅雷フォーメーション！",
+      "type": "impact",
+      "rarity": "",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "ドラゴン"
+      ],
+      "size": null,
+      "power": null,
+      "critical": null,
+      "defense": null,
+      "rules": [
+        "■『設置』",
+        "■君の場のカード名に「迅雷」を含むモンスターが『移動』した時、カード１枚を引く。この能力は１ターンに１回だけ発動する。",
+        "■君の場のカード名に「迅雷」を含むモンスター全てのサイズを１減らす。",
+        "■「疾風迅雷フォーメーション！」は君の場に１枚だけ『設置』できる。"
+      ],
+      "keywords": [
+        "set"
+      ],
+      "uniqueSet": true,
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "filter": {
+            "cardType": "monster",
+            "nameIncludes": "迅雷"
+          },
+          "size": -1
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0043-move-draw",
+          "kind": "triggered",
+          "event": "allyMove",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "迅雷"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bf-x2-sp-0043-move-draw"
+          }
+        }
+      ],
+      "_note": "疾風迅雷フォーメーション！（単一ワールド:ドラゴンW、attrs:ドラゴン、必殺技・設置、使用コスト行なし=costsキー省略[無償設置]）。①『『設置』（このカードは場に置いて使う）』=keywords:[set]。②『君の場のカード名に「迅雷」を含むモンスターが『移動』した時、カード１枚を引く。この能力は１ターンに１回だけ発動する。』=event:allyMove+conditions:[eventCardMatches{filter:{cardType:monster,nameIncludes:迅雷}}](bf-d-bt03-0085迅雷騎士団カッツヴァルケル・ドレイク『君の場のカード名に「迅雷騎士団」を含むモンスターが『移動』した時、君のデッキの上から１枚をゲージに置く。』の直接前例＝event:allyMove+conditions:eventCardMatches+putTopDeckToGauge構造をdrawへ差替)+effects:[draw{amount:1}]+limit:{scope:turn,key:bf-x2-sp-0043-move-draw}(印字上『この能力は』無名限定=ability.id相当のbare key)。本能力は0014/0027の【対抗】【起動】『このターン中…移動しているなら』(持続条件=E-XB69依存)とは異なり、『移動した時』の単発反応トリガー(=既存move field event、SKILL.md『主な event』記載の確立機構)であるため未実装扱いにしない。③『君の場のカード名に「迅雷」を含むモンスター全てのサイズを１減らす。』=continuous:[modifyStats{controller:self,filter:{cardType:monster,nameIncludes:迅雷},size:-1}]（標準continuous size)。④『「疾風迅雷フォーメーション！」は君の場に１枚だけ『設置』できる。』=uniqueSet:true(bf-d-bt01-0066ソロモンの大結界型、同名判定で場に1枚まで=src/08-card-use.js:395,src/14-ability-script.js:2391)。grep自己検査: keywords.set(src/18-tooltip-format.js)/uniqueSet(src/08-card-use.js:395、src/14-ability-script.js:2391)/event:allyMove+eventCardMatches(src/13-abilities-core.js:1577-1580、bf-d-bt03-0085実例)/draw/continuous modifyStats size(src/05-stats.js) 全実在確認。VM検証(x78-b2-verify.js): (a)useCardAction実経路(無償設置)でset1/set2いずれかへ配置される、(b)既に場に1枚設置済みの状態でもう1枚を設置しようとするとuniqueSetにより配置できない、(c)moveFieldCard実経路で君の場のカード名に「迅雷」を含むモンスターが移動するとカード1枚を引く、(d)「迅雷」を含まないモンスターの移動では不発、(e)同ターン2回目の該当移動では発動しない(limit)、(f)君の場のカード名に「迅雷」を含むモンスター全てのサイズが1減る(含まないモンスターは不変)、を確認。"
+    },
+    {
+      "id": "bf-x2-sp-0044",
+      "no": "X2-SP/0044",
+      "name": "ランペイジ・ブラスター・レッドヒート！",
+      "type": "impact",
+      "rarity": "",
+      "world": "ヒーローW",
+      "worlds": null,
+      "attributes": [
+        "ヒーロー"
+      ],
+      "size": null,
+      "power": null,
+      "critical": null,
+      "defense": null,
+      "rules": [
+        "■相手のライフが５以下で、君が『変身』しているなら使える。",
+        "■【使用コスト】ゲージ２を払う。",
+        "■このターン中、君のカードが破壊したモンスターの枚数＋２の数値分、相手にダメージ！！このカードのダメージは減らない！"
+      ],
+      "useConditions": [
+        {
+          "op": "opponentLifeLte",
+          "amount": 5
+        },
+        {
+          "op": "cardCount",
+          "controller": "self",
+          "pile": "item",
+          "filter": {
+            "keyword": "henshin"
+          },
+          "cmp": "gte",
+          "amount": 1
+        }
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "castCost": {
+        "gauge": 2
+      },
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0044-impact-damage",
+          "kind": "impact",
+          "timing": [
+            "final"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ],
+          "effects": [
+            {
+              "op": "dealDamage",
+              "player": "opponent",
+              "amountFrom": {
+                "source": "monstersDestroyedByMeThisTurn",
+                "plus": 2
+              },
+              "ignorePrevention": true
+            }
+          ]
+        }
+      ],
+      "_note": "【R12/E-XB70 配線済み・掃討反映】dealDamage を amountFrom:{source:monstersDestroyedByMeThisTurn,plus:2}+ignorePrevention:true へ差し替え済み（このターン中に自分のカードが破壊したモンスター数＋2ダメージ・減らない＝原文忠実。旧・固定2は暫定だった）。以下は当時のギャップ分析（記録として保持）。ランペイジ・ブラスター・レッドヒート！（必殺技）。①『相手のライフが５以下で、君が『変身』しているなら使える。』=useConditions:[opponentLifeLte{amount:5}, cardCount{controller:self,pile:item,filter:{keyword:henshin},cmp:gte,amount:1}]（『変身している』の判定は data/cards/bf-hd-pr.json PR/0211制服戦士シスターフリルの確立precedent＝装備枠(item pile)にkeyword:henshin持ちカードが存在するかで判定。attribute限定のcardCount{pile:item,filter:{attribute}}型（bf-d-bt04-kagayake-super-sun-dragon.json D-BT04/0009等）より、henshinキーワード直参照の方が『搭乗』を誤って含めない忠実形）。②【使用コスト】ゲージ２=costs.cast+ability.cost二重明記（FIX7、data/cards/bf-x-cr-saikyou-maou.json X-CR/0015雷拳×天衝！の必殺技標準形と同型）。③『このターン中、君のカードが破壊したモンスターの枚数＋２の数値分、相手にダメージ！！このカードのダメージは減らない！』は【表現不能・エンジン拡張要】: 『+2』オフセットの手前の項＝『このターン中に自分のカード(発生源owner=selfのdestroyFieldCard呼び出し)が破壊したモンスターの累計枚数』は、破壊者(destroyer)帰属で全ターン通算保持する量として現状state/DSLに存在しない。既存の近縁opを全数確認: (a) state.destroyedCardsThisTurn/monstersDestroyedThisTurn（src/11-destroy-turn.js:473-480,1074-1081）は破壊された側(victim owner)でインデックスされ、破壊者情報を持たない。(b) state.destroyedEventWindow（同1084-1103）はcause.destroyerOwnerを保持するが対抗ウィンドウ等が閉じる度にexpireTransientResponseWindows（同1116-1124）でnullへリセットされる“単一バトル/直近1件”の一時窓であり『このターン中』の累計に使えない。(c) resolveAmountFromの既存source一覧（src/15-ability-effects.js:3373-3617）にも破壊者帰属のカウントを返すsourceは無い（lastDestroyedCount/lastDestroyedStatSumは直前1回のdestroy(scope)結果のみを見る単発集計で『このターン中』の通算ではない）。設計書slice-design.md §6.1(2)も同一結論（小拡張候補: amountFrom:{source:'monstersDestroyedByMeThisTurn',plus:2}型の新設が必要、と明記）。エンジン班への提案: destroyFieldCard（src/11-destroy-turn.js）でstate.destroyedCardsThisTurn[owner].pushする際にdestroyerOwner(=options.cause?.sourceOwner)も記帳し、resolveAmountFromへ『controller指定の破壊者帰属でこのターン累計』を返す新sourceを追加すれば復元可能（attacksThisTurnBySeatの破壊版に相当）。『無いopは創作せず報告』の方針に従い本バッチはsrc変更をせず、確定しているオフセット下限（カウント0の場合の最小保証値=2）のみをdealDamage{amount:2,ignorePrevention:true}として収録した（原文よりダメージが少なく出る保守的近似＝カードパワーを過大評価しない安全側。カウントが1以上の実戦では本来の値より過小になる点に注意。ignorePrevention:trueは『このカードのダメージは減らない』の忠実表現、data/cards/bf-x-cp03-100-yen-darkness-dragon.json X-CP03/0068の確立precedent）。grep自己検査: opponentLifeLte(src/13-abilities-core.js:899)/cardCount pile:item+filter.keyword(src/13-abilities-core.js:927-976,src/17-targeting.js matchesCardFilter keyword判定)/payGauge(src/04-cost-resource.js)/kind:impact+timing:final(src/08-card-use.js:66-69,106-114、X-CR/0015実例)/dealDamage+ignorePrevention(src/15-ability-effects.js:1136-1159、X-CP03/0068実例)/destroyedCardsThisTurn・monstersDestroyedThisTurn victim-indexed(src/11-destroy-turn.js:473-480,1074-1081)/destroyedEventWindow transient reset(src/11-destroy-turn.js:1084-1124)/resolveAmountFrom全source一覧に破壊者帰属カウント source無し(src/15-ability-effects.js:3373-3617) 全確認。VM: x78-b5-verify.js test0044参照（相手ライフ5以下・自分変身中で使用可、ライフ6以上または非変身では使用条件を満たさず不可であることを実測。ダメージ量は現状仕様どおり固定2で入ることを確認＝ギャップの実測記録）。"
+    },
+    {
+      "id": "bf-x2-sp-br01",
+      "no": "X2-SP/BR01",
+      "name": "五角超竜大天帝 ムゲン・ドラム",
+      "type": "monster",
+      "rarity": "バディレア",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "武装騎竜",
+        "赤竜"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "『角王』",
+        "■このカードはセンターにコールできない。",
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。",
+        "■君がダメージを受けた時、相手の場のモンスター１枚を破壊し、君のライフを＋１！",
+        "『２回攻撃』『ソウルガード』"
+      ],
+      "altArtOf": "bf-x2-sp-0001",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/x2sp_01_br01.png",
+      "deckAnyFlag": {
+        "homeWorld": "ドラゴンW",
+        "awayMaxCopies": 1
+      },
+      "cannotCallZones": [
+        "center"
+      ],
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "doubleAttack",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0001-damagereceived-destroy-life",
+          "kind": "triggered",
+          "event": "damageReceived",
+          "allowMissingTarget": true,
+          "target": {
+            "type": "fieldCard",
+            "controller": "opponent",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
+          "effects": [
+            {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "_note": "五角超竜大天帝 ムゲン・ドラム（角王）。①『このカードはセンターにコールできない。』=cannotCallZones:[\"center\"]（H-BT03/H-PP01系角王ボスの確立表現、bf-x-ss01-gokakujin-vs-hyakurai.json X-SS01/0022五角竜王ドラム“SD”等の多数precedent）。②【コールコスト】『君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う。』=costs.call:[putTopDeckToSoul{amount:1},payGauge{amount:2}]（原文記載順どおり）。③『君がダメージを受けた時、相手の場のモンスター１枚を破壊し、君のライフを＋１！』=kind:triggered,event:\"damageReceived\"（bare・自身の所有者がダメージを受けた時に直接発火。queueDamageReceivedTriggers、src/11-destroy-turn.js:1325-1351。bf-x-bt04-rainbow-striker.json X-BT04/0032五角超騎竜砂塵杖のアルカイド等の確立precedent）+ability直下allowMissingTarget:true＋target:{fieldCard,controller:opponent,allowMissingTarget:true,filter:{cardType:monster}}（x74規約3点『allowMissingTargetはability直下』に従い両方に付与）+effects:[destroy{target:$target},gainLife{amount:1}]（bf-d-bt04-kagayake-super-sun-dragon.json D-BT04/0110「正義の鉄槌！」の『相手の場のモンスター1枚を破壊し、君のライフを+2！』のdestroy(target)→gainLife連結骨格を踏襲。相手モンスターが0体でも破壊はno-op・ライフ+1は無条件で成立＝allowMissingTargetにより両効果が独立して解決）。④『２回攻撃』『ソウルガード』=keywords:[doubleAttack,soulguard]。角王(deckAnyFlag)={homeWorld:ドラゴンW,awayMaxCopies:1}。grep自己検査: cannotCallZones(src/07-actions-turn.js)/putTopDeckToSoul・payGauge cost 3経路(src/04-cost-resource.js)/event:damageReceived配信(src/11-destroy-turn.js:1325-1351)/target+allowMissingTarget二重付与(src/13-abilities-core.js:33,148、src/14-ability-script.js:51,80)/destroy target単体形・gainLife(src/15-ability-effects.js) 全実在確認。VM検証(x78-b1-verify.js): (A)callMonster実経路でセンターへの通常コールが拒否されレフト/ライトへはデッキ上1枚をソウルへ入れゲージ2でコールできる、(B)相手が場にモンスターを持つ状態で自分がダメージを受けると相手モンスター1枚が破壊され自ライフ+1、(C)相手の場にモンスターが無い状態でダメージを受けてもライフ+1だけは成立しエラーにならない、を実測。"
+    },
+    {
+      "id": "bf-x2-sp-br02",
+      "no": "X2-SP/BR02",
+      "name": "無邪気な太陽神 バルドラゴン",
+      "type": "monster",
+      "rarity": "バディレア",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "太陽竜"
+      ],
+      "size": 2,
+      "power": 7000,
+      "critical": 2,
+      "defense": 3000,
+      "rules": [
+        "■【コールコスト】君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う。",
+        "■このカードが登場した時、君のドロップゾーンの《太陽竜》２枚を君のデッキの下に好きな順番で置いてよい。置いたら、君のライフを６にし、君のデッキから《太陽竜》の、アイテムか必殺モンスター１枚までを手札に加え、デッキをシャッフルする。",
+        "『貫通』『ソウルガード』"
+      ],
+      "altArtOf": "bf-x2-sp-0002",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/x2sp_01_br02.png",
+      "costs": {
+        "call": [
+          {
+            "op": "putTopDeckToSoul",
+            "amount": 1
+          },
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
+      "keywords": [
+        "penetrate",
+        "soulguard"
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0002-enter-drop-bottom-search",
+          "kind": "triggered",
+          "event": "enter",
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "d",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "太陽竜"
+              },
+              "min": 2,
+              "max": 2,
+              "amount": 2,
+              "require": false,
+              "title": "無邪気な太陽神 バルドラゴン",
+              "lead": "君のデッキの下に好きな順番で置く、ドロップゾーンの《太陽竜》2枚を選んでください（選ばなくてもよい）。"
+            },
+            {
+              "op": "moveSelectedToDeckBottomOrdered",
+              "var": "d",
+              "require": false
+            },
+            {
+              "op": "ifSelection",
+              "var": "d",
+              "then": [
+                {
+                  "op": "setLife",
+                  "life": 6
+                },
+                {
+                  "op": "searchDeckToHand",
+                  "filter": {
+                    "attribute": "太陽竜",
+                    "cardTypeIn": [
+                      "item",
+                      "impactMonster"
+                    ]
+                  },
+                  "amount": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "無邪気な太陽神 バルドラゴン。①【コールコスト】デッキ上1枚をソウルへ+ゲージ1=costs.call:[putTopDeckToSoul(1),payGauge(1)]（多数precedent標準形）。②『このカードが登場した時、君のドロップゾーンの《太陽竜》２枚を君のデッキの下に好きな順番で置いてよい。置いたら、君のライフを６にし、君のデッキから《太陽竜》の、アイテムか必殺モンスター１枚までを手札に加え、デッキをシャッフルする。』=event:enter+script:[selectCards(from:drop,filter:{cardType:monster,attribute:太陽竜},min:2,max:2,amount:2,require:false)→moveSelectedToDeckBottomOrdered(require:false)→ifSelection(then:[setLife(6),searchDeckToHand(filter:{attribute:太陽竜,cardTypeIn:[item,impactMonster]},amount:1)])]（『２枚を…置いてよい』＝0枚か2枚の二択。data/cards/bf-x2-bt01-legend-buddies.json X2-BT01/0005 再誕の氷竜 ロワ・ミセリアの『３枚を…置いてよい』min:max:3,require:falseと同型・枚数のみ2に差替。setLife=『ライフを６にし』の固定代入、gainLifeの加算では表現不可なため専用op使用（src/15-ability-effects.js:692、bf-x-ub03-complete-chaos.json等の確立precedent）。『《太陽竜》の、アイテムか必殺モンスター』=filter:{attribute:太陽竜,cardTypeIn:[item,impactMonster]}（cardTypeIn内OR・attributeとAND、src/17-targeting.js:367）。searchDeckToHandは既定でshuffle!==false=自動デッキシャッフル込み（『デッキをシャッフルする』を追加op無しで充足、src/15-ability-effects.js:400-437）。③『貫通』『ソウルガード』=keywords:[penetrate,soulguard]。grep自己検査: putTopDeckToSoul/payGauge(src/04-cost-resource.js)/selectCards from:drop min:max:2 require:false(src/14-ability-script.js、X2-BT01/0005実例)/moveSelectedToDeckBottomOrdered(src/14-ability-script.js:1405)/ifSelection(src/14-ability-script.js:1200)/setLife(src/15-ability-effects.js:692、script許可=src/14:3411)/searchDeckToHand+cardTypeIn(src/15-ability-effects.js:400、src/17-targeting.js:367) 全実在確認。VM検証: x78-b4-verify.js test0002参照（ドロップに太陽竜が1枚以下では登場時に何も起きない／2枚以上ある状態で2枚を選んでデッキ下へ置くとライフが6になり、デッキから太陽竜のアイテムか必殺モンスターを1枚まで手札に加えデッキがシャッフルされる／選ばない場合は何も起きないことを確認）。"
+    },
+    {
+      "id": "bf-x2-sp-br03",
+      "no": "X2-SP/BR03",
+      "name": "冠絶の覇竜王 バッツ・ザ・インフィニティ",
+      "type": "monster",
+      "rarity": "バディレア",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "雷帝軍",
+        "ドラゴン"
+      ],
+      "size": 2,
+      "power": 13000,
+      "critical": 2,
+      "defense": 6000,
+      "rules": [
+        "■【コールコスト】ゲージ２を払う。",
+        "■君のターン中、場のこのカードは破壊されない。",
+        "■このカードが攻撃した時、君のドロップゾーンのカードのワールド名が３種類以上なら、そのターン中、このカードは『３回攻撃』を得る。さらに、５種類以上なら、相手の場のモンスター１枚までを破壊し、７種類以上なら、相手にダメージ２！",
+        "『貫通』"
+      ],
+      "altArtOf": "bf-x2-sp-0003",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/x2sp_01_br03.png",
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 2
+          }
+        ]
+      },
+      "callCost": {
+        "gauge": 2
+      },
+      "keywords": [
+        "penetrate"
+      ],
+      "destroyImmunity": [
+        {
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        },
+        {
+          "from": {
+            "byBattle": true
+          },
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ]
+        }
+      ],
+      "abilities": [
+        {
+          "id": "bf-x2-sp-0003-attack-worldcount-scaling",
+          "kind": "triggered",
+          "event": "attack",
+          "script": [
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "cardCount",
+                "controller": "self",
+                "pile": "drop",
+                "distinct": "distinctByWorld",
+                "cmp": "gte",
+                "amount": 3
+              },
+              "then": [
+                {
+                  "op": "grantKeyword",
+                  "target": "$self",
+                  "keyword": "tripleAttack",
+                  "duration": "turn"
+                }
+              ]
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "cardCount",
+                "controller": "self",
+                "pile": "drop",
+                "distinct": "distinctByWorld",
+                "cmp": "gte",
+                "amount": 5
+              },
+              "then": [
+                {
+                  "op": "selectCards",
+                  "var": "d",
+                  "from": "field",
+                  "controller": "opponent",
+                  "filter": {
+                    "cardType": "monster"
+                  },
+                  "min": 0,
+                  "max": 1,
+                  "amount": 1,
+                  "require": false,
+                  "title": "冠絶の覇竜王 バッツ・ザ・インフィニティ",
+                  "lead": "破壊する、相手の場のモンスターを1枚まで選んでください。"
+                },
+                {
+                  "op": "destroySelected",
+                  "var": "d",
+                  "require": false
+                }
+              ]
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "cardCount",
+                "controller": "self",
+                "pile": "drop",
+                "distinct": "distinctByWorld",
+                "cmp": "gte",
+                "amount": 7
+              },
+              "then": [
+                {
+                  "op": "dealDamage",
+                  "player": "opponent",
+                  "amount": 2
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_note": "冠絶の覇竜王 バッツ・ザ・インフィニティ（角王印字なし＝deckAnyFlag無し）。①【コールコスト】ゲージ2=costs.call:[payGauge{amount:2}]。②『君のターン中、場のこのカードは破壊されない。』=card級destroyImmunity 2エントリ分割（{conditions:[turnOwnerIsSelf]}=効果破壊保護／{from:{byBattle:true},conditions:[turnOwnerIsSelf]}=バトル破壊保護。destroyImmunityEntryBlocks[src/11-destroy-turn.js:220-241]はfrom.byBattle未指定エントリをバトル破壊に適用しない実装のため2エントリ必須。bf-x2-bt01-legend-buddies.json X2-BT01/0071未来への牙バールバッツ・フューチャークロスの一字一句同一文『君のターン中、場のこのカードは破壊されず』と完全同型の直接precedent）。③『このカードが攻撃した時、君のドロップゾーンのカードのワールド名が３種類以上なら、そのターン中、このカードは『３回攻撃』を得る。さらに、５種類以上なら、相手の場のモンスター１枚までを破壊し、７種類以上なら、相手にダメージ２！』=kind:triggered,event:\"attack\"（bare・自身が攻撃した時に直接発火）+script:3段のifCondition（cardCount{controller:self,pile:drop,distinct:distinctByWorld,cmp:gte,amount:N}、N=3/5/7の閾値昇順。distinctByWorldはbf-x-bt03-gyakuten-raiteigun.json X-BT03/0001等の確立条件op、src/13-abilities-core.js:822-868,854）: (a)3種以上then=[grantKeyword{target:$self,keyword:tripleAttack,duration:turn}]（scriptからのgrantKeywordはisScriptEffectStep許可リスト・target:$selfはresolveEffectReferenceが発生源へ解決、bf-x-bt01-reborn-of-satan.json X-BT01/0074インフェルノの『ifCondition(script)のthenでstandTarget target:$self』と同型の確立慣用）、(b)5種以上then=[selectCards{from:field,controller:opponent,filter:{cardType:monster},min:0,max:1,require:false}→destroySelected{var:d,require:false}]（『1枚までを破壊』＝選択0枚も可、destroySelectedはisScriptEffectStepでなく専用dispatch、src/14-ability-script.js:1597-1627）、(c)7種以上then=[dealDamage{player:opponent,amount:2}]。ifConditionの3分岐は互いに独立評価（原文『さらに』の累積構造どおり閾値を跨ぐたびに前段の効果も維持される。前段の『３回攻撃』はduration:turnのgrantKeywordのため独立効果として残る）。効果解決順は原文記載順（３回攻撃→destroy→dealDamage）どおりscript配列の並びで担保。ability.target未使用のためx77-slice x0059の『script使用時はability.target自動解決が働かない』注意は非該当（本カードはtarget自体を使わずscript内selectCardsで完結）。④『貫通』=keywords:[penetrate]。角王印字なしのためdeckAnyFlagは付与しない。grep自己検査: payGauge/destroyImmunity 2エントリ+turnOwnerIsSelf+from.byBattle(src/11-destroy-turn.js:196-241、X2-BT01/0071実例)/event:attack bare発火(src/09-attack.js)/ifCondition(src/14-ability-script.js:1222-1229)/cardCount+distinctByWorld pile:drop(src/13-abilities-core.js:822-868,854)/grantKeyword target:$self+duration:turn(isScriptEffectStep許可リスト、src/14-ability-script.js内grantKeyword項)/selectCards+destroySelected(src/14-ability-script.js:1597-1627)/dealDamage(isScriptEffectStep許可リスト) 全実在確認。VM検証(x78-b1-verify.js): (A)callMonster実経路でゲージ2コール、(B)destroyFieldCard実経路（cause:byEffect/byBattle）で自分のターン中はいずれも阻止され相手のターン中は破壊される、(C)ドロップのワールド種類が2種類以下では攻撃してもこのカードは『３回攻撃』を得ない、(D)3種類以上で『３回攻撃』を得て5種類未満では相手モンスターは破壊されない、(E)5種類以上で相手の場のモンスター1枚まで選んで破壊できる（相手モンスター0体でもno-op）、(F)7種類以上で相手に追加でダメージ2、を実測。"
+    },
+    {
+      "id": "bf-x2-sp-s001",
+      "no": "X2-SP/S001",
+      "name": "バッツ×リンク",
+      "type": "spell",
+      "rarity": "究極レア",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "雷帝軍"
+      ],
+      "size": null,
+      "power": null,
+      "critical": null,
+      "defense": null,
+      "rules": [
+        "■このターン中、３回以上君のカードが攻撃しているなら使える。（連携攻撃は１回として数えるぞ！）",
+        "■【対抗】君のデッキの上から３枚を見て、その中の１枚を手札に加え、残りのカードをゲージに置き、君のライフを＋１！「バッツ×リンク」は１ターンに１回だけ使える。"
+      ],
+      "altArtOf": "bf-x-bt01-0002",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/x2sp_01_s001.png",
+      "abilities": [
+        {
+          "id": "bf-x2-sp-s001-counter-link",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "effects": [
+            {
+              "op": "lookTopSelectToHandRestToBottom",
+              "count": 3,
+              "max": 1,
+              "altTo": "gauge"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xbt01-バッツ×リンク"
+          }
+        }
+      ],
+      "useConditions": [
+        {
+          "op": "attacksThisTurnGte",
+          "amount": 3
+        }
+      ]
+    },
+    {
+      "id": "bf-x2-sp-s002",
+      "no": "X2-SP/S002",
+      "name": "ドラゴンシールド 青竜の盾",
+      "type": "spell",
+      "rarity": "究極レア",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "青竜",
+        "防御"
+      ],
+      "size": null,
+      "power": null,
+      "critical": null,
+      "defense": null,
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】その攻撃を無効化し、君のデッキの上から１枚をゲージに置く。"
+      ],
+      "altArtOf": "ss01-0015",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/x2sp_01_s002.png",
+      "flavor": "所有者を守護する青き雷竜。 相応しき使い手になれるかは、キミ次第だ。",
+      "abilities": [
+        {
+          "id": "bf-x2-sp-s002-blue-dragon-shield-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "ownCenterEmpty"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bf-x2-sp-s003",
+      "no": "X2-SP/S003",
+      "name": "ドラゴンシールド 緑竜の盾",
+      "type": "spell",
+      "rarity": "究極レア",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "緑竜",
+        "防御"
+      ],
+      "size": null,
+      "power": null,
+      "critical": null,
+      "defense": null,
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。",
+        "■【対抗】その攻撃を無効化し、君のライフを＋１する。"
+      ],
+      "altArtOf": "cp01-0023",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/x2sp_01_s003.png",
+      "abilities": [
+        {
+          "id": "bf-x2-sp-s003-cp01-green-dragon-shield-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "effect": "green-shield"
+    },
+    {
+      "id": "bf-x2-sp-s004",
+      "no": "X2-SP/S004",
+      "name": "ドラゴンシールド 太陽の盾",
+      "type": "spell",
+      "rarity": "究極レア",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "防御"
+      ],
+      "size": null,
+      "power": null,
+      "critical": null,
+      "defense": null,
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいなくて、君の場に《太陽竜》があるなら使える。",
+        "■【対抗】その攻撃を無効化し、君のデッキの上から１枚をゲージに置き、君のライフを＋１する。君の場に《太陽竜》２枚以上があるなら、このカードは無効化されない。"
+      ],
+      "altArtOf": "bf-d-cbt-0111",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/x2sp_01_s004.png",
+      "abilities": [
+        {
+          "id": "bf-x2-sp-s004-counter",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "cardCount",
+              "pile": "field",
+              "filter": {
+                "attribute": "太陽竜"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "cannotBeNullified": {
+        "conditions": [
+          {
+            "op": "cardCount",
+            "pile": "field",
+            "filter": {
+              "attribute": "太陽竜"
+            },
+            "cmp": "gte",
+            "amount": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "bf-x2-sp-s005",
+      "no": "X2-SP/S005",
+      "name": "ドラゴンシールド 雷竜の盾",
+      "type": "spell",
+      "rarity": "究極レア",
+      "world": "ドラゴンW",
+      "worlds": null,
+      "attributes": [
+        "雷帝軍",
+        "防御"
+      ],
+      "size": null,
+      "power": null,
+      "critical": null,
+      "defense": null,
+      "rules": [
+        "■相手のターンの攻撃中、君のセンターにモンスターがいなくて、君の場に《雷帝軍》があるなら使える。",
+        "■【使用コスト】ゲージ１を払う。",
+        "■【対抗】その攻撃を無効化し、カード１枚を引く。"
+      ],
+      "altArtOf": "bf-x-bt01-0026",
+      "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/x2sp_01_s005.png",
+      "abilities": [
+        {
+          "id": "bf-x2-sp-s005-counter-nullify-draw",
+          "kind": "spell",
+          "timing": [
+            "counter"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "ownCenterEmpty"
+            },
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "attribute": "雷帝軍"
+              }
+            }
+          ],
+          "effects": [
+            {
+              "op": "nullifyAttack"
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "costs": {
+        "cast": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      }
+    }
+  ]
+}

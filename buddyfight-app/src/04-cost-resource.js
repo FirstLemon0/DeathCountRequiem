@@ -58,6 +58,20 @@ function ownEffectDamageUnreducibleActive(sourceOwner) {
   if (!src) {
     return false;
   }
+  // E-XB64(X2-BT01/0052 逆雷の源泉③): card-anchored な場札の継続に加え、プレイヤー単位のターン限定継続
+  //   （state.turnPlayerContinuous[sourceOwner]）も走査する。魔法発の匿名アンカーはここに積まれ、conditions は
+  //   毎評価する（「君の場にヤミゲドウがいるなら」＝ownFieldCardExists）。発生源カードが無いので context は owner のみ。
+  //   store が空/未初期化の既存 state では以下は常に false（後方互換・E-XB52 のフィールド走査は不変）。
+  const playerStore = state.turnPlayerContinuous?.[sourceOwner] || [];
+  if (
+    playerStore.some(
+      (e) =>
+        e.op === "ownEffectDamageUnreducible" &&
+        (!e.conditions?.length || checkCardConditions(e.conditions, sourceOwner, { owner: sourceOwner, player: src })),
+    )
+  ) {
+    return true;
+  }
   return zones.some((zone) => {
     const fieldCard = src.field[zone];
     return (

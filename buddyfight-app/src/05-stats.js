@@ -1096,6 +1096,16 @@ function standRestrictedNow(card) {
   if (card.cannotStandThisTurn) {
     return true;
   }
+  // E-XB66(X2-BT01/0068 流星神機 アザヴォアール①): ソウル発・相手場全体の「効果でスタンドできない」拘束。
+  //   「このカードがカード名に『ゾディアック』を含むモンスターのソウルにあるなら、相手の場のモンスター全ては
+  //   カードの効果でスタンドできない」＝ソウル在中発生源(soulContinuous)＋ホスト名フィルタ(conditions:hostMatches)＋
+  //   相手陣営 AoE(controller:"opponent"＝ホスト逆側の場)。E-XB60 の soulContinuousGrantsOp 経路を standDenial 種別へ拡張。
+  //   standRestrictedNow は効果スタンド専用の choke（standTarget/standAll/standSelected のみ）から呼ばれるため
+  //   「カードの効果でスタンドできない」に正しく限定され、ターン開始 standPlayer や多回攻撃キーワードのスタンドは通らない。
+  //   soulContinuous grantEffectStandDenial を持つ既存カードは0件＝場に該当ソウルが無ければ false（高速パス・後方互換）。
+  if (soulContinuousGrantsOp(card, "grantEffectStandDenial")) {
+    return true;
+  }
   return state.phase === "attack" && monsterActionRestricted(card, "standInAttackPhase");
 }
 
@@ -1246,6 +1256,24 @@ function cardProtectedFrom(card, kind, cause = {}) {
   if (
     kind === "moveArea" &&
     soulContinuousGrantsOp(card, "grantMoveAreaImmunity", (effect) => {
+      if (effect.from) {
+        if (effect.from.byEffect && !cause.byEffect) return false;
+        if (effect.from.byOpponent && !cause.byOpponent) return false;
+      }
+      return true;
+    })
+  ) {
+    return true;
+  }
+  // E-XB63(X2-BT01/0066 特殊ウェポン ウィルスバスター②後段): 「そのカード（＝ホスト）のソウルは相手のカードの効果で
+  //   ドロップゾーンに置かれない」＝ソウル発の soulDiscard 耐性（ホストのソウル全体を守る）。恒久 grantSoulDiscardImmunity は
+  //   「場の継続」限定（grantedProtectionBlocks）なので、ソウル発の付与は soulContinuousGrantsOp が担う（nullify/moveArea と
+  //   同型の配線）。dropTargetSoul（src/15）が host=target.card に対して cardProtectedFrom(host,"soulDiscard",cause) を
+  //   byOpponent 時のみ問うため、hostOnly:true（＝ホスト自身のソウルだけを守る）で原文どおり自陣の該当ホストへ限定する。
+  //   soulContinuous grantSoulDiscardImmunity を持つ既存カードは0件＝挙動不変（場に該当ソウルが無ければ soulContinuousGrantsOp が false）。
+  if (
+    kind === "soulDiscard" &&
+    soulContinuousGrantsOp(card, "grantSoulDiscardImmunity", (effect) => {
       if (effect.from) {
         if (effect.from.byEffect && !cause.byEffect) return false;
         if (effect.from.byOpponent && !cause.byOpponent) return false;

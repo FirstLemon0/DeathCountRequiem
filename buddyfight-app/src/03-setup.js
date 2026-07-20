@@ -379,9 +379,16 @@ function newGame(options = {}) {
     turnDamageEvents: [],
     destroyedEventWindow: null,
     destroyedCardsThisTurn: [[], []],
+    // E-XB70(X2-SP/0044): このターン中に破壊“した”側（destroyer）の席別モンスター破壊数。被破壊カード所有者
+    // インデックスの destroyedCardsThisTurn とは別軸（破壊者で数える）。amountFrom monstersDestroyedByMeThisTurn が
+    // 参照し、destroyFieldCard の実破壊点で加算・ターン境界(startTurn)で [0,0] にリセット・JSON 直列化安全。
+    destroyedByOwnerThisTurn: [0, 0],
     // E-PR16(PR/0470): このターン中に「効果で」スタンドしたカードの owner別 instanceId 履歴
     // （queueStandTriggers で記帳・clearTurnModifiers でリセット・standedByEffectThisTurnMatches が参照）。
     standedByEffectThisTurn: [[], []],
+    // E-XB69(X2-SP/0014,0027 迅雷騎士団): このターン中に『移動』したモンスターの owner別 instanceId 履歴
+    // （moveFieldCard=全移動経路の choke point で記帳・clearTurnModifiers でリセット・monsterMovedThisTurn が参照）。
+    movedThisTurn: [[], []],
     enteredEventWindow: null,
     extraTurnOwner: null,
     winner: null,

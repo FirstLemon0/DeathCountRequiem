@@ -985,6 +985,17 @@ async function moveFieldCard(owner, fromZone, toZone, details = {}) {
   }
   player.field[fromZone] = null;
   player.field[toZone] = card;
+  // E-XB69(X2-SP/0014 旋撃のドラム・0027 奮起のハルバード・ドラゴン): このターン中に owner 席の場のモンスターが
+  // 『移動』したことを記帳する。moveFieldCard は『移動』キーワード（src/09 アタックフェイズ移動）と効果移動（src/15）の
+  // 唯一の choke point なので、ここで owner 席の instanceId を積めば全移動経路を漏れなく拾える。素の instanceId 配列
+  // ＝JSON 直列化可（room 復元/リプレイで往復）。リセットは clearTurnModifiers(src/11)＝attacksThisTurn 等と同ライフサイクル。
+  // 読み手 monsterMovedThisTurn(src/13) は「現在も場に在る」ものだけを見る（standedByEffectThisTurn の sibling）。
+  // 既存 state に無くても ||= で安全初期化（後方互換）。
+  state.movedThisTurn = state.movedThisTurn || [[], []];
+  const movedBucket = state.movedThisTurn[owner] || (state.movedThisTurn[owner] = []);
+  if (card.instanceId && !movedBucket.includes(card.instanceId)) {
+    movedBucket.push(card.instanceId);
+  }
   await runFieldEventTriggers("move", owner, card, toZone, {
     fromZone,
     ...details,

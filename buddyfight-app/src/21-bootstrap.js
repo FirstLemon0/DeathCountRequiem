@@ -373,7 +373,10 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     checkCondition,
     // E-XB41(X-BT04/0069): 逆天/逆天殺の使用記帳（state.fightLimits[owner][key]）を実経路で叩き、
     // reversalUsedThisFight 条件op が writer と同じ key を読むことを固定するため公開。
+    // E-XB61(X2-BT01/0001): fight-limit の count 化（count:N で N 回まで許可）の赤ピン回帰のため
+    // 読み手 isAbilityLimitUsed も公開（writer=markAbilityLimit と対で回数記帳の閾値を検証する）。
     markAbilityLimit,
+    isAbilityLimitUsed,
     // E-XB42(X-BT04/0099): 現在ターン終了予約のドレイン(finishAndAdvanceTurn 直行)を単体で叩けるよう公開。
     maybeEndPendingCurrentTurn,
     getState: () => state,

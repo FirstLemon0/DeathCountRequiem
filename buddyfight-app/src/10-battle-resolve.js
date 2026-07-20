@@ -881,6 +881,32 @@ async function runDamageDealtTriggers(attackers, pending, damage) {
       });
     }
   }
+  // E-XB68(X2-BT01/0046 ルール・オブ・デプス): 攻撃ダメージの「両面」ブロードキャスト（新イベント attackDamageDealt）。
+  //   上の dealDamage/allyDealDamage は攻撃者と“同じ owner”側にしか届かないため、別 owner の場札（＝相手の場の
+  //   モンスターの攻撃を見ている自分の設置魔法）へは届かない。runFieldEventTriggers 型で両席へ配信し、攻撃者の逆側は
+  //   opponentAttackDamageDealt を受ける（0046＝操骨 グラツィア 0065 の forceSelfAttack で相手モンスターが相手自身へ
+  //   攻撃した時、自分の設置がこれを拾う）。これは既存 dealDamage/allyDealDamage とは別イベント名＝純粋な追加配信で、
+  //   両者は重複しない（各場札は自席1本ぶんだけ受け取り、既存の runDamageDealtTriggers 配信は不変）。リスナー不在なら
+  //   何もしない（既存カードに attackDamageDealt リスナーは無い＝挙動完全不変）。1回の runDamageDealtTriggers＝1配信。
+  const primary = damageSources[0];
+  if (primary?.card) {
+    const hasAttackDamageListener = [0, 1].some((playerIndex) =>
+      zones.some((zone) => {
+        const c = state.players[playerIndex]?.field?.[zone];
+        return (
+          cardHasTriggeredListener(c, "allyAttackDamageDealt") ||
+          cardHasTriggeredListener(c, "opponentAttackDamageDealt")
+        );
+      }),
+    );
+    if (hasAttackDamageListener) {
+      await runFieldEventTriggers("attackDamageDealt", primary.owner, primary.card, primary.zone, {
+        damage,
+        defender: pending.defender,
+        damageSource: primary,
+      });
+    }
+  }
 }
 
 // 攻撃解決後の多重攻撃（『４回攻撃』/『３回攻撃』/『２回攻撃』）のスタンド判定を1枚ぶん実行する。

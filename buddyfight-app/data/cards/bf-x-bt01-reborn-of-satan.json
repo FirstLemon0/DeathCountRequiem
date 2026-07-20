@@ -1716,20 +1716,25 @@
           }
         ]
       },
-      "cannotBeNullified": {
-        "conditions": [
-          {
-            "op": "ownFieldCardExists",
-            "zones": [
-              "item"
-            ],
-            "filter": {
-              "cardType": "item",
-              "keyword": "releaseCondition"
+      "attackResistances": [
+        {
+          "effects": [
+            "nullify"
+          ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "zones": [
+                "item"
+              ],
+              "filter": {
+                "cardType": "item",
+                "keyword": "releaseCondition"
+              }
             }
-          }
-        ]
-      },
+          ]
+        }
+      ],
       "keywords": [
         "penetrate"
       ],
@@ -1762,7 +1767,7 @@
           ]
         }
       ],
-      "_note": "①【コールコスト】『場のカード名にバルソレイユかバルドラゴンを含むモンスター1枚をドロップに置き、ゲージ3を払う』=costs.call[dropOwnMonster{filter:{anyOf:[{nameIncludes:バルソレイユ},{nameIncludes:バルドラゴン}]}},payGauge3]（dropOwnMonsterCostCandidatesがcardType:monsterを自動merge・anyOfはmatchesCardFilterがfilter.anyOf.some({...rest,...candidate})で解決=src/17-targeting.js:306-309実証済）。②『解放条件！を持つアイテムを装備しているなら攻撃は無効化されない』=cannotBeNullified{conditions:[ownFieldCardExists{zones:[item],filter:{cardType:item,keyword:releaseCondition}}]}（bf-d-ss01/ss02/cbt「太陽の盾」型の条件付きcannotBeNullified踏襲）。C7(design.md): 本弾『解放条件！』持ちアイテムは0枚のためkeyword releaseCondition自体は未実装のまま=常にfalse(dangling・実害無し・将来解放条件アイテムが実装されればkeyword付与だけで自動的に機能する)。③『太陽神の選択で登場したターン中…太陽竜アイテムと連携攻撃した時…攻撃力打撃力∞』はC5/C8(design.md)の近似採用: 『太陽神の選択で登場したターン中』ゲート(=E-Y3範囲外の新規『登場経路追跡』フラグが必要=このバッチではsrc改変不可のため実装不能)を省略し、『このカードが太陽竜アイテムと連携攻撃した時は常に∞』へ簡略化(design.md C5『連携攻撃時∞付与の条件を緩める』を採用)。event:allyLinkAttack+conditions[pendingAttackBySource(自身が攻撃参加),eventAttackersInclude{excludeSelf:true,filter:{cardType:item,attribute:太陽竜}}]はbf-s-ub-c03-0029型そのもの(『このカードが[渋谷凛]と連携攻撃した時』と同一構文)。∞はmodifyStats{power:+999999,critical:+99,duration:turn}の大数近似(bf-d-bt01-0131大邪神power:1000000前例)。『減らせない』は専用の下限ガード op が存在しないため対応せず(相手の攻撃力減算効果は通常小さく実害小)。両近似ともdesign.md C5/C8で明記のsanctioned近似。『貫通』=keywords:[\"penetrate\"]。worlds(3ワールド)はskeleton meta。impactMonsterのコール制限(1ターン1枚・自ファイナルのみ)はtype:\"impactMonster\"により自動対応(mech不要)。"
+      "_note": "①【コールコスト】『場のカード名にバルソレイユかバルドラゴンを含むモンスター1枚をドロップに置き、ゲージ3を払う』=costs.call[dropOwnMonster{filter:{anyOf:[{nameIncludes:バルソレイユ},{nameIncludes:バルドラゴン}]}},payGauge3]（dropOwnMonsterCostCandidatesがcardType:monsterを自動merge・anyOfはmatchesCardFilterがfilter.anyOf.some({...rest,...candidate})で解決=src/17-targeting.js:306-309実証済）。②『解放条件！を持つアイテムを装備しているなら攻撃は無効化されない』=cannotBeNullified{conditions:[ownFieldCardExists{zones:[item],filter:{cardType:item,keyword:releaseCondition}}]}（bf-d-ss01/ss02/cbt「太陽の盾」型の条件付きcannotBeNullified踏襲）。C7(design.md): 本弾『解放条件！』持ちアイテムは0枚のためkeyword releaseCondition自体は未実装のまま=常にfalse(dangling・実害無し・将来解放条件アイテムが実装されればkeyword付与だけで自動的に機能する)。③『太陽神の選択で登場したターン中…太陽竜アイテムと連携攻撃した時…攻撃力打撃力∞』はC5/C8(design.md)の近似採用: 『太陽神の選択で登場したターン中』ゲート(=E-Y3範囲外の新規『登場経路追跡』フラグが必要=このバッチではsrc改変不可のため実装不能)を省略し、『このカードが太陽竜アイテムと連携攻撃した時は常に∞』へ簡略化(design.md C5『連携攻撃時∞付与の条件を緩める』を採用)。event:allyLinkAttack+conditions[pendingAttackBySource(自身が攻撃参加),eventAttackersInclude{excludeSelf:true,filter:{cardType:item,attribute:太陽竜}}]はbf-s-ub-c03-0029型そのもの(『このカードが[渋谷凛]と連携攻撃した時』と同一構文)。∞はmodifyStats{power:+999999,critical:+99,duration:turn}の大数近似(bf-d-bt01-0131大邪神power:1000000前例)。『減らせない』は専用の下限ガード op が存在しないため対応せず(相手の攻撃力減算効果は通常小さく実害小)。両近似ともdesign.md C5/C8で明記のsanctioned近似。『貫通』=keywords:[\"penetrate\"]。worlds(3ワールド)はskeleton meta。impactMonsterのコール制限(1ターン1枚・自ファイナルのみ)はtype:\"impactMonster\"により自動対応(mech不要)。【R17(x78) 出荷済み是正】②の cannotBeNullified{conditions:[releaseCondition持ちアイテム装備]} を attackResistances:[{effects:[\"nullify\"],conditions:[同]}] へ変更（条件は維持）。理由: cannotBeNullified は src/07 cardCannotBeNullified 経由で nullifyPendingAction（アクション無効化）専用ゲートに載り、原文『このカードの攻撃は無効化されない』が指す nullifyPendingAttack（攻撃の無効化）を素通りしていた（x78 B6 の VM で素通りを実証）。attackResistances の effects:[\"nullify\"] は攻撃無効化耐性そのもの（src/10 applicableAttackResistances→attack nullify 耐性経路）で、B6 0004 バルソレイユ“ジ・エンド・オブ・バルブレイク！”の実証済み正解形と同一。挙動: releaseCondition 持ちアイテム装備時のみ攻撃 nullify がブロックされる。回帰: tests/effects-regression.test.js R17-0020。"
     },
     {
       "id": "bf-x-bt01-0021",

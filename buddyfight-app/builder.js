@@ -727,6 +727,16 @@ function flagIsHomeForDeckAnyFlag(flag, card) {
   if (flag.allowAllWorlds) {
     return true;
   }
+  // R19(exp77): 多ワールドカード（worlds:[w1,w2,...]、例 X2-BT01/0005・0019のダンジョンW+レジェンドW角王）は、
+  // deckAnyFlag.homeWorld が既存precedentの書式踏襲で先頭ワールドのみを指す単数値になっている
+  // （データ側では是正不可＝既知の近似）。公式ルール「君のフラッグがそのカードのワールドなら」は
+  // 多ワールドカードでは worlds 全体が対象になるはずなので、worlds.length>1 のときは homeWorld の
+  // 単数値に絞らず、カードが実際に持つ全ワールドのいずれかで home 判定する（単一ワールドカードは
+  // worlds=[card.world] のまま＝以下の分岐に入らず従来どおりバイト不変）。
+  const worlds = cardWorlds(card);
+  if (worlds.length > 1) {
+    return worlds.some((world) => flagIsOfWorld(flag, world));
+  }
   const homeWorld = rule.homeWorld || card?.world;
   return flagIsOfWorld(flag, homeWorld);
 }

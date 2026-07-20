@@ -121,18 +121,26 @@ function inheritedSoulAbilitiesFor(card, event) {
   if (!inherit || !(card.soul || []).length || isAbilitiesNullified(card)) {
     return [];
   }
+  // E-XB65(X2-BT01/0001 完全竜化 竜牙王): 継承能力の limit を親（ホスト）側で差し替える最小フック。
+  // 竜牙王は「このカードのソウルの『大逆天』を得て、君はこのファイト中に2回、『大逆天』を使える」＝ソウル側の印字
+  // 大逆天は count 無し（＝normalizedAbilityLimit のキーワード導出で fight/greatReversal・実質1回）だが、ホストが継承する
+  // 分だけは E-XB61 の fight count:2 へ上書きしたい。limitOverride を指定すると継承コピー a に limit を付与し、
+  // normalizedAbilityLimit(ability) が ability.limit を最優先で読む（キーワード導出より前）ため回数上限が差し替わる。
+  // 未指定（既存の inheritSoulAbilities 全カード）は limit を付けず＝従来どおりキーワード/印字 limit のまま＝挙動不変。
+  const withOverride = (a) =>
+    inherit.limitOverride ? { ...a, __fromSoul: a.__fromSoul, limit: inherit.limitOverride } : a;
   if (inherit.label) {
     return (card.soul || []).flatMap((soulCard) =>
       (soulCard.abilities || [])
         .filter((a) => a.kind === "triggered" && a.event === event && a.label === inherit.label)
-        .map((a) => ({ ...a, __fromSoul: soulCard })),
+        .map((a) => withOverride({ ...a, __fromSoul: soulCard })),
     );
   }
   if (inherit.filter) {
     return inheritedFilterSoulCards(card).flatMap((soulCard) =>
       (soulCard.abilities || [])
         .filter((a) => a.kind === "triggered" && a.event === event)
-        .map((a) => ({ ...a, __fromSoul: soulCard })),
+        .map((a) => withOverride({ ...a, __fromSoul: soulCard })),
     );
   }
   return [];
@@ -3373,6 +3381,10 @@ function isScriptEffectStep(step) {
     "lookTopDistribute", // E-XB40(X-BT04/0008 天晶の祝福): 動的count(countFrom)の非破壊look→ゲージ/手札/デッキ下の3方向振り分け（effect版 src/15 へ委譲）
     "setConditionalSizeScope", // X11b(D-BT01/0131)
     "addTurnContinuous", // X19(D-BT01/0131)
+    "stackOnFlag", // E-XB67(X2-BT01/0003 ダ・エーワ後段): 「手札/デッキ横断で1枚選び→フラッグの上に重ね→ライフ+5」を
+    //   両立させるための script 許可。効果版 src/15-ability-effects.js:1461 stackOnFlag（stackPlayerFlag で player.flag を
+    //   flagId 定義へ差し替え）へ委譲する。選択(selectCards)→重ね(stackOnFlag)→ライフ(gainLife)の script を1本で組める。
+    //   flagId 未指定/差し替え不能なら stackPlayerFlag が false を返しログのみ（script は停止しない＝後方互換）。
     "putTopDeckToGauge",
     "putTopDeckToGaugeIfBuddyOnField",
     "moveTopDeckToDrop",
@@ -3388,6 +3400,7 @@ function isScriptEffectStep(step) {
     "setNextActivatedCostMayUseOpponentGauge",
     "eachPlayerTopDeckToDropThenDamageOrLife",
     "rockPaperScissorsDamageLosers",
+    "rockPaperScissorsBranch", // E-XB74①(X2-SP/0013): 単発ジャンケン→結果分岐（効果版 src/15 へ委譲）。script でも組めるよう許可
     "topTwoRevealOneOpponentRandomToHandOrGauge",
     "startAttackPhase",
     "restSelf",
