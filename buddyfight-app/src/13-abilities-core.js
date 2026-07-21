@@ -143,12 +143,19 @@ function isCounterPlayTiming() {
 
 async function useHandAbilityAction(card, ability, options = {}) {
   const owner = state.selected.owner;
+  // R-BR10(ブラウザレビュー bt04-B3 発見): 使用コストが「攻撃されている自分のモンスターを手札に戻す」型
+  //   （bt04-0047 ドラゴニック・カウンター等）だと、コスト実行で対象が場を離れ pending 攻撃が解消され、
+  //   clearPendingAttack が state.selected=null にする。その後の removeSelectedFromHand が null 参照で失敗し、
+  //   カードが手札に残ったまま効果も未実行＝コスト（ゲージ+モンスター）だけ払い損。コスト前に選択を控え、
+  //   コスト後に state.selected が消えていてカードがまだ手札にあれば復元する（真に離場した場合は復元しない）。
+  const selectedRefBeforeCost = { ...state.selected };
   const player = state.players[owner];
   const target = await targetForAbilityUse(card, ability, owner);
   if (ability.target && !target && !ability.target.allowMissingTarget && !ability.allowMissingTarget) {
     // allowMissingTarget（対象0でも使用可・後段効果だけ解決する宣言的フラグ。finder側 src/13:23 と対）
     // が無い場合のみ、対象未選択で中断する。
     addLog(`${card.name}の対象を選んでください。`);
+    render(); // R-BR2: 早期リターン時の画面反映（表示のみ）
     return;
   }
   const costSteps = adjustedCostSteps(
@@ -171,16 +178,27 @@ async function useHandAbilityAction(card, ability, options = {}) {
   });
   if (!payment.ok) {
     addLog(payment.reason);
+    render(); // R-BR2: 早期リターン時の画面反映（表示のみ）
     return;
   }
   if (includeOpponentGauge) {
     player.nextSpellCostMayUseOpponentGauge = false;
     player.nextActivatedCostMayUseOpponentGauge = false; // 共有ワンショット（魔法か起動どちらか1回）
   }
+  // R-BR10: コストで pending が解消され state.selected が null 化されたが、使用札はまだ手札にある場合に復元。
+  //   真に手札を離れた場合（下の usedCard 判定で中止）は復元しない＝既存のレースガードは維持。
+  if (
+    !state.selected &&
+    selectedRefBeforeCost.source === "hand" &&
+    state.players[selectedRefBeforeCost.owner]?.hand.some((c) => c.instanceId === selectedRefBeforeCost.instanceId)
+  ) {
+    state.selected = selectedRefBeforeCost;
+  }
   const usedCard = removeSelectedFromHand();
   // 非同期誘発レースで選択カードが手札を離れていたら使用中止（callMonster と同型・fuzzer seed915）。
   if (!usedCard) {
     addLog(`${card.name}が手札にないため、使用を中止しました。`);
+    render(); // R-BR2: 早期リターン時の画面反映（表示のみ）
     return;
   }
   if (!options.counterTiming && ["spell", "impact"].includes(ability.kind)) {
@@ -316,6 +334,9 @@ async function useFieldAbilityAction(card, loc = null) {
     } else {
       addLog(inDrop ? "今使えるドロップからの起動能力はありません。" : "今使える起動能力はありません。");
     }
+    // R-BR2(ブラウザレビュー cp01-B2 発見): render() を呼ばず return していたため、不使用理由が state.log には
+    // 入るのに画面(#logList)へは次の操作まで反映されず「クリックしても無反応」に見えた。表示のみの修正。
+    render();
     return;
   }
   const ability =
@@ -326,8 +347,13 @@ async function useFieldAbilityAction(card, loc = null) {
   const player = state.players[owner];
   const sourceCard = ability.fromSoul ? ability.soulSourceCard : card;
   const target = await targetForAbilityUse(sourceCard, ability, owner);
-  if (ability.target && !target) {
+  if (ability.target && !target && !ability.target.allowMissingTarget && !ability.allowMissingTarget) {
+    // R-BR1(ブラウザレビュー bt01-B4 発見・bt01-0061 実証): 場の起動能力側だけ allowMissingTarget の
+    // 除外が漏れており、対象0件で常に中断していた（手札側 useHandAbilityAction:148 と非対称）。
+    // finder 側（findUsableFieldAbilities/fieldAbilityUsable）は考慮済みのため「押せるのに何も起きない」
+    // UI 齟齬になっていた。手札側と同一条件に統一（対象0でも後段効果だけ解決する宣言的フラグ）。
     addLog(`${card.name}の対象を選んでください。`);
+    render(); // R-BR2: 早期リターン時の画面反映（表示のみ）
     return;
   }
   if (
@@ -335,6 +361,7 @@ async function useFieldAbilityAction(card, loc = null) {
     (!isCounterAbility(ability) || !canUseCounterEffect(owner, selectedCounterKind(card)))
   ) {
     addLog("この攻撃中に使える【対抗】能力ではありません。");
+    render(); // R-BR2: 早期リターン時の画面反映（表示のみ）
     return;
   }
   const usesGaugeCost = abilityCostSteps(sourceCard, ability).some((step) => step.op === "payGauge" && step.amount > 0);
@@ -356,6 +383,7 @@ async function useFieldAbilityAction(card, loc = null) {
   });
   if (!payment.ok) {
     addLog(payment.reason);
+    render(); // R-BR2: 早期リターン時の画面反映（表示のみ）
     return;
   }
   if (includeOpponentGauge) {
@@ -428,6 +456,7 @@ async function finalizeSoulSpellCast(hostCard, spellCard, ability, owner, player
   if (idx < 0) {
     // 非同期誘発レースでソウルから抜けていたら中止（callMonster と同型のガード）。
     addLog(`${spellCard.name}がソウルにないため、使用を中止しました。`);
+    render(); // R-BR2: 早期リターン時の画面反映（表示のみ）
     return;
   }
   const removed = soul.splice(idx, 1)[0];
@@ -1037,7 +1066,16 @@ function checkCondition(condition, owner, context = {}) {
     return Boolean(state.fightLimits?.[owner]?.reversal);
   }
   if (condition.op === "phaseIs") {
-    return (state.pendingAction?.phase || state.phase) === condition.phase;
+    const resolved = state.pendingAction?.phase || state.phase;
+    if (resolved === condition.phase) {
+      return true;
+    }
+    // R-BR21(ブラウザレビュー pp01-B1 発見): 攻撃宣言中/バトル中は state.phase が "defense" に切り替わるため、
+    // 「アタックフェイズ中に破壊された時」等の phaseIs:"attack"/"final" 誘発が恒常的に不発だった（pp01-0040 ほか
+    // ~9カード）。論理フェイズは宣言時の pendingAttack.phase（src/15 のフェイズ限定 limit と同じ弁別）。resolved が
+    // 一致しない時のみ pendingAttack.phase をフォールバックし attack/final を成立させる（純粋加算＝phaseIs:"defense"
+    // 等 state.phase 自体を見るケースは上の resolved で従来どおり成立し不変）。
+    return Boolean(state.pendingAttack?.phase) && condition.phase === state.pendingAttack.phase;
   }
   if (condition.op === "lifeLte") {
     return player.life <= condition.amount;

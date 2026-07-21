@@ -4,6 +4,21 @@
 // HTML で番号順に <script> 読み込みする（連結すると旧 app.js とバイト等価）。
 // ==========================================================================
 async function useCardAction() {
+  // R-BR4(ブラウザレビュー eb01-B2 発見・R-BR2 の拡張): クリック起点アクションの検証失敗パス
+  // （castSetSpell の uniqueSet/ゾーン満杯、equipItem/castSpell/castImpact のコスト不足・条件不成立 等）は
+  // addLog だけして早期 return し render() を呼ばないため、理由が画面 #logList に出ず「無反応」に見えた。
+  // src/08 内に同型が多数あるため個別 render ではなく単一の finally で確実に画面へ反映する（表示のみ・
+  // 検証失敗は state 未変更なので安全・成功パスの二重 render は冪等で無害）。src/13 側は R-BR2 で対応済み。
+  try {
+    return await useCardActionImpl();
+  } finally {
+    if (typeof render === "function") {
+      render();
+    }
+  }
+}
+
+async function useCardActionImpl() {
   const selectedCard = getSelectedCard();
   if (state.winner || !selectedCard) {
     return;

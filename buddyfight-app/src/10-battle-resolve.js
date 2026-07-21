@@ -352,6 +352,8 @@ function attackSourceResisted(attackers, kind, sourceCard, sourceName) {
 }
 
 // 連携攻撃で受けるダメージの上限（君が連携攻撃によって受けるダメージは N になる）。
+// 注: zones は setZonesAndItems（item 枠含む）を内包するため、装備アイテム
+//   （ジャックナイフ “ゴルドリッター”・countsAsFieldMonster）も本走査で拾える（testJackknifeEquipAndLinkDamageCap で担保）。
 function linkAttackDamageCapFor(defenderOwner) {
   const player = state.players[defenderOwner];
   let cap = null;

@@ -658,7 +658,25 @@
             "key": "bt05-0010-knights-buff"
           }
         }
-      ]
+      ],
+      "continuous": [
+        {
+          "op": "modifyStats",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "size": -1,
+          "conditions": [
+            {
+              "op": "buddyMatches",
+              "filter": {
+                "nameIncludes": "煉獄騎士団"
+              }
+            }
+          ]
+        }
+      ],
+      "_note": "【R-BR18(ブラウザレビュー bt05-B1) 出荷済み是正】「バディが煉獄騎士団ならサイズ-1」の continuous が丸ごと未実装だった→modifyStats size:-1 + buddyMatches条件を補完（bt05-0005/bf-x-ss02-0032と同型）。"
     },
     {
       "id": "bt05-0011",
@@ -2645,13 +2663,19 @@
               "purpose": "call"
             },
             {
+              "op": "selectZone",
+              "var": "$z"
+            },
+            {
               "op": "callSelected",
               "var": "target",
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "zoneVar": "$z"
             }
           ]
         }
-      ]
+      ],
+      "_note": "【R-BR14(ブラウザレビュー bt05-B3) 出荷済み是正】登場時ドロップ再コールの script が callSelected 直前の selectZone を欠き missing_call_zone でサイレント不発だった→selectZone($z)挿入＋callSelected zoneVar:$z（姉妹0087同型）。"
     },
     {
       "id": "bt05-0048",
@@ -2803,8 +2827,7 @@
           ],
           "cost": [
             {
-              "op": "dealDamage",
-              "player": "self",
+              "op": "damageSelf",
               "amount": 2
             }
           ],
@@ -2833,7 +2856,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "【R-BR15(ブラウザレビュー bt05-B3) 出荷済み是正】使用コスト「君にダメージ2」が cost op dealDamage で書かれコスト経路(damageSelfのみ認識)で無視されていた→damageSelfへ。"
     },
     {
       "id": "bt05-0052",
@@ -4637,8 +4661,7 @@
             "amount": 2
           },
           {
-            "op": "dealDamage",
-            "player": "self",
+            "op": "damageSelf",
             "amount": 1
           }
         ]
@@ -4666,7 +4689,8 @@
           "op": "preventLifeGainByEffect",
           "controller": "opponent"
         }
-      ]
+      ],
+      "_note": "【R-BR16(ブラウザレビュー bt05-B5) 出荷済み是正】使用コスト「君にダメージ1」が cost op dealDamage で無視されていた→damageSelfへ。"
     },
     {
       "id": "bt05-0084",
@@ -4916,7 +4940,8 @@
               "controller": "self",
               "filter": {
                 "cardType": "monster",
-                "sizeLte": 2
+                "sizeLte": 2,
+                "world": "ジェネリック"
               },
               "amount": 1,
               "require": true,
@@ -4941,7 +4966,7 @@
           ]
         }
       ],
-      "_note": " ／【R15(x70スライス) 出荷済みバグ修正 2026-07-17】callSelected に zone 指定が無く「コールコストは払われるが場に出ない」不発（missing_call_zone・B3 が VM 実測）→ selectZone+zoneVar を追加して是正。"
+      "_note": " ／【R15(x70スライス) 出荷済みバグ修正 2026-07-17】callSelected に zone 指定が無く「コールコストは払われるが場に出ない」不発（missing_call_zone・B3 が VM 実測）→ selectZone+zoneVar を追加して是正。 ／ 【R-BR17(ブラウザレビュー bt05-B5) 出荷済み是正】対象 filter が {cardType:monster,sizeLte:2} のみで＜ジェネリック＞制限を欠き非ジェネリックも選べた→filter.world:ジェネリック 付与。"
     },
     {
       "id": "bt05-0088",
@@ -6918,7 +6943,27 @@
         "move",
         "penetrate",
         "soulguard"
-      ]
+      ],
+      "abilities": [
+        {
+          "id": "bt05-s002-place",
+          "kind": "activated",
+          "timing": [
+            "main"
+          ],
+          "effects": [
+            {
+              "op": "moveTargetToEmptyZone",
+              "target": "$self"
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "bt05-0002-place"
+          }
+        }
+      ],
+      "_note": "【R-BR13(ブラウザレビュー bt05-B8) 出荷済み是正】別絵s002が base 0002 の【起動】(このカードを空エリアに置く=moveTargetToEmptyZone)abilitiesを丸ごと欠いていた（rules同一）→base同型を補完。"
     },
     {
       "id": "bt05-s003",
@@ -7233,6 +7278,9 @@
               "drop"
             ],
             "amount": 1
+          },
+          {
+            "op": "shuffleDeck"
           }
         ]
       },
@@ -7274,7 +7322,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "【R-BR19(ブラウザレビュー bt05-B8) 出荷済み是正】別絵s007が base 0006 の cast cost 末尾の shuffleDeck を欠いていた（rules「デッキを見たらシャッフル」）→補完。"
     },
     {
       "id": "bt05-s008",

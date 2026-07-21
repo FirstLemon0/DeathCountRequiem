@@ -3604,7 +3604,7 @@ function resolveAmountFrom(spec, context) {
     return (card.soul || []).length * (spec.per ?? 1);
   }
   if (spec.source === "itemPowerSum") {
-    // 指定側(controller未指定=両者)の場のアイテムの visiblePower 総和×per（0009 両者アイテム打撃力合計）。
+    // 指定側(controller未指定=両者)の場のアイテムの visiblePower 総和×per。
     const owners =
       spec.controller === "self"
         ? [context.owner]
@@ -3616,6 +3616,26 @@ function resolveAmountFrom(spec, context) {
       equippedItems(state.players[owner]).forEach((card) => {
         if (effectiveCardType(card) === "item") {
           total += visiblePower(card);
+        }
+      });
+    });
+    return total * (spec.per ?? 1);
+  }
+  if (spec.source === "itemCriticalSum") {
+    // R-BR20(ブラウザレビュー pp01-B1): 指定側(controller未指定=両者)の場のアイテムの visibleCritical 総和×per。
+    // pp01-0009 アーマナイト・リーサルドレイク「打撃力は両者アイテムの“打撃力”合計分増える」用（打撃力=critical）。
+    // 旧実装は itemPowerSum(visiblePower)＋applyTo:power で二重に誤っていた。
+    const owners =
+      spec.controller === "self"
+        ? [context.owner]
+        : spec.controller === "opponent"
+          ? [1 - context.owner]
+          : [0, 1];
+    let total = 0;
+    owners.forEach((owner) => {
+      equippedItems(state.players[owner]).forEach((card) => {
+        if (effectiveCardType(card) === "item") {
+          total += visibleCritical(card);
         }
       });
     });

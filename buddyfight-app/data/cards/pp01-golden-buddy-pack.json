@@ -379,16 +379,17 @@
               "op": "modifyStats",
               "target": "$self",
               "amountFrom": {
-                "source": "itemPowerSum"
+                "source": "itemCriticalSum"
               },
               "applyTo": [
-                "power"
+                "critical"
               ],
               "duration": "battle"
             }
           ]
         }
-      ]
+      ],
+      "_note": "【R-BR20(ブラウザレビュー pp01-B1) 出荷済み是正】「打撃力は両者アイテムの打撃力合計分増える」を itemPowerSum(visiblePower)＋applyTo:power で実装しており攻撃力に加算・素の打撃力0のまま機能しなかった→itemCriticalSum＋applyTo:critical へ。"
     },
     {
       "id": "pp01-0010",
@@ -853,7 +854,10 @@
             {
               "op": "selectCards",
               "var": "card",
-              "from": ["hand", "drop"],
+              "from": [
+                "hand",
+                "drop"
+              ],
               "controller": "self",
               "min": 0,
               "max": 1,

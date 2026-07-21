@@ -323,6 +323,20 @@ function isCallCountCappedThisTurn(owner) {
 }
 
 async function callMonster(zone) {
+  // R-BR9(ブラウザレビュー bt04-B6 発見・R-BR2/R-BR4 の src/07 版): コール却下枝（cannotCallZones/
+  // cannotCallNormally/必殺モンスターゲート/callConditions/isCallRestricted/callLimitPerTurn 等）が addLog のみで
+  // 早期 return し render() を呼ばないため、却下理由が画面 #logList に出ず「クリックしても無反応」に見えた（bt04-0103 で実証）。
+  // 却下は state 未変更なので、成功パスの明示 render() に加え単一 finally で確実に画面へ反映する（表示のみ・冪等）。
+  try {
+    return await callMonsterImpl(zone);
+  } finally {
+    if (typeof render === "function") {
+      render();
+    }
+  }
+}
+
+async function callMonsterImpl(zone) {
   const selectedCard = getSelectedCard();
   const selectedOwner = state.selected?.owner;
   const specialCallOpportunity = specialCallOpportunityForCard(selectedOwner, selectedCard);
