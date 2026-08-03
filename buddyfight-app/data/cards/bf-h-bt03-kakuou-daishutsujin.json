@@ -352,6 +352,7 @@
         "homeWorld": "エンシェントW",
         "awayMaxCopies": 1
       },
+      "cannotCallNormally": true,
       "callCost": {
         "gauge": 3
       },
@@ -4359,7 +4360,8 @@
         {
           "purpose": "cast",
           "filter": {
-            "cardType": "spell"
+            "cardType": "spell",
+            "world": "ダンジョンW"
           },
           "payOp": "payGauge",
           "amount": 2,
@@ -6785,6 +6787,14 @@
           "label": "爆雷",
           "kind": "triggered",
           "event": "opponentSet",
+          "conditions": [
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "spell"
+              }
+            }
+          ],
           "effects": [
             {
               "op": "dealDamage",
@@ -7336,7 +7346,7 @@
         "■相手のターンの攻撃中、君のセンターにモンスターがいないなら使える。",
         "■【対抗】その攻撃を無効化し、君にダメージ１！このカードは無効化されない。"
       ],
-      "nullifyImmune": true,
+      "cannotBeNullified": true,
       "abilities": [
         {
           "id": "bf-h-bt03-0127-nullify",
@@ -7570,6 +7580,7 @@
         "homeWorld": "エンシェントW",
         "awayMaxCopies": 1
       },
+      "cannotCallNormally": true,
       "callCost": {
         "gauge": 3
       },

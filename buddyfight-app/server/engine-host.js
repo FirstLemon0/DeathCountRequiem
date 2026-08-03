@@ -317,11 +317,14 @@ class GameRoom {
       player.deck = hiddenPile(player.deck);
       const own = index === seat;
       if (!spectator && !own) {
-        // 相手の非公開ゾーン: 手札・ゲージ(face-down)・伏せ魔法・場のソウル
+        // 相手の非公開ゾーン: 手札・ゲージ(face-down)・場のソウル
         player.hand = hiddenPile(player.hand);
         player.gauge = hiddenPile(player.gauge);
+        // 配置魔法(『設置』)は神以前ルールでは表向き＝両者に公開が基本。無条件で伏せると相手から中身が
+        // 見えなくなるバグになる。実際に faceDown フラグが立ったカード（将来の裏向き設置カード等）だけ伏せる
+        // （通常の設置魔法は faceDown を持たないため、そのまま名前・効果が相手に見える）。
         for (const zone of ["set1", "set2"]) {
-          if (player.field[zone]) {
+          if (player.field[zone] && player.field[zone].faceDown === true) {
             player.field[zone] = faceDownCard(player.field[zone]);
           }
         }

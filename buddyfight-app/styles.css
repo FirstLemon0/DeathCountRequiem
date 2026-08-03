@@ -741,6 +741,13 @@ body.seat-flip .player-zone.opponent {
 .card-img,
 .card img {
   -webkit-user-drag: none;
+  /* iOS Safari の画像長押しメニュー(「写真を保存」「コピー」)は、touch-callout を親経由(.card *)で
+     継承させるだけでは <img> に効かず漏れることがある。画像要素へ直接指定し、さらに pointer-events:none で
+     OS が画像自体を長押し標的にしないようにする（タップ/長押しプレビューは親のカードボタンが処理するため無害）。 */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none;
 }
 
 /* カード画像（盤面・手札共通）。カード枠内に収まるよう contain。読み込み中/失敗は下の no-image で処理。 */
@@ -1544,7 +1551,9 @@ dialog.selection-board-peek .selection-dialog-actions {
   /* ツールバー: 既定は ☰/テーマ/ログ のみ。nav-open でメニュー展開 */
   .toolbar .deck-picker,
   .toolbar .toolbar-link,
+  .toolbar .account-control-slot,
   #newGameButton,
+  #matchHistoryButton,
   #exportLogButton,
   #rulesButton,
   #newDeckButton,
@@ -1567,7 +1576,9 @@ dialog.selection-board-peek .selection-dialog-actions {
   }
   body.nav-open .toolbar .deck-picker,
   body.nav-open .toolbar .toolbar-link,
+  body.nav-open .toolbar .account-control-slot,
   body.nav-open #newGameButton,
+  body.nav-open #matchHistoryButton,
   body.nav-open #exportLogButton,
   body.nav-open #rulesButton,
   body.nav-open #newDeckButton,
@@ -1683,6 +1694,15 @@ dialog.selection-board-peek .selection-dialog-actions {
   .board-grid .card .card-stats-board .sep { margin: 0; }
   /* 盤面のカード裏プレビュー行はモバイルでは枚数表示(手N)に集約して隠す（縦圧縮・1画面化） */
   .hand-preview { display: none; }
+  /* 盤面カードの画像高さを抑えて行高を圧縮（1画面化・詳細はタップ=カードシート）。
+     grid 行は最も高いセルに揃うため、画像高さを下げると空ゾーンの伸長も同時に縮む。 */
+  .board-grid .card-img,
+  .flag-item-zone .card-img { max-height: 104px; }
+  /* 空ゾーンのラベルはコンパクトに（場所を食う主因の一つ） */
+  .board-grid .zone,
+  .flag-item-zone { font-size: 0.72rem; padding: 3px 4px; }
+  .zone .zone-label,
+  .zone .zone-hint { font-size: 0.72rem; line-height: 1.15; }
 
   /* 手札ドック: 下部・横スクロール */
   .hand-dock {
@@ -2561,12 +2581,30 @@ body.thin-client:not(.game-started) .hand-dock {
   }
   .dp-modal {
     width: 100%;
-    max-height: 88vh;
+    max-height: 92vh;
     border-radius: 12px 12px 0 0;
   }
   .dp-open-button {
     max-width: 58vw;
   }
+  /* ③ スマホでフィルタ群(検索/チップ/セレクト)が縦に長くリストが1件しか見えない問題の対策:
+     ツール群をコンパクト化し、max-height＋内部スクロールで頭打ちにして、
+     デッキリスト(.dp-list flex:1)に常に画面の半分以上を確保する。 */
+  .dp-tools {
+    gap: 5px;
+    padding: 8px 12px;
+    max-height: 42vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .dp-search { padding: 6px 9px; font-size: 0.85rem; }
+  .dp-chip-row { gap: 4px; }
+  .dp-chip { padding: 2px 9px; font-size: 0.72rem; }
+  .dp-select-row { gap: 6px 10px; }
+  .dp-select-row select { font-size: 0.78rem; padding: 3px 5px; }
+  /* ツールは自身の高さ(≤42vh)を保持し、余りをリストへ。リストは flex:1 で残り全部を取る。 */
+  .dp-tools { flex: 0 0 auto; }
+  .dp-list { flex: 1 1 auto; }
 }
 
 /* ---- 共通アカウントコンポーネント (user-api.js §2) ---- */

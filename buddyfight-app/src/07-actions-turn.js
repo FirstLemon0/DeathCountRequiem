@@ -166,10 +166,13 @@ async function chargeAction() {
   // 「相手のゲージにカードが置かれた時」誘発（爆雷 コールドラゴン メギトス 0020）。
   await runFieldEventTriggers("gaugePlaced", state.active, card, null, { count: 1 });
   await runPhaseStartTriggers("mainStart", state.active);
+  // 情報漏洩防止(シード漏洩と同原則): チャージは手札1枚を裏向きでゲージへ送る操作。カード名は非公開情報で、
+  // state.log は viewFor で伏せられず両席・観戦者へ配信されるため、チャージしたカード名をログに出してはいけない
+  // （相手に手札の内訳が漏れる）。カード名は出さず「手札1枚をチャージ」に留める。
   addLog(
     drawBanned
-      ? `${activePlayer().name}は${card.name}をチャージしました（効果でカードを引けません）。`
-      : `${activePlayer().name}は${card.name}をチャージし、1枚引きました。`,
+      ? `${activePlayer().name}は手札1枚をチャージしました（効果でカードを引けません）。`
+      : `${activePlayer().name}は手札1枚をチャージし、1枚引きました。`,
   );
   render();
 }

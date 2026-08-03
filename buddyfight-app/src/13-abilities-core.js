@@ -137,8 +137,13 @@ function abilityCostSteps(card, ability) {
   return ability?.cost || card?.costs?.[purpose] || [];
 }
 
+// 2018年6月以前ルール: 【対抗】は対抗ウィンドウ(pending)だけでなく自分のターン中の各フェイズでも使える。
+// 手札の対抗カード(isCounterPlayTiming)と場の対抗起動能力(abilityTimingIncludes)で同じフェイズ集合を共有し、
+// 「手札の対抗はアタックフェイズで使えるのに場の対抗起動はメイン限定」という非対称バグを防ぐ。
+const COUNTER_PLAY_PHASES = ["draw", "charge", "main", "attack", "final"];
+
 function isCounterPlayTiming() {
-  return !hasPendingResolution() && ["draw", "charge", "main", "attack", "final"].includes(state.phase);
+  return !hasPendingResolution() && COUNTER_PLAY_PHASES.includes(state.phase);
 }
 
 async function useHandAbilityAction(card, ability, options = {}) {
@@ -859,8 +864,12 @@ function abilityTimingIncludes(ability, phase) {
   if (timings.length === 0 || timings.includes(phase)) {
     return true;
   }
-  // 2018年6月以前ルール: 【対抗】を持つカード/能力は自分のメインフェイズでも使える
-  return phase === "main" && timings.includes("counter");
+  // 2018年6月以前ルール: 【対抗】を持つカード/能力は、対抗ウィンドウ(pending時=timing"counter")だけでなく
+  // 自分のターン中の各フェイズでも使える。攻撃したモンスターをスタンドして再攻撃する等、アタックフェイズ中の
+  // 対抗起動が正規の用法（城ヶ崎莉嘉 S-UB-C03/0018 の《パッション》スタンド等）。以前はメイン限定だったため
+  // 場の対抗起動がアタックフェイズで「使用タイミングじゃない」と弾かれていた。手札の対抗カード
+  // (isCounterPlayTiming)と同じ COUNTER_PLAY_PHASES を共有し、手札/場の非対称を解消する。
+  return timings.includes("counter") && COUNTER_PLAY_PHASES.includes(phase);
 }
 
 function checkAbilityConditions(ability, owner, context = {}) {
