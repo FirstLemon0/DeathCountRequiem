@@ -109,7 +109,13 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
   // byOpponent:true は相手席発のダメージ限定(X-UB01/0007 結晶魔王アトラ)＝options.sourceOwner を渡して判定）。
   if (!bypassReduction) {
     const cap = damageReceivedReductionFor(owner, Boolean(options.byAttack), remaining, options.sourceOwner, options.sourceCard);
-    if (cap) {
+    // 攻撃側の reduce 耐性(『相手に与えるダメージは減らない』ジャックナイフ等)は、キュー型の damagePrevention だけ
+    // でなく継続 damageReceivedReduction(ドラゴエンペラー等)も貫通する（ver2.05: 「減らない」は「減らす」に優先＝
+    // can't beats does）。以前は resistEntries がキュー経路(下段)にしか効かず継続軽減を素通りできなかった非対称。
+    const reductionResisted =
+      cap &&
+      (options.resistEntries || []).some((e) => resistanceFilterMatches(e.filter, cap.sourceCard, cap.source));
+    if (cap && !reductionResisted) {
       const reduced = Math.max(0, remaining - cap.amount);
       if (reduced !== remaining) {
         addLog(`${cap.source || "効果"}により${player.name}が受けるダメージを${remaining - reduced}減らしました。`);
@@ -310,7 +316,9 @@ function damageReceivedReductionFor(owner, byAttack, incomingDamage = Infinity, 
       // 既定は amount 分の部分軽減（従来）。incomingDamage 未供給時（Infinity）は full を適用できないため amount へフォールバック。
       const amount = effect.full && Number.isFinite(incomingDamage) ? incomingDamage : effect.amount || 0;
       if (amount > 0 && (!best || amount > best.amount)) {
-        best = { amount, source: source.name };
+        // sourceCard も返す: 攻撃側の reduce 耐性(『相手に与えるダメージは減らない』)が、この軽減の発生源に
+        // 一致するかを applyDamageToPlayer 側で resistanceFilterMatches で判定してスキップするため。
+        best = { amount, source: source.name, sourceCard: source };
       }
     });
   });
@@ -1939,7 +1947,10 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       handToDeckTopStepIndex += 1;
       player.deck.push(...movedCards); // 配列末尾＝デッキの上
       if (movedCards.length > 0) {
-        addLog(`${player.name}はコストで${movedCards.map((card) => card.name).join("、")}をデッキの上に置きました。`);
+        // 情報漏洩ガード: state.log は viewFor で伏せられず両席/観戦へ配信される。手札(非公開)→デッキ上へ戻す
+        // カード名を出すと、その1枚の内訳と相手の次ドローが先読み漏洩する。チャージ/faceDown putHandToSoul と
+        // 同じく枚数のみ記す（デッキ順は自席含め全ロール非公開＝engine-host の hiddenPile）。
+        addLog(`${player.name}はコストで手札${movedCards.length}枚をデッキの上に置きました。`);
       }
     }
     if (step.op === "putCardToSoul") {
@@ -2224,15 +2235,24 @@ function moveDropToSoul(player, card, amount = 1, filter = {}) {
 function moveFieldCardsToSoul(player, card, filter = {}) {
   card.soul ||= [];
   const moved = [];
+  const movedZones = [];
   zones.forEach((zone) => {
     const fieldCard = player.field[zone];
     if (fieldCard && fieldCard.instanceId !== card.instanceId && matchesCardFilter(fieldCard, filter)) {
       player.field[zone] = null;
       moved.push(fieldCard);
+      movedZones.push(zone);
     }
   });
   if (moved.length > 0) {
     putCardsToSoulWithTrigger(card, state.players.indexOf(player), moved, "field");
+    // field→soul は『場を離れる』＝ライフリンク＆「場から離れた時」誘発が発火（重ねコール/オルコス②と同じ裁定。
+    // ソウルは場に含まれない）。detachFieldCardForMove を通す script move 経路(14:1108)は既に両方発火済みだが、
+    // この関数は field を直接 null にして funnel へ渡す独自経路のため漏れていた。移動した各 field カードで1回ずつ発火する。
+    moved.forEach((movedCard, index) => {
+      applyLifeLink(movedCard, state.players.indexOf(player));
+      queueLeaveFieldTriggers(movedCard, state.players.indexOf(player), movedZones[index]);
+    });
     addLog(`${moved.map((c) => c.name).join("、")}を${card.name}のソウルに入れました。`);
   }
 }
@@ -2308,6 +2328,8 @@ function putFieldCardToGauge(player, zone) {
     player.arrivalCardId = null;
   }
   applyLifeLink(card, state.players.indexOf(player));
+  // 「場から離れた時」誘発はゲージ置きでも発火（ライフリンクと同一離場サイト）。
+  queueLeaveFieldTriggers(card, state.players.indexOf(player), zone);
   player.gauge.push(card);
   noteGaugePlaced(state.players.indexOf(player), 1); // E-XB12: コストで場札をゲージへ（この経路は queueGaugePlacedTriggers を通らない）
   addLog(`${card.name}をコストでゲージに置きました。`);
@@ -2330,6 +2352,8 @@ function putFieldCardToDeckBottom(player, zone) {
     player.arrivalCardId = null;
   }
   applyLifeLink(card, state.players.indexOf(player));
+  // 「場から離れた時」誘発はデッキ下戻しでも発火（ライフリンクと同一離場サイト）。
+  queueLeaveFieldTriggers(card, state.players.indexOf(player), zone);
   player.deck.unshift(card);
   queueDeckBottomPlacedTriggers(state.players.indexOf(player), [card]); // E-XB18: コストで場→デッキ下
   addLog(`${card.name}をコストでデッキの下に置きました。`);

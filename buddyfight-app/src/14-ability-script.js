@@ -1106,6 +1106,10 @@ function detachFieldCardForMove(owner, zone, expectedCard = null) {
     player.arrivalCardId = null;
   }
   applyLifeLink(card, owner);
+  // 「場から離れた時」誘発(allyLeaveField/opponentLeaveField)は破壊だけでなく非破壊離場(手札戻し/ゲージ/デッキ/
+  // ソウル等)でも発火する。ライフリンク(applyLifeLink)と同じ離場サイトで queueLeaveFieldTriggers を鳴らす
+  // （destroyFieldCard は 511 で既に鳴らすので、破壊経由と二重にはならない＝各離場は単一経路）。
+  queueLeaveFieldTriggers(card, owner, zone);
   // r3 L4(S-UB-C03/0066): script経由の場外移動(selectCards/moveSelected等)でも印字値を復元する。
   restoreFaceDownMonsterPrint(card);
   return card;
@@ -2726,6 +2730,7 @@ async function callSelectedForScript(step, context) {
     ? {
         size: step.grantConditionalSize.size ?? 0,
         granterInstanceId: context.card?.instanceId,
+        granterName: context.card?.name, // 「<発生源名>が場にいるなら」＝名前基準で在場判定（同名2枚目でも継続）
         // unconditional: 「場から離れるまでサイズN」型（付与元の在場に依存しない。H-PP01/0013）
         unconditional: Boolean(step.grantConditionalSize.unconditional),
       }
@@ -3225,6 +3230,7 @@ async function callSelectedToEmptyZonesForScript(step, context) {
       ? {
           size: step.grantConditionalSize.size ?? 0,
           granterInstanceId: context.card?.instanceId,
+          granterName: context.card?.name, // 名前基準の在場判定（同名2枚目でも継続）
           unconditional: Boolean(step.grantConditionalSize.unconditional),
         }
       : null;

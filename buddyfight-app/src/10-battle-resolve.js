@@ -73,6 +73,7 @@ async function resolveMultiMonsterAttack(pending, attackers, attackerNames) {
   }
   const attackPower = attackers.reduce((total, attacker) => total + visiblePower(attacker.card), 0);
   let destroyedCount = 0;
+  let centerDestroyed = false; // 貫通判定用: この全体攻撃で相手センターのモンスターを破壊したか
   for (const target of targets) {
     const current = state.players[target.owner]?.field?.[target.zone];
     if (!current || current.instanceId !== target.card.instanceId) {
@@ -85,6 +86,9 @@ async function resolveMultiMonsterAttack(pending, attackers, attackerNames) {
       });
       if (destroyed) {
         destroyedCount += 1;
+        if (target.zone === "center") {
+          centerDestroyed = true;
+        }
         addLog(`${attackerNames}は${destroyedName}を破壊しました。`);
         await runAttackDestroyedTriggers(
           attackers,
@@ -103,6 +107,13 @@ async function resolveMultiMonsterAttack(pending, attackers, attackerNames) {
   }
   for (const target of targets) {
     await resolveCounterattack({ owner: target.owner, zone: target.zone }, attackers);
+  }
+  // 貫通: 全体攻撃(『相手のモンスター全て(と相手)に攻撃』)でも、この攻撃で相手センターのモンスターを破壊し攻撃側に
+  // 貫通保持者がいれば、単体攻撃と同じく相手ライフへ打撃力ぶんのダメージを与える。resolveMultiMonsterAttack は
+  // これまで resolvePenetrateDamage を一切呼ばず、全体攻撃経路では貫通が丸ごと落ちていた。単体経路と同じ関数を
+  // targetZone:"center" を差し込んだ pending で1回だけ呼ぶ（キャップ/軽減耐性/減らないダメージも中で適用される）。
+  if (centerDestroyed) {
+    await resolvePenetrateDamage(attackers, { ...pending, targetZone: "center" });
   }
   let fighterDamageDealt = 0;
   if (pending.attackAllIncludesFighter) {
@@ -267,22 +278,27 @@ function applicableAttackResistances(attackers = []) {
   const entries = [];
   (attackers || []).forEach((atk) => {
     const card = atk?.card;
-    (card?.attackResistances || []).forEach((entry) => {
-      const owner = atk.owner ?? findFieldCardSlot(card)?.owner ?? state.active;
-      if (!entry.conditions || checkCardConditions(entry.conditions, owner, { card, zone: atk.zone })) {
-        entries.push(entry);
-      }
-    });
-    // E-PR12(PR/0381): grantTemporaryAttackResistanceSelected でそのターン中だけ付与された攻撃耐性
-    // (card.grantedTempAttackResistances)も印字 attackResistances と同型で走査する。素の DSL で state 常駐
-    //（クロージャ無し・直列化往復可）。掃除は clearTurnModifiers/resetLeftFieldCardState が turnKeywords と同寿命で行う。
-    // 既存カードは未設定＝この forEach は空＝挙動不変（後方互換）。
-    (card?.grantedTempAttackResistances || []).forEach((entry) => {
-      const owner = atk.owner ?? findFieldCardSlot(card)?.owner ?? state.active;
-      if (!entry.conditions || checkCardConditions(entry.conditions, owner, { card, zone: atk.zone })) {
-        entries.push(entry);
-      }
-    });
+    // 能力無効化(凍てつく星辰)中は、このカード自身の印字/一時付与の攻撃耐性(『無効化されない』等)も無効になる。
+    // hasKeyword の ownNullified と同じ扱い（印字＋card格納の付与を無効化。他カード発の継続 grantAttackResistance
+    // ＝下段は付与元の無効化判定に委ねるためゲートしない）。以前は印字 attackResistances だけ isAbilitiesNullified
+    // を見ておらず、能力無効化された攻撃側の『無効化されない』が消えず緑竜の盾等を弾き続けていた（キーワード版
+    // singleAttackCannotBeNullified は hasKeyword 経由で正しく消えるのに非対称）。
+    if (card && !isAbilitiesNullified(card)) {
+      (card.attackResistances || []).forEach((entry) => {
+        const owner = atk.owner ?? findFieldCardSlot(card)?.owner ?? state.active;
+        if (!entry.conditions || checkCardConditions(entry.conditions, owner, { card, zone: atk.zone })) {
+          entries.push(entry);
+        }
+      });
+      // E-PR12(PR/0381): grantTemporaryAttackResistanceSelected でそのターン中だけ付与された攻撃耐性
+      // (card.grantedTempAttackResistances)も印字 attackResistances と同型で走査する（state 常駐・直列化往復可）。
+      (card.grantedTempAttackResistances || []).forEach((entry) => {
+        const owner = atk.owner ?? findFieldCardSlot(card)?.owner ?? state.active;
+        if (!entry.conditions || checkCardConditions(entry.conditions, owner, { card, zone: atk.zone })) {
+          entries.push(entry);
+        }
+      });
+    }
     // 場の別カードの継続 grantAttackResistance からも付与（0080: 拳アイテムが1枚で攻撃なら無効化されない）。
     if (!card) {
       return;
@@ -754,6 +770,12 @@ function nullifyPendingAttack(sourceName = "効果", sourceCard = null) {
   pending.skipAfterAttackTriggers = true;
   getPendingAttackers().forEach((attacker) => {
     attacker.card.used = true;
+    // 多回攻撃(2回/3回/4回/6回攻撃)のモンスターは、攻撃が無効化(ドラゴンシールド等)されても、残りの攻撃の
+    // ために再スタンドする。無効化はその1回の攻撃を止めるだけで、多回攻撃による追加攻撃の権利は失われない。
+    // 通常解決(finishPendingAttack→runAfterAttackTriggers)と同じ standAttackerForMultiAttack を通し、
+    // doubleAttackUsed/tripleAttackStandCount の既存ガードで規定回数を超えてスタンドしないようにする。
+    // 無効化パスは finishPendingAttack を経由せず自前で clearPendingAttack するため、ここで明示的に再判定する。
+    standAttackerForMultiAttack(attacker.card);
   });
   state.lastAttackOutcome = {
     nullified: true,
@@ -798,11 +820,25 @@ async function resolvePenetrateDamage(attackers, pending) {
   if (pending.targetZone !== "center") {
     return;
   }
-  const penetrateDamage = attackers
+  let penetrateDamage = attackers
     .filter((attacker) => hasKeyword(attacker.card, "penetrate"))
     .reduce((total, attacker) => total + visibleCritical(attacker.card), 0);
   if (penetrateDamage <= 0) {
     return;
+  }
+  // 貫通ダメージは「攻撃/連携攻撃によって相手が受けるダメージ」＝合体戦士ディジエム(attackDamageReceivedTo)や
+  // ジャックナイフ ゴルドリッター(linkAttackDamageReceivedTo)の被ダメージ上限の対象。resolveFighterAttack /
+  // resolveMultiMonsterAttack の本体打撃は両キャップを適用しているのに、貫通だけ素通りしていた（ignorePrevention と
+  // reduce耐性は下で適用済み＝貫通を軽減可能な攻撃ダメージとしてモデル化しているのと整合させる）。単体本体攻撃と同じ順で適用する。
+  if (attackers.length > 1) {
+    const linkCap = linkAttackDamageCapFor(pending.defender);
+    if (linkCap !== null && penetrateDamage > linkCap) {
+      penetrateDamage = linkCap;
+    }
+  }
+  const penetrateAttackCap = attackDamageCapFor(pending.defender);
+  if (penetrateAttackCap !== null && penetrateDamage > penetrateAttackCap) {
+    penetrateDamage = penetrateAttackCap;
   }
   const defender = state.players[pending.defender];
   const penetrateOptions = { log: false };

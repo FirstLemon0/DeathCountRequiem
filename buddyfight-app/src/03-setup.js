@@ -140,10 +140,12 @@ function canUseCardForFlag(player, card) {
   if (!player || !card || effectiveCardType(card) === "flag") {
     return true;
   }
-  if (card.deckAnyFlag || card.usableInAnyFlag) {
+  if ((card.deckAnyFlag || card.usableInAnyFlag) && !player.flag?.closedPool) {
     // 角王(deckAnyFlag)はどのフラッグのデッキに入れても使用できる。
     // usableInAnyFlag(X-SS01/0025 角王の証「このカードは全てのフラッグで使える」)も任意フラッグで適法。
     // ただし角王アイコンではない＝filter.deckAnyFlag(src/17 X18 の角王枚数判定)には波及しない別プロパティ。
+    // 閉鎖プール(closedPool=S-UB-C03 シンデレラ等・そのフラッグ専用カードのみ)では角王/usableInAnyFlag も
+    // 使用不可＝builder.js:644 の構築判定と一致させる（対戦中の使用判定だけ抜けていた）。
     return true;
   }
   if (player.flagFaceDown) {

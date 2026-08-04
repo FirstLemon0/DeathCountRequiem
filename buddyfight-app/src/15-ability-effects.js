@@ -422,7 +422,11 @@ async function executeAbilityEffect(effect, context) {
         if (deckIndex >= 0) {
           searcher.deck.splice(deckIndex, 1);
           searcher.hand.push(entry.card);
-          addLog(`${searcher.name}はデッキから${entry.card.name}を手札に加えました。`);
+          // 情報漏洩ガード: 公開指定の無いデッキサーチ(『手札に加え、デッキをシャッフルする』)で加えた札名は
+          // state.log に出さない。log は viewFor で伏せられず相手/観戦へ配信されるため(server/engine-host)、名前を
+          // 出すと相手が加えた札を知り得る。選択ダイアログ(promptSeat=探索者本人)は自分のデッキ＝公開でOK。
+          // moveDeckBottomToHand(:443)/moveHandToGauge(:1301)/チャージ(src/07)と同基準＝枚数・事実のみ。
+          addLog(`${searcher.name}はデッキからカードを手札に加えました。`);
         }
       }
     } else {
@@ -791,6 +795,7 @@ async function executeAbilityEffect(effect, context) {
             pick.conditionalSize = {
               size: effect.grantConditionalSize.size ?? 0,
               granterInstanceId: context.card?.instanceId,
+              granterName: context.card?.name, // 名前基準の在場判定（同名2枚目でも継続）
               unconditional: Boolean(effect.grantConditionalSize.unconditional),
             };
           }
@@ -1298,7 +1303,9 @@ async function executeAbilityEffect(effect, context) {
     player.gauge.push(...movedCards);
     noteGaugePlaced(state.players.indexOf(player), movedCards.length); // E-XB12: 手札→ゲージ（funnel 非経由・直接 runFieldEventTriggers）
     if (movedCards.length > 0) {
-      addLog(`${movedCards.map((card) => card.name).join("、")}をゲージに置きました。`);
+      // 情報漏洩ガード: 手札(非公開)→ゲージ(非公開・engine-host の hiddenPile)へ置くカード名は出さない。
+      // 同じ手札→ゲージのチャージ(src/07)が情報漏洩防止で枚数のみ記すのと揃える（state.log は両席へ配信）。
+      addLog(`${player.name}は手札${movedCards.length}枚をゲージに置きました。`);
       // 「相手のゲージにカードが置かれた時」誘発（爆雷 0020）。効果でゲージに置く経路も対象。
       await runFieldEventTriggers("gaugePlaced", state.players.indexOf(player), movedCards[0], null, { count: movedCards.length });
     }
@@ -1991,6 +1998,8 @@ async function executeAbilityEffect(effect, context) {
       resetLeftFieldCardState(returned);
       ownerPlayer.hand.push(returned);
       applyLifeLink(returned, candidate.owner);
+      // 「場から離れた時」誘発は手札戻し(全戻しfunnel)でも発火（ライフリンクと同一離場サイト）。
+      queueLeaveFieldTriggers(returned, candidate.owner, candidate.zone);
       addLog(`${returned.name}を手札に戻しました。`);
       // E-XV6(X-UB02/0015): 戻ったカード自身の「このカードが手札に戻った時」自己誘発（全戻し funnel。
       // returnFieldTargetToHand を経ない直接 hand.push のため、ここでも queue する＝兄弟経路の取りこぼし防止）。

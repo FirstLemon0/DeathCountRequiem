@@ -425,6 +425,25 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     // E-XB32〜36 回帰用: 予約敗北の確定点・保護失効再判定・ターン境界・単騎攻撃制限・攻撃宣言を実経路で叩く
     //（checkWinner/declareDeckLoss は下段で既公開）。
     finishAndAdvanceTurn,
+    // メカニクス相互作用レビュー回帰用: 実解決エントリと多回攻撃/貫通の部品を実経路で叩けるよう公開。
+    // resolvePendingAttack（攻撃解決の本経路）／resolvePenetrateDamage（貫通）／resolveMultiMonsterAttack（全体攻撃）／
+    // standAttackerForMultiAttack（多回攻撃再スタンド）／attackDamageCapFor（被ダメ上限）／resetLeftFieldCardState（離場クリーンアップ）。
+    resolvePendingAttack,
+    resolvePenetrateDamage,
+    resolveMultiMonsterAttack,
+    standAttackerForMultiAttack,
+    attackDamageCapFor,
+    resetLeftFieldCardState,
+    // field→soul のライフリンク発火回帰用: 直push経路(重ねコール/マセマティック)と detach経路(星合体)を実経路で叩く。
+    stackFieldCardAsSoul,
+    moveFieldCardsToSoul,
+    moveSelectedToSelectedSoulForScript,
+    // 第2回メカニクスレビュー回帰用: 設置魔法の解決(パーティ結成！)・コール制限(通常/効果)・CPU AIメイン列挙。
+    resolvePendingSetSpell,
+    turnCallRestrictionBlocks,
+    isCallRestricted,
+    aiEnumerateMainActions,
+    hasBuddyOnField,
     maybeApplyScheduledLoss,
     applyDueScheduledLosses,
     clearWinnerIfNoCurrentLoss,

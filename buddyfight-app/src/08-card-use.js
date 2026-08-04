@@ -188,10 +188,28 @@ async function equipCardDirect(player, card, options = {}) {
     // 通常アイテム: 主枠(item)に装備。既に主枠が埋まっていれば装備変更 or ドロップ。
     if (player.field.item) {
       if (hasKeyword(card, "equipChange") && !player.oncePerTurn["equipChange"]) {
-        player.hand.push(player.field.item);
-        player.field.item = null;
-        player.oncePerTurn["equipChange"] = true;
-        addLog(`${card.name}の『装備変更』で装備中のアイテムを手札に戻しました。`);
+        // ver2.05『装備変更』: 元々装備していたカードを「手札に戻すことができる」＝任意発動。発動を見送ると
+        // ルール処理(★同エリア2枚→最後に置いた新カード以外をドロップ★)で旧アイテムがドロップへ落ちる。
+        // 見送りは「1ターン1回」に含めない(=once-per-turn を消費しない)。旧アイテムをドロップに溜める
+        // (帝王剣ジュワユーズ/王魔剣クラレント等『ドロップの《英雄》アイテム』参照)シナジーの正規ルート。
+        const oldItem = player.field.item;
+        const useEquipChange = await confirmChoiceAsync(
+          owner,
+          `${card.name}の『装備変更』で${oldItem.name}を手札に戻しますか？（見送るとドロップに置かれます）`,
+          { yesLabel: "手札に戻す", noLabel: "ドロップに置く" },
+        );
+        if (useEquipChange) {
+          // 旧アイテムは場を離れる＝そのソウルはドロップへ（以前はソウルを処理せず宙に浮く潜在バグがあった）。
+          player.drop.push(...(oldItem.soul || []));
+          oldItem.soul = [];
+          player.hand.push(oldItem);
+          player.field.item = null;
+          player.oncePerTurn["equipChange"] = true;
+          addLog(`${card.name}の『装備変更』で${oldItem.name}を手札に戻しました。`);
+        } else {
+          // 見送り: ルール処理で旧アイテム(＋そのソウル)をドロップへ。once-per-turn は消費しない。
+          dropFieldCardByRule(player, "item");
+        }
       } else {
         dropFieldCardByRule(player, "item");
       }
@@ -723,6 +741,12 @@ function resetLeftFieldCardState(card) {
   card.grantedTempDestroyImmunities = [];
   card.counterattack = false;
   card.doubleAttackUsed = false;
+  // 多回攻撃(3回=tripleAttack/4回=quadruple/6回=sextuple が共用)の残スタンド回数カウンタも離場でリセットする。
+  // doubleAttackUsed と同じ理由: 場を離れて戻ったカードは別カード扱いで攻撃履歴を持たない。ここが抜けていると、
+  // 規定回数を使い切った3/4/6回攻撃モンスターが同一ターンに再コールされても tripleAttackStandCount が閾値のまま
+  // 残り、1度も再スタンドせず実質1回しか攻撃できなかった（standPlayer はターン開始時に両カウンタをリセットするが、
+  // 離場クリーンアップは doubleAttackUsed しかリセットしていなかった＝明白な非対称の取りこぼし）。
+  card.tripleAttackStandCount = 0;
   card.preventNextDestroyCount = 0;
   card.preventNextDestroyEffects = [];
   // gainNameAsSelected（ターンスコープの追加カード名）は場を離れたら失うが、印字の恒久additionalNames
@@ -770,6 +794,8 @@ function returnFieldTargetToHand(target, sourceName = "効果", details = {}) {
   resetLeftFieldCardState(returned);
   ownerPlayer.hand.push(returned);
   applyLifeLink(returned, target.owner);
+  // 「場から離れた時」誘発は手札戻しでも発火（ライフリンクと同一離場サイト。詳細は detachFieldCardForMove のコメント）。
+  queueLeaveFieldTriggers(returned, target.owner, target.zone);
   addLog(`${sourceName}で${returned.name}を手札に戻しました。`);
   handleDestroyedDuringPending({ owner: target.owner, zone: target.zone });
   // 「場のモンスターが手札に戻った時」誘発（D・R・システム等）。発生源は既に場から外れている。

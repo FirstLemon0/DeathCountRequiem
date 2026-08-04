@@ -66,10 +66,15 @@ function effectiveSize(card) {
     // （非破壊でドロップへ行った札が古いサイズ0を引きずらない。破壊時サイズは destroyedEventWindow の
     //  sizeAtDestroy で別途凍結済み。findFieldCardSlot は override がある時のみ呼ぶので負荷は無い）。
     const override = card.conditionalSize;
-    const overrideActive =
-      Boolean(override) &&
-      (override.unconditional || granterOnField(override.granterInstanceId)) &&
-      Boolean(findFieldCardSlot(card));
+    // 発生源の在場判定: 印字テキストは「「<発生源名>」が場にいるなら」＝名前基準（アンノウン0029/ナポレオンbt04-0009等）。
+    // 特定インスタンス(granterInstanceId)が離れても、同名の別カードが場にいれば上書きは継続すべき。以前は instanceId
+    // 一致だけを見ており、同名2枚目が場に残っていても失効していた。granterName を優先し、旧state(granterName無し)は
+    // 従来どおり instanceId で判定（後方互換）。unconditional(『場から離れるまで』型)は発生源の在場に依存しない。
+    const granterPresent =
+      override &&
+      (override.unconditional ||
+        (override.granterName ? granterNameOnField(override.granterName) : granterOnField(override.granterInstanceId)));
+    const overrideActive = Boolean(override) && Boolean(granterPresent) && Boolean(findFieldCardSlot(card));
     const baseSize = overrideActive ? override.size || 0 : card.size || 0;
     if (sizeEvaluationStack.has(card)) {
       // 再入時は印字サイズで打ち切る近似値。完全値ではないのでメモには入れない。
@@ -94,6 +99,15 @@ function granterOnField(instanceId) {
     return false;
   }
   return state.players.some((player) => zones.some((zone) => player.field[zone]?.instanceId === instanceId));
+}
+
+// 指定名のカードがいずれかのプレイヤーの場（モンスター/アイテム枠）にあるか。
+// conditionalSize の「「<発生源名>」が場にいるなら」判定（同名2枚目でも上書き継続）に使う。
+function granterNameOnField(name) {
+  if (!name) {
+    return false;
+  }
+  return state.players.some((player) => zones.some((zone) => player.field[zone]?.name === name));
 }
 
 // このカードの能力(abilities/continuous/soulContinuous/keywords)が、場のいずれかの

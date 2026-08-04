@@ -730,7 +730,15 @@ function aiEnumerateMainActions(seat) {
   for (const zone of Object.keys(player.field)) {
     const card = player.field[zone];
     if (!card) continue;
-    const abilities = findUsableFieldAbilities(card, seat);
+    // 対抗列挙(:322)・攻撃対象列挙(:796)と同様に aiWithSelected で state.selected を仮設定して列挙する。
+    // 『搭乗』『変身』の -field 起動は sourceZoneIn:[left/center/right] を持ち、その条件は state.selected?.zone を
+    // 見る。プランニング中 state.selected=null のまま findUsableFieldAbilities を呼ぶと、場のモンスターからの
+    // 搭乗/変身が候補に一切現れず（exec 側は selected を設定するのに列挙側だけ包み忘れていた非対称）、CPU が
+    // 場からの搭乗/変身を永久に選べなかった。
+    const abilities = aiWithSelected(
+      { source: "field", owner: seat, zone, instanceId: card.instanceId },
+      () => findUsableFieldAbilities(card, seat),
+    );
     if (!abilities.length) continue;
     const key = `field:${card.instanceId}`;
     if (aiSession.usedOnceKeys.has(key)) continue;

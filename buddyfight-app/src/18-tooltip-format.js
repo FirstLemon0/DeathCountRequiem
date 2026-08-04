@@ -383,6 +383,15 @@ function isCallRestricted(callerOwner, card) {
   ) {
     return true;
   }
+  return continuousOwnCallRestricted(callerOwner, card);
+}
+
+// 継続 restrictOwnCall（《竜騎士》以外コール不可 等・場札の continuous 効果）の走査。通常コール(isCallRestricted)と
+// 効果コール(turnCallRestrictionBlocks・src/07)の双方から呼ぶ共有ヘルパ。以前は isCallRestricted 内にインライン
+// されており、効果コール経路(turnCallRestrictionBlocks)からは呼ばれず、効果でのコールが継続コール制限を素通り
+// していた（『《X》以外コールできない』は通常/効果を問わず全コールに掛かるのが公式）。ターン限定の
+// restrictCallThisTurn（byEffectOnly の非対称ロジック）は別軸なのでここには含めない。
+function continuousOwnCallRestricted(callerOwner, card) {
   return state.players.some((player, pIdx) =>
     zones.some((zone) => {
       const source = player.field[zone];

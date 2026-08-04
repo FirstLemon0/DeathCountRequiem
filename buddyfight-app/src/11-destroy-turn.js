@@ -47,7 +47,8 @@ function canDeclareAttack(attacker) {
     player?.field.center &&
     !hasKeyword(attacker.card, "canAttackWithCenter") &&
     // canAttackWithSize3Center: センターがサイズ3のモンスターの時だけ武器攻撃を許可（0069）。
-    !(hasKeyword(attacker.card, "canAttackWithSize3Center") && (player.field.center.size || 0) === 3)
+    // 印字 size でなく effectiveSize で判定（継続サイズ修整で3になった/でなくなったセンターを正しく扱う）。
+    !(hasKeyword(attacker.card, "canAttackWithSize3Center") && effectiveSize(player.field.center) === 3)
   ) {
     return false;
   }
@@ -211,6 +212,13 @@ function destroyImmunityBlocks(card, cause, owner) {
   // 印字 card.destroyImmunity の新 form と同じ {from:{byEffect,byOpponent,...}} 判定で読む（同ヘルパー共用）。
   // E-PR11/12 の grantedTempAbilities/grantedTempAttackResistances と対の state 常駐一時付与。掃除は同寿命
   // （clearTurnModifiers/resetLeftFieldCardState）。既存カードは未設定＝この分岐を踏まず挙動完全不変。
+  // 能力無効化(凍てつく星辰)中は、このカード自身の印字/一時付与の破壊耐性(『相手の効果で破壊されない』等)も無効に
+  // なる。hasKeyword の ownNullified と同じ扱い（他カード発 grantedDestroyImmunity/soulContinuous/turn は上で判定
+  // 済み＝ここから下は自カード分のみ）。以前は印字 destroyImmunity が isAbilitiesNullified を見ておらず、能力無効化
+  // されたカードが相手効果破壊を防ぎ続けていた（キーワード由来耐性は hasKeyword 経由で正しく消えるのに非対称）。
+  if (isAbilitiesNullified(card)) {
+    return false;
+  }
   const tempImm = card.grantedTempDestroyImmunities;
   if (Array.isArray(tempImm) && tempImm.some((e) => destroyImmunityEntryBlocks(e, card, cause, owner, zone))) {
     return true;
@@ -653,6 +661,13 @@ async function applyAllyDestroyReplacement(card, owner, options = {}) {
         player.field[slot.zone] = null;
         restoreFaceDownMonsterPrint(card);
         putCardsToSoulWithTrigger(replacer, owner, [card], "field");
+        // field→soul は『場を離れる』＝ライフリンク発火する（ver2.05: ライフリンクは破壊でなく離場で誘発／
+        // ソウルは場に含まれないので field→soul は離場。公式Q&A「重ねコールで下敷きになりソウルへ入るカードの
+        // ライフリンクは発動」準拠）。上コメントの「破壊/離場としては数えない」は destroy カウント等の話で、
+        // 離場そのものは現に起きているためライフリンクは別途発火する。ソウルガードの『場に残す』とは別物。
+        applyLifeLink(card, owner);
+        // 「場から離れた時」誘発も同様に発火（redirectで場を離れる＝destroyFieldCard の 511 には到達しないので二重なし）。
+        queueLeaveFieldTriggers(card, owner, slot.zone);
       }
       addLog(`${card.name}は破壊されず${replacer.name}のソウルに入りました。`);
       return true;
@@ -2474,7 +2489,11 @@ function resolveLifeZeroReplacements() {
     if (replacement.sacrificeFilter) {
       // 『搭乗』しているカード等1枚を生贄に破壊してライフを守る（ブレイブフォート 0029）。
       // 生贄が無ければ守れない（発生源も破壊しない）。
-      const sac = zones
+      // R-BR28(ブラウザレビュー): 『搭乗』しているカード＝装備枠(item)のみ。sacrificeZones で走査ゾーンを
+      // 絞る（未指定なら従来どおり全ゾーン＝完全後方互換。keyword:"ride" は静的なので未搭乗の場のライド
+      // モンスターも拾ってしまうため、0029 は sacrificeZones:["item"...] で装備済みのみに限定する）。
+      const searchZones = replacement.sacrificeZones || zones;
+      const sac = searchZones
         .map((z) => ({ z, c: player.field[z] }))
         .find(({ z, c }) => c && z !== zone && matchesCardFilter(c, replacement.sacrificeFilter));
       if (!sac) {

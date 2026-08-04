@@ -881,9 +881,17 @@ function checkCardConditions(conditions = [], owner, context = {}) {
 }
 
 function hasBuddyOnField(player) {
+  // 「君の場にバディモンスターがいる」判定。バディ『アイテム』(canBeBuddy の武器＝不滅剣デュランダル等)は
+  // 場にあってもモンスターではないので「バディモンスターがいる」を成立させない（印字type=monster のみ対象。
+  // 以前は zones 全枠を名前一致だけで走査し、item 枠のバディアイテムを誤ってバディモンスター扱いしていた）。
+  // turnTreatAsBuddy(『バディモンスターとして扱う』)のモンスターも成立させ、他のバディ読者(sourceIsBuddy/
+  // filter.buddy/requireBuddy)と判定を揃える。
   return zones.some((zone) => {
     const card = player.field[zone];
-    return card && player.buddy && card.name === player.buddy.name;
+    if (!card || (card.baseType || card.type) !== "monster") {
+      return false;
+    }
+    return (player.buddy && card.name === player.buddy.name) || card.turnTreatAsBuddy === true;
   });
 }
 
@@ -1785,7 +1793,10 @@ function checkCondition(condition, owner, context = {}) {
       .filter(({ card }) => card);
     return (
       attackers.length > 1 &&
-      attackers.some(({ owner: attackerOwner, card }) => card.name === state.players[attackerOwner]?.buddy?.name)
+      attackers.some(
+        ({ owner: attackerOwner, card }) =>
+          card.name === state.players[attackerOwner]?.buddy?.name || card.turnTreatAsBuddy === true,
+      )
     );
   }
   if (condition.op === "pendingActionIsOpponent") {

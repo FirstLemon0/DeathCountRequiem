@@ -72,8 +72,9 @@ function canDeclareAttackInFinal(card) {
   if (!card) {
     return false;
   }
-  // 印字フラグ（必殺モンスター／将来の canAttackInFinalPhase 印字カード）。
-  if (card.type === "impactMonster" || card.canAttackInFinalPhase) {
+  // impactMonster はカード『種別』(能力ではない)なので能力無効化の影響を受けない。印字■『ファイナルフェイズ中にも
+  // 攻撃できる』(canAttackInFinalPhase)はカードの能力なので、能力無効化(凍てつく星辰)中は失われる。
+  if (card.type === "impactMonster" || (card.canAttackInFinalPhase && !isAbilitiesNullified(card))) {
     return true;
   }
   // G5(D-EB01/0023): 場を離れるまで付与される instance フラグ（無償コールした魔王等。

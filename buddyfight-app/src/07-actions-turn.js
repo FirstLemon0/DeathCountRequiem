@@ -279,6 +279,11 @@ function turnCallRestrictionBlocks(owner, card) {
   if (isCallCountCappedThisTurn(owner)) {
     return true;
   }
+  // 継続 restrictOwnCall（『《竜騎士》以外コールできない』等）は通常コールだけでなく効果コールにも掛かる。
+  // isCallRestricted（通常コール経路）と同じ共有ヘルパで判定する（以前は効果コールがこの継続制限を素通りしていた）。
+  if (continuousOwnCallRestricted(owner, card)) {
+    return true;
+  }
   // allowFilter はコール可の例外ホワイトリスト。allowFilter 省略時は例外なし＝全面禁止（E-XB59① 0031 の byEffectOnly 単独指定で
   // 「相手はカードの効果でモンスターをコールできない」を表す）。既存 D-BT01/0064 は allowFilter:{impactMonster} 保持で挙動不変。
   // byEffectOnly の有無に関わらず効果コールはここで禁止する（byEffectOnly は「効果コールのみ」の意で、非効果=手打ちだけを isCallRestricted で許可する）。
@@ -599,6 +604,13 @@ function stackFieldCardAsSoul(player, zone, card) {
     baseCard.soul = [];
     card.soul.push(baseCard);
     added = inherited.length + 1; // 継承ソウル＋重ね元本体
+    // 重ねコールで下敷きになった場のカード(baseCard)は場からソウルへ移る＝『場を離れる』のでライフリンクを
+    // 発火する（ver2.05: ライフリンクは破壊でなく離場で誘発／ソウルは場に含まれない＝field→soulは離場。公式Q&A
+    // 「重ねコールで下敷きになる方のライフリンクは発動」準拠）。継承ソウル(inherited)は元々ソウル内＝soul→soulで
+    // 離場ではないため対象外（baseCard のみ）。
+    applyLifeLink(baseCard, state.players.indexOf(player));
+    // 「場から離れた時」誘発も同様に baseCard の離場で発火（ライフリンクと同一離場サイト）。
+    queueLeaveFieldTriggers(baseCard, state.players.indexOf(player), zone);
   }
   player.field[zone] = card;
   // E-XB24: 重ねコール／ソウル継承でホスト(card)がソウルを得た＝「ソウルが入った時」ブロードキャスト。
