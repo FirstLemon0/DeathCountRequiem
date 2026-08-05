@@ -211,6 +211,14 @@ async function attackAction() {
 
 async function performAttackDeclaration(attackers, targetValue, options = {}) {
   const attackerSeat = attackers[0]?.owner;
+  // 先攻1ターン目の攻撃制限（ver2.05: 攻撃は1回まで・連携攻撃はできない）を、効果駆動の攻撃宣言
+  // (attackWithAll＝フルストラッシュ 0046 等)でも尊重する。通常経路(attackAction:181/200・
+  // declareAttackWithFieldCard:352)は手前で既にブロック済＝ここは効果コール経路のバックストップ（二重でも無害）。
+  // forceSelfAttack の単体1回攻撃(attacksThisTurn=0・attackers.length=1)は温存される。
+  if (state.turnCount === 1 && (state.attacksThisTurn >= 1 || attackers.length > 1)) {
+    addLog("先攻1ターン目は攻撃1回まで・連携攻撃はできません。");
+    return false;
+  }
   // forceSelfAttack: そのモンスターが自分の持ち主（＝使用者の相手）を攻撃する（ナイトメア・ディスペアー 0020）。
   // 防御側＝そのモンスターの持ち主自身。通常攻撃は opponentIndex()（手番側の相手）。
   const targetOwner = options.forceSelfAttack ? (attackerSeat ?? opponentIndex()) : opponentIndex();

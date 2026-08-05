@@ -747,6 +747,12 @@ function resetLeftFieldCardState(card) {
   // 残り、1度も再スタンドせず実質1回しか攻撃できなかった（standPlayer はターン開始時に両カウンタをリセットするが、
   // 離場クリーンアップは doubleAttackUsed しかリセットしていなかった＝明白な非対称の取りこぼし）。
   card.tripleAttackStandCount = 0;
+  // 「そのターン中攻撃できない」/「そのターン中スタンドできない」も離場でリセットする（多回攻撃カウンタと同じ
+  // per-instance の一時状態群）。clearTurnModifiers は場札しか掃除しないため、これらを付与されたカードが同一
+  // ターンに離場→再コール（または離場後に別ターンへ持ち越し再コール）すると、別カード扱いのはずが攻撃/スタンド
+  // 不可を引きずっていた（グレイプニル等の cannotAttackThisTurn・S-UB-C03/0038 の cannotStandThisTurn）。
+  card.cannotAttackThisTurn = false;
+  card.cannotStandThisTurn = false;
   card.preventNextDestroyCount = 0;
   card.preventNextDestroyEffects = [];
   // gainNameAsSelected（ターンスコープの追加カード名）は場を離れたら失うが、印字の恒久additionalNames

@@ -440,7 +440,28 @@ async function destroyFieldCard(owner, zone, options = {}) {
     return null;
   }
   if (!options.ignoreSoulguard && canUseSoulguard(card) && (await shouldUseSoulguard(card, owner))) {
-    const soulCard = card.soul.pop();
+    // ソウルガードでドロップに置くソウルは、ソウルが2枚以上なら持ち主が選ぶ（1枚なら自動）。
+    // 以前は常に先頭(最後に入れた)ソウルを pop していた。promptSeat=owner＝自分のソウル(自席には公開)から選ぶ。
+    let soulCard;
+    if (card.soul.length > 1) {
+      const picked = await chooseCardEntries(
+        card.soul.map((soul) => ({ card: soul })),
+        {
+          title: "ソウルガード：ドロップに置くソウルを選ぶ",
+          lead: `${card.name}のソウルから、ドロップに置く1枚を選んでください。`,
+          min: 1,
+          max: 1,
+          forceDialog: true,
+          allowCancel: false,
+          promptSeat: owner,
+        },
+      );
+      const pickedId = picked?.[0]?.card?.instanceId;
+      const idx = card.soul.findIndex((soul) => soul.instanceId === pickedId);
+      soulCard = idx >= 0 ? card.soul.splice(idx, 1)[0] : card.soul.pop();
+    } else {
+      soulCard = card.soul.pop();
+    }
     player.drop.push(soulCard);
     addLog(`${card.name}はソウルガードで場に残りました。`);
     // E1(D-BT02/0065): ソウルガードでソウル1枚がドロップへ移り、card は場に残る。
@@ -468,6 +489,10 @@ async function destroyFieldCard(owner, zone, options = {}) {
   } else {
     player.drop.push(...(card.soul || []));
     card.soul = [];
+    // ホスト破壊でソウルがドロップへ落ちた＝ソウル札の『(ホストの)ソウルからドロップに置かれた時』(selfDroppedFromSoul・
+    // 竜装機ソービット等)を発火する。reconcileFaceDownSoulDrops は冪等・opt-in(__soulHostタグ札のみ反応)。
+    // 以前はホスト破壊経路が reconcile を呼ばず、並行トリガーが無いと selfDroppedFromSoul が黙って落ちていた。
+    reconcileFaceDownSoulDrops();
   }
   player.drop.push(card);
   player.field[zone] = null;
@@ -521,6 +546,7 @@ async function destroyFieldCard(owner, zone, options = {}) {
     // 破壊時誘発を通さないため、遅延させたソウル(destroyTriggerUsesSoul)の回収を自前で行いソウル残留を防ぐ。
     player.drop.push(...card.soul);
     card.soul = [];
+    reconcileFaceDownSoulDrops(); // ソウル札の selfDroppedFromSoul（ホスト能力無効化中でもソウル札自身の能力は生きる）
   }
   // 味方破壊時誘発は「破壊されたモンスター自身の能力」ではないため、能力無効化(ラグナロク)でも抑制しない。
   // 非モンスター(呪文/アイテム)の『味方が破壊された時』反応が正しく発火する（近似: 他モンスターの同種反応も発火し得る）。
@@ -1178,6 +1204,7 @@ function queueDestroyedTriggers(card, owner, zone, cause = null) {
       if ((card.soul || []).length > 0) {
         state.players[owner].drop.push(...card.soul);
         card.soul = [];
+        reconcileFaceDownSoulDrops(); // 遅延ソウル落下でも selfDroppedFromSoul を発火（destroyTriggerUsesSoul 経路の網羅）
       }
       render();
     })

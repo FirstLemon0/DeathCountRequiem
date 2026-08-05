@@ -542,7 +542,7 @@ async function resolvePendingCall(action) {
     player.field[actualZone] = card;
   }
   card.conditionalSize = null; // 再コール時は前回のサイズ上書き(アンノウン0029等)をリセット
-  enforceSizeLimit(player, actualZone);
+  await enforceSizeLimit(player, actualZone);
   state.phase = action.phase || "main";
   state.selected = null;
   state.linkAttackers = [];
@@ -619,12 +619,33 @@ function stackFieldCardAsSoul(player, zone, card) {
   }
 }
 
-function enforceSizeLimit(player, latestZone) {
+async function enforceSizeLimit(player, latestZone) {
   const limit = fieldSizeLimit(player);
   while (getFieldSize(player) > limit) {
-    const dropZone = fieldZones.find((zone) => zone !== latestZone && player.field[zone]);
-    if (!dropZone) {
+    // 直近コールしたカード(latestZone)以外の自分の場のカードから、どれをドロップに置くかを持ち主が選ぶ
+    // （ver2.05 の★ルール処理★＝サイズ超過時、超えないよう自分のカードをドロップに置く。どれを置くかは持ち主の選択）。
+    const candidateZones = fieldZones.filter((zone) => zone !== latestZone && player.field[zone]);
+    if (candidateZones.length === 0) {
       break;
+    }
+    let dropZone = candidateZones[0];
+    if (candidateZones.length > 1) {
+      const owner = state.players.indexOf(player);
+      const picked = await chooseCardEntries(
+        candidateZones.map((zone) => ({ card: player.field[zone], zone })),
+        {
+          title: "サイズ超過：ドロップに置くカードを選ぶ",
+          lead: `場のサイズ合計が${limit}を超えています。ドロップに置くカードを1枚選んでください。`,
+          min: 1,
+          max: 1,
+          forceDialog: true,
+          allowCancel: false,
+          promptSeat: owner,
+        },
+      );
+      // 選択された instanceId から現在のゾーンを引き直す（キャンセル不可だが未選択時は先頭にフォールバック）。
+      const pickedId = picked?.[0]?.card?.instanceId;
+      dropZone = candidateZones.find((zone) => player.field[zone]?.instanceId === pickedId) ?? candidateZones[0];
     }
     const dropped = player.field[dropZone];
     dropFieldCardByRule(player, dropZone);

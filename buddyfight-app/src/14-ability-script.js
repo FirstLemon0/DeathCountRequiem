@@ -2739,7 +2739,7 @@ async function callSelectedForScript(step, context) {
   if (step.grantFinalPhaseAttack) {
     calledCard.grantedFinalPhaseAttack = true;
   }
-  enforceSizeLimit(player, zone);
+  await enforceSizeLimit(player, zone);
   if (step.redirectPendingAttack && state.pendingAttack) {
     state.pendingAttack.targetOwner = entry.owner ?? context.owner;
     state.pendingAttack.targetZone = zone;
@@ -2867,7 +2867,7 @@ async function opponentMayCallFromHandForScript(step, context) {
   opp.field[zone] = calledCard;
   recordImpactMonsterCall(oppOwner, calledCard);
   calledCard.enteredFromZone = "hand";
-  enforceSizeLimit(opp, zone);
+  await enforceSizeLimit(opp, zone);
   addLog(`${opp.name}は${calledCard.name}を${zoneLabel(zone)}にコールしました。`);
   // 効果コール＝登場時能力を解決（byEffect）。発生源(君のスペル)は cause ではない＝enterCauseCard 未指定。
   await resolveOnEnter(calledCard, opp, null, { byEffect: true });
@@ -2927,7 +2927,7 @@ async function callSelfFromHandForScript(step, context) {
   recordImpactMonsterCall(context.owner, card);
   card.conditionalSize = null; // 再コール時は前回のサイズ上書き(アンノウン0029等)をリセット
   applyScriptGrantedKeywords(card, step.grantKeywords || []);
-  enforceSizeLimit(player, zone);
+  await enforceSizeLimit(player, zone);
   addLog(`${card.name}を${zoneLabel(zone)}にコールしました。`);
   if (step.resolveOnEnter !== false) {
     await resolveOnEnter(card, player, null, { byEffect: true, enterCauseCard: context.card });
@@ -2983,7 +2983,7 @@ async function callSelfFromSoulForScript(step, context) {
   player.field[zone] = removed;
   recordImpactMonsterCall(context.owner, removed);
   applyScriptGrantedKeywords(removed, step.grantKeywords || []);
-  enforceSizeLimit(player, zone);
+  await enforceSizeLimit(player, zone);
   addLog(`${removed.name}をソウルから${zoneLabel(zone)}にコールしました。`);
   if (step.resolveOnEnter !== false) {
     await resolveOnEnter(removed, player, null, { byEffect: true, enterCauseCard: context.card });
@@ -3098,7 +3098,7 @@ async function callTopDeckAsMonsterForScript(step, context) {
   card.rules = [];
   card.conditionalSize = null;
   player.field[zone] = card;
-  enforceSizeLimit(player, zone);
+  await enforceSizeLimit(player, zone);
   if (player.deck.length === 0) {
     declareDeckLoss(player);
   }
@@ -3155,7 +3155,7 @@ async function callSelectedAsMonsterForScript(step, context) {
   calledCard.attributes = step.attributes || calledCard.attributes || [];
   player.field[zone] = calledCard;
   calledCard.conditionalSize = null; // 再コール時は前回のサイズ上書き(アンノウン0029等)をリセット
-  enforceSizeLimit(player, zone);
+  await enforceSizeLimit(player, zone);
   addLog(`${context.card.name}の効果で手札のカードを${zoneLabel(zone)}にモンスターとして置きました。`);
   return true;
 }
@@ -3222,6 +3222,10 @@ async function callSelectedToEmptyZonesForScript(step, context) {
       continue;
     }
     player.field[zone] = calledCard;
+    // 発生元ゾーン記録（enteredFromZoneIn 用＝『ドロップからコールされた/登場した時』誘発。飛雲丸0056/デアデビル等）。
+    // callSelectedForScript(:2752)と同じスタンプ。この空きエリアコール経路だけ刻み忘れており、ドロップからの
+    // 登場時誘発が全て不発になっていた（コール経路の違いで登場時誘発の可否が変わるのは仕様外）。
+    calledCard.enteredFromZone = entry.source || step.from || null;
     recordImpactMonsterCall(entry.owner ?? context.owner, calledCard);
     // G5(D-EB01/0023): 「そのカードは場から離れるまでサイズ0になり、ファイナル攻撃可」。
     // enforceSizeLimit より前に conditionalSize を付与しないと元サイズでサイズ超過と誤判定される。
@@ -3238,7 +3242,7 @@ async function callSelectedToEmptyZonesForScript(step, context) {
       calledCard.grantedFinalPhaseAttack = true;
     }
     applyScriptGrantedKeywords(calledCard, step.grantKeywords || []);
-    enforceSizeLimit(player, zone);
+    await enforceSizeLimit(player, zone);
     addLog(`${context.card.name}の効果で${calledCard.name}を${zoneLabel(zone)}にコールしました。`);
     if (step.resolveOnEnter) {
       await resolveOnEnter(calledCard, player, null, { byEffect: true, enterCauseCard: context.card });
@@ -3288,8 +3292,10 @@ async function stackCallSelectedForScript(step, context) {
     return { ok: false, reason: "stack_call_card_missing" };
   }
   stackFieldCardAsSoul(player, zone, calledCard);
+  // 発生元ゾーン記録（重ねコールも『ドロップからコールされた時』の対象。callSelectedForScript:2752 と同じスタンプ）。
+  calledCard.enteredFromZone = entry.source || step.from || null;
   recordImpactMonsterCall(entry.owner ?? context.owner, calledCard);
-  enforceSizeLimit(player, zone);
+  await enforceSizeLimit(player, zone);
   addLog(`${context.card.name}の効果で${calledCard.name}を${zoneLabel(zone)}に重ねてコールしました。`);
   if (step.resolveOnEnter) {
     await resolveOnEnter(calledCard, player, null, { byEffect: true, enterCauseCard: context.card });

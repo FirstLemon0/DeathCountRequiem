@@ -444,6 +444,8 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     isCallRestricted,
     aiEnumerateMainActions,
     hasBuddyOnField,
+    callSelectedToEmptyZonesForScript, // 第5回: ドロップコールの enteredFromZone スタンプ回帰用
+    enforceSizeLimit, // サイズ超過時のドロップ対象プレイヤー選択の回帰用
     maybeApplyScheduledLoss,
     applyDueScheduledLosses,
     clearWinnerIfNoCurrentLoss,

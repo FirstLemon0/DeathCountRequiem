@@ -799,7 +799,7 @@ async function executeAbilityEffect(effect, context) {
               unconditional: Boolean(effect.grantConditionalSize.unconditional),
             };
           }
-          enforceSizeLimit(player, zone);
+          await enforceSizeLimit(player, zone);
           called = pick;
           addLog(`${context.card?.name || "効果"}で${pick.name}を${zoneLabel(zone)}にコールしました。`);
           await resolveOnEnter(pick, player, null, { byEffect: true, enterCauseCard: context.card });
