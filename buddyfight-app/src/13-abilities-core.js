@@ -1506,9 +1506,19 @@ function checkCondition(condition, owner, context = {}) {
     });
   }
   if (condition.op === "attacksThisTurnGte") {
-    // Z7(S-UB-C03/0047,0052): このターン中に行われた攻撃回数(state.attacksThisTurn、グローバル・
-    // ターン切替でリセット)がamount以上か。連携攻撃は1回と数える（09-attack.js の加算箇所と同一カウンタ）。
-    return (state.attacksThisTurn || 0) >= (condition.amount ?? 1);
+    // Z7(S-UB-C03/0047,0052): このターン中に『君のカードが』攻撃した回数が amount 以上か。連携攻撃は1回と数える
+    // （09-attack.js:308 の席別加算 attacksThisTurnBySeat と同一カウンタ・ターン切替でリセット）。
+    // 第13回メカレビュー: 以前はグローバル state.attacksThisTurn を席無視で読んでおり、相手ターン中に使う
+    // 【対抗】(バッツ×リンク/イレギュラー・アタック等9枚)や『逆天殺』〔相手のターン中〕(ギアゴッド ver.Ø99)で
+    // 『相手の』攻撃回数が『君の』攻撃回数として成立していた。自ターン中は相手が攻撃しない＝両者一致するため
+    // ファイナル発動系(×天バスター等)の挙動は不変。controller 未指定は自席基準（カード文面『君のカード』）。
+    const bySeat = state.attacksThisTurnBySeat;
+    if (!Array.isArray(bySeat)) {
+      // 席別カウンタを持たない古い state（E-XB40 以前の保存部屋/リプレイ）向けのフォールバック。
+      return (state.attacksThisTurn || 0) >= (condition.amount ?? 1);
+    }
+    const attacksSeat = condition.controller === "opponent" ? 1 - owner : owner;
+    return (bySeat[attacksSeat] || 0) >= (condition.amount ?? 1);
   }
   if (condition.op === "lastDestroySucceeded") {
     // 直前の destroy op が実際に破壊を成立させたか（ソウルガード/破壊耐性で生存した場合は false）。

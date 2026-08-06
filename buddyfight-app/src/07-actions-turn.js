@@ -214,6 +214,23 @@ function recordCardCalledThisTurn(owner, card) {
   counts[card.name] = (counts[card.name] || 0) + 1;
 }
 
+// コール先ゾーンの制限（callZones=このゾーンにしかコールできない/cannotCallZones=このゾーンにコールできない/
+// 天上天下竜我独尊 等のセンターコール禁止 isCenterCallPrevented）を1つにまとめた判定。通常コール(callMonster
+// src/07:418-428)がインラインで行っている判定と同基準で、効果コール(src/14 の callSelected 系)からも参照する
+// （『コールできない』はコール方法を問わない絶対制限＝効果コールも服す・第11回メカレビュー）。
+function isCallZoneBlocked(owner, card, zone) {
+  if (card?.callZones && !card.callZones.includes(zone)) {
+    return true;
+  }
+  if ((card?.cannotCallZones || []).includes(zone)) {
+    return true;
+  }
+  if (zone === "center" && isCenterCallPrevented(owner, card)) {
+    return true;
+  }
+  return false;
+}
+
 // 必殺モンスター(DDD)のコール可否（共通ゲート）。「必殺モンスターは1ターンに1枚、君の
 // ファイナルフェイズにのみコールできる」（カード注記）は、通常コール・バディコール・特殊コール・
 // 効果によるコール（src/14 の callSelected 系）の全てに掛かる。非 impactMonster は常に許可（既存挙動不変）。
@@ -531,6 +548,9 @@ async function resolvePendingCall(action) {
     return;
   }
   const actualZone = action.targetZone;
+  // 登場するカードは「前回場に居た時」の一時状態(レスト/ターンバフ/多回攻撃履歴/攻撃不可等)を持ち込まない
+  // （奇襲コール等でドロップから戻る場合に効く。conditionalSize は下で従来どおりリセット・第13回メカレビュー）。
+  resetEnteringFieldCardState(card);
   if (stackTarget) {
     stackFieldCardAsSoul(player, actualZone, card);
   } else if (player.field[actualZone]) {
@@ -551,6 +571,11 @@ async function resolvePendingCall(action) {
     player.partnerCalled = true;
     player.life += 1;
     addLog(`${player.name}は${card.name}を${zoneLabel(actualZone)}にバディコールし、ライフを1回復しました。`);
+    // バディギフトの+1も『ライフの回復』＝『君のライフが回復した時』(ヲチミズ等)を誘発する。ペイン・フィールド
+    // (bt05-0083)『相手は、バディギフト以外でライフを回復できない』がバディギフトを回復手段として明示的に分類する。
+    // ルール処理の回復なので isLifeGainByEffectPrevented(効果による回復の禁止)ではゲートしない（第12回メカレビュー）。
+    clearWinnerIfNoCurrentLoss();
+    await runFieldEventTriggers("lifeGained", action.owner);
   } else {
     addLog(`${player.name}は${card.name}を${zoneLabel(actualZone)}にコールしました。`);
   }
@@ -608,10 +633,13 @@ function stackFieldCardAsSoul(player, zone, card) {
     // 発火する（ver2.05: ライフリンクは破壊でなく離場で誘発／ソウルは場に含まれない＝field→soulは離場。公式Q&A
     // 「重ねコールで下敷きになる方のライフリンクは発動」準拠）。継承ソウル(inherited)は元々ソウル内＝soul→soulで
     // 離場ではないため対象外（baseCard のみ）。
-    applyLifeLink(baseCard, state.players.indexOf(player));
+    // nullifiedAtLeave: この時点で player.field[zone] はまだ baseCard＝離場直前の無効化状態を正しく読める
+    // （能力無効化中はライフリンク自体が無い・第12回メカレビュー）。
+    applyLifeLink(baseCard, state.players.indexOf(player), { nullifiedAtLeave: isAbilitiesNullified(baseCard) });
     // 「場から離れた時」誘発も同様に baseCard の離場で発火（ライフリンクと同一離場サイト）。
     queueLeaveFieldTriggers(baseCard, state.players.indexOf(player), zone);
   }
+  resetEnteringFieldCardState(card); // 重ねコールで場に入るカードも前回の一時状態を持ち込まない（冪等・第13回メカレビュー）
   player.field[zone] = card;
   // E-XB24: 重ねコール／ソウル継承でホスト(card)がソウルを得た＝「ソウルが入った時」ブロードキャスト。
   if (added > 0) {
@@ -1452,10 +1480,15 @@ function partnerCall() {
 }
 
 function canDeclareBuddyCall(player, card) {
+  // バディコールを宣言できるフェイズは、そのカードがコールできるフェイズと一致させる（callMonsterImpl:373 と同じ写像）。
+  // 必殺モンスターは自分のファイナルフェイズにのみコールできるため、"main" 固定だとバディが必殺モンスターの時に
+  // 宣言窓が永久に開かず、バディコール／バディギフト(ライフ+1)が構造的に不可能だった（公式おすすめレシピ9本が
+  // 必殺モンスターをバディ指定＝到達する構成。ver2.05 も必殺モンスターのバディコールを認める・第12回メカレビュー）。
+  const requiredPhase = card?.type === "impactMonster" ? "final" : "main";
   return Boolean(
     !state.winner &&
       !hasPendingResolution() &&
-      state.phase === "main" &&
+      state.phase === requiredPhase &&
       !player.partnerCalled &&
       state.selected?.source === "hand" &&
       state.selected.owner === state.active &&

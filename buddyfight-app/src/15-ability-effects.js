@@ -789,8 +789,10 @@ async function executeAbilityEffect(effect, context) {
         const payment = await payCardCostWithSelection(player, pick, "call", pick, { sourceCard: pick, callFromZone: "deck" });
         if (payment.ok && fieldZones.includes(zone)) {
           if (player.field[zone]) dropFieldCardByRule(player, zone);
+          resetEnteringFieldCardState(pick); // 前回場に居た時の一時状態を持ち込まない（第13回メカレビュー）
           player.field[zone] = pick;
           recordImpactMonsterCall(seat, pick);
+          recordCardCalledThisTurn(seat, pick); // 同名1ターンN枚上限の計上（第13回メカレビュー: 残り経路）
           pick.enteredFromZone = "deck";
           // 「そのカードは場から離れるまで、サイズ0（0）になる」（grantConditionalSize。conditionalSize を先に付与してから
           //  enforceSizeLimit＝サイズ0化前の実サイズでサイズ超過と誤判定しないため。callSelectedForScript と同順）。
@@ -1994,15 +1996,17 @@ async function executeAbilityEffect(effect, context) {
       if (await tryLeaveFieldReplacement(returned, candidate.owner)) {
         continue;
       }
+      const lifeLinkNullifiedAtLeave = isAbilitiesNullified(returned); // 離場直前に捕捉（能力無効化中はライフリンク無し）
       ownerPlayer.drop.push(...(returned.soul || []));
       returned.soul = [];
+      reconcileFaceDownSoulDrops(); // ソウル札の公開・selfDroppedFromSoul（他の離場経路と同基準）
       ownerPlayer.field[candidate.zone] = null;
       if (candidate.zone === "item" && ownerPlayer.arrivalCardId === returned.instanceId) {
         ownerPlayer.arrivalCardId = null;
       }
       resetLeftFieldCardState(returned);
       ownerPlayer.hand.push(returned);
-      applyLifeLink(returned, candidate.owner);
+      applyLifeLink(returned, candidate.owner, { nullifiedAtLeave: lifeLinkNullifiedAtLeave });
       // 「場から離れた時」誘発は手札戻し(全戻しfunnel)でも発火（ライフリンクと同一離場サイト）。
       queueLeaveFieldTriggers(returned, candidate.owner, candidate.zone);
       addLog(`${returned.name}を手札に戻しました。`);
@@ -2506,7 +2510,7 @@ async function executeAbilityEffect(effect, context) {
       (fieldHasLeaveFieldReplacer(target.owner) && (await applyAllyLeaveFieldReplacement(target.card, target.owner, leaveCause))) ||
       (soulHasLeaveFieldReplacer(target.card) && (await applySoulLeaveFieldReplacement(target.card, target.owner, leaveCause)))
     )) {
-      const moved = putFieldCardToGauge(ownerPlayer, target.zone);
+      const moved = putFieldCardToGauge(ownerPlayer, target.zone, { byEffect: true }); // 効果配置＝gaugePlaced 発火（第11回メカレビュー）
       if (moved) {
         addLog(`${context.card.name}の効果で${moved.name}をゲージに置きました。`);
       }
@@ -3478,7 +3482,8 @@ function resolveAmountFrom(spec, context) {
     // X2(D-BT01/0017): 発生源カード自身の visible stat（「このカードの打撃力分、君のライフを回復」等）。
     const self = context.card;
     if (!self) return 0;
-    const base = spec.stat === "size" ? self.size || 0 : visibleFieldStat(self, spec.stat || "critical");
+    // size は現在の実効サイズ/破壊時凍結サイズ（印字 self.size 直読みは修整中サイズを取りこぼす・第11回メカレビュー）。
+    const base = spec.stat === "size" ? effectiveOrFrozenSize(self) : visibleFieldStat(self, spec.stat || "critical");
     return base * (spec.per ?? 1);
   }
   if (spec.source === "returnedCount") {
@@ -3517,7 +3522,8 @@ function resolveAmountFrom(spec, context) {
     // per 乗数対応（S-UB-C03/0082「そのキャラのサイズの数値分、このカードの攻撃力+3000」= size×3000）。
     const tcard = context.target?.card;
     if (!tcard) return 0;
-    const base = spec.stat === "size" ? tcard.size || 0 : visibleFieldStat(tcard, spec.stat || "critical");
+    // size は現在の実効サイズ/破壊時凍結サイズ（印字 tcard.size 直読みは修整中サイズを取りこぼす・第11回メカレビュー）。
+    const base = spec.stat === "size" ? effectiveOrFrozenSize(tcard) : visibleFieldStat(tcard, spec.stat || "critical");
     return base * (spec.per ?? 1);
   }
   if (spec.source === "damageSourceStat") {

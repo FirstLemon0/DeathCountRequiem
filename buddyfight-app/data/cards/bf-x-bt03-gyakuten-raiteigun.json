@@ -2883,6 +2883,16 @@
           "label": "心の友センサー",
           "kind": "triggered",
           "event": "allyEnter",
+          "_conditionsNote": "第13回メカレビュー: 印字は『君の場にこのカード以外のモンスターが登場した時』。条件が空だったためアイテム装備や自分自身の登場でも誤発火していた（enteredCardMatches{excludeSource,filter:{cardType:monster}} で忠実化）。",
+          "conditions": [
+            {
+              "op": "enteredCardMatches",
+              "excludeSource": true,
+              "filter": {
+                "cardType": "monster"
+              }
+            }
+          ],
           "effects": [
             {
               "op": "lookTopSelectToHandRestToBottom",

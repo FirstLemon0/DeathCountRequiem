@@ -453,6 +453,18 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     dropFieldCardByRule, // 第9回: 非破壊の場→ソウル離場(ルールドロップ)の reconcileFaceDownSoulDrops 回帰用
     applyFaceDownMonsterToken, // 第10回: 裏向きトークン化(キーワード/能力素化)の回帰用
     restoreFaceDownMonsterPrint, // 第10回: 裏向きトークンの離場時 印字/キーワード復元の回帰用
+    castSetSpell, // 第11回: 設置魔法コストの相手ゲージ使用(ガッチャ！)の回帰用
+    isCallZoneBlocked, // 第11回: 効果コールのゾーン制限判定の回帰用
+    // 第12回: 非破壊離場コスト経路のソウル reconcile／ライフリンク剥奪／必殺バディのバディコール宣言の回帰用。
+    putFieldCardToGauge,
+    putFieldCardToDeckBottom,
+    returnFieldCardToHandCost,
+    canDeclareBuddyCall,
+    // 第13回: 場→ソウルの入れ子ソウル解放／順序選択キャンセルの保存則／登場時リセットの回帰用。
+    moveSelectedFieldCardsToSoul,
+    moveSelectedToDeckBottomOrderedForScript,
+    resetEnteringFieldCardState,
+    costDestroyBlocked,
     maybeApplyScheduledLoss,
     applyDueScheduledLosses,
     clearWinnerIfNoCurrentLoss,

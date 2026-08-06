@@ -204,6 +204,26 @@ function turnDestroyImmunityBlocks(card) {
   });
 }
 
+// コストとしての「自分の場のカードを破壊する」が、そのカードの破壊耐性/離場防止で実行できないか。
+// コスト破壊は payStructuredCostWithSelection が cause:{byEffect:true}・ignoreDestroyReplacement:true で
+// destroyFieldCard を呼ぶため、それと同じ条件で「破壊が成立しないカード」を事前に弾く。
+// 第13回メカレビュー: 以前は canPay も対話候補も耐性を見ず、耐性持ちしか場にいない状態でも支払い成立と
+// 判定され、destroyFieldCard が null を返して何も破壊されないのに効果だけ通っていた（コスト踏み倒し）。
+// ソウルガードは「破壊を置換してソウル1枚を失う」＝コストは払われたと数えるので除外対象にしない。
+function costDestroyBlocked(card, owner) {
+  if (!card) {
+    return true;
+  }
+  if (destroyImmunityBlocks(card, { byEffect: true }, owner)) {
+    return true;
+  }
+  // Z9(場に残す)/preventNextDestroy(破壊されない置換)も破壊を成立させない＝コストとして払えない。
+  if ((card.preventNextLeaveFieldCount || 0) > 0 || (card.preventNextDestroyCount || 0) > 0) {
+    return true;
+  }
+  return false;
+}
+
 function destroyImmunityBlocks(card, cause, owner) {
   if (!cause) return false;
   if (grantedDestroyImmunityBlocks(card, cause)) return true;
@@ -283,9 +303,24 @@ function destroyTriggerUsesSoul(card) {
     }
     return false;
   };
-  return (card.abilities || []).some(
-    (ability) => ability.kind === "triggered" && ability.event === "destroyed" && scan(ability),
-  );
+  if (
+    (card.abilities || []).some(
+      (ability) => ability.kind === "triggered" && ability.event === "destroyed" && scan(ability),
+    )
+  ) {
+    return true;
+  }
+  // 第13回メカレビュー: ソウル札の soulAbilities / inheritSoulAbilities が『破壊された時』を“提供”している場合も、
+  // ソウルを先にドロップへ流すと runTriggeredAbilities が能力自体を見つけられず不発になる。誘発がソウルを
+  // 参照する場合(from:"soul")と同様、解決後までソウルのドロップ送りを遅延する。
+  if (
+    (card.soul || []).some((soulCard) =>
+      (soulCard?.soulAbilities || []).some((ability) => ability.kind === "triggered" && ability.event === "destroyed"),
+    )
+  ) {
+    return true;
+  }
+  return inheritedSoulAbilitiesFor(card, "destroyed").length > 0;
 }
 
 // E-XB37(X-BT04/0051 氷血皇 ヴァン・グレイシア): 離場置換の成立後（コスト支払い→場残し）に replacement.effects
@@ -519,7 +554,11 @@ async function destroyFieldCard(owner, zone, options = {}) {
   // r3 L4(S-UB-C03/0066): 裏向きトークン化による印字値の恒久上書きの復元(restoreFaceDownMonsterPrint)は、
   // 破壊記録(destroyedCardsThisTurn/destroyedEventWindow の sizeAtDestroy)と applyLifeLink がトークンの
   // 場での状態(サイズ0・キーワード無し=lifelink無し)を見られるよう、この関数の末尾まで遅延する（第10回メカレビュー）。
-  if (!options.suppressDestroyedTriggers) {
+  // 破壊されたカード“自身”の誘発は、破壊時点で能力を無効化されていたなら発火しない
+  // （runTriggeredAbilities は isAbilitiesNullified ゲートを持つが、microtask 実行時には card が既に場外で
+  //  false を返すため素通りしていた＝ライフリンクと同型の後追い判定バグ。第13回メカレビュー）。
+  const selfTriggersSuppressed = options.suppressDestroyedTriggers || lifeLinkNullifiedAtDestroy;
+  if (!selfTriggersSuppressed) {
     // 破壊で場からドロップへ（movedToDrop 誘発）。「能力全てを無効化してから破壊」(ラグナロク型)では発火しない。
     queueMovedToDropTriggers(card, owner, "field");
   }
@@ -559,14 +598,20 @@ async function destroyFieldCard(owner, zone, options = {}) {
   recordSpecialCallOpportunity(card, owner, zone, options);
   // suppressDestroyedTriggers: 「(場のモンスターの)能力全てを無効化してから破壊」(大魔法 ラグナロク 0030)では、
   // 破壊されたモンスター“自身”の破壊時/場離れ誘発は能力ごと無効化されているため発火させない。
-  if (!options.suppressDestroyedTriggers) {
+  // 自身の『破壊された時』は、ラグナロク型(suppressDestroyedTriggers)に加え、破壊時点で能力を無効化されていた
+  // 場合も発火しない（selfTriggersSuppressed）。どちらの場合も、遅延させたソウル(destroyTriggerUsesSoul)は
+  // 誘発側で回収されないため自前でドロップへ流してソウル残留＝保存則違反を防ぐ。
+  if (!selfTriggersSuppressed) {
     queueDestroyedTriggers(card, owner, zone, options.cause);
-    queueLeaveFieldTriggers(card, owner, zone);
   } else if ((card.soul || []).length > 0) {
-    // 破壊時誘発を通さないため、遅延させたソウル(destroyTriggerUsesSoul)の回収を自前で行いソウル残留を防ぐ。
     player.drop.push(...card.soul);
     card.soul = [];
     reconcileFaceDownSoulDrops(); // ソウル札の selfDroppedFromSoul（ホスト能力無効化中でもソウル札自身の能力は生きる）
+  }
+  // queueLeaveFieldTriggers は“他のカード”の allyLeaveField/opponentLeaveField 放送なので、破壊されたカード自身の
+  // 能力無効化では抑制しない（ラグナロク型の suppressDestroyedTriggers だけが従来どおり止める＝既存挙動を維持）。
+  if (!options.suppressDestroyedTriggers) {
+    queueLeaveFieldTriggers(card, owner, zone);
   }
   // 味方破壊時誘発は「破壊されたモンスター自身の能力」ではないため、能力無効化(ラグナロク)でも抑制しない。
   // 非モンスター(呪文/アイテム)の『味方が破壊された時』反応が正しく発火する（近似: 他モンスターの同種反応も発火し得る）。
@@ -704,8 +749,10 @@ async function applyAllyDestroyReplacement(card, owner, options = {}) {
       // ソウル加入誘発は putCardsToSoulWithTrigger（funnel）で正しく発火する。card は破壊/離場としては数えない。
       const slot = findFieldCardSlot(card);
       if (slot) {
+        const lifeLinkNullifiedAtLeave = isAbilitiesNullified(card); // 離場直前に捕捉（能力無効化中はライフリンク無し）
         player.drop.push(...(card.soul || []));
         card.soul = [];
+        reconcileFaceDownSoulDrops(); // ソウル札の公開・selfDroppedFromSoul（他の離場経路と同基準）
         card.currentType = card.baseType || card.type;
         player.field[slot.zone] = null;
         restoreFaceDownMonsterPrint(card);
@@ -714,7 +761,7 @@ async function applyAllyDestroyReplacement(card, owner, options = {}) {
         // ソウルは場に含まれないので field→soul は離場。公式Q&A「重ねコールで下敷きになりソウルへ入るカードの
         // ライフリンクは発動」準拠）。上コメントの「破壊/離場としては数えない」は destroy カウント等の話で、
         // 離場そのものは現に起きているためライフリンクは別途発火する。ソウルガードの『場に残す』とは別物。
-        applyLifeLink(card, owner);
+        applyLifeLink(card, owner, { nullifiedAtLeave: lifeLinkNullifiedAtLeave });
         // 「場から離れた時」誘発も同様に発火（redirectで場を離れる＝destroyFieldCard の 511 には到達しないので二重なし）。
         queueLeaveFieldTriggers(card, owner, slot.zone);
       }
@@ -1152,6 +1199,27 @@ function frozenSizeAtDestroy(card) {
     : effectiveSize(card);
 }
 
+// 効果が読むサイズ（amountFrom targetStat/selfStat の stat:"size"）は、修整可能特性としての「現在のサイズ」＝
+// 場に在るなら実効サイズ(continuous/conditionalSize込み)、破壊直後の参照(destroy→サイズ読み)なら破壊時に凍結した
+// 実効サイズ(destroyedEventWindow.sizeAtDestroy)、それ以外(場外・非破壊)は effectiveSize(=印字)。印字 card.size を
+// 直読みしていた resolveAmountFrom の取りこぼしを是正する（第11回メカレビュー・lastDestroyedCardMatches と同じ凍結参照）。
+function effectiveOrFrozenSize(card) {
+  if (!card) {
+    return 0;
+  }
+  if (findFieldCardSlot(card)) {
+    return effectiveSize(card);
+  }
+  const window = state.destroyedEventWindow;
+  if (window && window.turnCount === state.turnCount) {
+    const entry = (window.entries || []).find((e) => e.card === card);
+    if (entry && typeof entry.sizeAtDestroy === "number") {
+      return entry.sizeAtDestroy;
+    }
+  }
+  return effectiveSize(card);
+}
+
 // monstersDestroyedThisTurn（このターン破壊されたモンスター数・所有者別）を destroyedCardsThisTurn から導出し、
 // state.monstersDestroyedThisTurn へ書き戻す（並走していた2トラッカーの一本化）。
 // 読み出し側 src/13 の monstersDestroyedThisTurnGte は state プロパティを直接参照するため（src/13 は編集対象外）、
@@ -1216,7 +1284,14 @@ function queueDestroyedTriggers(card, owner, zone, cause = null) {
   // 既存カードは grantedTempAbilities 未設定＝この項は常に空＝挙動不変（後方互換）。
   const hasDestroyedTrigger = (abilities) =>
     (abilities || []).some((ability) => ability.kind === "triggered" && ability.event === "destroyed");
-  if (!hasDestroyedTrigger(card.abilities) && !hasDestroyedTrigger(card.grantedTempAbilities)) {
+  // 第13回メカレビュー: ソウル札の soulAbilities / inheritSoulAbilities で継承した『破壊された時』も
+  // runTriggeredAbilities は実行するのに、この早期リターンが印字 abilities しか見ておらず microtask 自体が
+  // queue されず不発だった（queueGaugePlacedTriggers が使う cardHasTriggeredListener と同基準へ揃える）。
+  if (
+    !hasDestroyedTrigger(card.abilities) &&
+    !hasDestroyedTrigger(card.grantedTempAbilities) &&
+    !cardHasTriggeredListener(card, "destroyed")
+  ) {
     return;
   }
   Promise.resolve()
@@ -1501,10 +1576,9 @@ function queueDamageReceivedTriggers(owner, amount, options = {}) {
   if (!player) {
     return;
   }
-  const hasListener = zones.some((zone) => {
-    const card = player.field[zone];
-    return card && (card.abilities || []).some((a) => a.kind === "triggered" && a.event === "damageReceived");
-  });
+  // 第13回メカレビュー: ソウル発(soulAbilities)/爆雷継承(inheritSoulAbilities)の『君がダメージを受けた時』も
+  // 拾う（cardHasTriggeredListener は queueGaugePlacedTriggers と同じ判定＝兄弟 queue と基準を揃える）。
+  const hasListener = zones.some((zone) => cardHasTriggeredListener(player.field[zone], "damageReceived"));
   if (!hasListener) {
     return;
   }
@@ -1686,6 +1760,7 @@ function dropFieldCardByRule(player, zone) {
   // 注: X9 の離場置換はここ（ルール処理ドロップ）には配線しない。コール先の明け渡しやサイズ超過処理で
   // カードが残ると上書き消失/無限ループを招くため、既存 Z9(preventNextLeaveFieldCount) と同じく
   // 破壊＋手札戻しのみカバーする（意図的近似・D-BT01実装メモ参照）。
+  const lifeLinkNullifiedAtLeave = isAbilitiesNullified(card); // 離場直前に捕捉（能力無効化中はライフリンク無し）
   player.drop.push(...(card.soul || []));
   card.soul = [];
   // ルール処理で場からドロップ＝ソウル札もドロップへ落ちる。破壊経路(destroyFieldCard:505)と同様、裏向き奇襲札の
@@ -1700,7 +1775,7 @@ function dropFieldCardByRule(player, zone) {
   if (zone === "item" && player.arrivalCardId === card.instanceId) {
     player.arrivalCardId = null;
   }
-  applyLifeLink(card, state.players.indexOf(player));
+  applyLifeLink(card, state.players.indexOf(player), { nullifiedAtLeave: lifeLinkNullifiedAtLeave });
   return card;
 }
 
@@ -1798,7 +1873,15 @@ function hasInstantLifeLink(card) {
   );
 }
 
-function applyLifeLink(card, owner) {
+// options.nullifiedAtLeave: 場を離れる直前に isAbilitiesNullified(card) が真だったか。ライフリンクはキーワード由来の
+// 能力なので能力無効化(凍てつく星辰等)で消える（第7回#3の裁定）。applyLifeLink の時点では card は既に場外で
+// isAbilitiesNullified が false になるため、各離場サイトが「離れる直前の値」を捕捉して渡す。破壊経路
+// (destroyFieldCard:552)は従来どおり呼び出し自体をゲートしており、非破壊離場もこのオプションで同基準に揃える
+// （第12回メカレビュー: 破壊だけ抑止・非破壊は発動という剥奪の非対称を是正）。
+function applyLifeLink(card, owner, options = {}) {
+  if (options.nullifiedAtLeave) {
+    return null; // 能力無効化中＝ライフリンク自体が無い（破壊経路の非呼び出しと同じ扱い＝イベントも記録しない）
+  }
   let amount = lifeLinkAmount(card);
   const instantDefeat = hasInstantLifeLink(card);
   if ((!amount && !instantDefeat) || owner < 0) {

@@ -1099,6 +1099,7 @@ function detachFieldCardForMove(owner, zone, expectedCard = null) {
   if (!card || (expectedCard && card.instanceId !== expectedCard.instanceId)) {
     return null;
   }
+  const lifeLinkNullifiedAtLeave = isAbilitiesNullified(card); // 離場直前に捕捉（能力無効化中はライフリンク無し）
   player.drop.push(...(card.soul || []));
   card.soul = [];
   // ホストが移動(場外)＝ソウル札がドロップへ落ちる。破壊経路(destroyFieldCard:505)と同様、裏向き奇襲札の公開・
@@ -1108,7 +1109,7 @@ function detachFieldCardForMove(owner, zone, expectedCard = null) {
   if (zone === "item" && player.arrivalCardId === card.instanceId) {
     player.arrivalCardId = null;
   }
-  applyLifeLink(card, owner);
+  applyLifeLink(card, owner, { nullifiedAtLeave: lifeLinkNullifiedAtLeave });
   // 「場から離れた時」誘発(allyLeaveField/opponentLeaveField)は破壊だけでなく非破壊離場(手札戻し/ゲージ/デッキ/
   // ソウル等)でも発火する。ライフリンク(applyLifeLink)と同じ離場サイトで queueLeaveFieldTriggers を鳴らす
   // （destroyFieldCard は 511 で既に鳴らすので、破壊経由と二重にはならない＝各離場は単一経路）。
@@ -1435,7 +1436,9 @@ async function moveSelectedToDeckBottomOrderedForScript(step, context) {
     });
     const entry = picked?.[0];
     if (!entry) {
-      player.drop.push(...remaining.map((candidate) => candidate.card));
+      // 保存則: 既に順序確定済み(ordered)のカードも退避する。以前は remaining しか戻さず、確定済みカードが
+      // 取り出したまま（どのゾーンにも属さない状態で）ゲームから消滅していた（第13回メカレビュー）。
+      player.drop.push(...ordered, ...remaining.map((candidate) => candidate.card));
       return { ok: false, reason: "ordered_selection_cancelled" };
     }
     ordered.push(entry.card);
@@ -1481,8 +1484,13 @@ async function moveSelectedToDeckTopOrderedForScript(step, context) {
     const entry = picked?.[0];
     if (!entry) {
       // キャンセル時は取り出し済みカードを消失させない（元ゾーンには戻せないためデッキ上へ既定順で退避）。
+      // 第13回メカレビュー: 以前は remaining だけを戻し、既に順序確定済み(ordered)のカードが消滅していた。
+      // ordered[0] を最上段にする通常時の規約に合わせ、ordered を後（＝より上）に積む。
       for (let i = remaining.length - 1; i >= 0; i -= 1) {
         player.deck.push(remaining[i].card);
+      }
+      for (let i = ordered.length - 1; i >= 0; i -= 1) {
+        player.deck.push(ordered[i]);
       }
       return { ok: false, reason: "ordered_selection_cancelled" };
     }
@@ -2684,11 +2692,21 @@ async function callSelectedForScript(step, context) {
     addLog(`${entry.card.name}はこのターン、コール制限によりコールできません。`);
     return { ok: false, reason: "turn_call_restricted" };
   }
+  // 同名1ターンN枚上限(callLimitPerTurn=トモエ等)は効果コールも通常コールと合算する（第11回メカレビュー）。
+  if (isCallCountLimitedThisTurn(entry.owner ?? context.owner, entry.card)) {
+    addLog(`${entry.card.name}はこのターン、これ以上コールできません。`);
+    return { ok: false, reason: "call_count_limited" };
+  }
   const player = state.players[entry.owner ?? context.owner];
   const zone = context.vars[step.zoneVar] || step.zone;
   if (!fieldZones.includes(zone)) {
     addLog(`${context.card.name}のコール先を選んでください。`);
     return { ok: false, reason: "missing_call_zone" };
+  }
+  // コール先ゾーン制限(センター禁止/cannotCallZones/callZones)は効果コールも服す（第11回メカレビュー）。
+  if (isCallZoneBlocked(entry.owner ?? context.owner, entry.card, zone)) {
+    addLog(`${entry.card.name}は${zoneLabel(zone)}にコールできません。`);
+    return { ok: false, reason: "call_zone_blocked" };
   }
   // E-XU5(X-UB01/0068 仲間を集めろ！): opt-in の対戦ジャンケンゲート。「勝ったら〜コールする」を、選んだ
   // カードを動かす前（コスト未払い・状態未変更）に判定し、勝ち以外（負け/引き分け/キャンセル）は {ok:false} で
@@ -2722,8 +2740,10 @@ async function callSelectedForScript(step, context) {
   if (player.field[zone]) {
     dropFieldCardByRule(player, zone);
   }
+  resetEnteringFieldCardState(calledCard); // 前回場に居た時の一時状態(レスト/バフ/攻撃履歴)を持ち込まない（第13回メカレビュー）
   player.field[zone] = calledCard;
   recordImpactMonsterCall(entry.owner ?? context.owner, calledCard);
+  recordCardCalledThisTurn(entry.owner ?? context.owner, calledCard); // 同名1ターンN枚上限の計上（第11回メカレビュー）
   applyScriptGrantedKeywords(calledCard, step.grantKeywords || []);
   // 再コール時は前回付与のサイズ上書き(conditionalSize)を必ずリセットしてから、必要な時だけ新たに付与する。
   // （大首領アンノウン0029でコール→破壊→ドロップから別効果で再コールした際に、古いサイズ0を引きずらないため。
@@ -2753,7 +2773,11 @@ async function callSelectedForScript(step, context) {
     addLog(`${context.card.name}の効果で攻撃対象を変更しました。`);
   }
   calledCard.enteredFromZone = entry.source || step.from || null; // 発生元ゾーン記録（enteredFromZoneIn 用。飛雲丸 0056）
-  if (step.resolveOnEnter) {
+  // コールされた＝登場した以上、そのカードの【登場時】と場全体の allyEnter/opponentEnter は必ず放送する
+  // （resolveOnEnter は唯一の放送点＝src/07:710 runAllyEnterTriggers）。第13回メカレビュー: opt-in だったため
+  // データ側で指定を忘れた15箇所（アイスブレイド・ジョーカー/逆天太陽竜 バルドラゴン/ドラグソラール等）で
+  // 登場時誘発が自他とも一切発火しなかった。兄弟の callSelfFromHand/callSelfFromSoul は既に opt-out 形なので統一。
+  if (step.resolveOnEnter !== false) {
     await resolveOnEnter(calledCard, player, null, { byEffect: true, enterCauseCard: context.card });
   }
   return true;
@@ -2873,8 +2897,10 @@ async function opponentMayCallFromHandForScript(step, context) {
   if (opp.field[zone]) {
     dropFieldCardByRule(opp, zone);
   }
+  resetEnteringFieldCardState(calledCard); // 前回場に居た時の一時状態を持ち込まない（第13回メカレビュー）
   opp.field[zone] = calledCard;
   recordImpactMonsterCall(oppOwner, calledCard);
+  recordCardCalledThisTurn(oppOwner, calledCard); // 同名1ターンN枚上限の計上（第13回メカレビュー: 残り経路）
   calledCard.enteredFromZone = "hand";
   await enforceSizeLimit(opp, zone);
   addLog(`${opp.name}は${calledCard.name}を${zoneLabel(zone)}にコールしました。`);
@@ -2932,8 +2958,11 @@ async function callSelfFromHandForScript(step, context) {
   if (player.field[zone]) {
     dropFieldCardByRule(player, zone);
   }
+  resetEnteringFieldCardState(card); // 前回場に居た時の一時状態を持ち込まない（第13回メカレビュー）
   player.field[zone] = card;
   recordImpactMonsterCall(context.owner, card);
+  recordCardCalledThisTurn(context.owner, card); // 同名1ターンN枚上限の計上（第13回メカレビュー: 残り経路）
+  card.enteredFromZone = "hand"; // 手札発コール＝enteredFromZoneIn 用スタンプ（前回登場元の残留を防ぐ）
   card.conditionalSize = null; // 再コール時は前回のサイズ上書き(アンノウン0029等)をリセット
   applyScriptGrantedKeywords(card, step.grantKeywords || []);
   await enforceSizeLimit(player, zone);
@@ -2989,8 +3018,13 @@ async function callSelfFromSoulForScript(step, context) {
     dropFieldCardByRule(player, zone);
   }
   removed.conditionalSize = null; // 再コール時は前回のサイズ上書きをリセット
+  resetEnteringFieldCardState(removed); // 前回場に居た時の一時状態を持ち込まない（第13回メカレビュー）
   player.field[zone] = removed;
   recordImpactMonsterCall(context.owner, removed);
+  recordCardCalledThisTurn(context.owner, removed); // 同名1ターンN枚上限の計上（第13回メカレビュー: 残り経路）
+  // ソウル発コールの登場元スタンプ。以前は未代入で、直前の登場元(例 "drop")が残り
+  // 『ドロップから登場した時』が誤発火していた（第13回メカレビュー #8）。
+  removed.enteredFromZone = "soul";
   applyScriptGrantedKeywords(removed, step.grantKeywords || []);
   await enforceSizeLimit(player, zone);
   addLog(`${removed.name}をソウルから${zoneLabel(zone)}にコールしました。`);
@@ -3220,9 +3254,17 @@ async function callSelectedToEmptyZonesForScript(step, context) {
       addLog(`${entry.card.name}はこのターン、コール制限によりコールできません。`);
       continue;
     }
-    const emptyZones = allowedZones.filter((zone) => fieldZones.includes(zone) && !player.field[zone]);
+    // 同名1ターンN枚上限(callLimitPerTurn)は効果コールも合算する（第11回メカレビュー）。
+    if (isCallCountLimitedThisTurn(entry.owner ?? context.owner, entry.card)) {
+      addLog(`${entry.card.name}はこのターン、これ以上コールできません。`);
+      continue;
+    }
+    // コール先ゾーン制限(センター禁止/cannotCallZones/callZones)に服す＝禁止ゾーンは候補から除外（第11回メカレビュー）。
+    const emptyZones = allowedZones.filter(
+      (zone) => fieldZones.includes(zone) && !player.field[zone] && !isCallZoneBlocked(entry.owner ?? context.owner, entry.card, zone),
+    );
     if (emptyZones.length === 0) {
-      break;
+      continue;
     }
     let zone = emptyZones[0];
     if (step.chooseZones && emptyZones.length > 1) {
@@ -3263,12 +3305,14 @@ async function callSelectedToEmptyZonesForScript(step, context) {
     if (!calledCard) {
       continue;
     }
+    resetEnteringFieldCardState(calledCard); // 前回場に居た時の一時状態を持ち込まない（第13回メカレビュー）
     player.field[zone] = calledCard;
     // 発生元ゾーン記録（enteredFromZoneIn 用＝『ドロップからコールされた/登場した時』誘発。飛雲丸0056/デアデビル等）。
     // callSelectedForScript(:2752)と同じスタンプ。この空きエリアコール経路だけ刻み忘れており、ドロップからの
     // 登場時誘発が全て不発になっていた（コール経路の違いで登場時誘発の可否が変わるのは仕様外）。
     calledCard.enteredFromZone = entry.source || step.from || null;
     recordImpactMonsterCall(entry.owner ?? context.owner, calledCard);
+    recordCardCalledThisTurn(entry.owner ?? context.owner, calledCard); // 同名1ターンN枚上限の計上（第11回メカレビュー）
     // G5(D-EB01/0023): 「そのカードは場から離れるまでサイズ0になり、ファイナル攻撃可」。
     // enforceSizeLimit より前に conditionalSize を付与しないと元サイズでサイズ超過と誤判定される。
     // 未指定時は従来通り null リセット（再コール時に古いサイズ上書きを引きずらない。アンノウン0029等）。
@@ -3286,7 +3330,8 @@ async function callSelectedToEmptyZonesForScript(step, context) {
     applyScriptGrantedKeywords(calledCard, step.grantKeywords || []);
     await enforceSizeLimit(player, zone);
     addLog(`${context.card.name}の効果で${calledCard.name}を${zoneLabel(zone)}にコールしました。`);
-    if (step.resolveOnEnter) {
+    // 登場時誘発は既定で放送する（callSelectedForScript と同基準・第13回メカレビューで opt-in → opt-out へ統一）。
+    if (step.resolveOnEnter !== false) {
       await resolveOnEnter(calledCard, player, null, { byEffect: true, enterCauseCard: context.card });
     }
   }
@@ -3314,6 +3359,15 @@ async function stackCallSelectedForScript(step, context) {
     addLog(`${entry.card.name}はこのターン、コール制限によりコールできません。`);
     return { ok: false, reason: "turn_call_restricted" };
   }
+  // 同名1ターンN枚上限とコール先ゾーン制限(センター禁止/cannotCallZones/callZones)は効果の重ねコールも服す（第11回メカレビュー）。
+  if (isCallCountLimitedThisTurn(entry.owner ?? context.owner, entry.card)) {
+    addLog(`${entry.card.name}はこのターン、これ以上コールできません。`);
+    return { ok: false, reason: "call_count_limited" };
+  }
+  if (isCallZoneBlocked(entry.owner ?? context.owner, entry.card, zone)) {
+    addLog(`${entry.card.name}は${zoneLabel(zone)}にコールできません。`);
+    return { ok: false, reason: "call_zone_blocked" };
+  }
   const player = context.player;
   if (step.payCost) {
     // 選んだカードのコール等コストを支払ってから重ねる（H-EB04/0004: ドロップから重ねコール時のコスト）。
@@ -3337,9 +3391,11 @@ async function stackCallSelectedForScript(step, context) {
   // 発生元ゾーン記録（重ねコールも『ドロップからコールされた時』の対象。callSelectedForScript:2752 と同じスタンプ）。
   calledCard.enteredFromZone = entry.source || step.from || null;
   recordImpactMonsterCall(entry.owner ?? context.owner, calledCard);
+  recordCardCalledThisTurn(entry.owner ?? context.owner, calledCard); // 同名1ターンN枚上限の計上（第11回メカレビュー）
   await enforceSizeLimit(player, zone);
   addLog(`${context.card.name}の効果で${calledCard.name}を${zoneLabel(zone)}に重ねてコールしました。`);
-  if (step.resolveOnEnter) {
+  // 登場時誘発は既定で放送する（callSelectedForScript と同基準・第13回メカレビューで opt-in → opt-out へ統一）。
+  if (step.resolveOnEnter !== false) {
     await resolveOnEnter(calledCard, player, null, { byEffect: true, enterCauseCard: context.card });
   }
   return true;

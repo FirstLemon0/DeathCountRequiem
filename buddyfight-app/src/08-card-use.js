@@ -229,6 +229,10 @@ async function equipCardDirect(player, card, options = {}) {
     player.partnerCalled = true;
     player.life += 1;
     addLog(`${player.name}はバディの${card.name}を装備し、バディギフトでライフを1回復しました。`);
+    // バディギフトの+1も『ライフの回復』＝『君のライフが回復した時』を誘発する（バディコール resolvePendingCall と
+    // 同基準。ペイン・フィールドがバディギフトを回復手段として分類・第12回メカレビュー）。
+    clearWinnerIfNoCurrentLoss();
+    await runFieldEventTriggers("lifeGained", owner);
   }
   // アイテム装備完了を場イベントとして通知（allyEquip/opponentEquip）。相手の装備に反応するカード（影鼬 0087）用。
   await runFieldEventTriggers("equip", owner, card, targetZone, {
@@ -435,10 +439,20 @@ async function castSetSpell(selectedCard) {
   }
   const deckBeforeCost = player.deck.length;
   const lifeBeforeCost = player.life;
-  const payment = await payCardCostWithSelection(player, selectedCard, "cast", selectedCard);
+  // E-XB73(ガッチャ！ X2-SP/0041): 設置『魔法』の【使用コスト】でゲージを払う時も、nextSpellCostMayUseOpponentGauge が
+  // 立っていれば相手ゲージから払える（非設置魔法の useHandAbilityAction:175 と同型・第11回メカレビューで設置経路の
+  // 取りこぼしを是正）。設置IMPACT(type=impactMonster)は『魔法』でないため対象外＝spell 限定。
+  const castCostSteps = cardCostSteps(player, selectedCard, "cast", {}).steps || [];
+  const setSpellUsesGaugeCost = effectiveCardType(selectedCard) === "spell" && castCostSteps.some((step) => step.op === "payGauge" && step.amount > 0);
+  const includeOpponentGauge = Boolean(setSpellUsesGaugeCost && player.nextSpellCostMayUseOpponentGauge);
+  const payment = await payCardCostWithSelection(player, selectedCard, "cast", selectedCard, { includeOpponentGauge });
   if (!payment.ok) {
     addLog(payment.reason);
     return;
+  }
+  if (includeOpponentGauge) {
+    player.nextSpellCostMayUseOpponentGauge = false;
+    player.nextActivatedCostMayUseOpponentGauge = false; // 共有ワンショット（魔法か起動どちらか1回）
   }
   const card = removeSelectedFromHand();
   // 非同期誘発レースで選択カードが手札を離れていたら配置中止（callMonster と同型・fuzzer seed915）。
@@ -770,6 +784,42 @@ function resetLeftFieldCardState(card) {
   restoreFaceDownMonsterPrint(card);
 }
 
+// カードが場に入る（コール/蘇生/再コール/重ねコール等）時に、前回場に居た時の per-instance 一時状態を落とす。
+// resetLeftFieldCardState（離場時クリーンアップ）は手札戻し系にしか配線されておらず、破壊/ルールドロップ/script移動で
+// 場を離れたカードは used(レスト)・ターンバフ・多回攻撃履歴・攻撃/スタンド不可・破壊防止カウンタを保持したままドロップに
+// 残っていた。そのままドロップから蘇生/再コールすると「レスト状態で登場して攻撃できない」等の誤挙動になる
+// （第13回メカレビューで実測: destroy/dropByRule/detach の3経路とも used:true が残り canDeclareAttack=false）。
+// 破壊時にリセットすると破壊誘発が読む値（打撃力・キーワード）を変えてしまうため、登場側で落とす
+// （各コール経路が既に conditionalSize を「再コール時は前回付与をリセット」している設計意図と同じ・その拡張）。
+function resetEnteringFieldCardState(card) {
+  if (!card) {
+    return;
+  }
+  card.used = false;
+  card.battlePowerBonus = 0;
+  card.battleDefenseBonus = 0;
+  card.battleCriticalBonus = 0;
+  card.turnPowerBonus = 0;
+  card.turnDefenseBonus = 0;
+  card.turnCriticalBonus = 0;
+  card.temporaryKeywords = [];
+  card.turnKeywords = [];
+  card.turnSuppressedKeywords = [];
+  card.grantedTempAbilities = [];
+  card.grantedTempAttackResistances = [];
+  card.turnWorlds = [];
+  card.grantedTempDestroyImmunities = [];
+  card.counterattack = false;
+  card.doubleAttackUsed = false;
+  card.tripleAttackStandCount = 0;
+  card.cannotAttackThisTurn = false;
+  card.cannotStandThisTurn = false;
+  card.preventNextDestroyCount = 0;
+  card.preventNextDestroyEffects = [];
+  card.destroyReaction = null;
+  card.scheduledStatBonus = [];
+}
+
 function returnFieldTargetToHand(target, sourceName = "効果", details = {}) {
   const ownerPlayer = state.players[target.owner];
   const returned = ownerPlayer?.field[target.zone];
@@ -791,6 +841,7 @@ function returnFieldTargetToHand(target, sourceName = "効果", details = {}) {
   if (tryLeaveFieldReplacementSync(returned, target.owner)) {
     return null;
   }
+  const lifeLinkNullifiedAtLeave = isAbilitiesNullified(returned); // 離場直前に捕捉（能力無効化中はライフリンク無し）
   ownerPlayer.drop.push(...(returned.soul || []));
   returned.soul = [];
   // ホストが手札へ戻る＝ソウル札がドロップへ落ちる。破壊経路(destroyFieldCard:505)と同様、裏向き奇襲札の公開
@@ -802,7 +853,7 @@ function returnFieldTargetToHand(target, sourceName = "効果", details = {}) {
   }
   resetLeftFieldCardState(returned);
   ownerPlayer.hand.push(returned);
-  applyLifeLink(returned, target.owner);
+  applyLifeLink(returned, target.owner, { nullifiedAtLeave: lifeLinkNullifiedAtLeave });
   // 「場から離れた時」誘発は手札戻しでも発火（ライフリンクと同一離場サイト。詳細は detachFieldCardForMove のコメント）。
   queueLeaveFieldTriggers(returned, target.owner, target.zone);
   addLog(`${sourceName}で${returned.name}を手札に戻しました。`);

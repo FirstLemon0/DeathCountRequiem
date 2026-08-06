@@ -830,15 +830,23 @@ function canPayStructuredCost(player, costSteps = [], context = {}) {
     }
     if (step.op === "destroyOwnMonster") {
       const excludeId = step.excludeSource ? context.sourceCard?.instanceId : null;
+      // 破壊耐性/離場防止で実際には破壊できないカードはコスト候補から除外する（第13回メカレビュー:
+      // 耐性持ちしか居ない時に「支払えた」ことにして効果だけ通るコスト踏み倒しを防ぐ）。
       const candidates = ownFieldCostCandidates(player, step.includeAllTypes ? (step.filter || {}) : { cardType: "monster", ...(step.filter || {}) }).filter(
-        (candidate) => candidate.card.instanceId !== excludeId,
+        (candidate) => candidate.card.instanceId !== excludeId && !costDestroyBlocked(candidate.card, candidate.owner),
       );
       if (candidates.length < amount) {
         return { ok: false, reason: "コストで破壊する自分のモンスターがいません。" };
       }
     }
-    if (step.op === "destroySource" && !findFieldCardSlot(context.sourceCard)) {
-      return { ok: false, reason: "コストで破壊するこのカードが場にありません。" };
+    if (step.op === "destroySource") {
+      const slot = findFieldCardSlot(context.sourceCard);
+      if (!slot) {
+        return { ok: false, reason: "コストで破壊するこのカードが場にありません。" };
+      }
+      if (costDestroyBlocked(context.sourceCard, slot.owner)) {
+        return { ok: false, reason: "コストでこのカードを破壊できません。" };
+      }
     }
     // X3(D-BT01): 発生源カードをレストするコスト（0037/0108「このカードをレストしてよい」）。
     if (step.op === "restSource") {
@@ -912,6 +920,9 @@ function returnFieldCardToHandCost(player, zone) {
   }
   player.drop.push(...(card.soul || []));
   card.soul = [];
+  // ホスト離場でソウル札がドロップへ＝裏向き奇襲札の公開・selfDroppedFromSoul(ヴィーガー等)を発火する
+  // （destroyFieldCard:511 等と同基準・冪等/opt-in。第12回メカレビュー: コスト経路の取りこぼしを是正）。
+  reconcileFaceDownSoulDrops();
   player.field[zone] = null;
   resetLeftFieldCardState(card);
   player.hand.push(card);
@@ -1671,7 +1682,8 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     const candidates = ownFieldCostCandidates(player, step.includeAllTypes ? (step.filter || {}) : { cardType: "monster", ...(step.filter || {}) }).filter(
       (candidate) =>
         candidate.card.instanceId !== excludeId &&
-        !reservedCostZones.has(`${candidate.owner}:${candidate.zone}`),
+        !reservedCostZones.has(`${candidate.owner}:${candidate.zone}`) &&
+        !costDestroyBlocked(candidate.card, candidate.owner), // 破壊耐性で払えないカードは選ばせない（canPay と同基準）
     );
     const selected = await chooseCardEntries(candidates, {
       title: `${context.sourceCard?.name || "コスト"}で破壊する自分のモンスター`,
@@ -2244,9 +2256,16 @@ function moveFieldCardsToSoul(player, card, filter = {}) {
   card.soul ||= [];
   const moved = [];
   const movedZones = [];
+  const movedNullified = []; // 離場直前の能力無効化状態（ライフリンク剥奪の判定用・第12回メカレビュー）
   zones.forEach((zone) => {
     const fieldCard = player.field[zone];
     if (fieldCard && fieldCard.instanceId !== card.instanceId && matchesCardFilter(fieldCard, filter)) {
+      movedNullified.push(isAbilitiesNullified(fieldCard));
+      // 保存則: ソウルへ移る場札自身のソウルはドロップへ解放する（ソウル札は自分のソウルを持てない＝
+      // redirectTo:"sourceSoul" src/11:707 と同基準。入れ子のまま残すとカードがどのゾーンからも参照できなくなる）。
+      player.drop.push(...(fieldCard.soul || []));
+      fieldCard.soul = [];
+      reconcileFaceDownSoulDrops();
       player.field[zone] = null;
       moved.push(fieldCard);
       movedZones.push(zone);
@@ -2258,7 +2277,7 @@ function moveFieldCardsToSoul(player, card, filter = {}) {
     // ソウルは場に含まれない）。detachFieldCardForMove を通す script move 経路(14:1108)は既に両方発火済みだが、
     // この関数は field を直接 null にして funnel へ渡す独自経路のため漏れていた。移動した各 field カードで1回ずつ発火する。
     moved.forEach((movedCard, index) => {
-      applyLifeLink(movedCard, state.players.indexOf(player));
+      applyLifeLink(movedCard, state.players.indexOf(player), { nullifiedAtLeave: movedNullified[index] });
       queueLeaveFieldTriggers(movedCard, state.players.indexOf(player), movedZones[index]);
     });
     addLog(`${moved.map((c) => c.name).join("、")}を${card.name}のソウルに入れました。`);
@@ -2268,17 +2287,35 @@ function moveFieldCardsToSoul(player, card, filter = {}) {
 // 選択された自分の場のカード（entries: {zone} を含む）を発生源のソウルへ入れる（putSelectedOwnFieldCardsToSoul用）。
 function moveSelectedFieldCardsToSoul(player, sourceCard, entries = []) {
   sourceCard.soul ||= [];
+  const owner = state.players.indexOf(player);
   const moved = [];
+  const movedZones = [];
+  const movedNullified = [];
   entries.forEach(({ zone }) => {
     const fieldCard = player.field[zone];
     if (fieldCard && fieldCard.instanceId !== sourceCard.instanceId) {
+      movedNullified.push(isAbilitiesNullified(fieldCard)); // 離場直前に捕捉（能力無効化中はライフリンク無し）
+      // 保存則: 場のカードが別カードのソウルへ入る時、そのカード自身のソウルはドロップへ解放する
+      // （ソウル札は自分のソウルを持てない＝applyDestroyReplacement redirectTo:"sourceSoul" src/11:707 と同基準。
+      //  第13回メカレビュー: ここだけ入れ子のまま残り、ホスト破壊後もドロップ配列内に隠れてどのゾーンからも
+      //  参照できないカードが生じていた＝カードがゲームから消える保存則違反）。
+      player.drop.push(...(fieldCard.soul || []));
+      fieldCard.soul = [];
+      reconcileFaceDownSoulDrops(); // ソウル札の公開・selfDroppedFromSoul（他の離場経路と同基準）
       player.field[zone] = null;
       moved.push(fieldCard);
+      movedZones.push(zone);
     }
   });
   if (moved.length > 0) {
-    sourceCard.soul.push(...moved);
-    queueSoulCardAddedTriggers(sourceCard, state.players.indexOf(player), moved.length, moved[0]); // E-XB24
+    // field→soul は『場を離れる』＝ライフリンク＆「場から離れた時」誘発が発火する（moveFieldCardsToSoul:2260 と
+    // 同基準。第13回メカレビュー: このコスト経路だけ両方を鳴らしていなかった）。
+    moved.forEach((movedCard, index) => {
+      applyLifeLink(movedCard, owner, { nullifiedAtLeave: movedNullified[index] });
+      queueLeaveFieldTriggers(movedCard, owner, movedZones[index]);
+    });
+    // ソウル加入は共通funnelへ（__soulHost スタンプ・enteredSoul・ソウル加入ブロードキャストを兄弟経路と統一）。
+    putCardsToSoulWithTrigger(sourceCard, owner, moved, "field");
     addLog(`${moved.map((card) => card.name).join("、")}を${sourceCard.name}のソウルに入れました。`);
   }
   return moved;
@@ -2324,23 +2361,32 @@ function lookTopSelectToSoulRestToDrop(player, sourceCard, count = 1, amount = 1
   }
 }
 
-function putFieldCardToGauge(player, zone) {
+function putFieldCardToGauge(player, zone, options = {}) {
   const card = player.field[zone];
   if (!card) {
     return null;
   }
+  const lifeLinkNullifiedAtLeave = isAbilitiesNullified(card); // 離場直前に捕捉（能力無効化中はライフリンク無し）
   player.drop.push(...(card.soul || []));
   card.soul = [];
+  reconcileFaceDownSoulDrops(); // ソウル札の公開・selfDroppedFromSoul（第12回メカレビュー: この経路の取りこぼしを是正）
   player.field[zone] = null;
   if (zone === "item" && player.arrivalCardId === card.instanceId) {
     player.arrivalCardId = null;
   }
-  applyLifeLink(card, state.players.indexOf(player));
+  applyLifeLink(card, state.players.indexOf(player), { nullifiedAtLeave: lifeLinkNullifiedAtLeave });
   // 「場から離れた時」誘発はゲージ置きでも発火（ライフリンクと同一離場サイト）。
   queueLeaveFieldTriggers(card, state.players.indexOf(player), zone);
   player.gauge.push(card);
-  noteGaugePlaced(state.players.indexOf(player), 1); // E-XB12: コストで場札をゲージへ（この経路は queueGaugePlacedTriggers を通らない）
-  addLog(`${card.name}をコストでゲージに置きました。`);
+  if (options.byEffect) {
+    // 効果でゲージへ置く経路(putTargetToGauge)は『ゲージにカードが置かれた時』(メギトス opponentGaugePlaced)を
+    // 発火する（占い→ゲージ src/15 と同基準・第11回メカレビュー）。queueGaugePlacedTriggers が noteGaugePlaced を
+    // 1回だけ内部で行う=二重計上なし。ログは呼び出し側(putTargetToGauge)が『の効果で〜』を出すため、ここでは出さない。
+    queueGaugePlacedTriggers(state.players.indexOf(player), [card]);
+  } else {
+    noteGaugePlaced(state.players.indexOf(player), 1); // E-XB12: コストで場札をゲージへ（この経路は queueGaugePlacedTriggers を通らない=既知近似）
+    addLog(`${card.name}をコストでゲージに置きました。`);
+  }
   return card;
 }
 
@@ -2353,13 +2399,15 @@ function putFieldCardToDeckBottom(player, zone) {
   if (!card) {
     return null;
   }
+  const lifeLinkNullifiedAtLeave = isAbilitiesNullified(card); // 離場直前に捕捉（能力無効化中はライフリンク無し）
   player.drop.push(...(card.soul || []));
   card.soul = [];
+  reconcileFaceDownSoulDrops(); // ソウル札の公開・selfDroppedFromSoul（第12回メカレビュー: この経路の取りこぼしを是正）
   player.field[zone] = null;
   if (zone === "item" && player.arrivalCardId === card.instanceId) {
     player.arrivalCardId = null;
   }
-  applyLifeLink(card, state.players.indexOf(player));
+  applyLifeLink(card, state.players.indexOf(player), { nullifiedAtLeave: lifeLinkNullifiedAtLeave });
   // 「場から離れた時」誘発はデッキ下戻しでも発火（ライフリンクと同一離場サイト）。
   queueLeaveFieldTriggers(card, state.players.indexOf(player), zone);
   player.deck.unshift(card);
