@@ -1380,7 +1380,12 @@
           ],
           "effects": [
             {
-              "op": "preventOpponentCounterThisTurn"
+              "op": "preventOpponentCounterThisTurn",
+              "conditions": [
+                {
+                  "op": "attackingAlone"
+                }
+              ]
             }
           ]
         },
@@ -1413,7 +1418,7 @@
           ]
         }
       ],
-      "_note": "①『角王』=card級 deckAnyFlag:true（X18/D-BT01型の角王アイコン内部表現）。②【コールコスト】ゲージ1+ライフ1=costs.call:[payGauge(1),payLife(1)]。③『このカードが１枚で攻撃しているバトル中、相手は【対抗】を使えない』=bf-x-cp01-0001武装騎神エネルゲイアの同一文言部分と完全同型（kind:triggered,event:attack,conditions:[attackingAlone],effects:[preventOpponentCounterThisTurn]。『バトル中』→『そのターン中』は当該precedentの_note記載通りDB多数の既存忠実近似）。④『【起動】ゲージ１を払ってよい。払ったら、そのターン中、このカードの攻撃力＋2000し、『貫通』を得る』=bf-cr-0004ブルードバグナグ・ドラゴン型（kind:activated,optional:true,cost:[payGauge(1)],effects内でmodifyStats+grantKeyword）に、bt03-0036勇者ドラムのgrantKeyword{target:$self,keyword:penetrate,duration:turn}を合成。攻撃力=power（打撃力=criticalとは別語のためmodifyStatsはpowerキー使用）。grep自己検査: deckAnyFlag(src/03-setup.js:143,src/17-targeting.js:320-321)/payGauge/payLife(src/04-cost-resource.js)/attackingAlone(src/13-abilities-core.js:857)/preventOpponentCounterThisTurn(src/15-ability-effects.js:2075)/modifyStats(src/15:1613)/grantKeyword+duration:turn(src/15:1701-1712) 全実在確認。"
+      "_note": "①『角王』=card級 deckAnyFlag:true（X18/D-BT01型の角王アイコン内部表現）。②【コールコスト】ゲージ1+ライフ1=costs.call:[payGauge(1),payLife(1)]。③『このカードが１枚で攻撃しているバトル中、相手は【対抗】を使えない』=bf-x-cp01-0001武装騎神エネルゲイアの同一文言部分と完全同型（kind:triggered,event:attack,conditions:[attackingAlone],effects:[preventOpponentCounterThisTurn{conditions:[attackingAlone]}]。第9回メカレビュー是正で効果側にもconditions:[attackingAlone]を付与＝ロックのwhileとなりバトル毎に再評価する D-EB03/0004 ガガルガリオスの per-battle パターンに一致。旧実装は効果側conditions空でwhile=[]→連携攻撃バトルまで過剰ブロックしていた。『そのバトル中』はそのバトル限定が忠実）。④『【起動】ゲージ１を払ってよい。払ったら、そのターン中、このカードの攻撃力＋2000し、『貫通』を得る』=bf-cr-0004ブルードバグナグ・ドラゴン型（kind:activated,optional:true,cost:[payGauge(1)],effects内でmodifyStats+grantKeyword）に、bt03-0036勇者ドラムのgrantKeyword{target:$self,keyword:penetrate,duration:turn}を合成。攻撃力=power（打撃力=criticalとは別語のためmodifyStatsはpowerキー使用）。grep自己検査: deckAnyFlag(src/03-setup.js:143,src/17-targeting.js:320-321)/payGauge/payLife(src/04-cost-resource.js)/attackingAlone(src/13-abilities-core.js:857)/preventOpponentCounterThisTurn(src/15-ability-effects.js:2075)/modifyStats(src/15:1613)/grantKeyword+duration:turn(src/15:1701-1712) 全実在確認。"
     },
     {
       "id": "bf-x-ss03-0025",

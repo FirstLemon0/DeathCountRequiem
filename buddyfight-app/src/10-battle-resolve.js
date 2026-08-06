@@ -33,6 +33,10 @@ async function resolvePendingAttack() {
   const target = getPendingTarget();
   if (!target) {
     addLog("攻撃対象が場を離れたため、攻撃は終了しました。");
+    // 対象が戦闘前に離場しても、多回攻撃(2/3/4/6回)の攻撃者は残りの攻撃のため再スタンドする（無効化経路
+    // nullifyPendingAttack:771 と同型。攻撃宣言でレスト＝攻撃は成立しており追加攻撃の権利は失われない。
+    // doubleAttackUsed/tripleAttackStandCount の既存ガードで規定回数を超えてスタンドしない）。
+    attackers.forEach((attacker) => standAttackerForMultiAttack(attacker.card));
     clearPendingAttack();
     render();
     return;
@@ -67,6 +71,8 @@ async function resolveMultiMonsterAttack(pending, attackers, attackerNames) {
   if (targets.length === 0 && !pending.attackAllIncludesFighter) {
     // 全体攻撃(相手に攻撃を含む)は、対象モンスターが全て居なくなっても本体への攻撃は続行する。
     addLog("攻撃対象が場を離れたため、攻撃は終了しました。");
+    // 対象が全て離場しても多回攻撃の攻撃者は再スタンドする（単体対象経路と同型・nullify:771 と対称）。
+    attackers.forEach((attacker) => standAttackerForMultiAttack(attacker.card));
     clearPendingAttack();
     render();
     return;
@@ -120,11 +126,12 @@ async function resolveMultiMonsterAttack(pending, attackers, attackerNames) {
     // 「相手のモンスター全てと相手に攻撃する」の本体打撃（アジ・ダハーカ）。本体へ合計クリティカルぶんのダメージ。
     // 単体ファイター攻撃(resolveFighterAttack)と同じ算出（連携キャップ/攻撃キャップ/軽減耐性/減らないダメージ）。
     let damage = attackers.reduce((total, attacker) => total + visibleCritical(attacker.card), 0);
-    if (attackers.length > 1) {
+    // damageCannotBeReduced は被ダメ上限も貫通する（resolveFighterAttack と同基準・第10回メカレビュー是正）。
+    if (attackers.length > 1 && !pending.damageCannotBeReduced) {
       const cap = linkAttackDamageCapFor(pending.defender);
       if (cap !== null && damage > cap) damage = cap;
     }
-    const attackCap = attackDamageCapFor(pending.defender);
+    const attackCap = pending.damageCannotBeReduced ? null : attackDamageCapFor(pending.defender);
     if (attackCap !== null && damage > attackCap) damage = attackCap;
     const damageOptions = { log: false, byAttack: true };
     if (pending.damageCannotBeReduced) damageOptions.ignorePrevention = true;
@@ -399,13 +406,16 @@ async function resolveFighterAttack(pending, attackers, attackerNames) {
   const defender = state.players[pending.defender];
   const defenseItemInfo = getPendingBattleTargetInfo(pending);
   let damage = attackers.reduce((total, attacker) => total + visibleCritical(attacker.card), 0);
-  if (attackers.length > 1) {
+  // damageCannotBeReduced(『そのダメージは減らない』ドラム)は被ダメ上限(attackDamageReceivedTo=ディジエム『減らす』)も
+  // 貫通する。以前は cap を funnel(ignorePrevention)の前で確定させ cap だけ貫通できなかった(第10回メカレビュー是正・
+  // 継続 damageReceivedReduction を貫通するのと同基準＝『減らない』は『減らす』全般に優先)。
+  if (attackers.length > 1 && !pending.damageCannotBeReduced) {
     const cap = linkAttackDamageCapFor(pending.defender);
     if (cap !== null && damage > cap) {
       damage = cap;
     }
   }
-  const attackCap = attackDamageCapFor(pending.defender);
+  const attackCap = pending.damageCannotBeReduced ? null : attackDamageCapFor(pending.defender);
   if (attackCap !== null && damage > attackCap) {
     damage = attackCap;
   }
@@ -830,13 +840,14 @@ async function resolvePenetrateDamage(attackers, pending) {
   // ジャックナイフ ゴルドリッター(linkAttackDamageReceivedTo)の被ダメージ上限の対象。resolveFighterAttack /
   // resolveMultiMonsterAttack の本体打撃は両キャップを適用しているのに、貫通だけ素通りしていた（ignorePrevention と
   // reduce耐性は下で適用済み＝貫通を軽減可能な攻撃ダメージとしてモデル化しているのと整合させる）。単体本体攻撃と同じ順で適用する。
-  if (attackers.length > 1) {
+  // damageCannotBeReduced は貫通ダメージの被ダメ上限も貫通する（本体打撃と同基準・第10回メカレビュー是正）。
+  if (attackers.length > 1 && !pending.damageCannotBeReduced) {
     const linkCap = linkAttackDamageCapFor(pending.defender);
     if (linkCap !== null && penetrateDamage > linkCap) {
       penetrateDamage = linkCap;
     }
   }
-  const penetrateAttackCap = attackDamageCapFor(pending.defender);
+  const penetrateAttackCap = pending.damageCannotBeReduced ? null : attackDamageCapFor(pending.defender);
   if (penetrateAttackCap !== null && penetrateDamage > penetrateAttackCap) {
     penetrateDamage = penetrateAttackCap;
   }
@@ -1059,8 +1070,10 @@ function handleDestroyedDuringPending(target) {
   const destroyedTarget =
     target.owner === pending.targetOwner && target.zone === pending.targetZone;
   if (destroyedTarget) {
-    // 攻撃対象が場を離れた → 攻撃終了。
+    // 攻撃対象が場を離れた → 攻撃終了。多回攻撃の攻撃者(生存分)は残りの攻撃のため再スタンドする
+    // （対抗バウンス等でここに到達・nullify:771 と対称。resolvePendingAttack の対象消失分岐と同型）。
     addLog("攻撃に関わるカードが場を離れたため、攻撃は終了しました。");
+    getPendingAttackers().forEach((attacker) => standAttackerForMultiAttack(attacker.card));
     clearPendingAttack();
     return;
   }

@@ -245,15 +245,15 @@ function hasKeyword(card, keyword) {
   ) {
     return false;
   }
-  if (keyword === "counterattack" && card.counterattack) {
-    return true;
-  }
   const aliases = keywordAliases(keyword);
   const slot = findFieldCardSlot(card);
   // 能力無効化(凍てつく星辰)中は、このカード自身のキーワード/能力由来のキーワードは無効。
   // 他カードからの付与(continuous/soulContinuous)は付与元の無効化判定(continuousEffectApplies側)に委ねる。
   const ownNullified = isAbilitiesNullified(card);
   return (
+    // 付与された『反撃』(card.counterattack=無期間grantKeyword)も、印字keyword/turnKeywordと同じく能力無効化で消える。
+    // 以前は早期returnで ownNullified ゲート前に判定し、無効化を貫通していた(第10回メカレビュー是正)。
+    (!ownNullified && keyword === "counterattack" && Boolean(card.counterattack)) ||
     (!ownNullified && (card.keywords || []).some((candidate) => aliases.includes(candidate))) ||
     (!ownNullified && (card.temporaryKeywords || []).some((candidate) => aliases.includes(candidate))) ||
     (!ownNullified && (card.turnKeywords || []).some((candidate) => aliases.includes(candidate))) ||

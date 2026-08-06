@@ -154,6 +154,12 @@ function targetMatchesSpec(target, targetSpec, specOwner, context = {}) {
     return false;
   }
   if (targetSpec.type === "fieldCard") {
+    // 単体対象の target 直下 zones（『相手のセンターのモンスター1枚』メラシエル 等）を honor する。
+    // 以前は collectFieldTargets(全体対象)だけが zones を見て、単体対象の候補算出/再検証は zones を黙殺し
+    // 左右のモンスターまで過剰許容していた（第7回レビュー・target直下 zone 単数の是正の複数形残余）。
+    if (Array.isArray(targetSpec.zones) && !targetSpec.zones.includes(target.zone)) {
+      return false;
+    }
     if (targetSpec.controller === "self" && target.owner !== specOwner) {
       return false;
     }
@@ -209,6 +215,10 @@ function targetCandidatesFromSpecForOwner(targetSpec, specOwner, context = {}) {
   }
   if (targetSpec.type === "fieldCard") {
     return allFieldTargets((card, owner, zone) => {
+      // target 直下 zones を honor（collectFieldTargets と同ロジック。単体対象の zones 黙殺による過剰一致を是正）。
+      if (Array.isArray(targetSpec.zones) && !targetSpec.zones.includes(zone)) {
+        return false;
+      }
       if (targetSpec.controller === "self" && owner !== specOwner) {
         return false;
       }
@@ -320,10 +330,11 @@ function passesStatThreshold(card, statThreshold, specOwner, context = {}) {
 }
 
 function matchesTargetFilter(card, owner, zone, filter = {}) {
-  if (!matchesCardFilter(card, filter)) {
-    return false;
-  }
-  if (filter.buddy && card.name !== state.players[owner]?.buddy?.name) {
+  // buddy 判定も matchesCardFilter に委譲する（owner を渡すと場外カードでもフォールバックで所有者を解決）。
+  // 従来ここで card.name のみの冗長な filter.buddy 再チェックを行い、matchesCardFilter が
+  // additionalNames/turnTreatAsBuddy を見て true と判定したものを base名不一致で false に潰していた
+  // （第8回メカレビュー確定バグ: デュエルズィーガー"SD" 等の別名バディ／バディ扱い付与モンスターを取りこぼす）。
+  if (!matchesCardFilter(card, filter, { owner })) {
     return false;
   }
   if (filter.zone && zone !== filter.zone) {

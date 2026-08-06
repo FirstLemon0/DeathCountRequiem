@@ -98,8 +98,21 @@ function getPendingBattleTargetInfo(pending = state.pendingAttack) {
     return card ? { owner: pending.targetOwner, zone: pending.targetZone, card } : null;
   }
   if (pending.targetType === "fighter") {
-    const card = state.players[pending.defender]?.field.item;
-    return isDefenseItem(card) ? { owner: pending.defender, zone: "item", card } : null;
+    // 防御力を持つ装備アイテムは主枠(item)だけでなく追加枠(item2/3/4)にあってもファイターへの攻撃を肩代わりする
+    // （ver2.05 に装備の主枠/追加枠の区別は無い）。以前は field.item(主枠)のみ参照し、追加装備(栄光の剣
+    // オーダーエッジ→栄光の盾 オーダーガード等)の防御アイテムが item2 にあると防御判定に載らず素通しで被弾して
+    // いた。全アイテム枠を走査し、防御力が最大の防御アイテムを返す（複数防御アイテム装備＝降魔王剣 レヴァンティン
+    // 経由。防御は受動的でスロット順に依存すべきでない＝エンジンの複数アイテム閾値 Math.max 規約 src/15:3544 と整合。
+    // 以前は「最初に見つけた防御アイテム」を返しスロット順で被ダメが変わっていた・第9回メカレビュー是正）。
+    const defender = state.players[pending.defender];
+    let best = null;
+    for (const zone of itemZones) {
+      const card = defender?.field?.[zone];
+      if (isDefenseItem(card) && (best === null || visibleDefense(card) > visibleDefense(best.card))) {
+        best = { owner: pending.defender, zone, card };
+      }
+    }
+    return best;
   }
   if (pending.targetType === "item") {
     const card = state.players[pending.targetOwner]?.field[pending.targetZone];
@@ -416,6 +429,9 @@ async function destroyFieldCard(owner, zone, options = {}) {
     if (replacement?.gainLife && !isLifeGainByEffectPrevented(replacement.owner ?? owner)) {
       state.players[replacement.owner ?? owner].life += replacement.gainLife;
       addLog(`${replacement.source || card.name}の効果で${state.players[replacement.owner ?? owner].name}のライフを${replacement.gainLife}回復しました。`);
+      // F5第5経路(第10回メカレビュー): 同一解決内『致死→preventNextDestroy回復』でライフが正へ戻るなら、ライフ0由来の
+      // 暫定敗北(winReason='life')を巻き戻す（gainLife op src/15:691 等と一貫。呼ばないと winner=相手のまま誤決着）。
+      clearWinnerIfNoCurrentLoss();
     }
     // E2(D-BT02/0110 我らは不死なり): mode:"returnToHand" は破壊を「場に残す」ではなく「手札へ戻す」に
     // 置換する。正規の単体手札戻し経路(returnFieldTargetToHand)へ委譲し、F5 の複製バグを再発させない
@@ -494,11 +510,15 @@ async function destroyFieldCard(owner, zone, options = {}) {
     // 以前はホスト破壊経路が reconcile を呼ばず、並行トリガーが無いと selfDroppedFromSoul が黙って落ちていた。
     reconcileFaceDownSoulDrops();
   }
+  // ライフリンクは能力無効化(凍てつく星辰/諸星きらり等)で消える（ソウルガード/反撃と同じキーワード由来能力＝
+  // hasKeyword の ownNullified で無効化される類と対称）。ただし applyLifeLink(下)の時点では card は既に場外
+  // （直下で field[zone]=null）で isAbilitiesNullified=false になるため、場を離れる直前のここで捕捉しておく。
+  const lifeLinkNullifiedAtDestroy = isAbilitiesNullified(card);
   player.drop.push(card);
   player.field[zone] = null;
-  // r3 L4(S-UB-C03/0066): 裏向きトークン化による印字値の恒久上書きを、ドロップへ移った時点で復元する
-  // （復元しないとドロップで「あの子」のまま名前/rulesが残ってしまう）。
-  restoreFaceDownMonsterPrint(card);
+  // r3 L4(S-UB-C03/0066): 裏向きトークン化による印字値の恒久上書きの復元(restoreFaceDownMonsterPrint)は、
+  // 破壊記録(destroyedCardsThisTurn/destroyedEventWindow の sizeAtDestroy)と applyLifeLink がトークンの
+  // 場での状態(サイズ0・キーワード無し=lifelink無し)を見られるよう、この関数の末尾まで遅延する（第10回メカレビュー）。
   if (!options.suppressDestroyedTriggers) {
     // 破壊で場からドロップへ（movedToDrop 誘発）。「能力全てを無効化してから破壊」(ラグナロク型)では発火しない。
     queueMovedToDropTriggers(card, owner, "field");
@@ -528,7 +548,7 @@ async function destroyFieldCard(owner, zone, options = {}) {
   if (zone === "item" && player.arrivalCardId === card.instanceId) {
     player.arrivalCardId = null;
   }
-  if (!options.suppressLifeLink) {
+  if (!options.suppressLifeLink && !lifeLinkNullifiedAtDestroy) {
     applyLifeLink(card, owner);
   }
   recordDestroyedEventWindow(card, owner, options.cause);
@@ -552,6 +572,9 @@ async function destroyFieldCard(owner, zone, options = {}) {
   // 非モンスター(呪文/アイテム)の『味方が破壊された時』反応が正しく発火する（近似: 他モンスターの同種反応も発火し得る）。
   queueAllyDestroyedTriggers(card, owner, zone, options.cause);
   queueDestroyReactionTriggers(card);
+  // 裏向きトークン(《あの子》/晴明/ビリ・キナータ)はドロップ到達後に実カードへ復元する。破壊記録・applyLifeLink・
+  // 破壊時誘発はトークンの場での状態(サイズ0/キーワード無し)で処理済み。同期の後続処理より後・return 直前で復元する。
+  restoreFaceDownMonsterPrint(card);
   return card;
 }
 
@@ -902,8 +925,13 @@ async function applyDestroyReplacement(card, owner, options = {}) {
     if (slot) {
       player.drop.push(...(card.soul || []));
       card.soul = [];
+      reconcileFaceDownSoulDrops(); // ソウル札の selfDroppedFromSoul/奇襲公開（他のソウル→ドロップ経路と同基準）
       player.field[slot.zone] = null;
       player.gauge.push(card);
+      // 場→ゲージ＝『場を離れた』＝「場から離れた時」誘発(不可視の断罪銃 等)を発火する（redirectTo:sourceSoul:710 と
+      // 同型・非破壊離場。applyDestroyReplacement が true を返すと destroyFieldCard:408 が null 返しで通常離場サイト
+      // :558 に到達しないため二重発火なし・第9回メカレビュー是正）。
+      queueLeaveFieldTriggers(card, owner, slot.zone);
       queueGaugePlacedTriggers(owner, [card]); // 相手のゲージにカードが置かれた時（0020）
     }
     addLog(`${card.name}は破壊置換によりゲージに置かれました。`);
@@ -1660,6 +1688,9 @@ function dropFieldCardByRule(player, zone) {
   // 破壊＋手札戻しのみカバーする（意図的近似・D-BT01実装メモ参照）。
   player.drop.push(...(card.soul || []));
   card.soul = [];
+  // ルール処理で場からドロップ＝ソウル札もドロップへ落ちる。破壊経路(destroyFieldCard:505)と同様、裏向き奇襲札の
+  // 公開・selfDroppedFromSoul(ヴィーガー等)・奇襲コール権を発火する（冪等・__soulHost/faceDown 札のみ反応）。
+  reconcileFaceDownSoulDrops();
   player.drop.push(card);
   player.field[zone] = null;
   // r3 L4(S-UB-C03/0066): destroyFieldCardと同様、裏向きトークンの印字値をドロップ到達時に復元する。

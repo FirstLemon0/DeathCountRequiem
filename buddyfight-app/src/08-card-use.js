@@ -793,6 +793,9 @@ function returnFieldTargetToHand(target, sourceName = "効果", details = {}) {
   }
   ownerPlayer.drop.push(...(returned.soul || []));
   returned.soul = [];
+  // ホストが手札へ戻る＝ソウル札がドロップへ落ちる。破壊経路(destroyFieldCard:505)と同様、裏向き奇襲札の公開
+  // (faceDown解除)・selfDroppedFromSoul(ヴィーガー等)・奇襲コール権を発火する（冪等・__soulHost/faceDown 札のみ反応）。
+  reconcileFaceDownSoulDrops();
   ownerPlayer.field[target.zone] = null;
   if (target.zone === "item" && ownerPlayer.arrivalCardId === returned.instanceId) {
     ownerPlayer.arrivalCardId = null;

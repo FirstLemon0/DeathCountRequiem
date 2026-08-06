@@ -7030,7 +7030,7 @@
       "keywords": [
         "set"
       ],
-      "cannotBeNullified": true,
+      "nullifyImmune": true,
       "castCost": {
         "life": 3
       },
@@ -7078,7 +7078,7 @@
           ]
         }
       ],
-      "_note": "勝利系カード（X-BT02/0110）。既存 winGame 前例（bf-h-eb03-0030恐怖の世界支配）を踏襲。『君の場に《黒竜》のモンスターがいるなら使える』=useConditions:[cardCount{pile:field,filter:{cardType:monster,attribute:黒竜},cmp:gte,amount:1}]。【使用コスト】ライフ３=costs.cast:[payLife{amount:3}]+castCost:{life:3}（FIX7二重宣言）。『設置』=keywords:[set]（uniqueSet指定なし＝原文に1枚制限の明記が無いため付けない）。『場のこのカードの能力は無効化されない。』=cannotBeNullified:true（card級・X-BT01/0028型）。『相手のターン終了時、君のデッキの上から１枚をこのカードのソウルに入れる。その後、このカードのソウルが３枚以上なら、場のこのカードをドロップゾーンに置き、君はファイトに勝利する。』は単一ability(event:turnEnd+conditions:[turnOwnerIsOpponent]、bf-h-bt03-0047型のrunPhaseStartTriggers経由)内の3効果: putTopDeckToSoul{amount:1}(無条件)→winGame(conditions:[sourceSoulCountGte:3])→dropSelf(conditions:[sourceSoulCountGte:3])。原文の記述順は『ドロップに置き、勝利する』だが、dropSelf実装(dropFieldCardByRule)はcard.soulを即座に[]へリセットするため、dropSelfを先に実行するとwinGame側のsourceSoulCountGte(3)ゲートがリセット後のsoul長0を読み失敗する。両者とも各自のconditionsは自分の実行直前に評価される（executeAbilityEffectの汎用conditionsゲート、src/15-ability-effects.js:246-253）ため、winGame→dropSelfの順にすれば両ゲートともソウル3枚時点の正しい値を見られる。ゲームが既にwinGameで終局した後のdropSelf自体の可視結果（カードが場からドロップへ・ログ順序がドロップ→勝利の原文と前後する点）はプレイ結果に影響しない内部的な近似のため_note記載する。grep自己検査: turnEnd(src/11-destroy-turn.js:1750 runPhaseStartTriggers)/turnOwnerIsOpponent(src/13-abilities-core.js:894-895)/putTopDeckToSoul(src/15-ability-effects.js:292)/winGame(src/15-ability-effects.js:2684-2690)/dropSelf(src/15-ability-effects.js:1155-1157)/sourceSoulCountGte(src/13-abilities-core.js:1010-1013)/cannotBeNullified(card級、bf-x-bt01-0028実例) 全実在確認。"
+      "_note": "勝利系カード（X-BT02/0110）。既存 winGame 前例（bf-h-eb03-0030恐怖の世界支配）を踏襲。『君の場に《黒竜》のモンスターがいるなら使える』=useConditions:[cardCount{pile:field,filter:{cardType:monster,attribute:黒竜},cmp:gte,amount:1}]。【使用コスト】ライフ３=costs.cast:[payLife{amount:3}]+castCost:{life:3}（FIX7二重宣言）。『設置』=keywords:[set]（uniqueSet指定なし＝原文に1枚制限の明記が無いため付けない）。『場のこのカードの能力は無効化されない。』=nullifyImmune:true（card級・isAbilitiesNullified免除＝場に在る間の能力への無効化耐性）。第8回メカレビュー是正: 当初 cannotBeNullified:true としていたが、cannotBeNullified は使用/設置宣言そのものの対抗無効化耐性（nullifyPendingAction）＝X-BT01/0028『このカードは無効化されず』型で意味が別。同一文言『場のこのカードの能力は無効化されない』を持つ兄弟4枚（悪夢ノ檻 bf-d-bt04-0038/オビチュアリー 0063/ゲールファング 0064/流星機バイシャール bf-x-cp02-0068）は全て nullifyImmune で統一。『相手のターン終了時、君のデッキの上から１枚をこのカードのソウルに入れる。その後、このカードのソウルが３枚以上なら、場のこのカードをドロップゾーンに置き、君はファイトに勝利する。』は単一ability(event:turnEnd+conditions:[turnOwnerIsOpponent]、bf-h-bt03-0047型のrunPhaseStartTriggers経由)内の3効果: putTopDeckToSoul{amount:1}(無条件)→winGame(conditions:[sourceSoulCountGte:3])→dropSelf(conditions:[sourceSoulCountGte:3])。原文の記述順は『ドロップに置き、勝利する』だが、dropSelf実装(dropFieldCardByRule)はcard.soulを即座に[]へリセットするため、dropSelfを先に実行するとwinGame側のsourceSoulCountGte(3)ゲートがリセット後のsoul長0を読み失敗する。両者とも各自のconditionsは自分の実行直前に評価される（executeAbilityEffectの汎用conditionsゲート、src/15-ability-effects.js:246-253）ため、winGame→dropSelfの順にすれば両ゲートともソウル3枚時点の正しい値を見られる。ゲームが既にwinGameで終局した後のdropSelf自体の可視結果（カードが場からドロップへ・ログ順序がドロップ→勝利の原文と前後する点）はプレイ結果に影響しない内部的な近似のため_note記載する。grep自己検査: turnEnd(src/11-destroy-turn.js:1750 runPhaseStartTriggers)/turnOwnerIsOpponent(src/13-abilities-core.js:894-895)/putTopDeckToSoul(src/15-ability-effects.js:292)/winGame(src/15-ability-effects.js:2684-2690)/dropSelf(src/15-ability-effects.js:1155-1157)/sourceSoulCountGte(src/13-abilities-core.js:1010-1013)/nullifyImmune(card級、src/05-stats.js:138 isAbilitiesNullified免除・兄弟4枚と同一) 全実在確認。"
     },
     {
       "id": "bf-x-bt02-0111",

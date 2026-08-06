@@ -1315,13 +1315,21 @@ async function resolvePendingAbility(action) {
 
 async function resolvePendingSetSpell(action) {
   const player = state.players[action.owner];
-  if (action.nullified) {
+  // 使用/設置コストで自ソウルに載った札（putTopDeckToSoul 等: デスゲージ・タイマー/もはや貴様に逃げ場は無い！）は、
+  // 本体がドロップへ置かれる時に独立したカードとしてドロップへ解放する（ソウルは場のカードに付随＝dropFieldCardByRule と同形）。
+  // これを怠ると孤児化してドロップ枚数・回収・デッキアウト計算が過少になる（第8回メカレビュー確定バグ）。
+  const dumpSetSpellToDrop = () => {
+    player.drop.push(...(action.card.soul || []));
+    action.card.soul = [];
     player.drop.push(action.card);
+  };
+  if (action.nullified) {
+    dumpSetSpellToDrop();
     addLog(`${action.card.name}は無効化され、ドロップゾーンに置かれました。`);
     return;
   }
   if (player.field[action.zone]) {
-    player.drop.push(action.card);
+    dumpSetSpellToDrop();
     addLog(`${action.card.name}を配置する場所がなくなったため、ドロップゾーンに置かれました。`);
     return;
   }

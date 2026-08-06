@@ -328,7 +328,7 @@ class GameRoom {
             player.field[zone] = faceDownCard(player.field[zone]);
           }
         }
-        for (const zone of ["left", "center", "right", "item"]) {
+        for (const zone of ["left", "center", "right", "item", "item2", "item3", "item4"]) {
           const card = player.field[zone];
           if (card && Array.isArray(card.soul) && card.soul.length) {
             card.soul = hiddenPile(card.soul);
@@ -340,7 +340,7 @@ class GameRoom {
       // face-down 札だけを個別に伏せる（face-up は公開のまま）。__soulHost 等の内部メタも落とす。
       // シード非漏洩(T13)と同じ思想＝相手/観戦へ表情報を出さない。
       if (!own) {
-        for (const zone of ["left", "center", "right", "item"]) {
+        for (const zone of ["left", "center", "right", "item", "item2", "item3", "item4"]) {
           const card = player.field[zone];
           if (card && Array.isArray(card.soul) && card.soul.length) {
             card.soul = card.soul.map((soulCard) =>
@@ -364,7 +364,7 @@ class GameRoom {
       }
       // Z13(S-UB-C03/0066他): 場の裏向きモンスター(faceDownMonster:true)は誰から見てもマスクする
       // （自席も含む。既存bt02-0035の同型リークもこれで同時に直る）。
-      for (const zone of ["left", "center", "right"]) {
+      for (const zone of ["left", "center", "right", "item", "item2", "item3", "item4"]) {
         const card = player.field[zone];
         if (card?.faceDownMonster) {
           player.field[zone] = faceDownMonsterCard(card);

@@ -446,6 +446,13 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     hasBuddyOnField,
     callSelectedToEmptyZonesForScript, // 第5回: ドロップコールの enteredFromZone スタンプ回帰用
     enforceSizeLimit, // サイズ超過時のドロップ対象プレイヤー選択の回帰用
+    isScriptEffectStep, // 第6回: script許可op(standAll/preventOpponentCounterThisTurn 等)の回帰用
+    opponentMayCallFromHandForScript, // 第8回: エフゴ・アタックの相手任意コール候補フィルタ(dropOwnMonster払い)の回帰用
+    canPayCardCost, // 第8回: 対話選択コスト(dropOwnMonster)の支払可否判定の回帰用
+    detachFieldCardForMove, // 第9回: 非破壊の場→ソウル離場(移動)の reconcileFaceDownSoulDrops 回帰用
+    dropFieldCardByRule, // 第9回: 非破壊の場→ソウル離場(ルールドロップ)の reconcileFaceDownSoulDrops 回帰用
+    applyFaceDownMonsterToken, // 第10回: 裏向きトークン化(キーワード/能力素化)の回帰用
+    restoreFaceDownMonsterPrint, // 第10回: 裏向きトークンの離場時 印字/キーワード復元の回帰用
     maybeApplyScheduledLoss,
     applyDueScheduledLosses,
     clearWinnerIfNoCurrentLoss,

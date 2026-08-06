@@ -1101,6 +1101,9 @@ function detachFieldCardForMove(owner, zone, expectedCard = null) {
   }
   player.drop.push(...(card.soul || []));
   card.soul = [];
+  // ホストが移動(場外)＝ソウル札がドロップへ落ちる。破壊経路(destroyFieldCard:505)と同様、裏向き奇襲札の公開・
+  // selfDroppedFromSoul(ヴィーガー等)・奇襲コール権を発火する（冪等・__soulHost/faceDown 札のみ反応）。
+  reconcileFaceDownSoulDrops();
   player.field[zone] = null;
   if (zone === "item" && player.arrivalCardId === card.instanceId) {
     player.arrivalCardId = null;
@@ -2785,8 +2788,14 @@ async function opponentMayCallFromHandForScript(step, context) {
       return false;
     }
     // コールコストを相手が実際に支払えるか（払えないカードは候補から除外＝辞退と同じ）。
+    // allowInteractiveSelection: 対話選択型コスト（dropOwnMonster 等＝アーマナイト・デーモンのコールコスト）を、
+    // 事前判定で「候補が存在すれば支払い可能」と正しく数える。実支払いは下の payCardCostWithSelection が対話処理する
+    // （他2箇所 src/14:833・src/22:362 と同じ規約。第8回メカレビュー: この1箇所だけ欠落し払えるモンスターを誤除外していた）。
     if (step.payCost) {
-      const check = canPayCardCost(opp, card, step.payCost, card, { callFromZone: "hand" });
+      const check = canPayCardCost(opp, card, step.payCost, card, {
+        callFromZone: "hand",
+        allowInteractiveSelection: true,
+      });
       if (!check.ok) {
         return false;
       }
@@ -3074,29 +3083,16 @@ async function callTopDeckAsMonsterForScript(step, context) {
   // r3 L4: 以下は実カード(card)の印字値を裏向きトークン表示用に恒久上書きする。上書き前に
   // printedFaceDownBackup へ退避しておき、場を離れる時に restoreFaceDownMonsterPrint で復元する
   // （復元しないと、離場後もドロップ/手札で「あの子」のまま名前/rules/属性/ステータスが残ってしまう）。
-  card.printedFaceDownBackup = {
-    name: card.name,
-    rules: card.rules,
-    attributes: card.attributes,
-    additionalNames: card.additionalNames,
-    printedAdditionalNames: card.printedAdditionalNames,
-    size: card.size,
-    power: card.power,
-    critical: card.critical,
-    defense: card.defense,
-  };
-  card.currentType = "monster";
-  card.faceDownMonster = true;
-  card.name = step.name || card.name;
-  card.additionalNames = [];
-  card.printedAdditionalNames = [];
-  card.size = step.size ?? 0;
-  card.power = step.power ?? 0;
-  card.critical = step.critical ?? 0;
-  card.defense = step.defense ?? 0;
-  card.attributes = step.attributes || [];
-  card.rules = [];
-  card.conditionalSize = null;
+  // 裏向きトークンは「与えた特性だけを持つ素のトークン」＝キーワード/能力/継続/反撃も抑制する
+  // （ver2.05: 裏向きは名前/能力を持たない一般則。第10回メカレビュー是正。復元用に退避してから空化する）。
+  applyFaceDownMonsterToken(card, {
+    name: step.name || card.name,
+    size: step.size ?? 0,
+    power: step.power ?? 0,
+    critical: step.critical ?? 0,
+    defense: step.defense ?? 0,
+    attributes: step.attributes || [],
+  });
   player.field[zone] = card;
   await enforceSizeLimit(player, zone);
   if (player.deck.length === 0) {
@@ -3112,6 +3108,44 @@ async function callTopDeckAsMonsterForScript(step, context) {
 // バックアップが無いカード（callSelectedAsMonsterForScript由来の既存トークン等）には何もしない。
 // 呼び出し元: resetLeftFieldCardState（手札/デッキへの帰還系）、destroyFieldCard・dropFieldCardByRule
 // （破壊/ドロップ系）、detachFieldCardForMove（scriptによる場外移動系）。
+// 裏向きモンスタートークン化の共通処理: 実カードの印字値(名前/rules/属性/別名/ステータス)に加えて
+// キーワード/能力/継続/反撃も printedFaceDownBackup へ退避し、与えた特性だけの「素のトークン」へ上書きする。
+// 場を離れる時に restoreFaceDownMonsterPrint で実カードへ復元する。callTopDeckAsMonster(《あの子》)と
+// callSelectedAsMonster(晴明/ビリ・キナータ)が共有する（第10回メカレビュー: 能力/キーワード漏れ・離場後残留の是正）。
+function applyFaceDownMonsterToken(card, token) {
+  card.printedFaceDownBackup = {
+    name: card.name,
+    rules: card.rules,
+    attributes: card.attributes,
+    additionalNames: card.additionalNames,
+    printedAdditionalNames: card.printedAdditionalNames,
+    size: card.size,
+    power: card.power,
+    critical: card.critical,
+    defense: card.defense,
+    keywords: card.keywords,
+    abilities: card.abilities,
+    continuous: card.continuous,
+    counterattack: card.counterattack,
+  };
+  card.currentType = "monster";
+  card.faceDownMonster = true;
+  card.name = token.name;
+  card.rules = [];
+  card.additionalNames = [];
+  card.printedAdditionalNames = [];
+  card.size = token.size ?? 0;
+  card.power = token.power ?? 0;
+  card.critical = token.critical ?? 0;
+  card.defense = token.defense ?? 0;
+  card.attributes = token.attributes || [];
+  card.keywords = [];
+  card.abilities = [];
+  card.continuous = [];
+  card.counterattack = false;
+  card.conditionalSize = null;
+}
+
 function restoreFaceDownMonsterPrint(card) {
   if (!card?.faceDownMonster || !card.printedFaceDownBackup) {
     return;
@@ -3126,6 +3160,11 @@ function restoreFaceDownMonsterPrint(card) {
   card.power = backup.power;
   card.critical = backup.critical;
   card.defense = backup.defense;
+  // 第10回メカレビュー: キーワード/能力/継続/反撃も復元する（トークン化時に素化した分を実カードへ戻す）。
+  card.keywords = backup.keywords;
+  card.abilities = backup.abilities;
+  card.continuous = backup.continuous;
+  card.counterattack = backup.counterattack;
   card.faceDownMonster = false;
   delete card.printedFaceDownBackup;
 }
@@ -3146,15 +3185,18 @@ async function callSelectedAsMonsterForScript(step, context) {
   if (player.field[zone]) {
     dropFieldCardByRule(player, zone);
   }
-  calledCard.currentType = "monster";
-  calledCard.faceDownMonster = true;
-  calledCard.size = step.size ?? calledCard.size ?? 0;
-  calledCard.power = step.power ?? calledCard.power ?? 0;
-  calledCard.critical = step.critical ?? calledCard.critical ?? 1;
-  calledCard.defense = step.defense ?? calledCard.defense ?? 0;
-  calledCard.attributes = step.attributes || calledCard.attributes || [];
+  // 晴明/ビリ・キナータは名前を与えない匿名の裏向きトークン＝『（裏向き）』表記(viewFor と同じ)。callTopDeck と同形に
+  // 印字値/キーワード/能力/継続/反撃を退避＋素化する。これで①面前中に下敷きの能力が漏れず、②離場時
+  // restoreFaceDownMonsterPrint が発火し実カードへ復帰する（第10回メカレビュー: backup未作成による残留を是正）。
+  applyFaceDownMonsterToken(calledCard, {
+    name: "（裏向き）",
+    size: step.size ?? 0,
+    power: step.power ?? 0,
+    critical: step.critical ?? 0,
+    defense: step.defense ?? 0,
+    attributes: step.attributes || [],
+  });
   player.field[zone] = calledCard;
-  calledCard.conditionalSize = null; // 再コール時は前回のサイズ上書き(アンノウン0029等)をリセット
   await enforceSizeLimit(player, zone);
   addLog(`${context.card.name}の効果で手札のカードを${zoneLabel(zone)}にモンスターとして置きました。`);
   return true;
@@ -3415,6 +3457,13 @@ function isScriptEffectStep(step) {
     "rockPaperScissorsBranch", // E-XB74①(X2-SP/0013): 単発ジャンケン→結果分岐（効果版 src/15 へ委譲）。script でも組めるよう許可
     "topTwoRevealOneOpponentRandomToHandOrGauge",
     "startAttackPhase",
+    // 第6回レビュー(H-BT04/0046 レディアント・ストリーム！): 『君の場のモンスター1枚と《武器》を【スタンド】し、
+    // もう1度アタックフェイズを行う。そのアタックフェイズ中、相手は【対抗】を使えない』。standAll(武器スタンド)と
+    // preventOpponentCounterThisTurn が許可リストに無く、script が unknown_script_op:standAll で中断→2度目の
+    // アタックフェイズ/対抗不可がまるごと不発だった。両 op は effect版(src/15:standAll/preventOpponentCounterThisTurn)へ
+    // 委譲されるだけの state 純粋 op。startAttackPhase と同格で許可する。
+    "standAll",
+    "preventOpponentCounterThisTurn",
     "restSelf",
     // standTarget を script からも使えるよう許可（effect版 src/15 の standTarget へ委譲。target:"$self" は
     // resolveEffectReference が発生源へ解決）。ifCondition(lastDestroySucceeded) の then で自壊スタンドする

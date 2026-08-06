@@ -725,7 +725,10 @@ async function executeAbilityEffect(effect, context) {
       queueDeckMilledTriggers(state.players.indexOf(player), rest, makeEffectCause(context, state.players.indexOf(player))); // E5
     } else if (effect.altTo === "gauge") {
       rest.forEach((c) => player.gauge.push(c));
-      noteGaugePlaced(state.players.indexOf(player), rest.length); // E-XB12: 残りをゲージへ（funnel 非経由）
+      // 占い(scry)の残りをゲージへ＝効果によるゲージ配置＝『相手のゲージにカードが置かれた時』(メギトス H-EB03/0020)を
+      // 発火する（ver2.05: 「〜した時」誘発は置き方を限定しない。第5回#8裁定＝要修正・効果配置は確実に発火すべき）。
+      // queueGaugePlacedTriggers は内部で noteGaugePlaced も呼ぶため二重計上しない。
+      queueGaugePlacedTriggers(state.players.indexOf(player), rest);
     } else {
       rest.forEach((c) => player.deck.unshift(c));
       queueDeckBottomPlacedTriggers(state.players.indexOf(player), rest); // E-XB18: デッキ下流入
@@ -868,7 +871,8 @@ async function executeAbilityEffect(effect, context) {
         });
         toGauge = (sel || []).map((e) => e.card);
         toGauge.forEach((c) => player.gauge.push(c));
-        noteGaugePlaced(seat, toGauge.length); // E-XB12: scry の選択分をゲージへ（gaugePlaced 誘発funnelは非経由）
+        // 占い選択分をゲージへ＝効果配置＝gaugePlaced(メギトス0020)を発火（第5回#8裁定・要修正）。内部で noteGaugePlaced も呼ぶ。
+        queueGaugePlacedTriggers(seat, toGauge);
         remaining = remaining.filter((c) => !toGauge.includes(c));
       }
       // (2) 手札へ加える（handMax 枚まで・0枚可）。E-XB74②(X2-SP/0040 角王の共鳴): handFilter 指定時は一致札のみ提示。
@@ -1032,7 +1036,8 @@ async function executeAbilityEffect(effect, context) {
         toTop = ordered;
       }
       toGauge.forEach((c) => player.gauge.push(c));
-      noteGaugePlaced(state.players.indexOf(player), toGauge.length); // E-XB12: scry の選択分をゲージへ（funnel 非経由）
+      // 占い選択分をゲージへ＝効果配置＝gaugePlaced(メギトス0020)を発火（第5回#8裁定・要修正）。内部で noteGaugePlaced も呼ぶ。
+      queueGaugePlacedTriggers(state.players.indexOf(player), toGauge);
       // 上バッチ: ordered[0] を最上段(末尾)にするため逆順 push（reorderTopOrdered と同規約）。
       for (let i = toTop.length - 1; i >= 0; i -= 1) player.deck.push(toTop[i]);
       // 秘匿: 枚数のみログ（カード名は出さない＝相手先読み防止）。

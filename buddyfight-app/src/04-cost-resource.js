@@ -164,10 +164,18 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
     resistEntries.some((e) => resistanceFilterMatches(e.filter, prevention.sourceCard, prevention.source));
   const queue = state.damagePrevention[owner];
   let i = 0;
-  while (!bypassReduction && remaining > 0 && i < queue.length) {
+  // ループのゲートは ignorePrevention(ドラム『減らない』)基準。sourceUnreducible(アトラ『効果ダメージは減らない』)は
+  // amount 型軽減だけを貫通し、キュー型 preventAll『受けない』(バーンノヴァ preventAllDamageThisTurn)は貫通しない
+  // ＝継続 preventOpponentEffectDamage『受けない』が sourceUnreducible を貫通しないのと対称(第10回メカレビュー是正・src/04:97-99の設計意図どおり)。
+  while (!options.ignorePrevention && remaining > 0 && i < queue.length) {
     const prevention = queue[i];
     if (isPreventionResisted(prevention)) {
       // この攻撃には適用しない（キューには残す）
+      i += 1;
+      continue;
+    }
+    if (sourceUnreducible && !prevention.preventAll) {
+      // 『減らない』は amount 型軽減のみ貫通。preventAll『受けない』は下で適用する（キューには残す）。
       i += 1;
       continue;
     }

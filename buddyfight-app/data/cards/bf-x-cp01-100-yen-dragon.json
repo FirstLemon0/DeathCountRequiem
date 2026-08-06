@@ -80,12 +80,17 @@
           ],
           "effects": [
             {
-              "op": "preventOpponentCounterThisTurn"
+              "op": "preventOpponentCounterThisTurn",
+              "conditions": [
+                {
+                  "op": "attackingAlone"
+                }
+              ]
             }
           ]
         }
       ],
-      "_note": "C1(3節分解): (i)『アタックフェイズ中、相手の場のカード全ての能力を無効化する。この能力は無効化されない』は、当初設計案(nullifyFieldAbilities一発snapshot＋cannotBeNullified)ではなく、より精密な既存precedent bf-s-ub-c03-0024 はぴはぴアイドル諸星きらり（同一文言『お互いのアタックフェイズ中、相手の場のカード全ての能力を無効化する。この能力は無効化されない』）が使う continuous{op:nullifyAbilities, controller:opponent, zones:[field,soul], filter:{}, conditions:[phaseIs attack]} + card級 nullifyImmune:true を採用（isAbilitiesNullified src/05:101 が card.cannotBeNullified を一切読まず、card.nullifyImmune/cardProtectedFrom(nullify)のみを読むため、design.mdの cannotBeNullified 提案は実際にはトリガー能力を保護しない＝より正確な実装へ変更。cannotBeNullified はpendingAction＝【対抗】等で打ち消される宣言の保護用で本件と別機構）。継続版はアタックフェイズ中のみ真に有効＝turnNullifies一発snapshotよりも忠実（ファイナルフェイズへの越境が無い）。(ii)『レフトとライトに攻撃できず』=cannotAttackZones(cp01-0013/bf-h-sd01-0005等前例)。(iii)『1枚で攻撃しているバトル中、相手は対抗を使えない』=event:attack+conditions:[attackingAlone]+preventOpponentCounterThisTurn（D-EB03/0004型・『バトル中』→『そのターン中』はDB多数の既存忠実近似）。grep自己検査: nullifyAbilities(src/05:148)/nullifyImmune(src/05:102)/cannotAttackZones(src/multiple)/attackingAlone(src/13:836)/preventOpponentCounterThisTurn(bf-h-eb04/bf-d-eb03等) 全実在確認。"
+      "_note": "C1(3節分解): (i)『アタックフェイズ中、相手の場のカード全ての能力を無効化する。この能力は無効化されない』は、当初設計案(nullifyFieldAbilities一発snapshot＋cannotBeNullified)ではなく、より精密な既存precedent bf-s-ub-c03-0024 はぴはぴアイドル諸星きらり（同一文言『お互いのアタックフェイズ中、相手の場のカード全ての能力を無効化する。この能力は無効化されない』）が使う continuous{op:nullifyAbilities, controller:opponent, zones:[field,soul], filter:{}, conditions:[phaseIs attack]} + card級 nullifyImmune:true を採用（isAbilitiesNullified src/05:101 が card.cannotBeNullified を一切読まず、card.nullifyImmune/cardProtectedFrom(nullify)のみを読むため、design.mdの cannotBeNullified 提案は実際にはトリガー能力を保護しない＝より正確な実装へ変更。cannotBeNullified はpendingAction＝【対抗】等で打ち消される宣言の保護用で本件と別機構）。継続版はアタックフェイズ中のみ真に有効＝turnNullifies一発snapshotよりも忠実（ファイナルフェイズへの越境が無い）。(ii)『レフトとライトに攻撃できず』=cannotAttackZones(cp01-0013/bf-h-sd01-0005等前例)。(iii)『1枚で攻撃しているバトル中、相手は対抗を使えない』=event:attack+conditions:[attackingAlone]+preventOpponentCounterThisTurn{conditions:[attackingAlone]}（D-EB03/0004 ガガルガリオス型＝効果側conditionsがロックのwhileになり毎バトル再評価。第9回メカレビュー是正: 当初は効果側conditions空でwhile=[]→ターン全体の無条件ブロックとなり、発生源が攻撃していない連携攻撃バトルまで相手の対抗を封じていた。ver2.05『そのバトル中』はそのバトル限定＝attackingAloneをwhileに置きバトル毎に再評価するのが忠実。旧_note『バトル中→そのターン中近似』はガガルガリオスのper-battleパターンを誤引用していた）。grep自己検査: nullifyAbilities(src/05:148)/nullifyImmune(src/05:102)/cannotAttackZones(src/multiple)/attackingAlone(src/13:836)/preventOpponentCounterThisTurn(bf-h-eb04/bf-d-eb03等) 全実在確認。"
     },
     {
       "id": "bf-x-cp01-0002",

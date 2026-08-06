@@ -783,12 +783,27 @@
           ],
           "effects": [
             {
-              "op": "preventOpponentCounterThisTurn"
+              "op": "preventOpponentCounterThisTurn",
+              "conditions": [
+                {
+                  "op": "attackingAlone"
+                },
+                {
+                  "op": "cardCount",
+                  "controller": "self",
+                  "pile": "field",
+                  "filter": {
+                    "attribute": "英雄"
+                  },
+                  "cmp": "gte",
+                  "amount": 4
+                }
+              ]
             }
           ]
         }
       ],
-      "_note": "聖魔王剣 エクスカリバー・レプリカ。①『【装備コスト】君のドロップゾーンに《英雄》10枚以上がある時、君の手札のカード名に「王剣」を含むカード１枚を捨てる。』=costs.equip:[discardHand{filter:{nameIncludes:王剣},amount:1,conditions:[cardCount{controller:self,pile:drop,filter:{attribute:英雄},cmp:gte,amount:10}]}]（条件付きコストstep=costStepApplies(src/04-cost-resource.js:950-959)がconditionsを満たす時だけそのstepを課金対象に含める正の条件ゲート＝条件が偽なら無償装備になる。既存precedentは大半が『not(...)』の免除型だが、costStepApplies自体はconditionsを単純に真偽評価するだけで否定の有無を問わない汎用機構＝bf-h-bt04-0006/s003のputDropToSoul{conditions:[sourceIsBuddy]}が同型の正条件precedent、grep確認済み）。nameIncludes:王剣は既存DB多数（bf-x-bt02-chaos-control-crisis.json等）で確立済みの語彙。②『このカードが１枚で攻撃しているバトル中、君の場に《英雄》が４枚以上あるなら、相手は【対抗】を使えない。』=kind:triggered,event:attack(カード自身への直接発火・接頭辞なし。アイテムでも武器攻撃で自己発火する＝bt03-0043勇者の剣ソマーソード等の武器item event:attack precedentと同型)+conditions:[attackingAlone(src/13-abilities-core.js:964-966),cardCount{controller:self,pile:field,filter:{attribute:英雄},cmp:gte,amount:4}]+effects:[preventOpponentCounterThisTurn](bf-x-ss03-5world-build-masters.json X-SS03/0051近縁の一字一句同型『このカードが１枚で攻撃しているバトル中、相手は【対抗】を使えない』はattackingAlone単体条件のprecedent、本カードはそこへcardCount≥4を直列AND追加。『バトル中』→『そのターン中』の近似はDB多数の既存忠実近似＝bf-x-cp01-100-yen-dragon.json C1_note記載どおり)。③『貫通』『２回攻撃』=keywords:[penetrate,doubleAttack]。grep自己検査: discardHand+filter+conditions 3経路(src/04-cost-resource.js:629-639canPay,1804-1811pay,1444-1465相当のpayWithSelection側discardHand選択)/costStepApplies(src/04-cost-resource.js:950-959)/cardCount pile:drop・pile:field(src/13-abilities-core.js:917-953)/attackingAlone/preventOpponentCounterThisTurn(src/15-ability-effects.js:2411-2417) 全実在確認。VM検証(x74-b14-verify.js): (a)equipConditions無し・ドロップの《英雄》が10枚未満なら装備コストは手札を捨てずに無償で装備できる、(b)ドロップの《英雄》が10枚以上ある状態で手札に「王剣」を含むカードが無ければ装備コストが支払えず装備できない、(c)ドロップの《英雄》が10枚以上あり手札に「王剣」を含むカードがあれば、それを捨てて装備できる、(d)単独攻撃時に自分の場の《英雄》が4枚未満ならpreventOpponentCounterThisTurnは発火しない(直後に対抗が使える)、(e)単独攻撃時に自分の場の《英雄》が4枚以上あれば発火し、そのバトル中は相手が対抗を使えなくなる、を確認。"
+      "_note": "聖魔王剣 エクスカリバー・レプリカ。①『【装備コスト】君のドロップゾーンに《英雄》10枚以上がある時、君の手札のカード名に「王剣」を含むカード１枚を捨てる。』=costs.equip:[discardHand{filter:{nameIncludes:王剣},amount:1,conditions:[cardCount{controller:self,pile:drop,filter:{attribute:英雄},cmp:gte,amount:10}]}]（条件付きコストstep=costStepApplies(src/04-cost-resource.js:950-959)がconditionsを満たす時だけそのstepを課金対象に含める正の条件ゲート＝条件が偽なら無償装備になる。既存precedentは大半が『not(...)』の免除型だが、costStepApplies自体はconditionsを単純に真偽評価するだけで否定の有無を問わない汎用機構＝bf-h-bt04-0006/s003のputDropToSoul{conditions:[sourceIsBuddy]}が同型の正条件precedent、grep確認済み）。nameIncludes:王剣は既存DB多数（bf-x-bt02-chaos-control-crisis.json等）で確立済みの語彙。②『このカードが１枚で攻撃しているバトル中、君の場に《英雄》が４枚以上あるなら、相手は【対抗】を使えない。』=kind:triggered,event:attack(カード自身への直接発火・接頭辞なし。アイテムでも武器攻撃で自己発火する＝bt03-0043勇者の剣ソマーソード等の武器item event:attack precedentと同型)+conditions:[attackingAlone(src/13-abilities-core.js:964-966),cardCount{controller:self,pile:field,filter:{attribute:英雄},cmp:gte,amount:4}]+effects:[preventOpponentCounterThisTurn{conditions:[attackingAlone,cardCount英雄≥4]}](第9回メカレビュー是正で効果側にもトリガーと同じconditionsを付与＝ロックのwhileとなりバトル毎に再評価。D-EB03/0004 ガガルガリオスの per-battle パターンに一致。旧実装は効果側conditions空でwhile=[]→連携攻撃バトルや英雄<4に落ちた後も過剰ブロックしていた。『そのバトル中』はそのバトル限定＝attackingAlone単体はジウン/エネルゲイアと同precedent、本カードはcardCount≥4を直列AND追加)。③『貫通』『２回攻撃』=keywords:[penetrate,doubleAttack]。grep自己検査: discardHand+filter+conditions 3経路(src/04-cost-resource.js:629-639canPay,1804-1811pay,1444-1465相当のpayWithSelection側discardHand選択)/costStepApplies(src/04-cost-resource.js:950-959)/cardCount pile:drop・pile:field(src/13-abilities-core.js:917-953)/attackingAlone/preventOpponentCounterThisTurn(src/15-ability-effects.js:2411-2417) 全実在確認。VM検証(x74-b14-verify.js): (a)equipConditions無し・ドロップの《英雄》が10枚未満なら装備コストは手札を捨てずに無償で装備できる、(b)ドロップの《英雄》が10枚以上ある状態で手札に「王剣」を含むカードが無ければ装備コストが支払えず装備できない、(c)ドロップの《英雄》が10枚以上あり手札に「王剣」を含むカードがあれば、それを捨てて装備できる、(d)単独攻撃時に自分の場の《英雄》が4枚未満ならpreventOpponentCounterThisTurnは発火しない(直後に対抗が使える)、(e)単独攻撃時に自分の場の《英雄》が4枚以上あれば発火し、そのバトル中は相手が対抗を使えなくなる、を確認。"
     },
     {
       "id": "bf-x-cbt02-0009",
