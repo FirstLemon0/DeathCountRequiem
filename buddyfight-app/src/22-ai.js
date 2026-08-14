@@ -777,6 +777,27 @@ function aiEnumerateMainActions(seat) {
       },
     });
   }
+  // MR15-2『着任』: キーワード駆動でアイテム枠へ出すモンスター（サツキ系＝X-UB02/X-CBT01 の《戦艦》の主役）。
+  // 能力オブジェクトを持たない（keywords:["arrival"]）ので findUsableHandAbility では拾えず、上の装備列挙は
+  // type==="item" 限定、コール列挙はサイズ5で必ず枠超過。結果として CPU はこのカードを一度も選べなかった
+  // ＝テーマの中心札が盤面に出ない。useCardAction は hasKeyword(card,"arrival") で arriveCard へ分岐するので、
+  // 通常装備と同じ実操作経路（selected→useCardAction）で列挙する。
+  for (const card of player.hand) {
+    if (usableHand.has(card.instanceId)) continue;
+    if (typeof hasKeyword !== "function" || !hasKeyword(card, "arrival")) continue;
+    // フラッグのワールド外のカードは使えない（useCardAction が拒否する）。無駄な試行を作らない。
+    if (typeof canUseCardForFlag === "function" && !canUseCardForFlag(player, card)) continue;
+    if (!aiCanPayCardCost(player, card, "arrival")) continue;
+    actions.push({
+      key: `arrive:${card.instanceId}`,
+      score: aiScoreArrival(seat, card),
+      exec: async () => {
+        state.selected = { source: "hand", owner: seat, instanceId: card.instanceId };
+        elements.effectTarget.value = "";
+        await useCardAction();
+      },
+    });
+  }
   // 場の起動能力（ソウル能力・星合体含む。同一カードは1ターン1回まで=連打防止）
   for (const zone of Object.keys(player.field)) {
     const card = player.field[zone];
@@ -1225,6 +1246,31 @@ function aiScoreEquip(seat, card) {
   // 低ライフでは防御アイテムの価値が上がる（本体への攻撃を肩代わりする）。
   if ((player?.life || 0) <= 4 && defense > 0) {
     score += 2;
+  }
+  return score;
+}
+
+// MR15-2『着任』の評価。着任したカードはアイテムとして場に出る（currentType="item"）ので、
+// 損得の見方は装備と同じ＝aiScoreEquip に委ねる。そのうえで着任固有の事情を足す:
+//  ・元がモンスターなので打点/防御が大きく、アイテムとしては破格（初級の一律6点だと弱すぎる）
+//  ・『着任』は既存のアイテムを押しのける（arriveCard が field.item を捨てる）ので、持ち替え損得は
+//    aiScoreEquip の置き換え判定がそのまま効く
+function aiScoreArrival(seat, card) {
+  const base = aiScoreEquip(seat, card);
+  if (base <= 0) {
+    return base; // 今より弱いものへの置き換えはしない（装備と同基準）
+  }
+  if (!aiAdv(seat, "equip")) {
+    return base + 1; // 初級でも「テーマの主役が一切出ない」は避ける（装備よりわずかに優先）
+  }
+  let score = base + 2; // 着任は1枚でアイテム枠を強力に埋める＝同点なら通常装備より優先
+  try {
+    // ソウルガード持ちは場持ちが良い（サツキ系）。盤面維持の価値を上乗せ。
+    if (typeof hasKeyword === "function" && hasKeyword(card, "soulguard")) {
+      score += 1;
+    }
+  } catch (error) {
+    /* 無視 */
   }
   return score;
 }
@@ -1780,6 +1826,8 @@ globalThis.__buddyfightAiApi = {
   scoreAttack: (seat, card, target) => aiScoreAttack(seat, card, target),
   scoreCall: (seat, card, zone, options = {}) => aiScoreCall(seat, card, zone, options),
   scoreEquip: (seat, card) => aiScoreEquip(seat, card),
+  scoreArrival: (seat, card) => aiScoreArrival(seat, card),
+  canPayCardCost: (player, card, purpose) => aiCanPayCardCost(player, card, purpose),
   scoreFieldAbility: (seat, card, abilities) => aiScoreFieldAbility(seat, card, abilities),
   abilityPayoff: (ability) => aiAbilityPayoff(ability),
   enumerateFlagAttacks: (seat) => aiEnumerateFlagAttacks(seat),

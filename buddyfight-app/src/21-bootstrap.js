@@ -336,6 +336,9 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     clearTurnModifiers,
     createInstanceId,
     effectiveSize,
+    // MR15-1 回帰用: コール用選択(callable)の候補列挙と script step 実行を直接叩く。
+    scriptCardSelectionCandidates,
+    executeAbilityScriptStep,
     equipCardDirect,
     equippedItems,
     findUsableDropAbilities,

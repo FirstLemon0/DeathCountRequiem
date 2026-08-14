@@ -844,6 +844,18 @@ function scriptCardMatches(card, owner, zone, step, context) {
   if (step.callable && !checkCardConditions(card.callConditions, owner)) {
     return false;
   }
+  // MR15-1: 「今コールできないカード」は候補に出さない。
+  // callable:true は「この選択はコールのため」の宣言で、消費側は必ずコール系op（callSelected/
+  // callSelectedToEmptyZones/stackCallSelected と、その後段の modifySelectedStats 等）。ところが
+  // 必殺モンスター等の「今は出せない」判定はコール実行時（callSelectedForScript 冒頭）にしか無く、
+  // その手前で payCardCostForSelection がコールコストを払ってしまう並びのカードがある
+  // （td07-0011 スピードサモン: selectCards → selectZone → payCardCostForSelection → callSelected）。
+  // 結果、コストだけ払ってコールは拒否され、払い戻しも無い＝コストで差し出した場のカードが
+  // 「手札のカードのソウル」に取り残されてゲーム外へ消えた（D-BT01/0013 アスモダイのコールコストで実証）。
+  // 選べなければ払いようが無いので、候補段階で弾くのが筋。
+  if (step.callable && !canCallCardNow(owner, card, scriptCallOptionsFor(step, context))) {
+    return false;
+  }
   if (step.canUseForFlag && !canUseCardForFlag(state.players[owner], card)) {
     return false;
   }
@@ -2293,7 +2305,7 @@ function moveSelfToSelectedSoulForScript(step, context) {
   }
   // ホストは必ず「場のカード」でなければならない。本 op を使う全カードの印字は例外なく
   //「君の**場の**〜のソウルに入れる」であり、場に出ていないカードのソウルという置き場は存在しない。
-  // 実害の再現(MR14-1・第14回メカレビュー): D-CBT/0019 流星機 ドラグソラールは『ドロップの《ネオドラゴン》か《星》の
+  // 実害の再現(第14回メカレビュー): D-CBT/0019 流星機 ドラグソラールは『ドロップの《ネオドラゴン》か《星》の
   // サイズ3を1枚まで【コールコスト】を払ってコールし、このカードをそのモンスターのソウルに入れる』。
   // 「1枚まで」なのでコールしない/できない（空きゾーン無し・コスト不足）分岐があり、その時 選択変数には
   // ドロップに残ったままのカードが入っている。ガードが無いと自分自身をドロップのカードのソウルへ入れてしまい、
@@ -2335,6 +2347,13 @@ async function payCardCostForScriptSelection(step, context) {
   if (!entry?.card) {
     addLog(`${context.card.name}のコストを支払うカードを選んでください。`);
     return { ok: false, reason: "missing_cost_card" };
+  }
+  // MR15-1 の安全網: コール用コストは「コールできる時」だけ払う。候補フィルタで弾いているので通常は
+  // ここへ来ないが、選択後に盤面が変わって条件を失う経路（対抗の解決を挟む等）でも
+  // 「コストだけ払ってコール拒否」にならないよう、支払い直前にもう一度見る。
+  if ((step.purpose || "call") === "call" && !canCallCardNow(entry.owner ?? context.owner, entry.card, scriptCallOptionsFor(step, context))) {
+    addLog(`${entry.card.name}は今コールできないため、コールコストを支払いません。`);
+    return { ok: false, reason: "cannot_call_now" };
   }
   const player = state.players[entry.owner ?? context.owner];
   const payment = await payCardCostWithSelection(player, entry.card, step.purpose || "call", entry.card, {
@@ -2701,6 +2720,58 @@ function isCallFromZoneRestricted(owner, card, fromZone) {
       });
     }),
   );
+}
+
+// MR15-1: この選択(var)を最終的に消費するコールopが specialCall かどうか。
+// specialCall（「相手のターン中でもコールできる」等の特例。E-PR7 等）は候補を選ぶ selectCards ではなく、
+// 実際にコールする callSelected 側に書かれているので、候補フィルタからは後続stepを見に行く必要がある。
+// 見つからなければ false＝通常のコール制限で判定する（既存の書き方を壊さない安全側）。
+const SCRIPT_CALL_OPS = new Set([
+  "callSelected", "callSelectedToEmptyZones", "stackCallSelected",
+  "callSelfFromHand", "callSelfFromSoul", "callSelfFromDrop",
+]);
+function scriptCallOptionsFor(step, context) {
+  const options = { specialCall: Boolean(step.specialCall), stackCall: false };
+  const script = context?.ability?.script;
+  if (!Array.isArray(script) || !step.var) {
+    return options;
+  }
+  for (const candidate of script) {
+    if (!candidate || !SCRIPT_CALL_OPS.has(candidate.op)) {
+      continue;
+    }
+    if (candidate.var !== step.var && candidate.cardVar !== step.var) {
+      continue;
+    }
+    if (candidate.specialCall) {
+      options.specialCall = true;
+    }
+    // 重ねコールは cap の解放条件が別（raiseImpactCallCap{stackOnly:true}＝ジェムクローン）。
+    if (candidate.op === "stackCallSelected") {
+      options.stackCall = true;
+    }
+  }
+  return options;
+}
+
+// MR15-1: 「そのカードを今コールできるか」の共通述語。コール実行op（callSelected 等）が個別に
+// 並べていた3つのゲートと同じ内容を1か所に置き、候補フィルタ（scriptCardMatches の callable）と
+// コスト支払い（payCardCostForSelection purpose:"call"）からも同じ判定を引けるようにする。
+// ここに無い判定（コール先ゾーン制限・サイズ超過等）は「どこへ出すか」に依存するのでゾーン確定後に見る。
+function canCallCardNow(owner, card, options = {}) {
+  if (!card) {
+    return false;
+  }
+  if (!impactMonsterCallAllowed(owner, card, { specialCall: Boolean(options.specialCall), stackCall: Boolean(options.stackCall) })) {
+    return false;
+  }
+  if (turnCallRestrictionBlocks(owner, card)) {
+    return false;
+  }
+  if (isCallCountLimitedThisTurn(owner, card)) {
+    return false;
+  }
+  return true;
 }
 
 async function callSelectedForScript(step, context) {
