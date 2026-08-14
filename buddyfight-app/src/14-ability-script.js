@@ -2291,6 +2291,18 @@ function moveSelfToSelectedSoulForScript(step, context) {
   if (!host) {
     return step.require === false ? true : { ok: false, reason: "no_soul_host" };
   }
+  // ホストは必ず「場のカード」でなければならない。本 op を使う全カードの印字は例外なく
+  //「君の**場の**〜のソウルに入れる」であり、場に出ていないカードのソウルという置き場は存在しない。
+  // 実害の再現(MR14-1・第14回メカレビュー): D-CBT/0019 流星機 ドラグソラールは『ドロップの《ネオドラゴン》か《星》の
+  // サイズ3を1枚まで【コールコスト】を払ってコールし、このカードをそのモンスターのソウルに入れる』。
+  // 「1枚まで」なのでコールしない/できない（空きゾーン無し・コスト不足）分岐があり、その時 選択変数には
+  // ドロップに残ったままのカードが入っている。ガードが無いと自分自身をドロップのカードのソウルへ入れてしまい、
+  // ドロップ枚数にも数えられずドロップ回収もできない＝実質ゲーム外へ消える（保存則違反として検出）。
+  // 同型は X2-BT01/0014 デュエルズィーガー“センチュリオン”（手札からコール）にもある。
+  // require:false（＝「〜してよい」「1枚まで」）なら黙って不発、必須指定なら不成立にする。
+  if (!findFieldCardSlot(host)) {
+    return step.require === false ? true : { ok: false, reason: "soul_host_not_on_field" };
+  }
   const fromZone = findFieldCardSlot(context.card) ? "field" : "drop";
   let card = takeSelfFromDropOrField(context);
   if (!card) {

@@ -30,7 +30,18 @@ const aiSession = {
   // 席別なのは「相手ターン中の防御判断（対抗等）はその席の難易度で行う」ため。UIは両席へ同じ値を入れる。
   levels: ["beginner", "beginner"],
   // 上級の個別機能つまみ。既定は全部有効。強さへの寄与を1つずつ計測/切り分けするために外から落とせる。
-  advancedFeatures: { attack: true, call: true, charge: true, ability: true, counter: true },
+  // attack は寄与が大きいので細分化して個別に切れるようにする（デッキ相性の切り分け用）。
+  advancedFeatures: {
+    attack: true, // 攻撃改善の親スイッチ（false で下の4つとも無効）
+    attackFutile: true, // 破壊できない攻撃を撃たない
+    attackWallPick: true, // 壁処理は打点の低い攻撃者を使う
+    attackLethal: true, // センター破壊でリーサルが通る局面を最優先
+    attackLink: true, // 連携攻撃を使う
+    call: true, charge: true, ability: true, counter: true,
+    equip: true, // アイテム装備の評価（打点/防御/多重装備/持ち替え判断）
+    size: true, // サイズ枠の管理（実効サイズ・サイズ減少効果）
+    flag: true, // 特殊フラッグ（攻撃するフラッグ）での攻撃を使う
+  },
 };
 
 const AI_LEVELS = ["beginner", "advanced"];
@@ -860,8 +871,47 @@ function aiEnumerateAttacks(seat, attackerFilter) {
       });
     }
   }
-  if (aiAdv(seat, "attack")) {
+  if (aiAdv(seat, "attack") && aiAdv(seat, "attackLink")) {
     actions.push(...aiEnumerateLinkAttacks(seat, singles));
+  }
+  if (aiAdv(seat, "flag") && !attackerFilter) {
+    actions.push(...aiEnumerateFlagAttacks(seat));
+  }
+  return actions;
+}
+
+// 上級のみ: 「攻撃するフラッグ」（∞ the Chaos ∞ 等 canAttackAsFlag）での攻撃を列挙する。
+// 初級は player.field しか走査しないためフラッグ攻撃を一度も使えない（フラッグは player.flag にあり
+// field の zone ではない）。フラッグ攻撃は連携できず常に単騎宣言＝source:"flag" で選択する（src/07:74 と同経路）。
+function aiEnumerateFlagAttacks(seat) {
+  const actions = [];
+  const player = state.players[seat];
+  if (!player || typeof canAttackAsFlag !== "function" || !canAttackAsFlag(player)) {
+    return actions;
+  }
+  const flag = player.flag;
+  if (!flag || flag.used) {
+    return actions;
+  }
+  if (!canDeclareAttack({ owner: seat, zone: "flag", card: flag })) {
+    return actions;
+  }
+  const targets = aiWithSelected({ source: "flag", owner: seat, zone: "flag", instanceId: flag.instanceId }, () =>
+    computeAttackTargetCandidates(),
+  );
+  for (const target of targets) {
+    actions.push({
+      key: `flagattack:${flag.instanceId}:${target.value}`,
+      // フラッグは失っても場のモンスターを失わない＝トレードのリスクが無い攻撃。同条件ならモンスター攻撃より優先する。
+      score: aiScoreAttack(seat, flag, target) + 1,
+      exec: async () => {
+        state.linkAttackers = [];
+        state.selected = { source: "flag", owner: seat, zone: "flag", instanceId: flag.instanceId };
+        render();
+        elements.attackTarget.value = target.value;
+        await attackAction();
+      },
+    });
   }
   return actions;
 }
@@ -1025,6 +1075,23 @@ function aiRemainingCritical(seat) {
   }, 0);
 }
 
+// このカードは「攻撃した時／攻撃している間」に仕事をするか（自身・ソウル・継承まで見る）。
+// これが真なら、相手を破壊できない攻撃でも撃つ価値がある（ダンジョンW等の攻撃誘発デッキ）。
+const AI_ATTACK_TRIGGER_EVENTS = ["attack", "allyAttack", "attacked", "fighterAttacked", "allyLinkAttack", "battleEnd"];
+function aiHasAttackTrigger(card) {
+  if (!card) return false;
+  try {
+    if (typeof cardHasTriggeredListener === "function") {
+      return AI_ATTACK_TRIGGER_EVENTS.some((event) => cardHasTriggeredListener(card, event));
+    }
+  } catch (error) {
+    /* 疑似カードは下のフォールバックで見る */
+  }
+  return (card.abilities || []).some(
+    (ability) => ability?.kind === "triggered" && AI_ATTACK_TRIGGER_EVENTS.includes(ability.event),
+  );
+}
+
 // このターン、相手を削り切れる見込みがあるか（センターが空いている＝本体を殴れる前提）。
 function aiCanLethalThisTurn(seat) {
   const opponent = state.players[1 - seat];
@@ -1051,8 +1118,17 @@ function aiPickChargeCard(player) {
 
 function aiScoreCall(seat, card, zone, options) {
   const player = state.players[seat];
-  if (!options.stack && !canAddSize(player, card)) {
-    return -1; // サイズ超過コールは選ばない（ルール処理での即ドロップを避ける）
+  if (!options.stack) {
+    // 初級は印字サイズで判定（従来どおり）。上級は「場に出た後の実効サイズ」で判定する。
+    // 『君の場に元々のサイズ３の《竜王番長》がいるなら、このカードのサイズを１減らす』型（96枚）は
+    // 印字サイズだと枠に入らず、初級は一生コールしない。エンジン側（enforceSizeLimit→getFieldSize）は
+    // 実効サイズで数えるので、実際には合法かつ何も落ちない。
+    const overflow = aiAdv(seat, "size")
+      ? aiCallWouldOverflow(player, card, zone)
+      : !canAddSize(player, card);
+    if (overflow) {
+      return -1; // サイズ超過コールは選ばない（ルール処理での即ドロップを避ける）
+    }
   }
   let score = 5 + cardValue(card) / 10;
   if (zone === "center" && !player.field.center) {
@@ -1092,14 +1168,105 @@ function aiScoreCall(seat, card, zone, options) {
   return score;
 }
 
+// 「このカードを zone に置いたら、場のサイズ合計は上限を超えるか」をエンジンの実効サイズで見積もる。
+// 印字サイズではなく effectiveSize（継続 modifyStats の size 減少・conditionalSize 込み）で数えるため、
+// 『…なら、場のこのカードのサイズを◯減らす』型のカードを正しくコール候補にできる。
+// 盤面を一時的に差し替えて getFieldSize を読むだけの同期評価で、必ず元に戻す（誘発も描画も走らない）。
+function aiCallWouldOverflow(player, card, zone) {
+  if (!player || !card) return false;
+  let slot = zone && Object.prototype.hasOwnProperty.call(player.field || {}, zone) ? zone : null;
+  if (!slot) {
+    slot = fieldZones.find((z) => !player.field[z]) || fieldZones[0];
+  }
+  if (!slot) return !canAddSize(player, card);
+  const previous = player.field[slot];
+  player.field[slot] = card;
+  try {
+    return getFieldSize(player) > fieldSizeLimit(player);
+  } catch (error) {
+    return !canAddSize(player, card); // 何かあれば従来判定にフォールバック
+  } finally {
+    player.field[slot] = previous;
+  }
+}
+
 function aiScoreEquip(seat, card) {
-  return 6 + cardValue(card) / 10;
+  if (!aiAdv(seat, "equip")) {
+    return 6 + cardValue(card) / 10;
+  }
+  // 上級: アイテムは「毎ターン本体を殴れる打点」と「防御の壁」の二役。何を装備するかで価値が大きく違う。
+  const player = state.players[seat];
+  const stat = (fn, card2, fallback) => {
+    try {
+      return typeof fn === "function" ? fn(card2) || 0 : fallback;
+    } catch (error) {
+      return fallback;
+    }
+  };
+  const critical = stat(typeof visibleCritical === "function" ? visibleCritical : null, card, card.critical || 0);
+  const defense = stat(typeof visibleDefense === "function" ? visibleDefense : null, card, card.defense || 0);
+  let score = 6 + critical * 1.5 + defense / 3000;
+  // 追加装備枠を開ける/使えるアイテム（降魔王剣 レヴァンティン等）は盤面の総打点を伸ばすので高評価。
+  if (card.allowExtraItemEquip || card.canEquipAsExtraItem) {
+    score += 3;
+  }
+  // 既に装備中なら「置き換え」になる。主枠のアイテムより弱いなら装備しない（今のアイテムを失う）。
+  // 追加枠に並存できるアイテムは置き換えにならないので減点しない。
+  const current = player?.field?.item;
+  if (current && !card.allowExtraItemEquip && !card.canEquipAsExtraItem) {
+    const currentCritical = stat(typeof visibleCritical === "function" ? visibleCritical : null, current, current.critical || 0);
+    const currentDefense = stat(typeof visibleDefense === "function" ? visibleDefense : null, current, current.defense || 0);
+    const gain = critical * 1.5 + defense / 3000 - (currentCritical * 1.5 + currentDefense / 3000);
+    if (gain <= 0) {
+      return 0; // 弱いアイテムへの持ち替えはしない
+    }
+    score = 6 + gain;
+  }
+  // 低ライフでは防御アイテムの価値が上がる（本体への攻撃を肩代わりする）。
+  if ((player?.life || 0) <= 4 && defense > 0) {
+    score += 2;
+  }
+  return score;
 }
 
 function aiScoreHandUse(seat, card, ability) {
   if (card.type === "impact") return 0; // 必殺技はファイナルフェイズ（aiFinalStep）で
   if (card.type === "spell") return 2;
   return 3; // 搭乗/変身など手札起動
+}
+
+// 能力が「何をするか」を粗く点数化する（上級の起動能力評価）。DSLの op を再帰的に走査して、
+// 除去/打点/リソースの各カテゴリに加点する。未知の op は 0 点＝評価対象外（安全側）。
+const AI_ABILITY_OP_VALUE = {
+  destroy: 4, destroyAll: 6, destroySelected: 4, // 除去は最も直接的
+  dealDamage: 3, damageOpponent: 3,
+  returnToHand: 3, returnAllToHand: 4, returnPendingTargetToHand: 3,
+  putTargetToGauge: 2, moveFieldCardToSoul: 2,
+  draw: 2, gainLife: 1.5, putTopDeckToGauge: 1, moveTopDeckToGauge: 1,
+  searchDeckToHand: 2, moveMatchingDropToHand: 2,
+  standTarget: 2, standSelf: 2, standAll: 3, // スタンド＝追加攻撃
+  modifyStats: 1, grantKeyword: 1,
+  callSelected: 3, callSelectedToEmptyZones: 3, callSelfFromDrop: 3, // 盤面展開
+  restTarget: 1.5, restOwnMonster: 0,
+};
+function aiAbilityPayoff(ability) {
+  let total = 0;
+  const walk = (node, depth) => {
+    if (depth > 6 || !node) return;
+    if (Array.isArray(node)) {
+      node.forEach((n) => walk(n, depth + 1));
+      return;
+    }
+    if (typeof node !== "object") return;
+    if (node.op && Object.prototype.hasOwnProperty.call(AI_ABILITY_OP_VALUE, node.op)) {
+      total += AI_ABILITY_OP_VALUE[node.op];
+    }
+    for (const key of ["effects", "script", "then", "else", "options"]) {
+      if (node[key]) walk(node[key], depth + 1);
+    }
+  };
+  walk({ effects: ability?.effects, script: ability?.script }, 0);
+  return total;
 }
 
 function aiScoreFieldAbility(seat, card, abilities) {
@@ -1114,7 +1281,9 @@ function aiScoreFieldAbility(seat, card, abilities) {
       (ability?.cost || []).some((step) => step?.op === "payLife" && (step.amount || 0) > 0),
     );
     const player = state.players[seat];
-    let score = 2.5; // コール(5)より低く、無駄撃ちしない程度には高い
+    // 「何をする能力か」で評価する（除去・打点・展開は高く、スタッツ微調整は低く）。
+    const payoff = list.reduce((max, ability) => Math.max(max, aiAbilityPayoff(ability)), 0);
+    let score = 2.5 + payoff; // コール(5)と比較できるスケール
     if (usesGauge && (player?.gauge?.length || 0) <= 2) score -= 2;
     if (usesLife && (player?.life || 0) <= 4) score -= 3; // 低ライフでライフを払わない
     return score;
@@ -1155,19 +1324,25 @@ function aiScoreAttack(seat, card, target) {
     if (target.zone === "center" && destroys) {
       const opened = aiRemainingCritical(seat) - (visibleCritical(card) || 0); // この攻撃を使った後に残る打点
       score += 4; // センターをどかす価値
-      if (opened >= (opponent?.life || 0)) {
+      if (opened >= (opponent?.life || 0) && aiAdv(seat, "attackLethal")) {
         score += 100; // センターを割れば残りの攻撃で削り切れる＝実質リーサル。最優先。
       } else {
         score += Math.min(opened, 6); // 通せる打点ぶん加点
       }
       // 誰で壁を割るか: 壁に使った打点は本体に入らない＝高打点を壁にぶつけるのは損。
       // 同じ「壁を割れる」候補の中では打撃力の低い攻撃者を優先する（打点温存）。
-      score -= (visibleCritical(card) || 0) * 0.8;
+      if (aiAdv(seat, "attackWallPick")) {
+        score -= (visibleCritical(card) || 0) * 0.8;
+      }
     }
     // 破壊できない攻撃は「レストするだけで何も起きない」ので実行しない（初級は 0.4 で撃ってしまう）。
     // 反撃持ちに突っ込めば一方的に失うのでなおさら。score<=0 は aiPickBestAction が採らない。
     if (!destroys) {
-      return 0;
+      // 破壊できない攻撃を撃たない。ただし『攻撃した時』誘発を持つカードは、破壊できなくても
+      // 攻撃自体に価値があるので撃つ（ダンジョンW等の攻撃誘発デッキで損をしないため）。
+      if (aiAdv(seat, "attackFutile") && !aiHasAttackTrigger(card)) {
+        return 0;
+      }
     }
     // 価値の高い相手を優先的に処理（cardValue の差分で重み付け）。
     score += Math.max(0, cardValue(defenderCard) - cardValue(card)) / 5;
@@ -1381,8 +1556,8 @@ const aiUi = {
   modeSelect: null,
   firstSelect: null,
   levelSelect: null, // CPUの強さ（初級/上級）
-  restoreRandomDeck: false,
-  prevP2Deck: null, // CPUモード有効化前にユーザーが選んでいたP2デッキ（オフ時に復元する）
+  restoreRandomDeck: [false, false], // 席ごと: 今回の新規ゲームで「（ランダム）」を実デッキへ展開したか
+  prevDeck: [null, null], // 席ごと: CPUモード有効化前にユーザーが選んでいたデッキ（オフ時に復元する）
 };
 
 // CPUの手番/思考中は人間の操作（ボタン・盤面タップ）をロックする。
@@ -1395,10 +1570,31 @@ function aiShouldLockHumanControls() {
   if (aiSession.running) {
     return true;
   }
+  // 両席CPU（観戦モード）は人間の担当席が無いので常にロックする。pending の解放例外は
+  //「人間が対抗を使えるようにする」ためのものなので、担当席が無いなら開ける理由が無い。
+  if (aiSession.seats[0] && aiSession.seats[1]) {
+    return true;
+  }
   if (hasPendingResolution()) {
     return false;
   }
   return isAiSeat(state.active);
+}
+
+// CPUモードの選択値 → どの席をCPUが操作するか。旧値 "on"（P2のみ）は後方互換で残す
+// （保存済みUI状態やテストが "on" を渡してくる）。
+function aiSeatsForMode(value) {
+  switch (value) {
+    case "on": // 旧値＝P2をCPU
+    case "p2":
+      return [false, true];
+    case "p1":
+      return [true, false];
+    case "both":
+      return [true, true];
+    default:
+      return [false, false];
+  }
 }
 
 function aiRefreshSeatsFromUi() {
@@ -1406,7 +1602,7 @@ function aiRefreshSeatsFromUi() {
   if (!aiUi.modeSelect) {
     return;
   }
-  aiSession.seats = [false, aiUi.modeSelect.value === "on"];
+  aiSession.seats = aiSeatsForMode(aiUi.modeSelect.value);
 }
 
 // CPUの強さ（初級/上級）をUIから取り込む。未設置のページ/ヘッドレスでは既定(初級)のまま。
@@ -1419,84 +1615,110 @@ function aiRefreshLevelFromUi() {
 function aiApplyUiLevel() {
   aiRefreshLevelFromUi();
   if (Array.isArray(state?.players)) {
-    addLog(aiIsAdvanced(1) ? "CPUの強さ: 上級（盤面と打点を読みます）。" : "CPUの強さ: 初級。");
+    addLog(aiIsAdvanced(1) || aiIsAdvanced(0) ? "CPUの強さ: 上級（盤面と打点を読みます）。" : "CPUの強さ: 初級。");
     render();
   }
 }
 
+// CPU席の説明文（ログ用）。
+function aiSeatsLabel(seats) {
+  if (seats[0] && seats[1]) return "プレイヤー1と2の両方をCPU（観戦）";
+  if (seats[0]) return "プレイヤー1をCPU";
+  if (seats[1]) return "プレイヤー2をCPU";
+  return "";
+}
+
 function aiApplyUiMode() {
-  const on = aiUi.modeSelect?.value === "on";
+  const seats = aiSeatsForMode(aiUi.modeSelect?.value);
+  const on = seats[0] || seats[1];
   if (!on) {
     // オフは即時反映（暴走時に止められるように）。オンは「次の新規から」= aiBeforeNewGame で反映
     // （進行中のホットシート対戦をCPUが乗っ取らないように。F8）。
     aiSession.seats = [false, false];
   }
-  aiEnsureRandomDeckOption(on);
+  aiEnsureRandomDeckOption(seats);
   if (Array.isArray(state?.players)) {
     // トグルが効いていることを即座にログで可視化（キャッシュ等で src が古い場合はこのログ自体が出ない）。
-    addLog(on ? "CPU対戦モード: 次の「新規」からプレイヤー2をCPUが操作します。" : "CPU対戦モード: オフにしました。");
+    addLog(on ? `CPU対戦モード: 次の「新規」から${aiSeatsLabel(seats)}が操作します。` : "CPU対戦モード: オフにしました。");
     render();
   }
 }
 
-// CPUモード中は P2 デッキセレクトに「（ランダム）」を先頭追加し既定にする（Q6: 既定ランダム）。
-function aiEnsureRandomDeckOption(on) {
+// 席 → デッキセレクトの id。P1をCPUにできるようにしたので席で引く。
+const AI_DECK_SELECT_IDS = ["#p1DeckSelect", "#p2DeckSelect"];
+
+// CPU席のデッキセレクトに「（ランダム）」を先頭追加し既定にする（Q6: 既定ランダム）。
+// seats は [P1がCPUか, P2がCPUか]。CPUでなくなった席からは選択肢を外して元のデッキへ戻す（F10）。
+function aiEnsureRandomDeckOption(seats) {
   if (typeof document === "undefined") {
     return;
   }
-  const select = document.querySelector("#p2DeckSelect");
-  if (!select || typeof select.querySelector !== "function") {
-    return; // ヘッドレス（dummy element）ではデッキはテスト側が明示指定する
-  }
-  const existing = select.querySelector('option[value="__cpu_random__"]');
-  if (on && !existing) {
-    aiUi.prevP2Deck = select.value; // オフに戻した時に復元する（F10）
-    const option = document.createElement("option");
-    option.value = "__cpu_random__";
-    option.textContent = "（ランダム）";
-    select.prepend(option);
-    select.value = "__cpu_random__";
-  } else if (!on && existing) {
-    const wasRandom = select.value === "__cpu_random__";
-    existing.remove();
-    if (wasRandom) {
-      const previous = aiUi.prevP2Deck;
-      if (previous && Array.from(select.options || []).some((option) => option.value === previous)) {
-        select.value = previous; // 有効化前のユーザー選択デッキへ復元
-      } else if (select.options?.length) {
-        select.selectedIndex = 0;
-      }
+  for (const seat of [0, 1]) {
+    const select = document.querySelector(AI_DECK_SELECT_IDS[seat]);
+    if (!select || typeof select.querySelector !== "function") {
+      continue; // ヘッドレス（dummy element）ではデッキはテスト側が明示指定する
     }
-    aiUi.prevP2Deck = null;
+    const on = Boolean(seats?.[seat]);
+    const existing = select.querySelector('option[value="__cpu_random__"]');
+    if (on && !existing) {
+      aiUi.prevDeck[seat] = select.value; // オフに戻した時に復元する（F10）
+      const option = document.createElement("option");
+      option.value = "__cpu_random__";
+      option.textContent = "（ランダム）";
+      select.prepend(option);
+      select.value = "__cpu_random__";
+    } else if (!on && existing) {
+      const wasRandom = select.value === "__cpu_random__";
+      existing.remove();
+      if (wasRandom) {
+        const previous = aiUi.prevDeck[seat];
+        if (previous && Array.from(select.options || []).some((option) => option.value === previous)) {
+          select.value = previous; // 有効化前のユーザー選択デッキへ復元
+        } else if (select.options?.length) {
+          select.selectedIndex = 0;
+        }
+      }
+      aiUi.prevDeck[seat] = null;
+    }
   }
 }
 
-// newGame 冒頭フック: CPU席の反映と、CPUデッキ「（ランダム）」の実デッキ解決。
+// newGame 冒頭フック: CPU席の反映と、デッキ「（ランダム）」の実デッキ解決。
+// CPU席だけでなく人間側の席も対象にする（デッキ選択モーダルの「ランダム」で __random__ を選べるため）。
 function aiBeforeNewGame() {
   aiRefreshSeatsFromUi();
-  aiUi.restoreRandomDeck = false;
-  if (!aiEnabled() || typeof document === "undefined") {
+  aiUi.restoreRandomDeck = [false, false];
+  if (typeof document === "undefined") {
     return;
   }
-  const select = document.querySelector("#p2DeckSelect");
-  if (select && select.value === "__cpu_random__" && deckProfiles.length) {
+  for (const seat of [0, 1]) {
+    const select = document.querySelector(AI_DECK_SELECT_IDS[seat]);
+    if (!select || select.value !== "__cpu_random__" || !deckProfiles.length) {
+      continue;
+    }
     // aiBeforeNewGame は newGame の state 再構築より前に走るため、ここでの rng は前ゲームの seed
     // （初回や未設定時は Math.random）に従う。デッキ選択のランダム性としては十分（B1）。
     const profile = deckProfiles[rngInt(deckProfiles.length)];
     select.value = profile.id;
-    aiUi.restoreRandomDeck = true;
+    aiUi.restoreRandomDeck[seat] = true;
   }
 }
 
 // newGame 末尾フック: 先攻の適用（ランダム/選択。Q6）とAIターンスコープのリセット。
 function aiAfterNewGame() {
-  if (aiUi.restoreRandomDeck && typeof document !== "undefined") {
-    const select = document.querySelector("#p2DeckSelect");
-    if (select) {
-      addLog(`CPUのデッキ: ${state.players[1]?.deckName || selectedDeckProfile(1)?.name || "ランダム"}`);
-      select.value = "__cpu_random__"; // 次の新規ゲームも再抽選
+  if (typeof document !== "undefined") {
+    for (const seat of [0, 1]) {
+      if (!aiUi.restoreRandomDeck[seat]) {
+        continue;
+      }
+      const select = document.querySelector(AI_DECK_SELECT_IDS[seat]);
+      if (select) {
+        const who = isAiSeat(seat) ? "CPU" : `プレイヤー${seat + 1}`;
+        addLog(`${who}のデッキ: ${state.players[seat]?.deckName || selectedDeckProfile(seat)?.name || "ランダム"}`);
+        select.value = "__cpu_random__"; // 次の新規ゲームも再抽選
+      }
+      aiUi.restoreRandomDeck[seat] = false;
     }
-    aiUi.restoreRandomDeck = false;
   }
   aiSession.turnKey = "";
   aiSession.handledWindows = new WeakSet();
@@ -1548,15 +1770,23 @@ globalThis.__buddyfightAiApi = {
   // CPUの強さ: "beginner"(既定・従来と同一判断) / "advanced"(上級)
   setLevel: (level, seat) => aiSetLevel(level, seat),
   setAdvancedFeatures: (features) => {
-    aiSession.advancedFeatures = { attack: true, call: true, charge: true, ability: true, counter: true, ...(features || {}) };
+    aiSession.advancedFeatures = {
+      attack: true, call: true, charge: true, ability: true, counter: true,
+      equip: true, flag: true, size: true, ...(features || {}),
+    };
   },
   getLevel: (seat) => (seat === 0 || seat === 1 ? aiSession.levels[seat] : aiSession.levels[1]),
   // 判断関数（強さ比較テスト用。スコアだけを純粋に比べられる）
   scoreAttack: (seat, card, target) => aiScoreAttack(seat, card, target),
   scoreCall: (seat, card, zone, options = {}) => aiScoreCall(seat, card, zone, options),
+  scoreEquip: (seat, card) => aiScoreEquip(seat, card),
+  scoreFieldAbility: (seat, card, abilities) => aiScoreFieldAbility(seat, card, abilities),
+  abilityPayoff: (ability) => aiAbilityPayoff(ability),
+  enumerateFlagAttacks: (seat) => aiEnumerateFlagAttacks(seat),
   chooseCounter: (counters, seat) => aiChooseCounter(counters, seat),
   pickChargeCard: (player) => aiPickChargeCard(player),
   enabled: () => aiEnabled(),
+  shouldLockHumanControls: () => aiShouldLockHumanControls(),
   hasWork: () => aiHasWork(),
   pump: () => aiPump(),
   // ヘッドレステスト用アクセサ（state/elements/deckProfiles は let/const のため vm から直接触れない）

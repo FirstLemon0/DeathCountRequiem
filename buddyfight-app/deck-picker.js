@@ -266,6 +266,7 @@
         <div class="dp-list" role="listbox"></div>
         <div class="dp-foot">
           <span class="dp-count"></span>
+          <button type="button" class="dp-random" title="いま絞り込まれている一覧の中から1つをランダムに選びます">🎲 この一覧からランダム</button>
           <button type="button" class="dp-cancel">閉じる</button>
         </div>
       </div>`;
@@ -276,6 +277,7 @@
     });
     modalRoot.querySelector(".dp-close").addEventListener("click", closeModal);
     modalRoot.querySelector(".dp-cancel").addEventListener("click", closeModal);
+    modalRoot.querySelector(".dp-random").addEventListener("click", pickRandomFromFiltered);
     modalRoot.querySelector(".dp-search").addEventListener("input", (event) => {
       uiState.search = event.target.value.trim();
       renderList();
@@ -310,6 +312,32 @@
     if (modalRoot) modalRoot.hidden = true;
     if (activeAttach) syncButtonLabel(activeAttach);
     activeAttach = null;
+  }
+
+  // いま絞り込まれている一覧（シリーズ/区分/製品/ワールド/検索の全条件を通ったデッキ）から1つ選ぶ。
+  // 「バッツの公式」だけ見ているならその中から、無絞り込みなら全デッキから、という粒度になる。
+  // 「（ランダム）」等の特別行（profile 無し）は母集団から外す — 実デッキではないため。
+  function filteredDeckEntries() {
+    if (!activeAttach) return [];
+    const { select, adapter } = activeAttach;
+    return buildEntries(select, adapter).filter((entry) => entry.profile && entryMatches(entry));
+  }
+
+  function pickRandomFromFiltered() {
+    const pool = filteredDeckEntries();
+    if (pool.length === 0) {
+      const count = modalRoot && modalRoot.querySelector(".dp-count");
+      if (count) count.textContent = "この条件にデッキがありません";
+      return;
+    }
+    const { select } = activeAttach;
+    // 同じデッキを引き直しても「ランダム」としては正しいが、2件以上あるのに現在と同じでは
+    // 押した手応えが無いので、母集団が2件以上なら現在の選択は除いて引く。
+    const candidates = pool.length > 1 ? pool.filter((entry) => entry.value !== select.value) : pool;
+    const picked = (candidates.length ? candidates : pool)[Math.floor(Math.random() * (candidates.length || pool.length))];
+    select.value = picked.value;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    closeModal();
   }
 
   function renderList() {
