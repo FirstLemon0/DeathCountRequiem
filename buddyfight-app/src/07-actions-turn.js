@@ -1336,6 +1336,15 @@ async function resolvePendingAbility(action) {
       }
     }
   }
+  // 誤爆防止（ユーザー方針）: 選択をキャンセルして中断し、かつ盤面を一切変えていない（__abilityProgressed=false）
+  // なら「使用前」に戻す＝1ターン1回等の使用回数を消費しない。盤面を変えた後の中断は巻き戻せないので従来どおり消費する
+  // （宣言時に払ったコストは対抗ウィンドウを挟んでおり払い戻せないため、コストのある能力は
+  //   useFieldAbilityAction が支払い前に確認を出して誤爆自体を防ぐ）。
+  if (bodyResult === false && context.__abilityProgressed !== true) {
+    state.phase = action.phase || state.phase;
+    addLog(`${pendingActionLabel(action)}の使用を取りやめました。`);
+    return;
+  }
   markAbilityLimit(action.owner, action.card, action.ability || {});
   state.phase = action.phase || state.phase;
   addLog(`${pendingActionLabel(action)}を解決しました。`);

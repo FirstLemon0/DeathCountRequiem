@@ -175,6 +175,9 @@ async function chooseAbilityTarget(card, ability, owner) {
     // 権威サーバ: 能力主体の席へ往復させる（未指定だと inferPromptSeat 任せで
     // 相手誘発・攻撃側誘発の選択が誤配送＝候補名漏れの恐れ）。
     promptSeat: owner,
+    // 誤爆防止（ユーザー方針）: 対象選択はキャンセルできる。起動能力ではコスト支払い前に対象を選ぶため
+    // （useFieldAbilityAction の targetForAbilityUse）、ここでのキャンセルはコストも使用回数も消費しない
+    // ＝完全に「使用前」へ戻る。誘発能力も markAbilityLimit/コスト支払いより前なので同様。
   });
   const target = selected?.[0];
   return target ? { owner: target.owner, zone: target.zone, card: target.card } : null;
@@ -215,6 +218,7 @@ async function shouldUseOptionalAbility(card, ability, owner) {
       forceDialog: true,
       // 権威サーバ: 任意能力の発動可否は能力主体の席へ問う。
       promptSeat: owner,
+      // 誤爆防止（ユーザー方針）: キャンセル＝「使わない」＝使用前のまま（コスト/使用回数とも未消費）。
     },
   );
   return selected?.[0]?.key === "use";
@@ -248,6 +252,10 @@ async function executeAbilityBody(context) {
   return true;
 }
 
+// 盤面を一切変えない「選ぶだけ」の step（キャンセルで使用前に戻せるかの判定に使う）。
+// これらだけが実行済みの状態で中断したなら、ゲーム状態は宣言直後と同じ＝使用回数を消費せず巻き戻してよい。
+const PURE_SELECTION_SCRIPT_OPS = new Set(["selectCards", "selectZone"]);
+
 async function executeAbilityScript(script, context) {
   const scriptContext = {
     ...context,
@@ -261,6 +269,7 @@ async function executeAbilityScript(script, context) {
     abilityId: context.ability?.id || "",
     stepCount: script.length,
   });
+  let progressed = false; // 盤面を変える step を1つでも実行したか（キャンセル巻き戻しの可否判定）
   for (const [index, step] of script.entries()) {
     recordDiagnosticEvent("effect_script", {
       stage: "step",
@@ -285,7 +294,13 @@ async function executeAbilityScript(script, context) {
       });
       context.vars = scriptContext.vars;
       if (scriptContext.cardMoved) context.cardMoved = true; // レビュー修正(D-BT01/0027/0034): script内の自己移動を外側へ伝播
+      // 誤爆防止（ユーザー方針）: ここまでに盤面を変える step を1つも実行していない中断なら、
+      // ゲーム状態は宣言直後と同じ＝呼び出し側が使用回数を消費せず「使用前」に戻せる。
+      context.__abilityProgressed = progressed;
       return false;
+    }
+    if (!PURE_SELECTION_SCRIPT_OPS.has(step.op)) {
+      progressed = true; // 盤面を変えうる step を実行した＝以後の中断は巻き戻せない
     }
   }
   context.vars = scriptContext.vars;
@@ -612,6 +627,9 @@ async function selectCardsForScript(step, context) {
       step.purpose ||
       step.role ||
       (typeof aiInferScriptSelectPurpose === "function" ? aiInferScriptSelectPurpose(step, context) : undefined),
+    // 誤爆防止（ユーザー方針）: 選択はキャンセルできる。キャンセルすると script は中断するが、
+    // まだ盤面を変えていない中断（executeAbilityScript の __abilityProgressed=false）なら
+    // 解決側(src/07 resolvePendingAbility)が使用回数を消費せず「使用前」に戻す。
   });
   if (!selected || selected.length < min) {
     context.vars[step.var] = [];

@@ -465,6 +465,15 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     moveSelectedToDeckBottomOrderedForScript,
     resetEnteringFieldCardState,
     costDestroyBlocked,
+    // ユーザー実プレイ報告: 必須選択のキャンセル不可／無効化時の『バトルの終了時』発動の回帰用。
+    chooseAbilityTarget,
+    nullifyPendingAttack,
+    shouldUseOptionalAbility,
+    resolvePendingAbility,
+    useFieldAbilityAction,
+    // 「使用/装備」ボタンの活性判定（効果対象ドロップダウン非必須化）の回帰用。
+    elements,
+    render,
     maybeApplyScheduledLoss,
     applyDueScheduledLosses,
     clearWinnerIfNoCurrentLoss,

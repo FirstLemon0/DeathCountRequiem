@@ -351,6 +351,9 @@ async function useFieldAbilityAction(card, loc = null) {
   }
   const player = state.players[owner];
   const sourceCard = ability.fromSoul ? ability.soulSourceCard : card;
+  // 起動能力は確認を挟まず即実行する（ユーザー方針「いきなり使えた方がいい」）。誤爆した場合の巻き戻しは
+  // 「対象/カード選択のキャンセル」で行う＝盤面を変える前の中断なら resolvePendingAbility が使用回数を
+  // 消費せず「使用前」に戻す（src/07・executeAbilityScript の __abilityProgressed）。
   const target = await targetForAbilityUse(sourceCard, ability, owner);
   if (ability.target && !target && !ability.target.allowMissingTarget && !ability.allowMissingTarget) {
     // R-BR1(ブラウザレビュー bt01-B4 発見・bt01-0061 実証): 場の起動能力側だけ allowMissingTarget の

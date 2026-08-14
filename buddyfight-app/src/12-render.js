@@ -738,7 +738,11 @@ function renderActions() {
       state.selected.owner !== state.active,
   );
   elements.mainPhaseButton.disabled = Boolean(state.winner || inBattle || state.phase !== "charge");
-  elements.castButton.disabled = Boolean(!canUseSelectedCard(selectedCard) || missingRequiredEffectTarget);
+  // 「使用 / 装備」は効果対象ドロップダウン未選択でも押せる（ユーザー方針: 場の【起動】がダイアログで対象を
+  // 聞くのに、手札の使用/装備だけ先にドロップダウンで選ばないと押せないのは分かりづらい＝導線を揃える）。
+  // 対象やコスト対象は使用時にダイアログで聞かれる（ability.target→chooseAbilityTarget /
+  // dropOwnMonster コスト→payStructuredCostWithSelection の対話選択）。ドロップダウンは事前指定の近道として残す。
+  elements.castButton.disabled = Boolean(!canUseSelectedCard(selectedCard));
   elements.resolveAttackButton.textContent = state.pendingAction ? "行動解決" : "攻撃解決";
   elements.resolveAttackButton.disabled = Boolean(
       state.winner ||

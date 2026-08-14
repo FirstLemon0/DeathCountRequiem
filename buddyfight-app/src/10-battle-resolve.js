@@ -576,8 +576,10 @@ function finishPendingAttack(outcome = {}) {
     // E-XV7(X-UB01/0052 道化師 ダークフォックス・X-UB02/0004 ブレザーフリル): 攻撃側カードを eventCard に
     // 「攻撃したバトルの終了時」を場全体へ放送する（attacker-side 誘発＝ally/opponentAttackerBattleEnd。
     // 直上 E-X1 の defender-side ally/opponentBattleEnd の姉妹実装）。fighter 攻撃でも『バトル』は成立する
-    // ため targetType を問わず放送する。!nullified 経路のみ＝対抗で攻撃無効化されたバトルは非放送
-    // （従来の allyAttack 宣言時近似の乖離を解消する核）。連携攻撃は攻撃者ごとに配信。
+    // ため targetType を問わず放送する。連携攻撃は攻撃者ごとに配信。
+    // 注: 攻撃が無効化された場合も ver2.05 p.12-13 の 2.6.→3.3.→3.5. で『バトルの終了時』は解決するため、
+    // nullifyPendingAttack 側からも同じ3系統を details.nullified=true で放送する（旧コメントの「無効化は非放送」は
+    // ルール本文と食い違っていたため撤回）。
     queueAttackerBattleEndFieldTriggers(state.lastAttackOutcome.attackers || [], {
       nullified: false,
       targetOwner: pending.targetOwner,
@@ -796,6 +798,32 @@ function nullifyPendingAttack(sourceName = "効果", sourceCard = null) {
     targetType: pending.targetType,
     turnCount: state.turnCount, // E-Y5(0088): lastAttackNullified の同ターン窓限定用
   };
+  // ver2.05『アタックフェイズの流れ』p.12-13 の裁定: 2.6.「攻撃しているカードまたは攻撃対象がなくなったり、
+  // 攻撃が無効化された場合、3.3.に進みます。」→ 3.3.「この時点で、『攻撃中』『バトル中』の扱いが終了します。」
+  // → 3.5.「『バトルの終了時』『攻撃の終了時』に発動する能力もここで解決します」。
+  // つまり無効化で飛ばされるのは 3.1(ヒット判定)と 3.2(『貫通』『反撃』)だけで、『バトルの終了時』は解決する。
+  // 以前は finishPendingAttack の !nullified ゲートに阻まれ、無効化時に battleEnd 系が一切発火しなかった
+  // （ユーザー実プレイ報告: 正義の義賊 ムクロ「このカードのバトル終了時、このカードを手札に戻す」が不発。
+  //  docs/BF-D-CBT_実装メモ:148 も『防御時/無効化時を取りこぼす』全体近似と明記していた既知ギャップ）。
+  // 『Ｎ回攻撃』(4.1)は上の standAttackerForMultiAttack で既に処理済み。
+  const nullifiedDefenderSlot =
+    pending.targetType !== "fighter" && pending.targetOwner != null && pending.targetZone
+      ? { owner: pending.targetOwner, zone: pending.targetZone }
+      : null;
+  queueBattleEndTriggers(state.lastAttackOutcome.attackers || [], nullifiedDefenderSlot);
+  if (pending.targetType !== "fighter") {
+    const attackedCard = state.players[pending.targetOwner]?.field?.[pending.targetZone];
+    queueBattleEndFieldTriggers(pending.targetOwner, attackedCard, pending.targetZone, {
+      nullified: true,
+      attackerOwner: pending.attackerOwner,
+      targetType: pending.targetType,
+    });
+  }
+  queueAttackerBattleEndFieldTriggers(state.lastAttackOutcome.attackers || [], {
+    nullified: true,
+    targetOwner: pending.targetOwner,
+    targetType: pending.targetType,
+  });
   clearPendingAttack({ nullified: true });
   return true;
 }

@@ -296,13 +296,15 @@ function cardSheetActionSpecs() {
     return [];
   }
   const specs = [];
-  // 効果対象が必要で未指定 → 盤面タップで選ぶモードへ
+  // 効果対象の事前指定は「近道」であって必須ではない（使用/装備は未指定でも押せて、必要な選択は
+  // 使用時にダイアログで聞かれる。デスクトップの castButton ゲート撤去と同じ方針＝導線を揃える）。
+  // 盤面タップで先に選びたい人向けに従来のボタンは残すが、primary（最優先の推奨操作）にはしない。
   if (
     requiresExplicitEffectTarget(card) &&
     !elements.effectTarget.value &&
     effectTargetCandidates(card).length > 0
   ) {
-    specs.push({ label: "効果対象を選ぶ", run: () => startEffectTargeting({ type: "use" }), primary: true });
+    specs.push({ label: "効果対象を選ぶ", run: () => startEffectTargeting({ type: "use" }) });
   }
   // 既存の共有ボタンを委譲（renderActionsが確定したdisabledを読むだけ）
   const proxied = [

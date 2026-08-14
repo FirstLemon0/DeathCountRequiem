@@ -24,7 +24,47 @@ const aiSession = {
   lastOfferWindow: null, // 最後に提案対象にした応答窓（新しい窓が開いたら再提案を許す）
   errorStreak: 0,
   errorCount: 0, // 累計のフォールバック発生数（スモークの「例外ゼロ」検証用）
+  // 難易度（席別）。"beginner"=v1のカジュアルヒューリスティック（既定・従来と完全同一の判断）、
+  // "advanced"=上級（盤面と打点を読む判断関数群）。判断関数は全て aiIsAdvanced(seat) で分岐し、
+  // beginner 側の式には一切触れない＝既存の挙動・テスト・リプレイは不変。
+  // 席別なのは「相手ターン中の防御判断（対抗等）はその席の難易度で行う」ため。UIは両席へ同じ値を入れる。
+  levels: ["beginner", "beginner"],
+  // 上級の個別機能つまみ。既定は全部有効。強さへの寄与を1つずつ計測/切り分けするために外から落とせる。
+  advancedFeatures: { attack: true, call: true, charge: true, ability: true, counter: true },
 };
+
+const AI_LEVELS = ["beginner", "advanced"];
+
+// 上級判定＋機能フラグ。feature 省略時は難易度だけを見る。
+function aiAdv(seat, feature) {
+  if (!aiIsAdvanced(seat)) {
+    return false;
+  }
+  return feature ? aiSession.advancedFeatures?.[feature] !== false : true;
+}
+
+// seat 省略時は「どちらかの席が上級なら true」ではなく、既定席(=CPU想定のP2側)ではなく
+// 明示 seat を要求する運用にする。seat 不明の箇所では上級分岐を使わない（誤爆防止）。
+function aiIsAdvanced(seat) {
+  return seat === 0 || seat === 1 ? aiSession.levels[seat] === "advanced" : false;
+}
+
+// seat 省略で両席に設定（UI/通常運用）。テストは席別に指定して強さを比較できる。
+function aiSetLevel(level, seat) {
+  const normalized = AI_LEVELS.includes(level) ? level : "beginner";
+  if (seat === 0 || seat === 1) {
+    aiSession.levels[seat] = normalized;
+  } else {
+    aiSession.levels = [normalized, normalized];
+  }
+  return normalized;
+}
+
+// player オブジェクトから席番号を引く（aiPickChargeCard 等、seat を受け取らない関数用）。
+function aiSeatOfPlayer(player) {
+  const index = state?.players?.indexOf(player);
+  return index === 0 || index === 1 ? index : null;
+}
 
 function aiEnabled() {
   if (!aiSession.seats[0] && !aiSession.seats[1]) {
@@ -796,6 +836,7 @@ function aiCallAction(seat, card, zone, options) {
 function aiEnumerateAttacks(seat, attackerFilter) {
   const player = state.players[seat];
   const actions = [];
+  const singles = []; // 上級の連携攻撃列挙で再利用する「単騎で攻撃できるカード」
   for (const zone of Object.keys(player.field)) {
     const card = player.field[zone];
     if (!card || card.used) continue;
@@ -804,6 +845,7 @@ function aiEnumerateAttacks(seat, attackerFilter) {
     const targets = aiWithSelected({ source: "field", owner: seat, zone, instanceId: card.instanceId }, () =>
       computeAttackTargetCandidates(),
     );
+    singles.push({ zone, card, targets });
     for (const target of targets) {
       actions.push({
         key: `attack:${card.instanceId}:${target.value}`,
@@ -816,6 +858,66 @@ function aiEnumerateAttacks(seat, attackerFilter) {
           await attackAction();
         },
       });
+    }
+  }
+  if (aiAdv(seat, "attack")) {
+    actions.push(...aiEnumerateLinkAttacks(seat, singles));
+  }
+  return actions;
+}
+
+// 上級のみ: 連携攻撃（2枚）を列挙する。初級は単騎しか撃たないため、単体では抜けない高防御の壁を
+// 永久に処理できない弱点がある。ver2.05 の連携攻撃は「攻撃力の合計」で判定し、打撃力も合計で入る。
+// 3枚以上の組合せは打点効率が落ちやすい（1体ずつ本体を殴った方が総ダメージが大きい）ので2枚に限定する。
+function aiEnumerateLinkAttacks(seat, singles) {
+  const actions = [];
+  if (!Array.isArray(singles) || singles.length < 2) {
+    return actions;
+  }
+  if (state.turnCount === 1) {
+    return actions; // 先攻1ターン目は連携攻撃できない（src/09 のゲートと同じ前提）
+  }
+  const opponent = state.players[1 - seat];
+  for (let i = 0; i < singles.length; i += 1) {
+    for (let j = i + 1; j < singles.length; j += 1) {
+      const a = singles[i];
+      const b = singles[j];
+      // 連携で「合計攻撃力なら破壊できる」相手だけを狙う（単騎で足りるなら連携する意味がない）。
+      const combinedPower = (visiblePower(a.card) || 0) + (visiblePower(b.card) || 0);
+      for (const target of a.targets) {
+        if (target.value === "fighter") continue; // 本体は1体ずつ殴った方が総打点が多い
+        if (!b.targets.some((t) => t.value === target.value)) continue; // 双方がこの対象を攻撃できること
+        const defenderCard = opponent?.field?.[target.zone];
+        if (!defenderCard) continue;
+        const defense = visibleDefense(defenderCard) || 0;
+        const soloA = (visiblePower(a.card) || 0) >= defense;
+        const soloB = (visiblePower(b.card) || 0) >= defense;
+        if (soloA || soloB) continue; // 単騎で割れるなら連携は打点の無駄
+        if (combinedPower < defense) continue; // 連携でも割れない
+        // 壁（センター）を割れると以後の攻撃が本体へ通る。単騎で処理できない盤面を動かす価値は大きい。
+        let score = 7 + cardValue(defenderCard) / 10;
+        if (target.zone === "center") {
+          score += 4;
+        }
+        score -= ((visibleCritical(a.card) || 0) + (visibleCritical(b.card) || 0)) * 0.4; // 2体ぶんの打点を使う
+        if (hasKeyword(defenderCard, "counterattack")) {
+          score -= 1; // 反撃で1体持っていかれる可能性
+        }
+        actions.push({
+          key: `link:${a.card.instanceId}+${b.card.instanceId}:${target.value}`,
+          score,
+          exec: async () => {
+            state.linkAttackers = [
+              { owner: seat, zone: a.zone },
+              { owner: seat, zone: b.zone },
+            ];
+            state.selected = { source: "field", owner: seat, zone: a.zone, instanceId: a.card.instanceId };
+            render();
+            elements.attackTarget.value = target.value;
+            await attackAction();
+          },
+        });
+      }
     }
   }
   return actions;
@@ -882,11 +984,67 @@ function cardValue(card) {
   for (const keyword of ["soulguard", "penetrate", "doubleAttack", "tripleAttack", "quadrupleAttack", "sextupleAttack", "counterattack", "move"]) {
     if (hasKeyword(card, keyword)) value += 2;
   }
+  // 注: cardValue は席を持たない共通尺度（チャージで最小値を捨てる／コスト選択で最小値を差し出す／
+  // 敵対選択で最大値を狙う）。ここを難易度で変えると全席・全用途に波及し、実測で勝率が落ちた
+  // （『軽いほど偉い』を足したら強い大型札からゲージに捨てる自滅挙動になった）。難易度差は
+  // 席を知っている判断関数（aiScoreAttack/aiScoreCall/aiChooseCounter 等）側だけに置く。
   return value;
+}
+
+// 上級の盤面評価ヘルパー ---------------------------------------------------
+// effectiveSize は場外カードでも安全に呼べるが、疑似カード対策で例外を握る。
+function effectiveSizeSafe(card) {
+  try {
+    return typeof effectiveSize === "function" ? effectiveSize(card) : card?.size || 0;
+  } catch (error) {
+    return card?.size || 0;
+  }
+}
+
+// seat から見た相手のセンター（ここにモンスターが居る限り、原則ファイターを殴れない）。
+function aiOpponentCenter(seat) {
+  return state.players[1 - seat]?.field?.center || null;
+}
+
+// seat の場でまだ攻撃していないカードの打撃力合計（このターンにあと何点入るかの見積り）。
+function aiRemainingCritical(seat) {
+  const player = state.players[seat];
+  if (!player) return 0;
+  return Object.keys(player.field).reduce((sum, zone) => {
+    const card = player.field[zone];
+    if (!card || card.used) return sum;
+    if (effectiveCardType(card) !== "monster" && !hasKeyword(card, "weapon")) {
+      // アイテムは canDeclareAttack 側で判定されるので、ここではモンスターのみ数える近似。
+      if (effectiveCardType(card) !== "item") return sum;
+    }
+    try {
+      return sum + (visibleCritical(card) || 0);
+    } catch (error) {
+      return sum;
+    }
+  }, 0);
+}
+
+// このターン、相手を削り切れる見込みがあるか（センターが空いている＝本体を殴れる前提）。
+function aiCanLethalThisTurn(seat) {
+  const opponent = state.players[1 - seat];
+  if (!opponent) return false;
+  return aiRemainingCritical(seat) >= opponent.life;
 }
 
 function aiPickChargeCard(player) {
   if (!player.hand.length) return null;
+  if (aiAdv(aiSeatOfPlayer(player), "charge")) {
+    // 上級: ゲージは行動力。枯渇（0〜1）なら手札が薄くても必ず作り、十分（5以上）なら手札を温存する。
+    const gauge = player.gauge.length;
+    const hand = player.hand.length;
+    if (gauge >= 5 && hand <= 5) return null; // 十分あるので手札を残す
+    if (gauge >= 3 && hand <= 3) return null; // 手札が薄いので温存（初級と同じ判断を包含）
+    // 捨てるのは「一番仕事をしない札」。同値なら重い（サイズが大きく出しにくい）札から。
+    return [...player.hand].sort(
+      (a, b) => cardValue(a) - cardValue(b) || effectiveSizeSafe(b) - effectiveSizeSafe(a),
+    )[0];
+  }
   if (player.hand.length <= 3 && player.gauge.length >= 3) return null; // 手札温存（ゲージ十分）
   return [...player.hand].sort((a, b) => cardValue(a) - cardValue(b))[0];
 }
@@ -906,6 +1064,31 @@ function aiScoreCall(seat, card, zone, options) {
   if (options.stack) {
     score = 4 + cardValue(card) / 10;
   }
+  if (aiAdv(seat, "call")) {
+    // 上級: センターは「相手の本体攻撃を止める壁」。空いている＝直接殴られる状態なので、
+    // ライフが減っているほど、また相手の打点が高いほど、埋める価値が跳ね上がる。
+    if (zone === "center" && !player.field.center) {
+      const incoming = aiRemainingCritical(1 - seat); // 相手が今出せる打点の目安
+      const life = player.life || 0;
+      score += Math.min(6, incoming); // 受ける可能性のある打点ぶん
+      if (life <= 4) score += 4; // 低ライフでは壁が最優先
+      if (incoming >= life) score += 20; // 空けたままだと負ける＝必ず埋める
+      // 硬い（防御力が高い）モンスターほど壁として優秀。
+      try {
+        score += Math.min(4, (visibleDefense(card) || 0) / 2000);
+      } catch (error) {
+        /* 疑似カードは無視 */
+      }
+    }
+    // 攻めに転じられる盤面なら、打点の高いモンスターを前に出す価値が上がる。
+    try {
+      if (!aiOpponentCenter(seat)) {
+        score += Math.min(3, (visibleCritical(card) || 0));
+      }
+    } catch (error) {
+      /* 無視 */
+    }
+  }
   return score;
 }
 
@@ -920,10 +1103,29 @@ function aiScoreHandUse(seat, card, ability) {
 }
 
 function aiScoreFieldAbility(seat, card, abilities) {
+  if (aiAdv(seat, "ability")) {
+    // 上級: 起動能力は基本的に得だが、ゲージが枯渇している時にゲージコストを払うと展開が止まる。
+    // 無償の能力は積極的に、ゲージを食う能力はゲージに余裕がある時だけ優先度を上げる。
+    const list = Array.isArray(abilities) ? abilities : [abilities].filter(Boolean);
+    const usesGauge = list.some((ability) =>
+      (ability?.cost || []).some((step) => step?.op === "payGauge" && (step.amount || 0) > 0),
+    );
+    const usesLife = list.some((ability) =>
+      (ability?.cost || []).some((step) => step?.op === "payLife" && (step.amount || 0) > 0),
+    );
+    const player = state.players[seat];
+    let score = 2.5; // コール(5)より低く、無駄撃ちしない程度には高い
+    if (usesGauge && (player?.gauge?.length || 0) <= 2) score -= 2;
+    if (usesLife && (player?.life || 0) <= 4) score -= 3; // 低ライフでライフを払わない
+    return score;
+  }
   return 1;
 }
 
 function aiScoreDropAbility(seat, card) {
+  if (aiAdv(seat, "ability")) {
+    return 2; // ドロップからの起動は基本的に得（資源を追加で使わない前提の近似）
+  }
   return 1;
 }
 
@@ -945,6 +1147,30 @@ function aiScoreAttack(seat, card, target) {
   }
   if (destroys && hasKeyword(card, "penetrate")) {
     score += visibleCritical(card); // 貫通ダメージぶん加点
+  }
+  if (aiAdv(seat, "attack")) {
+    // 上級: センター処理を「本体を殴るための前提」として評価する。
+    // ver2.05 では相手センターにモンスターが居る限り原則ファイターを攻撃できないので、
+    // センター破壊は単なるトレードではなく「この後の全打点を通す鍵」になる。
+    if (target.zone === "center" && destroys) {
+      const opened = aiRemainingCritical(seat) - (visibleCritical(card) || 0); // この攻撃を使った後に残る打点
+      score += 4; // センターをどかす価値
+      if (opened >= (opponent?.life || 0)) {
+        score += 100; // センターを割れば残りの攻撃で削り切れる＝実質リーサル。最優先。
+      } else {
+        score += Math.min(opened, 6); // 通せる打点ぶん加点
+      }
+      // 誰で壁を割るか: 壁に使った打点は本体に入らない＝高打点を壁にぶつけるのは損。
+      // 同じ「壁を割れる」候補の中では打撃力の低い攻撃者を優先する（打点温存）。
+      score -= (visibleCritical(card) || 0) * 0.8;
+    }
+    // 破壊できない攻撃は「レストするだけで何も起きない」ので実行しない（初級は 0.4 で撃ってしまう）。
+    // 反撃持ちに突っ込めば一方的に失うのでなおさら。score<=0 は aiPickBestAction が採らない。
+    if (!destroys) {
+      return 0;
+    }
+    // 価値の高い相手を優先的に処理（cardValue の差分で重み付け）。
+    score += Math.max(0, cardValue(defenderCard) - cardValue(card)) / 5;
   }
   return score;
 }
@@ -970,11 +1196,37 @@ function aiChooseCounter(counters, seat) {
     if (damage >= life || (life <= 5 && damage >= 3)) {
       return shields[0]; // 致死 or 危険域の大打点はシールド
     }
+    if (aiAdv(seat, "counter")) {
+      // 上級: 「このターン中に受けうる総打点」で判断する。今の1発では死ななくても、
+      // 相手にまだ攻撃者が残っていて合計が致死なら、ここで止めないと負ける。
+      const stillComing = aiRemainingCritical(1 - seat); // 未行動の攻撃者ぶん
+      if (damage + stillComing >= life) {
+        return shields[0];
+      }
+      // ライフに余裕があるうちは温存（チップダメージでシールドを使い切らない）。
+      if (life > 8 && damage <= 2) {
+        return null;
+      }
+      if (damage >= Math.ceil(life / 2)) {
+        return shields[0]; // 一撃でライフの半分以上は看過しない
+      }
+    }
     return null;
   }
   const targetCard = state.players[pending.targetOwner]?.field?.[pending.targetZone];
   if (targetCard && power >= visibleDefense(targetCard) && cardValue(targetCard) >= 8) {
     return shields[0]; // 主力が破壊される攻撃はシールド
+  }
+  if (aiAdv(seat, "counter") && targetCard && power >= visibleDefense(targetCard)) {
+    // 上級: センターを失うと本体が丸裸になる。壁が最後の1枚なら価値が低くても守る。
+    const isCenter = pending.targetZone === "center";
+    const otherBlockers = fieldZones.filter(
+      (zone) => zone !== pending.targetZone && state.players[seat]?.field?.[zone],
+    ).length;
+    const life = state.players[seat].life;
+    if (isCenter && otherBlockers === 0 && aiRemainingCritical(1 - seat) >= life) {
+      return shields[0];
+    }
   }
   return null;
 }
@@ -988,6 +1240,11 @@ function aiAbilityNullifiesAttack(card) {
 // 応答窓（被ダメ時など）への対抗判断。条件を満たして使えるなら使う
 // （インデュア等の資源系。窓ごとに1回だけ判断されるため連打はしない）。
 function aiChooseWindowCounter(counters, seat) {
+  if (aiAdv(seat, "counter") && counters.length > 1) {
+    // 上級: 窓に複数あるなら「一番軽い（失うものが少ない）」ものから切る。
+    // cardValue が低い＝手札としての価値が低い札を先に消費して、強い札を温存する。
+    return [...counters].sort((a, b) => aiEntryValue({ card: a.card }) - aiEntryValue({ card: b.card }))[0];
+  }
   return counters[0] || null;
 }
 
@@ -1123,6 +1380,7 @@ function aiDecideConfirm(owner, message, options) {
 const aiUi = {
   modeSelect: null,
   firstSelect: null,
+  levelSelect: null, // CPUの強さ（初級/上級）
   restoreRandomDeck: false,
   prevP2Deck: null, // CPUモード有効化前にユーザーが選んでいたP2デッキ（オフ時に復元する）
 };
@@ -1144,10 +1402,26 @@ function aiShouldLockHumanControls() {
 }
 
 function aiRefreshSeatsFromUi() {
+  aiRefreshLevelFromUi();
   if (!aiUi.modeSelect) {
     return;
   }
   aiSession.seats = [false, aiUi.modeSelect.value === "on"];
+}
+
+// CPUの強さ（初級/上級）をUIから取り込む。未設置のページ/ヘッドレスでは既定(初級)のまま。
+function aiRefreshLevelFromUi() {
+  if (aiUi.levelSelect && aiUi.levelSelect.value) {
+    aiSetLevel(aiUi.levelSelect.value);
+  }
+}
+
+function aiApplyUiLevel() {
+  aiRefreshLevelFromUi();
+  if (Array.isArray(state?.players)) {
+    addLog(aiIsAdvanced(1) ? "CPUの強さ: 上級（盤面と打点を読みます）。" : "CPUの強さ: 初級。");
+    render();
+  }
 }
 
 function aiApplyUiMode() {
@@ -1251,6 +1525,12 @@ function aiSetupUi() {
   aiUi.modeSelect = modeSelect;
   aiUi.firstSelect = document.querySelector("#cpuFirstSeat");
   modeSelect.addEventListener("change", aiApplyUiMode);
+  const levelSelect = document.querySelector("#cpuLevelSelect");
+  if (levelSelect && typeof levelSelect.addEventListener === "function") {
+    aiUi.levelSelect = levelSelect;
+    aiRefreshLevelFromUi(); // リロード時にブラウザが復元した選択値を初期反映
+    levelSelect.addEventListener("change", aiApplyUiLevel);
+  }
 }
 aiSetupUi();
 
@@ -1265,6 +1545,17 @@ globalThis.__buddyfightAiApi = {
   setWaitMs(ms) {
     aiSession.waitMs = Number(ms) || 0;
   },
+  // CPUの強さ: "beginner"(既定・従来と同一判断) / "advanced"(上級)
+  setLevel: (level, seat) => aiSetLevel(level, seat),
+  setAdvancedFeatures: (features) => {
+    aiSession.advancedFeatures = { attack: true, call: true, charge: true, ability: true, counter: true, ...(features || {}) };
+  },
+  getLevel: (seat) => (seat === 0 || seat === 1 ? aiSession.levels[seat] : aiSession.levels[1]),
+  // 判断関数（強さ比較テスト用。スコアだけを純粋に比べられる）
+  scoreAttack: (seat, card, target) => aiScoreAttack(seat, card, target),
+  scoreCall: (seat, card, zone, options = {}) => aiScoreCall(seat, card, zone, options),
+  chooseCounter: (counters, seat) => aiChooseCounter(counters, seat),
+  pickChargeCard: (player) => aiPickChargeCard(player),
   enabled: () => aiEnabled(),
   hasWork: () => aiHasWork(),
   pump: () => aiPump(),
