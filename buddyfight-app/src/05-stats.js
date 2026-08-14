@@ -689,11 +689,36 @@ function continuousModifyStatsAmountFrom(effect, statKey, player, sourceCard, so
 }
 
 // 場・ソウルの継続 modifyStats（定数 by と amountFrom:dropAttributeCount/soulCount/soulStatSum）から statKey の合計補正値を算出。
+// MR16-1: stat 評価の再入ガード。effectiveSize の sizeEvaluationStack と同じ作法で、
+// 「自分の stat を見る継続効果」による自己言及を印字値で打ち切る。
+//
+// 実害（S-UB-C03/0082 登山アイドル 棟方愛海・別絵 ir067 も同型）:
+//   continuous:[{op:"grantKeyword", keyword:"penetrate", filter:{sameInstanceAsSource:true, powerGte:10000}}]
+//   ＝「このカードの攻撃力が10000以上なら『貫通』を得る」。continuousStatBonus は全継続効果に対して
+//   continuousEffectApplies を呼び、その filter 判定 matchesCardFilter(powerGte) が visiblePower を
+//   呼び戻すため、visiblePower → continuousStatBonus → matchesCardFilter → visiblePower の無限再帰になる。
+//   このカードが場にいるだけで visiblePower/visibleDefense/visibleCritical/effectiveSize の全てが
+//   RangeError で落ちる＝ブラウザなら操作不能。size と属性にはガードがあったが stat には無かった。
+// キーはカードオブジェクト自体（instanceId を持たない疑似カードでもガードが効くように。effectiveSize と同基準）。
+const statBonusEvaluationStack = new Set();
+
 function continuousStatBonus(card, statKey) {
   const slot = findFieldCardSlot(card);
   if (!slot) {
     return 0;
   }
+  if (statBonusEvaluationStack.has(card)) {
+    return 0; // 再入＝印字値で打ち切る近似（このカード自身のバフは乗らない）
+  }
+  statBonusEvaluationStack.add(card);
+  try {
+    return continuousStatBonusInner(card, statKey, slot);
+  } finally {
+    statBonusEvaluationStack.delete(card);
+  }
+}
+
+function continuousStatBonusInner(card, statKey, slot) {
   // continuousStatBonus 自体は結果をメモ化しない（this の値は effectiveSize 側でメモ化される）が、
   // この評価中に走る effectiveSize/effectiveAttributes のメモ有効範囲を継続評価の全体に広げる
   // ことで、cardCount ゲート越しの兄弟カード参照が同一パスのメモを共有できるようにする。
