@@ -359,9 +359,38 @@ function createRoom() {
     promptSeq: 0, // prompt_request の連番（クライアントの順序整合用）
     createdAt: Date.now(),
     updatedAt: Date.now(),
+    // 部屋を立てた人（ホスト）。キックの権限者。ホストが抜けたら最古の残存メンバーへ委譲する
+    //（誰もキックできない部屋が残らないように）。
+    hostClientId: null,
+    // キックされた相手の即再入室を防ぐ一時ブロック。key -> 解除時刻(ms)。
+    // clientId は参加のたびに新規発行されるため鍵にならない。ログイン中は userId、未ログインは接続元アドレスで抑える。
+    kickBlocks: new Map(),
   };
   rooms.set(roomId, room);
   return room;
+}
+
+// キック後の再入室ブロックの鍵（ログインユーザーは userId、未ログインは接続元アドレス）。
+const KICK_BLOCK_MS = 2 * 60 * 1000;
+function kickBlockKeys(req, userId) {
+  const keys = [];
+  if (userId) keys.push(`user:${userId}`);
+  const addr = req?.socket?.remoteAddress;
+  if (addr) keys.push(`addr:${addr}`);
+  return keys;
+}
+function isKickBlocked(room, req, userId) {
+  const now = Date.now();
+  for (const [key, until] of room.kickBlocks || []) {
+    if (until <= now) {
+      room.kickBlocks.delete(key); // 期限切れは掃除
+      continue;
+    }
+    if (kickBlockKeys(req, userId).includes(key)) {
+      return Math.ceil((until - now) / 1000);
+    }
+  }
+  return 0;
 }
 
 // ---- 永続化(P4・再起動耐性) ----
@@ -372,6 +401,7 @@ function snapshotRoom(room) {
     id: room.id,
     seats: room.seats,
     started: room.started,
+    hostClientId: room.hostClientId || null,
     createdAt: room.createdAt,
     updatedAt: room.updatedAt,
     members: [...room.members.values()].map((m) => ({
@@ -479,6 +509,9 @@ async function restoreRooms() {
         promptSeq: 0,
         createdAt: snap.createdAt || Date.now(),
         updatedAt: snap.updatedAt || Date.now(),
+        // 旧スナップショット（hostClientId 無し）は最初のメンバーをホストとみなす（後方互換）。
+        hostClientId: snap.hostClientId || (snap.members || [])[0]?.clientId || null,
+        kickBlocks: new Map(), // 再起動でブロックは解除（短期の抑止なので永続化しない）
       };
       if (snap.started && snap.state) {
         const customDecks = [];
@@ -502,12 +535,13 @@ async function restoreRooms() {
   }
 }
 
-function addMember(room, { name, userId = null }) {
+function addMember(room, { name, userId = null, remoteAddress = null }) {
   const clientId = randomId(6);
   const token = randomId(16);
   // userId: 参加時に Bearer が有効だった場合のログイン済みユーザーID（未ログインは null）。
   // 決着時に席へ紐づくログインユーザーへ戦績を記録するために控える（D5）。
-  const member = { clientId, token, name: name || "プレイヤー", role: null, deck: null, sse: null, userId };
+  // remoteAddress: キック後の再入室ブロックの鍵に使う（clientId は参加のたび新規で鍵にならない）。
+  const member = { clientId, token, name: name || "プレイヤー", role: null, deck: null, sse: null, userId, remoteAddress };
   // 既定の席割り: 1人目=seat0, 2人目=seat1, 以降=観戦（あとで変更可）
   if (!room.seats[0]) {
     room.seats[0] = clientId;
@@ -535,6 +569,16 @@ function memberByToken(room, token) {
 function vacateSeatOf(room, clientId) {
   if (room.seats[0] === clientId) room.seats[0] = null;
   if (room.seats[1] === clientId) room.seats[1] = null;
+}
+
+// ホストが部屋を去った時、最古の残存メンバーへホストを委譲する。
+// 委譲しないと「誰もキックできない部屋」になり、居座りを排除する手段が消える。
+function reassignHostIfNeeded(room) {
+  if (room.hostClientId && room.members.has(room.hostClientId)) {
+    return;
+  }
+  const next = room.members.keys().next(); // Map は挿入順＝参加順
+  room.hostClientId = next.done ? null : next.value;
 }
 
 // 役割変更（参加順と独立に P1/P2/観戦 を割り当て）。
@@ -591,16 +635,30 @@ function lobbyPayload(room, you) {
     type: "lobby",
     roomId: room.id,
     started: room.started,
-    you: you ? { clientId: you.clientId, role: you.role } : null,
+    you: you ? { clientId: you.clientId, role: you.role, isHost: you.clientId === room.hostClientId } : null,
     seats: room.seats,
+    hostClientId: room.hostClientId || null,
     members: [...room.members.values()].map((m) => ({
       clientId: m.clientId,
       name: m.name,
       role: m.role,
       deck: m.deck ? { id: m.deck.id, name: m.deck.name || null } : null,
       online: Boolean(m.sse),
+      isHost: m.clientId === room.hostClientId,
     })),
   };
+}
+
+// キック等でメンバーを外す時、その人のSSEを明示的に閉じる（開いたままだと切断検知まで生き残り、
+// 以後のブロードキャストが「もういない相手」へ書き続ける）。
+function closeSseOf(member) {
+  if (!member?.sse) return;
+  try {
+    member.sse.end();
+  } catch (error) {
+    /* 既に閉じている場合は無視 */
+  }
+  member.sse = null;
 }
 
 function writeSse(res, message) {
@@ -1128,12 +1186,13 @@ async function handleApi(req, res, url) {
     const body = await readJson(req);
     const room = createRoom();
     const userId = await resolveOptionalUserId(req); // D5: ログイン中なら席に userId を紐づける
-    const member = addMember(room, { name: body.name, userId });
+    const member = addMember(room, { name: body.name, userId, remoteAddress: req.socket?.remoteAddress || null });
+    room.hostClientId = member.clientId; // 部屋を立てた人がホスト（キックの権限者）
     if (body.deck) {
       member.deck = body.deck;
     }
     schedulePersist(room);
-    sendJson(res, 201, { roomId: room.id, clientId: member.clientId, token: member.token, role: member.role });
+    sendJson(res, 201, { roomId: room.id, clientId: member.clientId, token: member.token, role: member.role, isHost: true });
     return true;
   }
 
@@ -1147,16 +1206,121 @@ async function handleApi(req, res, url) {
   }
 
   // POST /auth/rooms/:id/join
+  // 冪等: 既にこの部屋のメンバーなら新しい席を作らず、その人の membership をそのまま返す。
+  // 「参加」を2回押す・戻る/リロード後にもう一度押す、で観戦者が増殖して席が埋まり、
+  // 開始ゲート（両席＋両者デッキ）が満たせなくなる事故を防ぐ。
   if (req.method === "POST" && parts[3] === "join") {
     const body = await readJson(req);
     const userId = await resolveOptionalUserId(req); // D5
-    const member = addMember(room, { name: body.name, userId });
+    // ① 自分のトークンを持っている＝この部屋に既にいる（所持自体が本人証明）。
+    let member = body.token ? memberByToken(room, body.token) : null;
+    // ② ログイン中なら同じユーザーの席を再利用する（別タブ/別端末からの重複参加も1人分に畳む）。
+    //    userId は Bearer 検証済みなので、既存トークンを返しても他人になりすませない。
+    if (!member && userId) {
+      member = [...room.members.values()].find((m) => m.userId && m.userId === userId) || null;
+    }
+    if (member) {
+      if (body.name) member.name = body.name;
+      if (body.deck) member.deck = body.deck;
+      room.updatedAt = Date.now();
+      broadcastLobby(room);
+      schedulePersist(room);
+      sendJson(res, 200, {
+        roomId: room.id,
+        clientId: member.clientId,
+        token: member.token,
+        role: member.role,
+        isHost: member.clientId === room.hostClientId,
+        rejoined: true, // クライアントは「すでに参加済み」を案内できる
+      });
+      return true;
+    }
+    // キック直後の再入室はしばらく断る（ホストのキックが無意味にならないように）。
+    const blockedFor = isKickBlocked(room, req, userId);
+    if (blockedFor > 0) {
+      sendJson(res, 403, { error: `この部屋からキックされています（あと約${blockedFor}秒で再参加できます）` });
+      return true;
+    }
+    member = addMember(room, { name: body.name, userId, remoteAddress: req.socket?.remoteAddress || null });
+    reassignHostIfNeeded(room); // 復元直後などホスト不在の部屋なら最初の参加者がホストになる
     if (body.deck) {
       member.deck = body.deck;
     }
     broadcastLobby(room);
     schedulePersist(room);
-    sendJson(res, 200, { roomId: room.id, clientId: member.clientId, token: member.token, role: member.role });
+    sendJson(res, 200, {
+      roomId: room.id,
+      clientId: member.clientId,
+      token: member.token,
+      role: member.role,
+      isHost: member.clientId === room.hostClientId,
+    });
+    return true;
+  }
+
+  // POST /auth/rooms/:id/kick  （ホストが他のメンバーを部屋から出す）
+  // 権限: ホストのみ。自分自身は対象にできない。
+  // タイミング: 観戦者はいつでも可。対戦席の人は「未開始 or 決着後」のみ
+  //   （進行中に席の人を消すと、投了を代理で押すのと同じになり勝敗が歪むため）。
+  if (req.method === "POST" && parts[3] === "kick") {
+    const body = await readJson(req);
+    const caller = memberByToken(room, body.token);
+    if (!caller) {
+      sendJson(res, 403, { error: "invalid token" });
+      return true;
+    }
+    if (caller.clientId !== room.hostClientId) {
+      sendJson(res, 403, { error: "部屋を立てた人だけがキックできます" });
+      return true;
+    }
+    if (room.busy) {
+      sendJson(res, 409, { error: "他の操作を処理中です（少し待って再試行してください）" });
+      return true;
+    }
+    const target = room.members.get(String(body.clientId || ""));
+    if (!target) {
+      sendJson(res, 404, { error: "対象が見つかりません（すでに退出しています）" });
+      return true;
+    }
+    if (target.clientId === caller.clientId) {
+      sendJson(res, 400, { error: "自分はキックできません（退出は「部屋を出る」）" });
+      return true;
+    }
+    const gameState = room.started && room.game ? room.game.api.getState() : null;
+    const inGame = Boolean(room.started && room.game && gameState && gameState.winner == null);
+    const targetIsPlayer = target.role === 0 || target.role === 1;
+    if (inGame && targetIsPlayer) {
+      sendJson(res, 409, {
+        error: "対戦中の対戦者はキックできません（「試合を中断」で勝敗を残さず終われます）",
+      });
+      return true;
+    }
+    // 当人へ通知してから外す（外した後だと SSE が閉じていて届かない）。
+    if (target.sse) {
+      writeSse(target.sse, { type: "kicked", text: `部屋 ${room.id} から退出させられました` });
+    }
+    // 同じ相手がすぐ入り直せるとキックの意味が無いので、しばらく再入室を断る。
+    for (const key of kickBlockKeys({ socket: { remoteAddress: target.remoteAddress } }, target.userId)) {
+      room.kickBlocks.set(key, Date.now() + KICK_BLOCK_MS);
+    }
+    vacateSeatOf(room, target.clientId);
+    room.members.delete(target.clientId);
+    closeSseOf(target);
+    reassignHostIfNeeded(room);
+    room.updatedAt = Date.now();
+    if (room.members.size === 0) {
+      closeAndForgetRoom(room);
+      sendJson(res, 200, { ok: true, kicked: target.clientId, roomClosed: true });
+      return true;
+    }
+    broadcastLobby(room);
+    for (const other of room.members.values()) {
+      if (other.sse) {
+        writeSse(other.sse, { type: "notice", text: `${target.name}が部屋から退出させられました` });
+      }
+    }
+    persistNow(room);
+    sendJson(res, 200, { ok: true, kicked: target.clientId });
     return true;
   }
 
@@ -1188,6 +1352,7 @@ async function handleApi(req, res, url) {
       // 退出者は members から削除し席を空ける。相手は「勝ち」表示のまま部屋に残す（相手も後で /leave するか TTL で掃除）。
       vacateSeatOf(room, member.clientId);
       room.members.delete(member.clientId);
+      reassignHostIfNeeded(room); // ホストが投了退出しても、残った人がキックできる状態を保つ
       // 残るメンバーへ勝者viewを配信し、対戦者へ「相手退出＝あなたの勝ち」を通知（token/伏せ札/seed は載せない＝テキストのみ）。
       broadcastView(room, "相手が退出しました");
       for (const other of room.members.values()) {
@@ -1202,6 +1367,7 @@ async function handleApi(req, res, url) {
     // ロビー中・決着後・観戦者＝単純退出（投了は起きない）。メンバーが0人になった部屋は閉じる。
     vacateSeatOf(room, member.clientId);
     room.members.delete(member.clientId);
+    reassignHostIfNeeded(room); // ホストが抜けたら最古の残存メンバーへ委譲
     if (room.members.size === 0) {
       closeAndForgetRoom(room);
     } else {

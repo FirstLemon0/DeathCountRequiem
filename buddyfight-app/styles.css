@@ -1135,6 +1135,16 @@ dialog::backdrop {
   text-align: left;
 }
 
+/* MR17-2: 裏向きソウル（所有者以外は中身を見られない）。押せない伏せ札として見せる。 */
+.drop-dialog-card-hidden {
+  opacity: 0.6;
+  cursor: default;
+}
+.drop-dialog-card-hidden .drop-dialog-name {
+  font-style: italic;
+  color: var(--muted);
+}
+
 .drop-dialog-order {
   color: var(--muted);
   font-size: 0.76rem;
@@ -2277,6 +2287,31 @@ body.thin-client:not(.game-started) .hand-dock {
   border-radius: 8px;
   background: rgb(var(--panel-rgb) / 0.6);
   font-size: 0.85rem;
+}
+
+/* ロビーの行: 名前は伸ばし、キックボタンは右端に寄せる。 */
+.lobby-member-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* ホストだけに出る「退出させる」。取り消せない操作なので危険色にする。 */
+.lobby-kick {
+  flex: 0 0 auto;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--danger, #d05);
+  font-size: 0.76rem;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.lobby-kick:hover:not(:disabled) {
+  background: rgb(var(--panel-rgb) / 0.9);
+  border-color: var(--danger, #d05);
+}
+.lobby-kick:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ---- アカウントバー (user-api.js: ユーザー登録＋マイデッキ) ---- */

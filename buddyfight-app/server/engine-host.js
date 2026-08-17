@@ -317,7 +317,7 @@ class GameRoom {
       player.deck = hiddenPile(player.deck);
       const own = index === seat;
       if (!spectator && !own) {
-        // 相手の非公開ゾーン: 手札・ゲージ(face-down)・場のソウル
+        // 相手の非公開ゾーン: 手札・ゲージ(face-down)。場のソウルは表向きなら公開情報（MR17-1）。
         player.hand = hiddenPile(player.hand);
         player.gauge = hiddenPile(player.gauge);
         // 配置魔法(『設置』)は神以前ルールでは表向き＝両者に公開が基本。無条件で伏せると相手から中身が
@@ -328,17 +328,16 @@ class GameRoom {
             player.field[zone] = faceDownCard(player.field[zone]);
           }
         }
-        for (const zone of ["left", "center", "right", "item", "item2", "item3", "item4"]) {
-          const card = player.field[zone];
-          if (card && Array.isArray(card.soul) && card.soul.length) {
-            card.soul = hiddenPile(card.soul);
-          }
-        }
+        // MR17-1: 場のソウルはここでは伏せない。ver2.05 p.24「特に指示がない限り、ソウルには表向きに
+        // カードが置かれます」「他のファイターの**裏向きの**ソウルの内容を見ることはできません」＝
+        // 表向きソウルは公開情報で、相手も中身を見られる（ローカル対戦のUIも「相手のカードのソウルも
+        // 中身を確認できます」で一致）。以前はここで soul 全体を hiddenPile しており、ネット対戦だけ
+        // 相手のソウルガード枚数や星合体の中身が見えず、攻撃可否の判断材料が落ちていた。
+        // 裏向き札の秘匿は下の !own ブロック（観戦ロールと同一処理）が担う。
       }
       // E-Y1(X-BT01 奇襲): 裏向き(faceDown)でソウルに入った札は所有者本人のみ表を見られる。
-      // 相手席は上で soul 全体を hiddenPile 済みだが、観戦ロールは face-up ソウルを見せる（公開情報）ため、
-      // face-down 札だけを個別に伏せる（face-up は公開のまま）。__soulHost 等の内部メタも落とす。
-      // シード非漏洩(T13)と同じ思想＝相手/観戦へ表情報を出さない。
+      // 相手席・観戦ロールとも face-down 札だけを個別に伏せ、face-up ソウルは公開のまま見せる
+      // （ver2.05 p.24。MR17-1 で相手席の一律 hiddenPile を廃止し、両ロールをこの1経路に統一した）。
       if (!own) {
         for (const zone of ["left", "center", "right", "item", "item2", "item3", "item4"]) {
           const card = player.field[zone];

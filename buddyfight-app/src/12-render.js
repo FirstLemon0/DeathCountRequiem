@@ -355,6 +355,22 @@ function showSoulDialog(owner, zone) {
       const cardButton = document.createElement("button");
       cardButton.type = "button";
       cardButton.className = "drop-dialog-card";
+      // MR17-2: ネット対戦の view では、裏向きソウル（ver2.05 p.24＝所有者以外は中身を見られない）が
+      // {hidden:true} で届く。名前が無いので escapeHtml(undefined) が文字列 "undefined" を描いていた。
+      // 伏せ札として明示し、詳細シート（能力発動の入口）も開かない。
+      const isHidden = Boolean(soulCard.hidden) || !soulCard.name;
+      if (isHidden) {
+        cardButton.classList.add("drop-dialog-card-hidden");
+        cardButton.disabled = true;
+        cardButton.innerHTML = `
+          <span class="drop-dialog-order">${index + 1}</span>
+          <span class="drop-dialog-name">（裏向き）</span>
+          <span class="drop-dialog-type"></span>
+        `;
+        item.append(cardButton);
+        elements.soulDialogList.append(item);
+        return;
+      }
       cardButton.innerHTML = `
         <span class="drop-dialog-order">${index + 1}</span>
         <span class="drop-dialog-name">${escapeHtml(soulCard.name)}</span>
@@ -664,8 +680,13 @@ function showCardImageFallback(img) {
   }
 }
 
+// MR17-3: ソウルの「枚数」は公開情報（ver2.05 p.24 が非公開としているのは裏向き札の**内容**だけ）。
+// 以前は名前の無い札（ネット対戦の view が伏せた {hidden:true}）を filter(Boolean) で落としており、
+// バッジの枚数が実際より少なく出た。相手の全ソウルが裏向きだとバッジ自体が消え、
+// ソウルガードを持つ相手モンスターが「ソウル0＝次で落ちる」に見えてしまう（攻撃判断が壊れる）。
+// 中身が見えない札は「（裏向き）」として数に含める。
 function stackedCardNames(card) {
-  return (card.soul || []).map((soulCard) => soulCard.name).filter(Boolean);
+  return (card.soul || []).map((soulCard) => soulCard?.name || "（裏向き）");
 }
 
 function attachTooltip(element, card, options = {}) {

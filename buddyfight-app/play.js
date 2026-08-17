@@ -8,7 +8,7 @@
 (() => {
   const thin = window.__buddyfightThin;
   const $ = (id) => document.getElementById(id);
-  const session = { roomId: "", token: "", clientId: "", role: null, started: false, es: null };
+  const session = { roomId: "", token: "", clientId: "", role: null, started: false, es: null, isHost: false };
   const ui = { selected: null, targeting: false, effectTargeting: null, activePromptId: null };
 
   // ---- 自作（カスタム）デッキ: builder と同じ localStorage を共有。サーバへは recipe ごと custom 同梱で送る ----
@@ -230,6 +230,11 @@
       // 相手退出＝自分の勝ち等の通知（テキストのみ）。勝者viewは別途 type:"view" で届くので、ここは文言表示のみ。
       setStatus(message.text || "");
       updateRoomControls(); // 勝者確定に伴い「試合を中断」を隠す
+    } else if (message.type === "kicked") {
+      // ホストにキックされた。部屋が閉じたのと同様に初期画面へ戻す（再入室は数分ブロックされる）。
+      if (session.roomId) {
+        resetToLobbyScreen(message.text || "部屋から退出させられました");
+      }
     } else if (message.type === "aborted") {
       // 相手（または自分）が試合を中断＝部屋が閉じた。勝敗なしで初期（作成/参加）画面へ戻す。
       // 自分発の中断は POST 応答側でも resetToLobbyScreen 済み。session 済クリア時はガードで二重処理を防ぐ。
@@ -244,6 +249,7 @@
     if (message.you) {
       session.role = message.you.role;
       session.clientId = message.you.clientId;
+      session.isHost = Boolean(message.you.isHost);
     }
     saveSession();
     $("lobbySeatLabel").textContent = `役割: ${roleLabel(session.role)}`;
@@ -261,7 +267,28 @@
       div.className = "lobby-member";
       const me = member.clientId === session.clientId ? "（あなた）" : "";
       const deck = member.deck ? ` / ${member.deck.name || member.deck.id || "デッキ確定"}` : " / デッキ未選択";
-      div.textContent = `${roleLabel(member.role)}: ${member.name}${me}${member.online ? "" : " [接続なし]"}${deck}`;
+      const label = document.createElement("span");
+      label.className = "lobby-member-label";
+      label.textContent =
+        `${member.isHost ? "👑 " : ""}${roleLabel(member.role)}: ${member.name}${me}` +
+        `${member.online ? "" : " [接続なし]"}${deck}`;
+      div.append(label);
+      // キックはホストだけに出す。自分自身は対象外（退出は「部屋を出る」）。
+      // 対戦中の対戦者はサーバ側で拒否されるので、ボタン自体を無効化して理由をツールチップに出す。
+      if (session.isHost && member.clientId !== session.clientId) {
+        const kick = document.createElement("button");
+        kick.type = "button";
+        kick.className = "lobby-kick";
+        kick.textContent = "退出させる";
+        const isPlayer = member.role === 0 || member.role === 1;
+        const blocked = message.started && isPlayer;
+        kick.disabled = blocked;
+        kick.title = blocked
+          ? "対戦中の対戦者は退出させられません（「試合を中断」なら勝敗を残さず終われます）"
+          : `${member.name}を部屋から退出させます`;
+        kick.addEventListener("click", () => kickMember(member));
+        div.append(kick);
+      }
       roster.append(div);
     });
     // 開始ゲート: 両席が埋まり両者デッキ確定するまで「対戦開始」を無効化（事後エラーを防ぐ）。
@@ -288,6 +315,22 @@
     updateRoomControls(); // 入室/席変更/開始のたびに退出・中断ボタンの表示を更新
   }
 
+  // ホストが他のメンバーを部屋から出す。取り消せない操作なので確認を挟む。
+  async function kickMember(member) {
+    const ok = window.confirm(`${member.name} を部屋から退出させますか？\n（しばらく再参加できなくなります）`);
+    if (!ok) return;
+    try {
+      await api(`auth/rooms/${encodeURIComponent(session.roomId)}/kick`, {
+        token: session.token,
+        clientId: member.clientId,
+      });
+      setStatus(`${member.name} を退出させました`);
+      refreshState();
+    } catch (error) {
+      setStatus(`退出させられませんでした: ${error.message}`);
+    }
+  }
+
   // ---- ロビー操作 ----
   const lobbyAction = (action, extra = {}) =>
     api(`auth/rooms/${encodeURIComponent(session.roomId)}/lobby`, { token: session.token, action, ...extra })
@@ -301,10 +344,33 @@
   async function createOrJoin(kind) {
     try {
       const deck = selectedDeckPayload();
-      const pathname = kind === "create" ? "auth/rooms" : `auth/rooms/${encodeURIComponent($("lobbyRoomInput").value.trim().toUpperCase())}/join`;
+      const wantRoomId = $("lobbyRoomInput").value.trim().toUpperCase();
+      const pathname = kind === "create" ? "auth/rooms" : `auth/rooms/${encodeURIComponent(wantRoomId)}/join`;
       if (kind === "join" && !$("lobbyRoomInput").value.trim()) {
         setStatus("参加する部屋番号を入力してください");
         return;
+      }
+      // 二重参加の防止（クライアント側の一次ガード。サーバ側の join も冪等にしてある）:
+      //  ・同じ部屋にもう入っている → 何もしない（もう一度押しても席は増えない）
+      //  ・別の部屋に入っている → 先に出るか確認してから移る（黙って二重在籍にしない）
+      if (session.roomId) {
+        if (kind === "join" && wantRoomId === session.roomId) {
+          setStatus(`すでに部屋 ${session.roomId} に参加しています`);
+          return;
+        }
+        const moving = window.confirm(
+          `いま部屋 ${session.roomId} に参加中です。\nそこを出て${kind === "create" ? "新しい部屋を作成" : `部屋 ${wantRoomId} へ参加`}しますか？`,
+        );
+        if (!moving) return;
+        try {
+          await api(`auth/rooms/${encodeURIComponent(session.roomId)}/leave`, { token: session.token });
+        } catch (error) {
+          // 退出に失敗しても（対戦中の投了ガード等）新しい部屋へは行かせない＝二重在籍を作らない
+          setStatus(`いまの部屋を出られませんでした: ${error.message}`);
+          return;
+        }
+        if (session.es) session.es.close();
+        Object.assign(session, { roomId: "", token: "", clientId: "", role: null, started: false, isHost: false, es: null });
       }
       // D5(戦績): ログイン中なら Bearer を添えて席にログインユーザーを紐づける（決着時にサーバが戦績を記録）。
       // 未ログイン・トークン失効でもサーバ側は握って未ログイン扱いにするだけ＝参加は失敗しない。
@@ -314,7 +380,13 @@
         if (token) authHeaders = { Authorization: "Bearer " + token };
       } catch (_) { /* localStorage 不可環境等は無視 */ }
       const data = await api(pathname, { name: askName(), deck }, authHeaders);
-      Object.assign(session, { roomId: data.roomId, token: data.token, clientId: data.clientId, role: data.role });
+      Object.assign(session, {
+        roomId: data.roomId,
+        token: data.token,
+        clientId: data.clientId,
+        role: data.role,
+        isHost: Boolean(data.isHost),
+      });
       session.started = false;
       ui.lastViewKey = null; // 別部屋へ入り直したら次のviewを必ず再適用する
       // 新しい部屋へ入り直す＝ロビーが主役。前局の game-started を解除しないとモバイルでロビーが隠れたまま。
@@ -323,7 +395,11 @@
       $("lobbyRoomInput").value = data.roomId;
       connectSse();
       updateRoomControls(); // 入室直後に「部屋を出る」を表示（hello 到着前でも押せるように）
-      setStatus(`部屋 ${data.roomId} ${kind === "create" ? "を作成" : "に参加"}しました`);
+      setStatus(
+        data.rejoined
+          ? `部屋 ${data.roomId} にはすでに参加済みです（同じ席に戻りました）`
+          : `部屋 ${data.roomId} ${kind === "create" ? "を作成" : "に参加"}しました`,
+      );
     } catch (error) {
       setStatus(`${kind === "create" ? "作成" : "参加"}失敗: ${error.message}`);
     }
@@ -390,7 +466,7 @@
     try { session.es?.close(); } catch { /* noop */ }
     session.es = null;
     clearSession(roomId); // bf_auth_session:<roomId> / bf_auth_last を掃除
-    Object.assign(session, { roomId: "", token: "", clientId: "", role: null, started: false });
+    Object.assign(session, { roomId: "", token: "", clientId: "", role: null, started: false, isHost: false });
     ui.lastViewKey = null;
     ui.activePromptId = null;
     closeMenu();
