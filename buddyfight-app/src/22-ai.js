@@ -578,7 +578,14 @@ async function aiMainStep(seat) {
 }
 
 async function aiAttackStep(seat) {
-  const actions = aiEnumerateAttacks(seat).filter((action) => !aiSession.failedActionKeys.has(action.key));
+  // MR19-1: アタックフェイズ中に使える起動能力も候補に入れる。
+  // 以前はここで攻撃しか列挙しておらず、timing:["attack"] の起動能力（暦級五番艦 サツキの
+  // 「メインフェイズかアタックフェイズ中、ソウルの《艦載機》をコールする」等）は
+  // メインの列挙でもタイミング不一致で弾かれ、CPU が一度も使えなかった。
+  const actions = [
+    ...aiEnumerateAttacks(seat),
+    ...aiEnumerateFieldAbilities(seat),
+  ].filter((action) => !aiSession.failedActionKeys.has(action.key));
   const best = aiPickBestAction(actions);
   if (!best) {
     await goFinalPhase();
@@ -702,6 +709,42 @@ async function aiForceAdvance() {
 // --------------------------------------------------------------------------
 // 合法手の列挙（Q12: 全行動種。既存のエンジン可否関数だけで判定する）
 // --------------------------------------------------------------------------
+// 場の起動能力の列挙（ソウル能力・星合体含む。同一カードは1ターン1回まで=連打防止）。
+// findUsableFieldAbilities が「今のフェイズで使えるか」まで見るので、メイン/アタックの両方から同じ関数を呼べる
+// （timing:["attack"] の能力はアタックフェイズでだけ候補に出る）。
+function aiEnumerateFieldAbilities(seat) {
+  const player = state.players[seat];
+  const actions = [];
+  if (!player) return actions;
+  for (const zone of Object.keys(player.field)) {
+    const card = player.field[zone];
+    if (!card) continue;
+    // 対抗列挙・攻撃対象列挙と同様に aiWithSelected で state.selected を仮設定して列挙する。
+    // 『搭乗』『変身』の -field 起動は sourceZoneIn:[left/center/right] を持ち、その条件は state.selected?.zone を
+    // 見る。プランニング中 state.selected=null のまま findUsableFieldAbilities を呼ぶと、場のモンスターからの
+    // 搭乗/変身が候補に一切現れず（exec 側は selected を設定するのに列挙側だけ包み忘れていた非対称）、CPU が
+    // 場からの搭乗/変身を永久に選べなかった。
+    const abilities = aiWithSelected(
+      { source: "field", owner: seat, zone, instanceId: card.instanceId },
+      () => findUsableFieldAbilities(card, seat),
+    );
+    if (!abilities.length) continue;
+    const key = `field:${card.instanceId}`;
+    if (aiSession.usedOnceKeys.has(key)) continue;
+    actions.push({
+      key,
+      score: aiScoreFieldAbility(seat, card, abilities),
+      exec: async () => {
+        aiSession.usedOnceKeys.add(key);
+        state.selected = { source: "field", owner: seat, zone, instanceId: card.instanceId };
+        elements.effectTarget.value = "";
+        await useCardAction();
+      },
+    });
+  }
+  return actions;
+}
+
 function aiEnumerateMainActions(seat) {
   const player = state.players[seat];
   const actions = [];
@@ -798,33 +841,8 @@ function aiEnumerateMainActions(seat) {
       },
     });
   }
-  // 場の起動能力（ソウル能力・星合体含む。同一カードは1ターン1回まで=連打防止）
-  for (const zone of Object.keys(player.field)) {
-    const card = player.field[zone];
-    if (!card) continue;
-    // 対抗列挙(:322)・攻撃対象列挙(:796)と同様に aiWithSelected で state.selected を仮設定して列挙する。
-    // 『搭乗』『変身』の -field 起動は sourceZoneIn:[left/center/right] を持ち、その条件は state.selected?.zone を
-    // 見る。プランニング中 state.selected=null のまま findUsableFieldAbilities を呼ぶと、場のモンスターからの
-    // 搭乗/変身が候補に一切現れず（exec 側は selected を設定するのに列挙側だけ包み忘れていた非対称）、CPU が
-    // 場からの搭乗/変身を永久に選べなかった。
-    const abilities = aiWithSelected(
-      { source: "field", owner: seat, zone, instanceId: card.instanceId },
-      () => findUsableFieldAbilities(card, seat),
-    );
-    if (!abilities.length) continue;
-    const key = `field:${card.instanceId}`;
-    if (aiSession.usedOnceKeys.has(key)) continue;
-    actions.push({
-      key,
-      score: aiScoreFieldAbility(seat, card, abilities),
-      exec: async () => {
-        aiSession.usedOnceKeys.add(key);
-        state.selected = { source: "field", owner: seat, zone, instanceId: card.instanceId };
-        elements.effectTarget.value = "";
-        await useCardAction();
-      },
-    });
-  }
+  // 場の起動能力（ソウル能力・星合体含む）。メインとアタックで同じ列挙を使う（MR19-1）。
+  actions.push(...aiEnumerateFieldAbilities(seat));
   // ドロップ起動能力
   for (const card of player.drop) {
     const key = `drop:${card.instanceId}`;
@@ -955,9 +973,39 @@ function aiEnumerateLinkAttacks(seat, singles) {
       const b = singles[j];
       // 連携で「合計攻撃力なら破壊できる」相手だけを狙う（単騎で足りるなら連携する意味がない）。
       const combinedPower = (visiblePower(a.card) || 0) + (visiblePower(b.card) || 0);
+      const itemDefense = aiOpponentItemDefense(seat);
       for (const target of a.targets) {
-        if (target.value === "fighter") continue; // 本体は1体ずつ殴った方が総打点が多い
         if (!b.targets.some((t) => t.value === target.value)) continue; // 双方がこの対象を攻撃できること
+        if (target.value === "fighter") {
+          // MR19-2: 本体は原則1体ずつ殴った方が総打点が多い。ただし防御力アイテムが壁になっている場合、
+          // 単騎では攻撃力が足りず1点も通らない（ver2.05「防御力未満の攻撃はダメージを与えられません」）。
+          // 連携すれば攻撃力を合算して壁を越えられ、打撃力も合算で入る＝ここだけは連携が正解になる。
+          if (itemDefense <= 0) continue;
+          const soloBreaksA = (visiblePower(a.card) || 0) >= itemDefense;
+          const soloBreaksB = (visiblePower(b.card) || 0) >= itemDefense;
+          if (soloBreaksA || soloBreaksB) continue; // 単騎で越えられるなら連携する意味がない
+          if (combinedPower < itemDefense) continue; // 連携でも越えられない
+          const combinedCritical = (visibleCritical(a.card) || 0) + (visibleCritical(b.card) || 0);
+          let fighterScore = 9 + combinedCritical; // 単騎では0点だった打点がまとめて通る
+          if ((opponent?.life || 0) <= combinedCritical) {
+            fighterScore += 100; // これで決まるなら最優先
+          }
+          actions.push({
+            key: `link:${a.card.instanceId}+${b.card.instanceId}:fighter`,
+            score: fighterScore,
+            exec: async () => {
+              state.linkAttackers = [
+                { owner: seat, zone: a.zone },
+                { owner: seat, zone: b.zone },
+              ];
+              state.selected = { source: "field", owner: seat, zone: a.zone, instanceId: a.card.instanceId };
+              render();
+              elements.attackTarget.value = "fighter";
+              await attackAction();
+            },
+          });
+          continue;
+        }
         const defenderCard = opponent?.field?.[target.zone];
         if (!defenderCard) continue;
         const defense = visibleDefense(defenderCard) || 0;
@@ -1344,10 +1392,39 @@ function aiScoreDropAbility(seat, card) {
   return 1;
 }
 
+// MR19-2: 相手が装備している「防御力を持つアイテム」の防御力（複数装備なら最大値）。
+// ver2.05:「防御力を持つアイテムを装備している時、その防御力未満の攻撃力の攻撃はダメージを与えられません」。
+// エンジンの getPendingBattleTargetInfo(src/11) と同じ「全アイテム枠から防御力最大」の規約で読む。
+function aiOpponentItemDefense(seat) {
+  const opponent = state.players[1 - seat];
+  let best = 0;
+  try {
+    for (const zone of itemZones) {
+      const item = opponent?.field?.[zone];
+      if (typeof isDefenseItem === "function" ? isDefenseItem(item) : item && visibleDefense(item) > 0) {
+        best = Math.max(best, visibleDefense(item) || 0);
+      }
+    }
+  } catch (error) {
+    return 0; // 読めない局面では従来どおり（防御アイテム無し扱い）
+  }
+  return best;
+}
+
 function aiScoreAttack(seat, card, target) {
   const opponent = state.players[1 - seat];
   if (target.value === "fighter") {
     let score = 8 + visibleCritical(card);
+    // MR19-2: 防御力アイテムの壁。攻撃力が防御力未満だと本体へ1点も通らない＝完全な空振り。
+    // 以前はここを見ておらず、防御力6000のアイテム相手に攻撃力4000のモンスターで殴り続けていた
+    //（ユーザー報告）。上級は空振りを選ばない。初級は従来どおり（既存挙動不変）。
+    const itemDefense = aiOpponentItemDefense(seat);
+    if (itemDefense > 0 && visiblePower(card) < itemDefense) {
+      if (aiAdv(seat, "attackFutile") && !aiHasAttackTrigger(card)) {
+        return 0; // 『攻撃した時』誘発を持つならその仕事のために撃つ（壁抜き不能でも価値がある）
+      }
+      score -= 6; // 初級・誘発持ちでも「通らない攻撃」は後回しにする
+    }
     if (opponent.life <= visibleCritical(card)) {
       score += 100; // 致死チェック: この一撃で決まるなら最優先（Q5）
     }
@@ -1831,6 +1908,8 @@ globalThis.__buddyfightAiApi = {
   scoreFieldAbility: (seat, card, abilities) => aiScoreFieldAbility(seat, card, abilities),
   abilityPayoff: (ability) => aiAbilityPayoff(ability),
   enumerateFlagAttacks: (seat) => aiEnumerateFlagAttacks(seat),
+  enumerateFieldAbilities: (seat) => aiEnumerateFieldAbilities(seat),
+  enumerateAttacks: (seat) => aiEnumerateAttacks(seat),
   chooseCounter: (counters, seat) => aiChooseCounter(counters, seat),
   pickChargeCard: (player) => aiPickChargeCard(player),
   enabled: () => aiEnabled(),

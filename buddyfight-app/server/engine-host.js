@@ -370,6 +370,16 @@ class GameRoom {
         }
       }
     });
+    // MR18-1: state.selected（いま選択中のカード）は本来そのプレイヤーのUI状態で、view には
+    // 「誰が何を選んでいるか」がそのまま載る。相手が手札のカードを選んだ瞬間、その instanceId が
+    // 相手席の view に流れ、まだ公開されていない手札札の識別子が漏れていた（実測: view.selected.instanceId）。
+    // instanceId はシード確立時に配布順の連番（c1,c2,…）なので、識別子だけでも山札位置の手掛かりになる。
+    // 場・ドロップ・フラッグの選択は公開情報なのでそのまま見せ、非公開ゾーン（手札・山札・ソウル）の
+    // 選択は「選択中であること」だけ残して中身を伏せる（相手が操作中である合図としては有用なため）。
+    const HIDDEN_SELECT_SOURCES = new Set(["hand", "deck", "soul"]);
+    if (view.selected && view.selected.owner !== seat && HIDDEN_SELECT_SOURCES.has(view.selected.source)) {
+      view.selected = { owner: view.selected.owner, source: view.selected.source, hidden: true };
+    }
     if (!spectator) {
       view.viewerSeat = seat;
     }
