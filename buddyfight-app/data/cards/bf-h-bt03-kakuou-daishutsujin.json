@@ -45,19 +45,9 @@
       "abilities": [
         {
           "id": "bf-h-bt03-0001-attacked-draw",
-          "kind": "activated",
-          "timing": [
-            "counter"
-          ],
-          "conditions": [
-            {
-              "op": "pendingAttackDefenderIsSelf"
-            },
-            {
-              "op": "pendingAttackTargetIs",
-              "targetType": "fighter"
-            }
-          ],
+          "kind": "triggered",
+          "event": "fighterAttacked",
+          "optional": true,
           "cost": [
             {
               "op": "payGauge",
@@ -169,7 +159,7 @@
         "counterattack",
         "lifeLink2"
       ],
-      "destroyReplacement": {
+      "leaveFieldReplacement": {
         "optional": true,
         "cost": [
           {
@@ -378,6 +368,10 @@
           "conditions": [
             {
               "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "incomingDamagePending",
+              "lethal": true
             }
           ],
           "cost": [],
@@ -417,12 +411,37 @@
               "excludeSource": true
             },
             {
-              "op": "setPreventNextDestroy",
-              "target": "$self"
+              "op": "selectCards",
+              "var": "selfCard",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "sameInstanceAsSource": true
+              },
+              "amount": 1,
+              "require": false,
+              "forceDialog": false,
+              "title": "四角炎王 バーンノヴァ",
+              "lead": "そのターン中、破壊されなくするこのカード。"
+            },
+            {
+              "op": "grantTemporaryDestroyImmunitySelected",
+              "var": "selfCard",
+              "immunities": [
+                {
+                  "from": {}
+                },
+                {
+                  "from": {
+                    "byBattle": true
+                  }
+                }
+              ]
             }
           ]
         }
-      ]
+      ],
+      "_note": "【pt-fix-d 2026-10-14】救援コールは「君のライフが０になるなら」＝incomingDamagePending{lethal:true}（これから受けるダメージで自分のライフが０になる時だけ）。"
     },
     {
       "id": "bf-h-bt03-0007",
@@ -934,7 +953,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -943,7 +963,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-h-bt03-0014-livingdead"
+            "key": "bf-h-bt03-0014-livingdead",
+            "shared": true
           }
         }
       ]
@@ -1051,8 +1072,17 @@
               "op": "pendingActionIsOpponent"
             },
             {
-              "op": "pendingActionKind",
-              "kind": "spell"
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "pendingActionKind",
+                  "kind": "spell"
+                },
+                {
+                  "op": "pendingActionKind",
+                  "kind": "setSpell"
+                }
+              ]
             }
           ],
           "cost": [
@@ -1251,7 +1281,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-h-bt03-0018-revive-hand"
+            "key": "bf-h-bt03-0018-revive-hand",
+            "shared": true
           }
         }
       ],
@@ -1492,29 +1523,19 @@
               }
             }
           ]
-        }
-      ],
-      "abilities": [
+        },
         {
-          "id": "bf-h-bt03-0022-reduce",
-          "kind": "activated",
-          "timing": [
-            "counter"
-          ],
-          "cost": [
+          "op": "damageReceivedReduction",
+          "amount": 1,
+          "optionalCost": [
             {
               "op": "payGauge",
               "amount": 1
             }
-          ],
-          "effects": [
-            {
-              "op": "reduceNextDamage",
-              "amount": 1
-            }
           ]
         }
-      ]
+      ],
+      "abilities": []
     },
     {
       "id": "bf-h-bt03-0023",
@@ -1688,7 +1709,8 @@
                 "left",
                 "right"
               ],
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -1757,7 +1779,10 @@
             {
               "op": "ownFieldCardExists",
               "zones": [
-                "item"
+                "item",
+                "item2",
+                "item3",
+                "item4"
               ],
               "filter": {
                 "cardType": "item"
@@ -1897,7 +1922,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-h-bt03-0027-kiaidama"
+            "key": "bf-h-bt03-0027-kiaidama",
+            "shared": true
           }
         }
       ]
@@ -2132,11 +2158,17 @@
               "filter": {
                 "nameIncludes": "大魔法"
               },
-              "amount": 1
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
             }
           ]
         }
-      ]
+      ],
+      "_note": "【2026-10-09 オーナー裁定R8】『このカードを破壊する。そうしたら/破壊したら』: destroySelf の後続効果に lastDestroySucceeded ゲートを追加（破壊耐性やゲージ/手札へ移る置換で破壊にならなかったら後半を行わない。ソウルガード等で場に残った場合は破壊成功＝後半を行う［2026-10-09 オーナー裁定］）。"
     },
     {
       "id": "bf-h-bt03-0032",
@@ -2276,7 +2308,7 @@
       "rules": [
         "■【コールコスト】ゲージ２を払う。",
         "■場のこのカードは効果で破壊されず、手札に戻せない。",
-        "■このカードが破壊された時、君のドロップゾーンのサイズ１とサイズ２の《エンシェントＷ》のモンスター１枚ずつまでを手札に加える。",
+        "■このカードが破壊された時、君のドロップゾーンのサイズ１とサイズ２の＜エンシェントＷ＞のモンスター１枚ずつまでを手札に加える。",
         "『２回攻撃』『ライフリンク２』"
       ],
       "callCost": {
@@ -2386,6 +2418,7 @@
           "id": "bf-h-bt03-0035-nullify-spell",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "counter"
           ],
@@ -2395,8 +2428,17 @@
               "op": "pendingActionIsOpponent"
             },
             {
-              "op": "pendingActionKind",
-              "kind": "spell"
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "pendingActionKind",
+                  "kind": "spell"
+                },
+                {
+                  "op": "pendingActionKind",
+                  "kind": "setSpell"
+                }
+              ]
             },
             {
               "op": "ownFieldCardExists",
@@ -2542,7 +2584,7 @@
       ],
       "rarity": "デッキ商品",
       "rules": [
-        "■君のデッキから、《エンシェントＷ》のモンスター２枚までをドロップに捨て、君のデッキをシャッフルする。その後、君のデッキの上から１枚をゲージに置く。"
+        "■君のデッキから、＜エンシェントＷ＞のモンスター２枚までをドロップに捨て、君のデッキをシャッフルする。その後、君のデッキの上から１枚をゲージに置く。"
       ],
       "castCost": {},
       "costs": {
@@ -2569,7 +2611,7 @@
               "max": 2,
               "require": false,
               "title": "頑竜一徹",
-              "lead": "デッキから捨てる《エンシェントＷ》のモンスターを２枚まで選んでください。"
+              "lead": "デッキから捨てる＜エンシェントＷ＞のモンスターを２枚まで選んでください。"
             },
             {
               "op": "moveSelected",
@@ -3156,7 +3198,8 @@
           "effects": [
             {
               "op": "putTopDeckToSoul",
-              "amount": 1
+              "amount": 1,
+              "faceDown": true
             }
           ]
         },
@@ -3258,7 +3301,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -4040,6 +4084,7 @@
           "id": "bf-h-bt03-0063-nullify-lifelink",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "counter",
             "main"
@@ -4589,7 +4634,8 @@
           "effects": [
             {
               "op": "putTopDeckToSoul",
-              "amount": 1
+              "amount": 1,
+              "faceDown": true
             }
           ]
         },
@@ -4609,7 +4655,10 @@
             "type": "fieldCard",
             "controller": "self",
             "zones": [
-              "item"
+              "item",
+              "item2",
+              "item3",
+              "item4"
             ],
             "filter": {
               "cardType": "item"
@@ -4965,7 +5014,10 @@
             {
               "op": "ownFieldCardExists",
               "zones": [
-                "item"
+                "item",
+                "item2",
+                "item3",
+                "item4"
               ],
               "filter": {}
             }
@@ -5218,7 +5270,7 @@
           "kind": "triggered",
           "event": "enter",
           "optional": true,
-          "conditions": [
+          "ifConditions": [
             {
               "op": "ownOtherFieldCardExists",
               "filter": {
@@ -5238,7 +5290,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-h-bt03-0086-koukai-ouji"
+            "key": "bf-h-bt03-0086-koukai-ouji",
+            "shared": true
           }
         }
       ]
@@ -5364,12 +5417,26 @@
         "■【使用コスト】君にダメージ１。",
         "■【対抗】君の場のカード名に「五角」を含むモンスター１枚を選ぶ。そのターン中、次にそのカードが破壊される場合、そのカードを場に残せる。"
       ],
+      "costs": {
+        "cast": [
+          {
+            "op": "damageSelf",
+            "amount": 1
+          }
+        ]
+      },
       "abilities": [
         {
           "id": "bf-h-bt03-0089-protect",
           "kind": "spell",
           "timing": [
             "counter"
+          ],
+          "cost": [
+            {
+              "op": "damageSelf",
+              "amount": 1
+            }
           ],
           "target": {
             "type": "fieldCard",
@@ -5381,17 +5448,14 @@
           },
           "effects": [
             {
-              "op": "dealDamage",
-              "player": "self",
-              "amount": 1
-            },
-            {
               "op": "setPreventNextDestroy",
+              "optional": true,
               "target": "$target"
             }
           ]
         }
-      ]
+      ],
+      "_note": "D6(2026-10): 【使用コスト】を効果側(script/effects)で処理していたのをコスト(costs.cast＋ability.cost)へ移した（支払えない時は使用不可・無効化されてもコストは支払済み、のコスト意味論に合わせる。H-PP01/0020 型の両記）。"
     },
     {
       "id": "bf-h-bt03-0090",
@@ -5419,12 +5483,6 @@
           "conditions": [
             {
               "op": "ownFieldCardCountGte",
-              "zones": [
-                "left",
-                "center",
-                "right",
-                "item"
-              ],
               "filter": {
                 "nameIncludes": "五角"
               },
@@ -5725,7 +5783,8 @@
           "event": "enter",
           "limit": {
             "scope": "turn",
-            "key": "bf-h-bt03-0095-kenka"
+            "key": "bf-h-bt03-0095-kenka",
+            "shared": true
           },
           "effects": [
             {
@@ -5993,6 +6052,7 @@
           "id": "bf-h-bt03-0102-reduce",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "counter",
             "main"
@@ -6453,7 +6513,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -6961,6 +7022,7 @@
           "id": "bf-h-bt03-0121-weaken",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "counter",
             "main"
@@ -7427,7 +7489,10 @@
             {
               "op": "ownFieldCardExists",
               "zones": [
-                "item"
+                "item",
+                "item2",
+                "item3",
+                "item4"
               ],
               "filter": {}
             },
@@ -7538,7 +7603,7 @@
         "counterattack",
         "lifeLink2"
       ],
-      "destroyReplacement": {
+      "leaveFieldReplacement": {
         "optional": true,
         "cost": [
           {
@@ -7565,7 +7630,7 @@
       "rarity": "究極レア",
       "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/hbt_03_s002.png",
       "altArtOf": "bf-h-bt03-0006",
-      "_note": "究極レア別絵再録（基カード=bf-h-bt03-0006・能力同一）",
+      "_note": "究極レア別絵再録（基カード=bf-h-bt03-0006・能力同一） 【pt-fix-d 2026-10-14】救援コールは「君のライフが０になるなら」＝incomingDamagePending{lethal:true}（これから受けるダメージで自分のライフが０になる時だけ）。",
       "size": 3,
       "power": 9000,
       "critical": 2,
@@ -7606,6 +7671,10 @@
           "conditions": [
             {
               "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "incomingDamagePending",
+              "lethal": true
             }
           ],
           "cost": [],
@@ -7645,8 +7714,32 @@
               "excludeSource": true
             },
             {
-              "op": "setPreventNextDestroy",
-              "target": "$self"
+              "op": "selectCards",
+              "var": "selfCard",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "sameInstanceAsSource": true
+              },
+              "amount": 1,
+              "require": false,
+              "forceDialog": false,
+              "title": "四角炎王 バーンノヴァ",
+              "lead": "そのターン中、破壊されなくするこのカード。"
+            },
+            {
+              "op": "grantTemporaryDestroyImmunitySelected",
+              "var": "selfCard",
+              "immunities": [
+                {
+                  "from": {}
+                },
+                {
+                  "from": {
+                    "byBattle": true
+                  }
+                }
+              ]
             }
           ]
         }

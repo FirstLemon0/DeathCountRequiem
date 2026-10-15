@@ -501,7 +501,8 @@
               "op": "ownOtherFieldCardExists",
               "filter": {
                 "cardType": "monster",
-                "nameIncludes": "五角"
+                "nameIncludes": "五角",
+                "nameNot": "五角騎竜 光旋のアリオット"
               }
             }
           ]
@@ -654,7 +655,8 @@
             }
           ],
           "limit": {
-            "scope": "turn"
+            "scope": "turn",
+            "key": "grab-the-sky"
           }
         }
       ]
@@ -735,6 +737,7 @@
           "effects": [
             {
               "op": "setPreventNextDestroy",
+              "optional": true,
               "target": "$target"
             }
           ]
@@ -778,6 +781,7 @@
           "effects": [
             {
               "op": "setPreventNextDestroy",
+              "optional": true,
               "target": "$target",
               "amount": 1,
               "gainLife": 2
@@ -1112,6 +1116,10 @@
               "op": "pendingAttackDefenderIsSelf"
             },
             {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
+            },
+            {
               "op": "cardCount",
               "controller": "self",
               "pile": "item",
@@ -1210,6 +1218,7 @@
             },
             {
               "op": "moveSelected",
+              "discard": true,
               "var": "x",
               "to": "drop",
               "log": "discard"
@@ -1504,7 +1513,6 @@
             "controller": "opponent",
             "allowMissingTarget": true,
             "filter": {
-              "cardType": "monster",
               "soulCountGte": 1
             }
           },
@@ -1555,6 +1563,7 @@
             "main"
           ],
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "conditions": [
             {
               "op": "ownFieldCardExists",
@@ -1701,6 +1710,7 @@
             "counter"
           ],
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "conditions": [
             {
               "op": "cardCountGte",
@@ -1771,6 +1781,7 @@
             "counter"
           ],
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "conditions": [
             {
               "op": "pendingAttackDefenderIsSelf"
@@ -1854,13 +1865,15 @@
               "amount": 1,
               "require": true,
               "title": "炎魔連合 キルメンチ",
-              "lead": "コールする、ドロップゾーンの《怒羅魂頭》のモンスターを選んでください。"
+              "lead": "コールする、ドロップゾーンの《怒羅魂頭》のモンスターを選んでください。",
+              "canPayCost": "call"
             },
             {
               "op": "callSelectedToEmptyZones",
               "var": "x",
               "payCost": "call",
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -2230,6 +2243,7 @@
           "effects": [
             {
               "op": "setPreventNextDestroy",
+              "optional": true,
               "target": "$target"
             }
           ]
@@ -2361,7 +2375,8 @@
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
-            "filter": {}
+            "filter": {},
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -2373,9 +2388,11 @@
               "player": "opponent",
               "amount": 2
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-h-ss01-0043",
@@ -2843,7 +2860,9 @@
             }
           ],
           "limit": {
-            "scope": "turn"
+            "scope": "turn",
+            "shared": true,
+            "key": "bf-h-ss01-0050-bari-bari-charge"
           },
           "conditions": [
             {
@@ -2957,6 +2976,16 @@
           "label": "エッジシュート",
           "kind": "triggered",
           "event": "attack",
+          "conditions": [
+            {
+              "op": "targetMatches",
+              "ref": "$self",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン"
+              }
+            }
+          ],
           "effects": [
             {
               "op": "dealDamage",
@@ -2966,7 +2995,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-h-ss01-0053-edge-shoot"
+            "key": "bf-h-ss01-0053-edge-shoot",
+            "shared": true
           }
         }
       ]
@@ -3047,8 +3077,17 @@
               "op": "pendingActionIsOpponent"
             },
             {
-              "op": "pendingActionCardType",
-              "cardType": "spell"
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "pendingActionKind",
+                  "kind": "spell"
+                },
+                {
+                  "op": "pendingActionKind",
+                  "kind": "setSpell"
+                }
+              ]
             }
           ],
           "cost": [
@@ -3352,6 +3391,7 @@
           "id": "bf-h-ss01-0059-search-jackknife",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "main"
           ],

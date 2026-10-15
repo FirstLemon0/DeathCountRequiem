@@ -920,7 +920,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "cp01-rudel-kanonen-vogel"
+            "key": "cp01-rudel-kanonen-vogel",
+            "shared": true
           },
           "script": [
             {
@@ -937,6 +938,7 @@
             },
             {
               "op": "moveSelected",
+              "discard": true,
               "var": "discard",
               "to": "drop",
               "log": "discard"
@@ -1538,14 +1540,32 @@
               "duration": "turn"
             },
             {
-              "op": "grantKeyword",
-              "target": "$target",
-              "keyword": "dropOpponentMonsterSoulOnAttack",
-              "duration": "turn"
+              "op": "setNextAllyAttackTrigger",
+              "persistent": true,
+              "attackerFilter": {
+                "cardType": "item",
+                "attribute": "武器"
+              },
+              "chooseTarget": {
+                "type": "fieldCard",
+                "controller": "opponent",
+                "filter": {
+                  "cardType": "monster",
+                  "soulCountGte": 1
+                }
+              },
+              "effects": [
+                {
+                  "op": "dropTargetSoul",
+                  "target": "$target",
+                  "amount": 1
+                }
+              ]
             }
           ]
         }
-      ]
+      ],
+      "_note": "【監査2 b000-7】③『そのターン中、君が《武器》で攻撃した時、相手モンスター１枚のソウル１枚をドロップゾーンに置く』はプレイヤー単位の遅延誘発。旧実装は+5000した武器1枚へ grantKeyword dropOpponentMonsterSoulOnAttack を付けており、別の《武器》で攻撃すると誘発しなかった。setNextAllyAttackTrigger{persistent:true, attackerFilter:{cardType:item, attribute:武器}} に変更し、そのターン中に君の《武器》が攻撃するたびに（攻撃宣言1回につき1回）相手のソウルを持つモンスター1枚を選び、そのソウル1枚をドロップする（dropTargetSoul amount:1）。ターン終了で破棄。"
     },
     {
       "id": "cp01-0037",

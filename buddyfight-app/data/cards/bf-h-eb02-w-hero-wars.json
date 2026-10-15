@@ -402,6 +402,7 @@
           "id": "bf-h-eb02-0003-battle-end-return",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "returnToHand",
@@ -1440,6 +1441,7 @@
           "id": "bf-h-eb02-0015-battleend-destroy",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "conditions": [
             {
               "op": "ownOtherFieldCardExists",
@@ -1648,6 +1650,7 @@
           "id": "bf-h-eb02-0019-hand-gauge",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "main"
           ],
@@ -1951,13 +1954,15 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-h-eb02-0023-akuno-guntan"
+            "key": "bf-h-eb02-0023-akuno-guntan",
+            "shared": true
           },
           "script": [
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -2279,6 +2284,12 @@
         "sacrificeFilter": {
           "keyword": "ride"
         },
+        "sacrificeZones": [
+          "item",
+          "item2",
+          "item3",
+          "item4"
+        ],
         "life": 1
       }
     },
@@ -2672,6 +2683,7 @@
           "id": "bf-h-eb02-0035-battle-end-destroy",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "destroySelf"
@@ -3076,6 +3088,7 @@
           "id": "bf-h-eb02-0039-battle-end-destroy",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "destroySelf"
@@ -3174,6 +3187,7 @@
           "id": "bf-h-eb02-0042-battle-end-destroy",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "destroySelf"
@@ -3395,6 +3409,7 @@
           "id": "bf-h-eb02-0046-battle-end-destroy",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "destroySelf"
@@ -3507,6 +3522,7 @@
           "id": "bf-h-eb02-0049-battle-end-deckbottom",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "returnSelfToDeckBottom"
@@ -4515,6 +4531,7 @@
           "id": "bf-h-eb02-0003-battle-end-return",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "returnToHand",

@@ -116,8 +116,8 @@
         "singleAttackCannotBeNullified",
         "soulguard"
       ],
-      "deckAnyFlag": true,
-      "_note": "FD8: 公式レシピ201612_5（ヒーローW・ジェムクローンbuddy）がヒーローWでの使用を実証。ジェムクローン構築緩和の soft rule 近似＝R5 と同扱い（deckAnyFlag:true で全フラッグ構築可）。カード効果本体は無改変。"
+      "usableInAnyFlag": true,
+      "_note": "FD8: 公式レシピ201612_5（ヒーローW・ジェムクローンbuddy）がヒーローWでの使用を実証。ジェムクローン構築緩和の soft rule 近似＝R5 と同扱い（deckAnyFlag:true で全フラッグ構築可）。カード効果本体は無改変。 D2(2026-10): 角王アイコンではない構築緩和のため deckAnyFlag:true→usableInAnyFlag:true へ分離（角王判定 filter.deckAnyFlag・角王の非ホーム1枚制限に波及させない）。"
     },
     {
       "id": "bf-d-bt01-0003",
@@ -239,7 +239,6 @@
                 "controller": "self",
                 "pile": "field",
                 "filter": {
-                  "cardType": "monster",
                   "attribute": "72柱"
                 },
                 "excludeSource": true,
@@ -687,22 +686,16 @@
           "id": "bf-d-bt01-0010-flare-gift",
           "kind": "triggered",
           "event": "enter",
-          "conditions": [
-            {
-              "op": "ownOtherFieldCardExists",
-              "filter": {
-                "attribute": "太陽竜"
-              }
-            }
-          ],
           "effects": [
             {
               "op": "putTopDeckToGauge",
-              "amount": 1
+              "amount": 1,
+              "conditions": [{"op": "ownOtherFieldCardExists", "filter": {"attribute": "太陽竜"}}]
             },
             {
               "op": "draw",
-              "amount": 1
+              "amount": 1,
+              "conditions": [{"op": "ownOtherFieldCardExists", "filter": {"attribute": "太陽竜"}}]
             }
           ],
           "limit": {
@@ -711,7 +704,8 @@
             "shared": true
           }
         }
-      ]
+      ],
+      "_note": "監査 rule-continuous-5: 「〜時、XならY」の X は ifConditions（解決時の状態条件・不成立でも1ターン1回を消費＝ver2.05 ④「１ターンに１回」Q2/A2）。"
     },
     {
       "id": "bf-d-bt01-0011",
@@ -892,7 +886,8 @@
           {
             "op": "putSelectedOwnFieldCardsToSoul",
             "filter": {
-              "cardType": "monster"
+              "cardType": "monster",
+              "world": "マジックW"
             },
             "min": 1
           }
@@ -962,7 +957,8 @@
             {
               "op": "moveMatchingDropToHand",
               "filter": {
-                "cardType": "spell"
+                "cardType": "spell",
+                "world": "マジックW"
               },
               "amount": 1,
               "optional": true
@@ -1083,7 +1079,8 @@
             "filter": {
               "cardType": "monster",
               "sizeLte": 2
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -1095,9 +1092,11 @@
               "player": "opponent",
               "amount": 2
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-d-bt01-0017",
@@ -1251,7 +1250,7 @@
         "■君の場にカード名に「ジャックナイフ」を含むカードがあるなら使える。",
         "■君のデッキの上から１枚をゲージに置き、君のドロップゾーンのカード１枚を君の場の《ネオドラゴン》１枚のソウルに入れる。「スタージャック・リペア」は１ターンに１回だけ使える。"
       ],
-      "_note": "使用条件はownFieldCardExists(nameIncludes ジャックナイフ)。効果は必須（『してよい』なし）。「1ターンに1回」はカード名限定の名前slug key(star-jack-repair)。",
+      "_note": "使用条件はownFieldCardExists(nameIncludes ジャックナイフ)。効果は必須（『してよい』なし）だが、ver2.05『できる限り解決』に従い、ドロップ空/《ネオドラゴン》不在でも使用でき、ゲージ+1までは解決する（allowEmpty＋ifSelection）。「1ターンに1回」はカード名限定の名前slug key(star-jack-repair)。",
       "abilities": [
         {
           "id": "bf-d-bt01-0019-repair",
@@ -1266,15 +1265,6 @@
             },
             {
               "op": "selectCards",
-              "var": "d",
-              "from": "drop",
-              "controller": "self",
-              "amount": 1,
-              "title": "スタージャック・リペア",
-              "lead": "君の場の《ネオドラゴン》のソウルに入れる、ドロップゾーンのカードを選んでください。"
-            },
-            {
-              "op": "selectCards",
               "var": "h",
               "from": "field",
               "controller": "self",
@@ -1284,12 +1274,29 @@
               },
               "amount": 1,
               "title": "スタージャック・リペア",
-              "lead": "ソウルに入れる先の《ネオドラゴン》を選んでください。"
+              "lead": "ドロップゾーンのカードを入れる先の、君の場の《ネオドラゴン》を選んでください。",
+              "allowEmpty": true
             },
             {
-              "op": "moveSelectedToSelectedSoul",
-              "var": "d",
-              "soulOfVar": "h"
+              "op": "ifSelection",
+              "var": "h",
+              "then": [
+                {
+                  "op": "selectCards",
+                  "var": "d",
+                  "from": "drop",
+                  "controller": "self",
+                  "amount": 1,
+                  "title": "スタージャック・リペア",
+                  "lead": "君の場の《ネオドラゴン》のソウルに入れる、ドロップゾーンのカードを選んでください。",
+                  "allowEmpty": true
+                },
+                {
+                  "op": "moveSelectedToSelectedSoul",
+                  "var": "d",
+                  "soulOfVar": "h"
+                }
+              ]
             }
           ],
           "limit": {
@@ -2112,13 +2119,12 @@
           "id": "bf-d-bt01-0031-enter",
           "kind": "triggered",
           "event": "enter",
-          "conditions": [
+          "ifConditions": [
             {
               "op": "cardCount",
               "controller": "self",
               "pile": "field",
               "filter": {
-                "cardType": "monster",
                 "attribute": "72柱"
               },
               "excludeSource": true,
@@ -2138,7 +2144,8 @@
             "shared": true
           }
         }
-      ]
+      ],
+      "_note": "監査 rule-continuous-5: 「〜時、XならY」の X は ifConditions（解決時の状態条件・不成立でも1ターン1回を消費＝ver2.05 ④「１ターンに１回」Q2/A2）。"
     },
     {
       "id": "bf-d-bt01-0032",
@@ -2408,7 +2415,10 @@
               "require": false,
               "emptyMessage": "《シャドウシェイド》がいないため、このカードはソウルに入りません。",
               "title": "トリック・オア・トリック",
-              "lead": "このカードを入れる《シャドウシェイド》を選んでください。"
+              "lead": "このカードを入れる《シャドウシェイド》を選んでください。",
+              "min": 1,
+              "clampMinToCandidates": true,
+              "allowEmpty": true
             },
             {
               "op": "moveSelfToSelectedSoul",
@@ -2499,7 +2509,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "calls",
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             },
             {
               "op": "shuffleDropIntoDeck"
@@ -2765,12 +2776,17 @@
             },
             {
               "op": "destroy",
-              "target": "$target"
+              "target": "$target",
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
             }
           ]
         }
       ],
-      "_note": "「このカードを破壊し、ゲージ１を払う。そうしたら〜」はゲージ支払いをcost、自壊をeffects先頭のdestroySelfとする既存慣用形（bf-h-bt03-0031-search等）に合わせた。テキスト上の記述順（自壊→ゲージ）とJSON実装順（ゲージcost→自壊effect→本効果）は既存パターンに準拠。"
+      "_note": "「このカードを破壊し、ゲージ１を払う。そうしたら〜」はゲージ支払いをcost、自壊をeffects先頭のdestroySelfとする既存慣用形（bf-h-bt03-0031-search等）に合わせた。テキスト上の記述順（自壊→ゲージ）とJSON実装順（ゲージcost→自壊effect→本効果）は既存パターンに準拠。 ／【2026-10-09 オーナー裁定R8】『このカードを破壊する。そうしたら/破壊したら』: destroySelf の後続効果に lastDestroySucceeded ゲートを追加（破壊耐性やゲージ/手札へ移る置換で破壊にならなかったら後半を行わない。ソウルガード等で場に残った場合は破壊成功＝後半を行う［2026-10-09 オーナー裁定］）。"
     },
     {
       "id": "bf-d-bt01-0041",
@@ -3077,7 +3093,7 @@
       "power": 2000,
       "critical": 1,
       "defense": 1000,
-      "_note": "『星合体』はbf-h-bt02-0043/0072と同型の定型テンプレート(id-star-merge)。バトル終了時の任意ソウルinはability.optional:true(コストなし・script内で選択→moveSelfToSelectedSoul)。",
+      "_note": "『星合体』はbf-h-bt02-0043/0072と同型の定型テンプレート(id-star-merge)。バトル終了時の任意ソウルinはability.optional:true(コストなし・script内で選択→moveSelfToSelectedSoul)。 ／【監査cards-17 b045-4】無限定の「このカードのバトル終了時」＝被攻撃側でも誘発につき includeDefender:true を付与（X-BT04/0067 リターンビットと同文同修正）。",
       "abilities": [
         {
           "id": "bf-d-bt01-0046-star-merge",
@@ -3122,6 +3138,7 @@
           "kind": "triggered",
           "event": "battleEnd",
           "optional": true,
+          "includeDefender": true,
           "script": [
             {
               "op": "selectCards",
@@ -3958,8 +3975,17 @@
               "op": "pendingActionIsOpponent"
             },
             {
-              "op": "pendingActionCardType",
-              "cardType": "spell"
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "pendingActionKind",
+                  "kind": "spell"
+                },
+                {
+                  "op": "pendingActionKind",
+                  "kind": "setSpell"
+                }
+              ]
             },
             {
               "op": "ownFieldCardExists",
@@ -4183,7 +4209,8 @@
               "payCost": "call",
               "resolveOnEnter": true,
               "require": false,
-              "chooseZones": true
+              "chooseZones": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "restrictCallThisTurn",
@@ -4343,7 +4370,6 @@
               "controller": "self",
               "pile": "field",
               "filter": {
-                "cardType": "monster",
                 "attribute": "72柱"
               },
               "excludeSource": true,
@@ -4496,7 +4522,8 @@
               "controller": "self",
               "title": "帰巣本能",
               "lead": "ウルヴァをコールするエリアを選んでください。",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -5497,6 +5524,7 @@
           "id": "bf-d-bt01-0089-battle-end-return-heal",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "returnToHand",
@@ -5947,6 +5975,7 @@
           "id": "bf-d-bt01-0099-hand-gauge",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "main"
           ],
@@ -6194,7 +6223,10 @@
               "require": false,
               "emptyMessage": "《シャドウシェイド》がいないため、このカードはソウルに入りません。",
               "title": "マリシャス・セレクター",
-              "lead": "このカードを入れる《シャドウシェイド》を選んでください。"
+              "lead": "このカードを入れる《シャドウシェイド》を選んでください。",
+              "min": 1,
+              "clampMinToCandidates": true,
+              "allowEmpty": true
             },
             {
               "op": "moveSelfToSelectedSoul",
@@ -6256,6 +6288,7 @@
                     {
                       "op": "selectCards",
                       "var": "item",
+                      "controller": "any",
                       "from": "field",
                       "filter": {
                         "cardType": "item"
@@ -6368,7 +6401,8 @@
             "filter": {
               "cardType": "monster",
               "sizeLte": 1
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -6379,9 +6413,11 @@
               "op": "gainLife",
               "amount": 1
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-d-bt01-0106",
@@ -6688,11 +6724,8 @@
           "effects": [
             {
               "op": "preventNextDamage",
-              "all": true
-            },
-            {
-              "op": "gainLife",
-              "amount": 1
+              "all": true,
+              "gainLife": 1
             }
           ]
         }
@@ -7110,7 +7143,10 @@
           "cost": [
             {
               "op": "discardHand",
-              "amount": 1
+              "amount": 1,
+              "filter": {
+                "world": "ジェネリック"
+              }
             }
           ],
           "effects": [
@@ -7154,7 +7190,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -7330,7 +7367,6 @@
                 "controller": "self",
                 "pile": "field",
                 "filter": {
-                  "cardType": "monster",
                   "attribute": "72柱"
                 },
                 "excludeSource": true,
@@ -7813,7 +7849,8 @@
             "filter": {
               "cardType": "monster",
               "sizeLte": 2
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -7824,9 +7861,11 @@
               "op": "gainLife",
               "amount": 1
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     }
   ]
 }

@@ -305,7 +305,8 @@
               "max": 1,
               "altTo": "drop",
               "title": "C・ダリルベルク",
-              "lead": "デッキの上から３枚を見て、手札に加えるカードを１枚まで選んでください（残りはドロップゾーンへ）。"
+              "lead": "デッキの上から３枚を見て、手札に加えるカードを１枚選んでください（残りはドロップゾーンへ）。",
+              "min": 1
             }
           ],
           "limit": {
@@ -418,7 +419,9 @@
           "kind": "triggered",
           "event": "destroyed",
           "limit": {
-            "scope": "turn"
+            "scope": "turn",
+            "shared": true,
+            "key": "bf-x-bt02-0006-grande-maria"
           },
           "script": [
             {
@@ -466,7 +469,8 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -502,7 +506,10 @@
               "filter": {
                 "cardType": "monster"
               },
-              "amount": 1
+              "amount": 1,
+              "zoneIn": [
+                "center"
+              ]
             }
           ],
           "cost": [
@@ -543,7 +550,7 @@
           }
         }
       ],
-      "_note": "『このターン中、君のセンターのモンスターが破壊されているなら使える』は destroyedThisTurnMatchingCountGte{controller:self,filter:{cardType:monster},amount:1} で近似（★意図的近似、既存precedent踏襲）: destroyedCardsThisTurn/destroyedEventWindow の記帳エントリ(card/sizeAtDestroy/cause)にゾーン情報が無く『センターの』限定は表現不能（recordDestroyedEventWindow, src/11-destroy-turn.js:1017-1035）。同型の限界は bf-x-bt01-0111デッドコピーの_noteが既に明記済み（『センターのモンスターが破壊された時』→lastDestroyedCardMatches・ゾーン不問で近似）。本カードは『このターン中』の継続判定のため対の destroyedThisTurnMatchingCountGte（bf-h-eb04-0021鬼道荒供養と同型）を採用し、ゾーン不問=自分のモンスターが（ゾーン問わず）このターン破壊されていれば使える、に近似。使用コスト【使用コスト】ライフ1=ability.cost:[payLife:1]（costs.cast省略でもFIX7条件『costs.cast配列（またはability.cost）』のability.cost側で充足、bf-x-bt01-0111と同型）。【対抗】本体=draw(1)→selectCards(field,opponent,cardType:monster,require:true)→nullifySelectedAbilities(var:t、bf-x-cp02-0040マインドフェイカー型・『そのターン中』はop内蔵のturnNullifies機構)→restSelected(var:t、bf-x-ub01-0045型)。「1ターンに1回」=limit:{scope:turn}。grep自己検査: destroyedThisTurnMatchingCountGte(src/13-abilities-core.js:1299)/payLife(src/04)/draw/nullifySelectedAbilities(src/15:1280,src/14:3318許可リスト)/restSelected(src/14:403,1834許可) 全実在確認。VM: 自分センターのモンスターを破壊→対抗ウィンドウで本スペル使用→ドロー1・相手モンスター選択→能力無効化+レスト を確認。懸念: ゾーン不問近似のため『相手モンスターが破壊された時』等センター以外の自分モンスター破壊でも使用可能になる点はプレイヤー有利側の近似（オーケストレーターに確認要として最終応答にも明記）。"
+      "_note": "【pt-fix-d 2026-10-14】『このターン中、君のセンターのモンスターが破壊されているなら使える』=destroyedThisTurnMatchingCountGte{controller:self,filter:{cardType:monster},zoneIn:[center],amount:1}（破壊記録に破壊時ゾーンを記帳）。"
     },
     {
       "id": "bf-x-bt02-0008",
@@ -862,7 +869,9 @@
                 "left",
                 "right"
               ]
-            },
+            }
+          ],
+          "ifConditions": [
             {
               "op": "ownFieldCardExists",
               "zones": [
@@ -890,7 +899,7 @@
           }
         }
       ],
-      "_note": "コールコスト行なし（skeleton rulesに【コールコスト】記載無し）＝costsキー無し。『“支配者の傀儡”このカードがレフトかライトに登場した時、君のセンターにモンスターがいるなら、君のデッキの上から1枚をゲージに置き、カード1枚を引く。「支配者の傀儡」は1ターンに1回だけ発動する』=event:enter+conditions:[sourceZoneIn{zones:[left,right]}, ownFieldCardExists{zones:[center],filter:{cardType:monster}}]（sourceZoneInは複数の『レフトかライトに登場した時』前例=bf-d-sd02-cross-dragoner.json D-SD02/0004等と同型、center条件はownFieldCardExistsのzones限定＝bf-d-bt04-kagayake-super-sun-dragon.json D-BT04/0068型）+effects:[putTopDeckToGauge(1), draw(1)]。名前付き1ターン1回『「支配者の傀儡」は1ターンに1回だけ発動する』はkind:triggered(event:enter・fromHandOnly非該当)のためlimit.shared:true必須（bf-x-bt02-0004（本スライスB4)『武人の本能』と同型規約、key:\"xbt02-支配者の傀儡\"はrulings.md/CLAUDE.md厳守のbare名禁止=xbt02-prefix必須）。grep自己検査: sourceZoneIn(src/13-abilities-core.js:596,991)/ownFieldCardExists+zones(src/13-abilities-core.js:1091-1101)/putTopDeckToGauge(src/15-ability-effects.js:283-291)/draw(src/15-ability-effects.js:254-268) 全実在確認。VM実測はxbt02-b9-verify.js参照。"
+      "_note": "コールコスト行なし（skeleton rulesに【コールコスト】記載無し）＝costsキー無し。『“支配者の傀儡”このカードがレフトかライトに登場した時、君のセンターにモンスターがいるなら、君のデッキの上から1枚をゲージに置き、カード1枚を引く。「支配者の傀儡」は1ターンに1回だけ発動する』=event:enter+conditions:[sourceZoneIn{zones:[left,right]}, ownFieldCardExists{zones:[center],filter:{cardType:monster}}]（sourceZoneInは複数の『レフトかライトに登場した時』前例=bf-d-sd02-cross-dragoner.json D-SD02/0004等と同型、center条件はownFieldCardExistsのzones限定＝bf-d-bt04-kagayake-super-sun-dragon.json D-BT04/0068型）+effects:[putTopDeckToGauge(1), draw(1)]。名前付き1ターン1回『「支配者の傀儡」は1ターンに1回だけ発動する』はkind:triggered(event:enter・fromHandOnly非該当)のためlimit.shared:true必須（bf-x-bt02-0004（本スライスB4)『武人の本能』と同型規約、key:\"xbt02-支配者の傀儡\"はrulings.md/CLAUDE.md厳守のbare名禁止=xbt02-prefix必須）。grep自己検査: sourceZoneIn(src/13-abilities-core.js:596,991)/ownFieldCardExists+zones(src/13-abilities-core.js:1091-1101)/putTopDeckToGauge(src/15-ability-effects.js:283-291)/draw(src/15-ability-effects.js:254-268) 全実在確認。VM実測はxbt02-b9-verify.js参照。 監査 rule-continuous-5: 「〜時、XならY」の X は ifConditions（解決時の状態条件・不成立でも1ターン1回を消費＝ver2.05 ④「１ターンに１回」Q2/A2）。"
     },
     {
       "id": "bf-x-bt02-0013",
@@ -1049,7 +1058,8 @@
           ],
           "effects": [
             {
-              "op": "equipSelf"
+              "op": "equipSelf",
+              "effectEquip": true
             }
           ],
           "limit": {
@@ -1058,7 +1068,7 @@
           }
         }
       ],
-      "_note": "『このカードはバディにすることができる！』=canBeBuddy:true（pp01-golden-buddy-pack.json PP01/0055不滅剣デュランダル＝本カードの前身再録元と完全同型カード）。【装備コスト】ゲージ1+ライフ1=costs.equip:[payGauge(1),payLife(1)]+equipCost:{gauge:1,life:1}（bf-h-eb03-hyakurai-no-ou.json H-EB03該当カードの同一equipCost形と同型）。『【対抗】【起動】“王の手”君がカード名に「王剣」を含むアイテムを装備しているなら、手札のこのカードを、【装備コスト】を払って装備する。「王の手」は1ターンに1回だけ使える』の骨格はbf-d-bt03-horobose-daimaryu.json D-BT03/0070聖剣ガラティーン『剣の呼び声』（kind:activated,fromHandOnly:true,timing:[counter],conditions+effects:[equipSelf]+limit:{scope:turn,key}）を踏襲するが、D-BT03/0070の原文『手札のこのカードを装備する』には【装備コスト】を払う旨の記載が無い(コスト無し)のに対し、本カードは原文に明記の『【装備コストを払って】装備する』のため、costs.equipと同一のcost:[payGauge(1),payLife(1)]をability.costにも明記（FIX7の二重宣言。bt05-0053型の『使用コストを払って』二重明記慣例と同型）。effects:[equipSelf]実行時、useHandAbilityAction(src/13-abilities-core.js:144-224)は本能力がkind:activated+isCounterAbility(timing.includes('counter'))=trueのため、pendingAction化せずcostSteps支払い後に即座にusedCardをplayer.dropへ積んでからexecuteAbilityBodyを呼ぶ（src/13:224）。equipSelf(src/15-ability-effects.js:1169-1198)はcontext.card(=usedCard)をhand→field→dropの順に探索し、drop側で発見して装備するため、この経路でも正しく手札カードが装備される。conditionは『アイテムを装備している』のためownFieldCardExists{zones:[item系4枠],filter:{cardType:item,nameIncludes:王剣}}（bf-d-bt04-kagayake-super-sun-dragon.json D-BT04/0068型のitem系4枠列挙+cardType:item+nameIncludes判定）。named-once『「王の手」は1ターンに1回だけ使える』はfromHandOnly:trueのためisHandCastLimitAbility(src/15-ability-effects.js:3190-3192)が真となりabilityLimitKeyが自動的に同名カード単位(base)で共有される＝shared:true不要（D-BT03/0070の実装がshared無しである点と完全一致、CLAUDE.md『named-once bare slug(monster/item namedはshared:true)』は非fromHandOnly系の規約でありfromHandOnly系はisHandCastLimitAbilityで別途自動合算されるため対象外）。『君の場の《英雄》全ては、相手のカードの効果で破壊されない』=continuous:[grantDestroyImmunity{controller:self,filter:{attribute:英雄},from:{byEffect:true,byOpponent:true}}]（bf-x-ub01-buddy-quest.json X-UB01/0030不滅の剣聖ショウセツ『君の場のアイテム全ては相手のカードの効果で破壊されない』の完全precedent、filterをcardType:itemからattribute:英雄に差替）。『装備変更』=keywords:[equipChange]（bf-h-bt02-galaxy-burst.json H-BT02/0016神槍グングニルと同型キー）。grep自己検査: canBeBuddy(src/08-card-use.js:185-186)/payGauge・payLife(src/04-cost-resource.js)/fromHandOnly+isHandCastLimitAbility(src/13-abilities-core.js:77-84,678-681;src/15-ability-effects.js:3164-3192)/useHandAbilityAction counter即時解決経路(src/13-abilities-core.js:200-224)/ownFieldCardExists+zones(src/13-abilities-core.js:1091-1101)/equipSelf(src/15-ability-effects.js:1169)/grantDestroyImmunity継続(src/11-destroy-turn.js:121-145,183)/equipChangeキーワード(src/08-card-use.js:166-169) 全実在確認。VM実測はxbt02-b9-verify.js参照。"
+      "_note": "『このカードはバディにすることができる！』=canBeBuddy:true（pp01-golden-buddy-pack.json PP01/0055不滅剣デュランダル＝本カードの前身再録元と完全同型カード）。【装備コスト】ゲージ1+ライフ1=costs.equip:[payGauge(1),payLife(1)]+equipCost:{gauge:1,life:1}（bf-h-eb03-hyakurai-no-ou.json H-EB03該当カードの同一equipCost形と同型）。『【対抗】【起動】“王の手”君がカード名に「王剣」を含むアイテムを装備しているなら、手札のこのカードを、【装備コスト】を払って装備する。「王の手」は1ターンに1回だけ使える』の骨格はbf-d-bt03-horobose-daimaryu.json D-BT03/0070聖剣ガラティーン『剣の呼び声』（kind:activated,fromHandOnly:true,timing:[counter],conditions+effects:[equipSelf]+limit:{scope:turn,key}）を踏襲するが、D-BT03/0070の原文『手札のこのカードを装備する』には【装備コスト】を払う旨の記載が無い(コスト無し)のに対し、本カードは原文に明記の『【装備コストを払って】装備する』のため、costs.equipと同一のcost:[payGauge(1),payLife(1)]をability.costにも明記（FIX7の二重宣言。bt05-0053型の『使用コストを払って』二重明記慣例と同型）。effects:[equipSelf]実行時、useHandAbilityAction(src/13-abilities-core.js:144-224)は本能力がkind:activated+isCounterAbility(timing.includes('counter'))=trueのため、pendingAction化せずcostSteps支払い後に即座にusedCardをplayer.dropへ積んでからexecuteAbilityBodyを呼ぶ（src/13:224）。equipSelf(src/15-ability-effects.js:1169-1198)はcontext.card(=usedCard)をhand→field→dropの順に探索し、drop側で発見して装備するため、この経路でも正しく手札カードが装備される。conditionは『アイテムを装備している』のためownFieldCardExists{zones:[item系4枠],filter:{cardType:item,nameIncludes:王剣}}（bf-d-bt04-kagayake-super-sun-dragon.json D-BT04/0068型のitem系4枠列挙+cardType:item+nameIncludes判定）。named-once『「王の手」は1ターンに1回だけ使える』はfromHandOnly:trueのためisHandCastLimitAbility(src/15-ability-effects.js:3190-3192)が真となりabilityLimitKeyが自動的に同名カード単位(base)で共有される＝shared:true不要（D-BT03/0070の実装がshared無しである点と完全一致、CLAUDE.md『named-once bare slug(monster/item namedはshared:true)』は非fromHandOnly系の規約でありfromHandOnly系はisHandCastLimitAbilityで別途自動合算されるため対象外）。『君の場の《英雄》全ては、相手のカードの効果で破壊されない』=continuous:[grantDestroyImmunity{controller:self,filter:{attribute:英雄},from:{byEffect:true,byOpponent:true}}]（bf-x-ub01-buddy-quest.json X-UB01/0030不滅の剣聖ショウセツ『君の場のアイテム全ては相手のカードの効果で破壊されない』の完全precedent、filterをcardType:itemからattribute:英雄に差替）。『装備変更』=keywords:[equipChange]（bf-h-bt02-galaxy-burst.json H-BT02/0016神槍グングニルと同型キー）。grep自己検査: canBeBuddy(src/08-card-use.js:185-186)/payGauge・payLife(src/04-cost-resource.js)/fromHandOnly+isHandCastLimitAbility(src/13-abilities-core.js:77-84,678-681;src/15-ability-effects.js:3164-3192)/useHandAbilityAction counter即時解決経路(src/13-abilities-core.js:200-224)/ownFieldCardExists+zones(src/13-abilities-core.js:1091-1101)/equipSelf(src/15-ability-effects.js:1169)/grantDestroyImmunity継続(src/11-destroy-turn.js:121-145,183)/equipChangeキーワード(src/08-card-use.js:166-169) 全実在確認。VM実測はxbt02-b9-verify.js参照。 ／【2026-10-09 オーナー裁定R10】『手札のこのカードを装備する』は能力の効果による装備（宣言を経ない装備）: equipSelf に effectEquip:true。バディギフトは得られず、バディコールの権利も消費しない（変身/搭乗/着任/必殺変身の宣言とは別）。"
     },
     {
       "id": "bf-x-bt02-0015",
@@ -1461,7 +1471,9 @@
           ],
           "optional": true,
           "limit": {
-            "scope": "turn"
+            "scope": "turn",
+            "shared": true,
+            "key": "bf-x-bt02-0020-possibility"
           },
           "script": [
             {
@@ -2194,7 +2206,8 @@
                   "op": "selectZone",
                   "var": "z",
                   "cardVar": "call",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "payCardCostForSelection",
@@ -2479,10 +2492,11 @@
               "op": "redirectPendingAttackToSelected",
               "var": "t"
             }
-          ]
+          ],
+          "selectBeforeCost": true
         }
       ],
-      "_note": "コールコスト行なし＝costsキー無し。『“潜影”このカードは相手のセンターにモンスターがいても、相手を攻撃できる』=keywords:[canAttackFighterThroughCenter]（bt04-0067デスルーラークリメイション等多数前例と同型、src/12-render.js:995-998）。『【対抗】【起動】相手のカードが1枚で攻撃している攻撃中、相手の場のバトルしていないモンスター1枚を選び、ゲージ2を払ってよい。払ったら、その攻撃の対象を、選んだカードに変更する』はbf-s-ub-c03-ir059大人びたアイドル速水奏の同型文言（『ライフ1』→本カードは『ゲージ2』、『1ターンに1回』節は原文になし＝limit省略）: conditions:[attackingAlone,pendingAttackDefenderIsSelf]+cost:[payGauge:2]+script(selectCards{from:field,controller:opponent,filter:{cardType:monster},excludeBattling:true}→redirectPendingAttackToSelected)。grep自己検査: canAttackFighterThroughCenter(src/12-render.js:995,src/18-tooltip-format.js:465)/attackingAlone/pendingAttackDefenderIsSelf(src/13-abilities-core.js)/payGauge(src/04)/selectCards excludeBattling(src/14-ability-script.js)/redirectPendingAttackToSelected(src/15-ability-effects.js:2162,isScriptEffectStep許可リスト) 全実在確認。"
+      "_note": "コールコスト行なし＝costsキー無し。『“潜影”このカードは相手のセンターにモンスターがいても、相手を攻撃できる』=keywords:[canAttackFighterThroughCenter]（bt04-0067デスルーラークリメイション等多数前例と同型、src/12-render.js:995-998）。『【対抗】【起動】相手のカードが1枚で攻撃している攻撃中、相手の場のバトルしていないモンスター1枚を選び、ゲージ2を払ってよい。払ったら、その攻撃の対象を、選んだカードに変更する』はbf-s-ub-c03-ir059大人びたアイドル速水奏の同型文言（『ライフ1』→本カードは『ゲージ2』、『1ターンに1回』節は原文になし＝limit省略）: conditions:[attackingAlone,pendingAttackDefenderIsSelf]+cost:[payGauge:2]+script(selectCards{from:field,controller:opponent,filter:{cardType:monster},excludeBattling:true}→redirectPendingAttackToSelected)。grep自己検査: canAttackFighterThroughCenter(src/12-render.js:995,src/18-tooltip-format.js:465)/attackingAlone/pendingAttackDefenderIsSelf(src/13-abilities-core.js)/payGauge(src/04)/selectCards excludeBattling(src/14-ability-script.js)/redirectPendingAttackToSelected(src/15-ability-effects.js:2162,isScriptEffectStep許可リスト) 全実在確認。 【R5 2026-10-09 オーナー裁定】「〜を選び、…を払ってよい。払ったら」は選べるカードが無いなら支払えない（何も起きない）＝能力に selectBeforeCost:true（先頭の選択に候補が無ければコストを提示しない）。旧 _note の「optional 承諾＝コスト先払い→script 内で選択」の近似は、候補0でもコストだけ払えてしまう点が誤りだった。"
     },
     {
       "id": "bf-x-bt02-0036",
@@ -2536,7 +2550,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -2617,7 +2632,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "call",
               "payCost": "call",
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -3107,20 +3123,16 @@
                     {
                       "op": "searchDeckToHand",
                       "filter": {},
-                      "amount": 1,
-                      "shuffle": false
+                      "amount": 1
                     }
                   ]
                 }
               ]
-            },
-            {
-              "op": "shuffleDeck"
             }
           ]
         }
       ],
-      "_note": "【コールコスト】ゲージ1=costs.call:[payGauge(1)]。『【起動】君のドロップゾーンのカード名が違うカード4枚以上好きな枚数を、君のデッキの下に好きな順番で置く。置いたら、デッキ上2枚をゲージに置き、さらに置いたカードが8枚以上ならカード1枚を引き、12枚以上ならデッキからカード1枚を手札に加え、デッキをシャッフルする。1ターンに1回』の実装は2点の制約あり: (A)『カード名が違う』というプレイヤーの選択カード同士の相互重複禁止は、選択集合に対する名前ペアワイズ制約を課すopがDB内に存在しない（distinctByNameはcardCount条件のパイル全体の種類数を数えるのみでselectCardsの選択制約ではない。grep: selectCards内のdistinct系キー0件）。近似としてfilter:{}で通常のドロップ選択とし、プレイヤーの自己申告に委ねる（実害は軽微、他バッチ・他製品にも前例がある一般的な近似方針）。(B)『置いたカードの実際の枚数』を閾値としてdraw/searchの有無を分岐する条件opがDB内に存在しない（checkConditionの全137種op・amountFrom19種sourceを全数grep確認: context.vars[var]の配列長を読むcondition opは無し。唯一の近縁opはselectedStatSumLte=stat合計専用でLte固定、Gte無し。amountFrom:{source:selectedCount}はスカラー量としてeffectのamountに直接使えるのみで、閾値による分岐(if count>=N then...)には使えない）。この閾値分岐を、新opを創作せず既存opのみで意味的に忠実に再現するため、chooseBranch（src/14-ability-script.js:1209）でプレイヤーに『置く枚数の目安』を事前に3択（4-7/8-11/12+、各選択肢はcardCount(pile:drop,distinct:distinctByName,cmp:gte)条件でoption.condition経由の出現ゲート）させ、各分岐内でselectCards(min/max=その帯域)→moveSelectedToDeckBottomOrdered→putTopDeckToGauge(2)→(該当帯域のみ)draw(1)/searchDeckToHand(1)を実行する構成にした。この構成は最終的な選択可能な意思決定空間（4以上の任意枚数×閾値到達で追加ボーナス）を完全に保存しており、UI上の手順が『枚数を選んでから帯域が確定』ではなく『帯域を選んでから枚数を選ぶ』に入れ替わる差のみで、ゲーム上の結果は原文と一致する。デッキシャッフルは分岐後の共通ステップとして1回のみ実行（searchDeckToHand側はshuffle:falseで二重シャッフルを回避）。【要報告】(B)のような『選択したカード枚数を条件として直接参照する』ケースが今後も頻出するなら、selectedCountGte/Lte（selectedStatSumLteの姉妹op、scriptSelection({var},context).length を cmp 比較）の新設を提案する。現時点では新op創作を避け、chooseBranch迂回で対応。grep自己検査: cardCount+distinctByName(src/13-abilities-core.js:810-856,837)/chooseBranch+option.condition(src/14-ability-script.js:1209-1248,1212)/selectCards(src/14-ability-script.js:527-620)/moveSelectedToDeckBottomOrdered(src/14-ability-script.js:1334-1371)/putTopDeckToGauge(isScriptEffectStep許可リスト,src/14-ability-script.js:3236・実装src/15-ability-effects.js)/draw(isScriptEffectStep許可リスト・実装src/15-ability-effects.js:254-268)/searchDeckToHand(isScriptEffectStep許可リスト,src/14-ability-script.js:3231・実装src/15-ability-effects.js:368-406、shuffle自動実行はeffect.shuffle!==falseで抑制可)/shuffleDeck(src/14-ability-script.js:476-478,3191-3199) 全実在確認。"
+      "_note": "【コールコスト】ゲージ1=costs.call:[payGauge(1)]。『【起動】君のドロップゾーンのカード名が違うカード4枚以上好きな枚数を、君のデッキの下に好きな順番で置く。置いたら、デッキ上2枚をゲージに置き、さらに置いたカードが8枚以上ならカード1枚を引き、12枚以上ならデッキからカード1枚を手札に加え、デッキをシャッフルする。1ターンに1回』の実装は2点の制約あり: (A)『カード名が違う』というプレイヤーの選択カード同士の相互重複禁止は、選択集合に対する名前ペアワイズ制約を課すopがDB内に存在しない（distinctByNameはcardCount条件のパイル全体の種類数を数えるのみでselectCardsの選択制約ではない。grep: selectCards内のdistinct系キー0件）。近似としてfilter:{}で通常のドロップ選択とし、プレイヤーの自己申告に委ねる（実害は軽微、他バッチ・他製品にも前例がある一般的な近似方針）。(B)『置いたカードの実際の枚数』を閾値としてdraw/searchの有無を分岐する条件opがDB内に存在しない（checkConditionの全137種op・amountFrom19種sourceを全数grep確認: context.vars[var]の配列長を読むcondition opは無し。唯一の近縁opはselectedStatSumLte=stat合計専用でLte固定、Gte無し。amountFrom:{source:selectedCount}はスカラー量としてeffectのamountに直接使えるのみで、閾値による分岐(if count>=N then...)には使えない）。この閾値分岐を、新opを創作せず既存opのみで意味的に忠実に再現するため、chooseBranch（src/14-ability-script.js:1209）でプレイヤーに『置く枚数の目安』を事前に3択（4-7/8-11/12+、各選択肢はcardCount(pile:drop,distinct:distinctByName,cmp:gte)条件でoption.condition経由の出現ゲート）させ、各分岐内でselectCards(min/max=その帯域)→moveSelectedToDeckBottomOrdered→putTopDeckToGauge(2)→(該当帯域のみ)draw(1)/searchDeckToHand(1)を実行する構成にした。この構成は最終的な選択可能な意思決定空間（4以上の任意枚数×閾値到達で追加ボーナス）を完全に保存しており、UI上の手順が『枚数を選んでから帯域が確定』ではなく『帯域を選んでから枚数を選ぶ』に入れ替わる差のみで、ゲーム上の結果は原文と一致する。デッキシャッフルは原文どおり12枚以上の節（tier3）だけ＝searchDeckToHand の既定シャッフル（shuffle 省略）で1回行う。4〜11枚では並べたデッキ下の順番を崩さない（2026-10-08 監査 b036-1: 旧実装は分岐後に無条件 shuffleDeck を置いていたため tier1/tier2 でも順番が崩れていた）。【要報告】(B)のような『選択したカード枚数を条件として直接参照する』ケースが今後も頻出するなら、selectedCountGte/Lte（selectedStatSumLteの姉妹op、scriptSelection({var},context).length を cmp 比較）の新設を提案する。現時点では新op創作を避け、chooseBranch迂回で対応。grep自己検査: cardCount+distinctByName(src/13-abilities-core.js:810-856,837)/chooseBranch+option.condition(src/14-ability-script.js:1209-1248,1212)/selectCards(src/14-ability-script.js:527-620)/moveSelectedToDeckBottomOrdered(src/14-ability-script.js:1334-1371)/putTopDeckToGauge(isScriptEffectStep許可リスト,src/14-ability-script.js:3236・実装src/15-ability-effects.js)/draw(isScriptEffectStep許可リスト・実装src/15-ability-effects.js:254-268)/searchDeckToHand(isScriptEffectStep許可リスト,src/14-ability-script.js:3231・実装src/15-ability-effects.js:368-406、shuffle自動実行はeffect.shuffle!==falseで抑制可)/shuffleDeck(src/14-ability-script.js:476-478,3191-3199) 全実在確認。"
     },
     {
       "id": "bf-x-bt02-0045",
@@ -3334,18 +3346,18 @@
           "label": "紅蓮の魂",
           "kind": "triggered",
           "event": "enter",
-          "conditions": [
-            {
-              "op": "ownOtherFieldCardExists",
-              "filter": {
-                "nameIncludes": "紅蓮"
-              }
-            }
-          ],
           "effects": [
             {
               "op": "draw",
-              "amount": 1
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "ownOtherFieldCardExists",
+                  "filter": {
+                    "nameIncludes": "紅蓮"
+                  }
+                }
+              ]
             },
             {
               "op": "dealDamage",
@@ -3372,7 +3384,7 @@
           }
         }
       ],
-      "_note": "“紅蓮の魂”（名前付き・1ターン1回=shared:true bare slug、bf-h-sd01-0008/PR/0267等の命名能力慣例）。①『他のカード名に「紅蓮」を含むカードがあるなら』=ownOtherFieldCardExists{filter:{nameIncludes:紅蓮}}（instanceId除外で自分自身の名前一致を弾く。src/13:1102）+draw{amount:1}（bf-h-sd01-0008型のenter+ownOtherFieldCardExists骨格を踏襲）。②『カード名に「拳」を含むカードを装備しているなら、相手にダメージ1』=dealDamage{player:opponent,amount:1,conditions:[cardCount{controller:self,pile:item,filter:{nameIncludes:拳},cmp:gte,amount:1}]}（PR/0158紅蓮闘士ロックバンカー・ドラゴンのenter条件と同一形＝pile:item+nameIncludes拳、src/13:824equippedItems経由。effect単位のconditionsゲートはSKILL.md記載の一般機構）。①②とも同一トリガー内の独立if節のため、①はability.conditions（外側ゲート）、②はeffect.conditions（内側ゲート）で二段に表現。grep自己検査: ownOtherFieldCardExists(src/13-abilities-core.js:1102)/cardCount pile:item(src/13:810-856,824equippedItems)/draw(src/15-ability-effects.js:254)/dealDamage(src/15:893) 全実在確認。VM実測: 他に紅蓮カードが無い場での登場は空振り／他に紅蓮カードがあり拳アイテム未装備ならドローのみ・ダメージ無し／他に紅蓮カードがあり拳アイテム装備ありならドロー+ダメージ1の両方が発火することを確認。"
+      "_note": "“紅蓮の魂”（名前付き・1ターン1回=shared:true bare slug、bf-h-sd01-0008/PR/0267等の命名能力慣例）。①『他のカード名に「紅蓮」を含むカードがあるなら』=ownOtherFieldCardExists{filter:{nameIncludes:紅蓮}}（instanceId除外で自分自身の名前一致を弾く。src/13:1102）+draw{amount:1}（bf-h-sd01-0008型のenter+ownOtherFieldCardExists骨格を踏襲）。②『カード名に「拳」を含むカードを装備しているなら、相手にダメージ1』=dealDamage{player:opponent,amount:1,conditions:[cardCount{controller:self,pile:item,filter:{nameIncludes:拳},cmp:gte,amount:1}]}（PR/0158紅蓮闘士ロックバンカー・ドラゴンのenter条件と同一形＝pile:item+nameIncludes拳、src/13:824equippedItems経由。effect単位のconditionsゲートはSKILL.md記載の一般機構）。①②とも同一トリガー内の独立if節のため、①はability.conditions（外側ゲート）、②はeffect.conditions（内側ゲート）で二段に表現。grep自己検査: ownOtherFieldCardExists(src/13-abilities-core.js:1102)/cardCount pile:item(src/13:810-856,824equippedItems)/draw(src/15-ability-effects.js:254)/dealDamage(src/15:893) 全実在確認。VM実測: 他に紅蓮カードが無い場での登場は空振り／他に紅蓮カードがあり拳アイテム未装備ならドローのみ・ダメージ無し／他に紅蓮カードがあり拳アイテム装備ありならドロー+ダメージ1の両方が発火することを確認。 ／【2026-10-08 監査 b036-2】原文は「Aなら、カード1枚を引き、Bなら、相手にダメージ1」の並列条件文のため、紅蓮条件(ownOtherFieldCardExists)を ability.conditions(外側ゲート)から draw の effect.conditions へ移した。他に紅蓮カードが無くても拳装備ならダメージ1が出る。どちらの条件も満たさなくても能力は誘発し「1ターンに1回」を消費する（条件は効果文内の if 節で、誘発条件ではないため）。"
     },
     {
       "id": "bf-x-bt02-0049",
@@ -3408,7 +3420,8 @@
             "controller": "self",
             "filter": {
               "nameIncludes": "五角"
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -3425,10 +3438,11 @@
           ],
           "limit": {
             "scope": "turn"
-          }
+          },
+          "allowMissingTarget": true
         }
       ],
-      "_note": "『このカードはセンターにコールできない』=cannotCallZones:[\"center\"]（bf-h-eb03-0020等の確立キー、src/07-actions-turn.js:331参照）。【起動】（無条件・main限定）=kind:activated,timing:[\"main\"]（H-EB02/0002等、対抗タグ無しの素の【起動】の慣例）。『君の場の「五角」を含むカード1枚を打撃力+1し、君にダメージ1。1ターンに1回』=target{type:fieldCard,controller:self,filter:{nameIncludes:五角}}（このカード自身の名前も「五角騎竜の弟子」で「五角」を含むため自己選択も可＝原文に他限定なし）+effects:[modifyStats{target:$target,critical:1,duration:turn}, dealDamage{player:self,amount:1}]+limit:{scope:turn}。kind:activatedはtargetForAbilityUse(src/13:387-396)がscript有無に関わらず必ずtarget解決するため、target+effectsの組み合わせで安全（kind:triggered+script併用時のchooseAbilityTarget skip落とし穴は非該当）。grep自己検査: cannotCallZones(src/07-actions-turn.js:331)/target type:fieldCard+filter.nameIncludes(src/17-targeting.js matchesCardFilter)/modifyStats critical(src/15:1602)/dealDamage player:self(src/15:893) 全実在確認。VM実測: センターへのコール試行が拒否される／useFieldAbilityAction実操作経路で自身を選択し打撃力+1・自ライフ-1ダメージが実行される／同ターン2回目は使用不可（limit turn）。"
+      "_note": "『このカードはセンターにコールできない』=cannotCallZones:[\"center\"]（bf-h-eb03-0020等の確立キー、src/07-actions-turn.js:331参照）。【起動】（無条件・main限定）=kind:activated,timing:[\"main\"]（H-EB02/0002等、対抗タグ無しの素の【起動】の慣例）。『君の場の「五角」を含むカード1枚を打撃力+1し、君にダメージ1。1ターンに1回』=target{type:fieldCard,controller:self,filter:{nameIncludes:五角}}（このカード自身の名前も「五角騎竜の弟子」で「五角」を含むため自己選択も可＝原文に他限定なし）+effects:[modifyStats{target:$target,critical:1,duration:turn}, dealDamage{player:self,amount:1}]+limit:{scope:turn}。kind:activatedはtargetForAbilityUse(src/13:387-396)がscript有無に関わらず必ずtarget解決するため、target+effectsの組み合わせで安全（kind:triggered+script併用時のchooseAbilityTarget skip落とし穴は非該当）。grep自己検査: cannotCallZones(src/07-actions-turn.js:331)/target type:fieldCard+filter.nameIncludes(src/17-targeting.js matchesCardFilter)/modifyStats critical(src/15:1602)/dealDamage player:self(src/15:893) 全実在確認。VM実測: センターへのコール試行が拒否される／useFieldAbilityAction実操作経路で自身を選択し打撃力+1・自ライフ-1ダメージが実行される／同ターン2回目は使用不可（limit turn）。 【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-x-bt02-0050",
@@ -3937,7 +3951,8 @@
             "filter": {
               "cardType": "monster",
               "attribute": "カオス"
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -3957,10 +3972,11 @@
                 }
               ]
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
       ],
-      "_note": "『【対抗】君の場の《カオス》のモンスター1枚を選ぶ。そのターン中、次にそのカードが場から離れる場合、そのカードを場に残し、さらに、君のセンターにモンスター2枚がいるなら、君のデッキの上から1枚をゲージに置く』=kind:spell,timing:[counter],target:{type:fieldCard,controller:self,filter:{cardType:monster,attribute:カオス}},effects:[setPreventNextLeaveField{target:$target}（bf-s-ub-c03-0072忍者アイドル 浜口あやめ『選んだカードが次に場から離れる場合、そのカードを場に残す』の直接前例）, putTopDeckToGauge(1,conditions:[cardCount{pile:center,cmp:gte,amount:2}])]。使用コスト記載なし=costs省略。【既知の近似・要報告】(a)setPreventNextLeaveFieldCountはconsumeされるまで持続するstate（src/11-destroy-turn.js:345-346等）で、原文の『そのターン中』という期限を自動失効させる仕組みがDB・src双方に存在しない（duration:turn等のオプション引数は無い）。そのターン中に場を離れなければ本来は保護が消えるべきところ、本実装では次の離場まで保護が残留する広め近似＝要報告（新op創作はせず既存opをそのまま採用）。(b)『君のセンターにモンスター2枚がいるなら』=cardCount{pile:center,cmp:gte,amount:2}はrulings.md R1/R2（C・テリトリー非実装＝センターは単一スロット）により、pile:centerの枚数は常に最大1（src/13-abilities-core.js:825 `else if (pile === \"center\") { if (pl.field[pile]) cards.push(pl.field[pile]); }`）で恒常的にfalseとなり、この一文は現行エンジンでは実質到達不能。ruling通りの近似だがゲージ加算は常時発生しない点を明記。grep自己検査: setPreventNextLeaveField(src/15-ability-effects.js:2617,src/14-ability-script.js:3326)/putTopDeckToGauge/cardCount+pile:center(src/13-abilities-core.js:810,825) 全実在確認。"
+      "_note": "『【対抗】君の場の《カオス》のモンスター1枚を選ぶ。そのターン中、次にそのカードが場から離れる場合、そのカードを場に残し、さらに、君のセンターにモンスター2枚がいるなら、君のデッキの上から1枚をゲージに置く』=kind:spell,timing:[counter],target:{type:fieldCard,controller:self,filter:{cardType:monster,attribute:カオス}},effects:[setPreventNextLeaveField{target:$target}（bf-s-ub-c03-0072忍者アイドル 浜口あやめ『選んだカードが次に場から離れる場合、そのカードを場に残す』の直接前例）, putTopDeckToGauge(1,conditions:[cardCount{pile:center,cmp:gte,amount:2}])]。使用コスト記載なし=costs省略。【既知の近似・要報告】(a)setPreventNextLeaveFieldCountはconsumeされるまで持続するstate（src/11-destroy-turn.js:345-346等）で、原文の『そのターン中』という期限を自動失効させる仕組みがDB・src双方に存在しない（duration:turn等のオプション引数は無い）。そのターン中に場を離れなければ本来は保護が消えるべきところ、本実装では次の離場まで保護が残留する広め近似＝要報告（新op創作はせず既存opをそのまま採用）。(b)『君のセンターにモンスター2枚がいるなら』=cardCount{pile:center,cmp:gte,amount:2}はrulings.md R1/R2（C・テリトリー非実装＝センターは単一スロット）により、pile:centerの枚数は常に最大1（src/13-abilities-core.js:825 `else if (pile === \"center\") { if (pl.field[pile]) cards.push(pl.field[pile]); }`）で恒常的にfalseとなり、この一文は現行エンジンでは実質到達不能。ruling通りの近似だがゲージ加算は常時発生しない点を明記。grep自己検査: setPreventNextLeaveField(src/15-ability-effects.js:2617,src/14-ability-script.js:3326)/putTopDeckToGauge/cardCount+pile:center(src/13-abilities-core.js:810,825) 全実在確認。 【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-x-bt02-0059",
@@ -4082,10 +4098,11 @@
               "var": "t",
               "to": "hand"
             }
-          ]
+          ],
+          "selectBeforeCost": true
         }
       ],
-      "_note": "『このカードが攻撃した時、君のドロップゾーンの《英雄》のアイテム1枚を選び、ゲージ1を払い、手札1枚を捨ててよい。そうしたら、選んだカードを手札に加える』=kind:triggered,event:attack,optional:true,conditions:[cardCount{pile:drop,filter:{cardType:item,attribute:英雄},cmp:gte,amount:1}]（対象が無ければそもそも能力を提示しない前提ガード）,cost:[payGauge(1),discardHand(1)]（『してよい』の対象はゲージ+手札コストの支払い可否＝ability.optional+costの標準形。bf-d-cbt-0005魔戦鬼 ゼータ『手札1枚を捨て、場のこのカードをドロップゾーンに置いてよい。そうしたら、…』のoptional+cost型と同型）,script:[selectCards{from:drop,filter:{item,英雄},require:true}, moveSelected{to:hand}]（コスト支払い確定後の選択・移動はbf-d-cbt-0005-drop-search-hissatsu『ドロップの必殺モンスターを選んで手札に加える』のselectCards+moveSelected{to:hand}パターンを踏襲）。『装備変更』=keywords:[equipChange]。装備コスト記載なし=costs省略。grep自己検査: cardCount/payGauge/discardHand(cost)/selectCards/moveSelected(src/14-ability-script.js) 全実在確認。"
+      "_note": "『このカードが攻撃した時、君のドロップゾーンの《英雄》のアイテム1枚を選び、ゲージ1を払い、手札1枚を捨ててよい。そうしたら、選んだカードを手札に加える』=kind:triggered,event:attack,optional:true,conditions:[cardCount{pile:drop,filter:{cardType:item,attribute:英雄},cmp:gte,amount:1}]（対象が無ければそもそも能力を提示しない前提ガード）,cost:[payGauge(1),discardHand(1)]（『してよい』の対象はゲージ+手札コストの支払い可否＝ability.optional+costの標準形。bf-d-cbt-0005魔戦鬼 ゼータ『手札1枚を捨て、場のこのカードをドロップゾーンに置いてよい。そうしたら、…』のoptional+cost型と同型）,script:[selectCards{from:drop,filter:{item,英雄},require:true}, moveSelected{to:hand}]（コスト支払い確定後の選択・移動はbf-d-cbt-0005-drop-search-hissatsu『ドロップの必殺モンスターを選んで手札に加える』のselectCards+moveSelected{to:hand}パターンを踏襲）。『装備変更』=keywords:[equipChange]。装備コスト記載なし=costs省略。grep自己検査: cardCount/payGauge/discardHand(cost)/selectCards/moveSelected(src/14-ability-script.js) 全実在確認。 【R5 2026-10-09 オーナー裁定】「〜を選び、…を払ってよい。払ったら」は選べるカードが無いなら支払えない（何も起きない）＝能力に selectBeforeCost:true（先頭の選択に候補が無ければコストを提示しない）。旧 _note の「optional 承諾＝コスト先払い→script 内で選択」の近似は、候補0でもコストだけ払えてしまう点が誤りだった。"
     },
     {
       "id": "bf-x-bt02-0061",
@@ -4290,7 +4307,8 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             }
           ],
           "limit": {
@@ -4721,6 +4739,7 @@
           "id": "bf-x-bt02-0071-hand-destroy",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "counter",
             "main"
@@ -4826,7 +4845,7 @@
           "effects": [
             {
               "op": "preventAllDamageThisTurn",
-              "conditions": [
+              "whileConditions": [
                 {
                   "op": "cardCount",
                   "controller": "self",
@@ -4842,7 +4861,7 @@
           ]
         }
       ],
-      "_note": "近似あり・報告要（新primitive不足）。『【対抗】そのターン中、君のセンターにモンスターがいるなら、君はダメージを受けない。（センターのモンスターがいなくなったら、ダメージを受けてしまうので注意！）』は本来『そのターン中、ダメージ判定の都度センター占有を再評価する』動的ゲートだが、既存エンジンのダメージ防止機構(state.damagePreventionのキュー消費/state.turnDamageReductionsのgrantTurnDamageReduction)は共にconditionsの動的再評価に対応しない（唯一conditionsを都度再評価するのは場に常駐する継続 damageReceivedReduction/preventOpponentEffectDamage だが、いずれもbyAttack除外または場札前提でこの一発魔法には使えない）。既存op grep範囲に『ターン中持続する条件付き全ダメージ無効』primitiveは無い。妥協として effects:[preventAllDamageThisTurn]にconditionsを付け、詠唱時点(対抗宣言解決時)一括で『君のセンターにモンスターがいるか』を判定する近似を採用（executeAbilityEffectの汎用effect.conditionsゲート=src/15-ability-effects.js:244-252、一度だけ評価。センターのモンスターが後で退場しても、詠唱時に成立していれば残りターン中ダメージ無効が持続する点が原文の警告文と乖離）。E系エンジン班へ報告: 『ターン中、状態を都度再評価する条件付き全ダメージ無効(player-level, non-field-based)』primitiveが必要。grep自己検査: preventAllDamageThisTurn(src/15-ability-effects.js:2532)/汎用effect.conditionsゲート(src/15-ability-effects.js:244-252)/cardCount pile:center(src/13-abilities-core.js:810, catalog記載) 全実在確認。VM: 対抗宣言解決時にセンターへモンスターがいればそのターン中ダメージ0を確認（動的解除は未実装のため未検証＝既知の近似）。"
+      "_note": "近似あり・報告要（新primitive不足）。『【対抗】そのターン中、君のセンターにモンスターがいるなら、君はダメージを受けない。（センターのモンスターがいなくなったら、ダメージを受けてしまうので注意！）』は本来『そのターン中、ダメージ判定の都度センター占有を再評価する』動的ゲートだが、既存エンジンのダメージ防止機構(state.damagePreventionのキュー消費/state.turnDamageReductionsのgrantTurnDamageReduction)は共にconditionsの動的再評価に対応しない（唯一conditionsを都度再評価するのは場に常駐する継続 damageReceivedReduction/preventOpponentEffectDamage だが、いずれもbyAttack除外または場札前提でこの一発魔法には使えない）。既存op grep範囲に『ターン中持続する条件付き全ダメージ無効』primitiveは無い。妥協として effects:[preventAllDamageThisTurn]にconditionsを付け、詠唱時点(対抗宣言解決時)一括で『君のセンターにモンスターがいるか』を判定する近似を採用（executeAbilityEffectの汎用effect.conditionsゲート=src/15-ability-effects.js:244-252、一度だけ評価。センターのモンスターが後で退場しても、詠唱時に成立していれば残りターン中ダメージ無効が持続する点が原文の警告文と乖離）。E系エンジン班へ報告: 『ターン中、状態を都度再評価する条件付き全ダメージ無効(player-level, non-field-based)』primitiveが必要。grep自己検査: preventAllDamageThisTurn(src/15-ability-effects.js:2532)/汎用effect.conditionsゲート(src/15-ability-effects.js:244-252)/cardCount pile:center(src/13-abilities-core.js:810, catalog記載) 全実在確認。VM: 対抗宣言解決時にセンターへモンスターがいればそのターン中ダメージ0を確認（動的解除は未実装のため未検証＝既知の近似）。 裁定 R9（2026-10-09）: 「そのターン中、君のセンターにモンスターがいるなら、君はダメージを受けない」は解決時ゲートではなくダメージのたびに判定＝preventAllDamageThisTurn{whileConditions}（センターが空の間は受ける・後から入れば受けない）。"
     },
     {
       "id": "bf-x-bt02-0074",
@@ -4895,7 +4914,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -5450,7 +5470,7 @@
           ]
         }
       ],
-      "_note": "無償（原文に【コールコスト】行無し）。『【起動】このカード以外の君の場のモンスター１枚を破壊する。破壊したら、そのターン中、君の場の《ワイダーサカー》全ての攻撃力＋4000！』=kind:activated,timing:[main]（【対抗】マーク無し）+target:{type:fieldCard,controller:self,excludeSource:true,filter:{cardType:monster}}（H-BT02/0020雷爪ナルカミ型の単体破壊target）+effects:[destroy{target:$target}, modifyStats{scope:self,filter:{attribute:ワイダーサカー},power:4000,duration:turn,conditions:[lastDestroySucceeded]}]。『破壊したら』ゲートはX-CP02/0011輝晶竜ジェネヴァ型のlastDestroySucceeded（直前destroyの成立可否をcontext.lastDestroyedで判定・F1恒久FIX＝src/14-ability-script.js:1544-1547でフラグ立て）を採用（H-BT02/0020は無条件連結の旧例だが、本カードは対象が自分の場の他モンスター＝破壊耐性/ソウルガード保持で不成立し得るため忠実性を優先）。grep自己検査: destroy target単体形(src/15-ability-effects.js:1296)/modifyStats scope統合形(src/15-ability-effects.js:1602-1618)/lastDestroySucceeded(src/13-abilities-core.js:1249-1252)/target excludeSource(src/17-targeting.js:216-218) 全実在確認。"
+      "_note": "無償（原文に【コールコスト】行無し）。『【起動】このカード以外の君の場のモンスター１枚を破壊する。破壊したら、そのターン中、君の場の《ワイダーサカー》全ての攻撃力＋4000！』=kind:activated,timing:[main]（【対抗】マーク無し）+target:{type:fieldCard,controller:self,excludeSource:true,filter:{cardType:monster}}（H-BT02/0020雷爪ナルカミ型の単体破壊target）+effects:[destroy{target:$target}, modifyStats{scope:self,filter:{attribute:ワイダーサカー},power:4000,duration:turn,conditions:[lastDestroySucceeded]}]。『破壊したら』ゲートはX-CP02/0011輝晶竜ジェネヴァ型のlastDestroySucceeded（直前destroyの成立可否をcontext.lastDestroyedで判定・F1恒久FIX＝src/14-ability-script.js:1544-1547でフラグ立て）を採用（H-BT02/0020は無条件連結の旧例だが、本カードは対象が自分の場の他モンスター＝破壊耐性で不成立し得るため忠実性を優先。ソウルガード等で場に残った場合は破壊成功＝ゲートは真［2026-10-09 オーナー裁定］）。grep自己検査: destroy target単体形(src/15-ability-effects.js:1296)/modifyStats scope統合形(src/15-ability-effects.js:1602-1618)/lastDestroySucceeded(src/13-abilities-core.js:1249-1252)/target excludeSource(src/17-targeting.js:216-218) 全実在確認。"
     },
     {
       "id": "bf-x-bt02-0086",
@@ -5642,42 +5662,22 @@
               },
               "then": [
                 {
-                  "op": "selectCards",
-                  "var": "h",
-                  "controller": "any",
-                  "from": "field",
-                  "filter": {},
+                  "op": "dropTargetSoul",
+                  "target": "$target",
                   "amount": 1,
-                  "require": true,
-                  "title": "開かずの間",
-                  "lead": "ソウルをドロップゾーンに置く、場のカード１枚を選んでください。"
-                },
-                {
-                  "op": "selectCards",
-                  "var": "s",
-                  "controller": "self",
-                  "from": "soul",
-                  "hostVar": "h",
-                  "filter": {},
-                  "amount": 1,
-                  "min": 0,
-                  "max": 1,
-                  "require": false,
-                  "title": "開かずの間",
-                  "lead": "選んだカードのソウルから、ドロップゾーンに置くカードを１枚まで選んでください。"
-                },
-                {
-                  "op": "moveSelected",
-                  "var": "s",
-                  "to": "drop",
-                  "require": false
+                  "upTo": true
                 }
               ]
             }
-          ]
+          ],
+          "target": {
+            "type": "fieldCard",
+            "allowMissingTarget": true,
+            "filter": {}
+          }
         }
       ],
-      "_note": "『相手のターンの攻撃中に使える』=ability.conditions:[pendingAttackDefenderIsSelf]（TD04/0014シャルサーナの加護の完全同型precedent。ほぼ同一文面カードの確立パターン）。【使用コスト】ゲージ1=costs.cast:[payGauge(1)]。『【対抗】その攻撃を無効化し、君の場に《トイレ》があるなら、場のカード１枚のソウル１枚までをドロップゾーンに置く』は『Xを無効化し、[無関係な条件]なら、Yする』構文＝X-CP01/0021相当precedent(_note内で明示: effects[].conditionsではなくscript:[nullifyAttack, ifCondition{...}]で一括分岐する方針)に倣いscript化。ifCondition{condition:cardCount{controller:self,pile:field,filter:{attribute:トイレ},cmp:gte,amount:1}}のthen配下で『場のカード１枚』を選択（controller:any=自分/相手いずれの場も候補、X-UB02/0017総員第一種戦闘配置！のcontroller未指定パターン踏襲）→selectCards{from:soul,hostVar:h,controller:self,min:0,max:1,require:false}（X16/D-BT01/0020型のhostVar機構＝事前選択した場カードのソウルを対話選択、X-UB02/0016電脳戦士プロトコルル完全precedent）→moveSelected{var:s,to:drop,require:false}（BT03/0040ハ・マ型のmin:0選択+require:false組で0枚選択時も安全にno-op）。ソウル0枚のホストを選んだ場合は候補0のためmin:0で自動的に何も移動しない。grep自己検査: pendingAttackDefenderIsSelf(src/13-abilities-core.js:1531)/nullifyAttack(src/15-ability-effects.js:2116、isScriptEffectStep許可リスト src/14-ability-script.js:3279)/ifCondition script(src/14-ability-script.js:340-342,1151-1158)/cardCount(src/13-abilities-core.js:810-856)/selectCards controller:any(src/14-ability-script.js:774-786)/selectCards from:soul hostVar(src/14-ability-script.js:681-682,798-805)/moveSelected+require:false(src/14-ability-script.js:1043-1051) 全実在確認。VM実測要: 君の場にトイレ無し=ソウル移動が起きず無効化のみ成立／トイレ有り・選んだ場カードにソウル無し=選択0枚で安全にno-op／トイレ有り・ソウル複数の場カードを選ぶ=1枚まで対話選択できる。"
+      "_note": "『相手のターンの攻撃中に使える』=ability.conditions:[pendingAttackDefenderIsSelf]（TD04/0014シャルサーナの加護の完全同型precedent。ほぼ同一文面カードの確立パターン）。【使用コスト】ゲージ1=costs.cast:[payGauge(1)]。『【対抗】その攻撃を無効化し、君の場に《トイレ》があるなら、場のカード１枚のソウル１枚までをドロップゾーンに置く』は『Xを無効化し、[無関係な条件]なら、Yする』構文＝X-CP01/0021相当precedent(_note内で明示: effects[].conditionsではなくscript:[nullifyAttack, ifCondition{...}]で一括分岐する方針)に倣いscript化。ifCondition{condition:cardCount{controller:self,pile:field,filter:{attribute:トイレ},cmp:gte,amount:1}}のthen配下で『場のカード１枚』を選択（controller:any=自分/相手いずれの場も候補、X-UB02/0017総員第一種戦闘配置！のcontroller未指定パターン踏襲）→selectCards{from:soul,hostVar:h,controller:self,min:0,max:1,require:false}（X16/D-BT01/0020型のhostVar機構＝事前選択した場カードのソウルを対話選択、X-UB02/0016電脳戦士プロトコルル完全precedent）→moveSelected{var:s,to:drop,require:false}（BT03/0040ハ・マ型のmin:0選択+require:false組で0枚選択時も安全にno-op）。ソウル0枚のホストを選んだ場合は候補0のためmin:0で自動的に何も移動しない。grep自己検査: pendingAttackDefenderIsSelf(src/13-abilities-core.js:1531)/nullifyAttack(src/15-ability-effects.js:2116、isScriptEffectStep許可リスト src/14-ability-script.js:3279)/ifCondition script(src/14-ability-script.js:340-342,1151-1158)/cardCount(src/13-abilities-core.js:810-856)/selectCards controller:any(src/14-ability-script.js:774-786)/selectCards from:soul hostVar(src/14-ability-script.js:681-682,798-805)/moveSelected+require:false(src/14-ability-script.js:1043-1051) 全実在確認。VM実測要: 君の場にトイレ無し=ソウル移動が起きず無効化のみ成立／トイレ有り・選んだ場カードにソウル無し=選択0枚で安全にno-op／トイレ有り・ソウル複数の場カードを選ぶ=1枚まで対話選択できる。 ／【2026-10-08 監査 b037-1/b037-2】旧 script の selectCards{from:soul,hostVar,controller:self}→moveSelected は、相手ホストのソウルを使用者のドロップへ置き（置き先=entry.owner=使用者）、grantSoulDiscardImmunity（ビークロウズ等の『ソウルは相手のカードの効果でドロップゾーンに置かれない』）も素通りしていた。『場のカード１枚』を ability.target{type:fieldCard,controller省略=両陣営,allowMissingTarget:true} で選び、ifCondition(トイレ)配下で dropTargetSoul{target:$target,amount:1} を実行する形へ変更（dropTargetSoul は置き先=ホストの持ち主・相手効果時の soulDiscard 保護判定・ソウル2枚以上なら使用者が1枚を選ぶ、を備える）。『１枚まで』の0枚は対象選択のキャンセル（allowMissingTarget で無効化のみ解決）またはソウルの無いカードを選ぶことで表現。場のカードの選択は他の対象を取る魔法と同じく使用宣言時に行う。 【R1 2026-10-09 オーナー裁定】「ソウルN枚までを置く／捨てる」＝0〜N枚を選ぶ（dropTargetSoul upTo:true）。"
     },
     {
       "id": "bf-x-bt02-0090",
@@ -6284,11 +6284,8 @@
           "effects": [
             {
               "op": "preventNextDamage",
-              "all": true
-            },
-            {
-              "op": "gainLife",
-              "amount": 1
+              "all": true,
+              "gainLife": 1
             }
           ]
         }
@@ -6588,7 +6585,9 @@
                 "cardType": "monster",
                 "attribute": "プリズムドラゴン"
               }
-            },
+            }
+          ],
+          "ifConditions": [
             {
               "op": "cardCount",
               "controller": "self",
@@ -6714,20 +6713,24 @@
               "nameNot": "黒印竜 デイレパード"
             }
           },
-          "cost": [
-            {
-              "op": "dropSource"
-            }
-          ],
           "effects": [
             {
+              "op": "destroySelf"
+            },
+            {
               "op": "setPreventNextDestroy",
-              "target": "$target"
+              "optional": true,
+              "target": "$target",
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
             }
           ]
         }
       ],
-      "_note": "『このカードはセンターにコールできない。』=cannotCallZones:[\"center\"]。【コールコスト】『デッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う』=costs.call:[putTopDeckToSoul{amount:1},payGauge{amount:1}]。『【対抗】【起動】「黒印竜 デイレパード」以外の君の場の《黒竜》１枚を選び、このカードを破壊してよい。破壊したら、そのターン中、次に選んだカードが破壊される場合、そのカードを場に残せる。』はbf-d-bt02-0011太陽拳バルガード（『君の場の《太陽竜》のモンスター1枚を選び、ゲージ1を払い、このカードをドロップゾーンに置いてよい。そうしたら、次に選んだカードが破壊される場合、そのカードを場に残せる』）と同型骨格: kind:activated,timing:[counter],target:{fieldCard,controller:self,filter:{attribute:黒竜,nameNot:'黒印竜 デイレパード'}}（nameNotで自分自身と同名カードを除外＝『「黒印竜 デイレパード」以外』の直訳）+cost:[dropSource]（『破壊してよい』はbf-pr-0485ドラムバンカー・ドラゴン“2018”等の『破壊してよい』文言でも同じdropSourceコストopを使う確立前例に倣う。destroySelfはコストop未実装のため不採用）+effects:[setPreventNextDestroy{target:$target}]。ソウルガード=keywords:[soulguard]。grep自己検査: cannotCallZones(src/07-actions-turn.js:331)/putTopDeckToSoul(src/04-cost-resource.js:601,1013,1761)/dropSource cost(src/04-cost-resource.js:1046,1805)/nameNot(src/17-targeting.js:454)/setPreventNextDestroy(src/15-ability-effects.js,isScriptEffectStep許可リスト内) 全実在確認。"
+      "_note": "『このカードはセンターにコールできない。』=cannotCallZones:[\"center\"]。【コールコスト】『デッキの上から１枚をこのカードのソウルに入れ、ゲージ１を払う』=costs.call:[putTopDeckToSoul{amount:1},payGauge{amount:1}]。『【対抗】【起動】「黒印竜 デイレパード」以外の君の場の《黒竜》１枚を選び、このカードを破壊してよい。破壊したら、そのターン中、次に選んだカードが破壊される場合、そのカードを場に残せる。』はbf-d-bt02-0011太陽拳バルガード（『君の場の《太陽竜》のモンスター1枚を選び、ゲージ1を払い、このカードをドロップゾーンに置いてよい。そうしたら、次に選んだカードが破壊される場合、そのカードを場に残せる』）と同型骨格: kind:activated,timing:[counter],target:{fieldCard,controller:self,filter:{attribute:黒竜,nameNot:'黒印竜 デイレパード'}}（nameNotで自分自身と同名カードを除外＝『「黒印竜 デイレパード」以外』の直訳）+cost:[dropSource]（『破壊してよい』はbf-pr-0485ドラムバンカー・ドラゴン“2018”等の『破壊してよい』文言でも同じdropSourceコストopを使う確立前例に倣う。destroySelfはコストop未実装のため不採用）+effects:[setPreventNextDestroy{target:$target}]。ソウルガード=keywords:[soulguard]。grep自己検査: cannotCallZones(src/07-actions-turn.js:331)/putTopDeckToSoul(src/04-cost-resource.js:601,1013,1761)/dropSource cost(src/04-cost-resource.js:1046,1805)/nameNot(src/17-targeting.js:454)/setPreventNextDestroy(src/15-ability-effects.js,isScriptEffectStep許可リスト内) 全実在確認。 ／【2026-10-08 監査 b037-3】『このカードを破壊してよい』はコストop destroySource（src/04 の非同期コスト経路で destroyFieldCard を通す＝破壊時誘発・ライフリンクが発生）に変更。旧 dropSource はドロップに置くだけで破壊扱いにならず、黒竜 フエフ(0097)等の「《黒竜》が破壊された時」が発動しなかった。『ソウルガード』は任意の置換（ルール ver2.05）で、破壊時に使うか確認される。（当時はソウルガードで場に残った場合の『破壊したら』判定が近似だった。下の R8 で効果化し、2026-10-09 オーナー裁定で「場に残っても破壊は成功」に確定。） ／【2026-10-09 オーナー裁定R8】『このカードを破壊してよい。破壊したら』の自壊は効果: 旧 cost:destroySource を effects 先頭の destroySelf へ移し、setPreventNextDestroy に lastDestroySucceeded ゲート。ソウルガード等で場に残っても破壊は成功している（2026-10-09 オーナー裁定）ので後半（次に選んだカードが破壊される場合に場に残せる）を行う。破壊耐性で破壊されなかった時だけ後半を行わない。"
     },
     {
       "id": "bf-x-bt02-0107",
@@ -6878,7 +6881,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -7143,7 +7147,7 @@
               ],
               "controller": "self",
               "filter": {
-                "name": "棘晶竜 スピリタス"
+                "sameInstanceAsSource": true
               },
               "amount": 1,
               "require": true,
@@ -7184,7 +7188,7 @@
           ]
         }
       ],
-      "_note": "近似あり(enteredFromZone)。『【コールコスト】ゲージ1を払う』=costs.call:[payGauge(1)]。『反撃』=keywords:[counterattack]。『【対抗】【起動】相手のターンの攻撃中、ゲージ2を払う。払ったら、手札のこのカードを君のセンターに、【コールコスト】を払わずコールし、その攻撃の対象をこのカードに変更する』=kind:activated,fromHandOnly:true,timing:[counter],conditions:[turnOwnerIsOpponent,pendingAttackDefenderIsSelf](bf-x-bt01-0044/bf-d-bt04-0043等『身代わり』カード群の確立conditions),cost:[payGauge(2)](ability自体のコスト=ゲージ2)、script:[selectCards(from:[drop,hand],filter:{name:棘晶竜スピリタス},amount:1,require:true)→callSelected(zone:center固定,redirectPendingAttack:true,resolveOnEnter:true)]（payCostを指定しない=【コールコスト】を払わずコール。bf-pr-0330『追撃の黒翼』のselectCards(from:[hand,drop])+callSelectedToEmptyZones(payCost無指定)型と同型の『コールコストを払わない自己リコール』確立パターン。callSelectedはzone固定文字列(『君のセンター』)+redirectPendingAttack:trueで攻撃対象変更もワンステップで処理=bf-x-sd02-0013型の確立precedent。useHandAbilityActionはcounterTiming使用時script実行前にusedCardをplayer.dropへ積む(src/13-abilities-core.js:223)ため、selectCardsのfromは[drop,hand]の順でdropを優先的に含める）。『相手のターン中、手札からこのカードが登場した時、相手にダメージ2！』=event:enter+conditions:[turnOwnerIsOpponent, enteredFromZoneIn{zones:[hand,drop]}]+effects:[dealDamage{player:opponent,amount:2}]。近似: callSelectedはcalledCard.enteredFromZone=entry.source(=\"drop\")を記録するため（useHandAbilityActionの事前drop退避が発生源）、本来『手札から』のみを指すenteredFromZoneInを[hand,drop]へ拡張して自己リコール経路も『手札から』相当として拾う。副作用として、他カードの効果で真にドロップから場外呼び出しされた場合も相手ターン中なら誤発火し得る（本カードには他のドロップ呼び出し経路は無いため通常到達しないが、汎用ドロップ蘇生カード等との組み合わせでは理論上over-fire）。エンジン班へ: fromHandOnly活性化能力の自己コール系にenteredFromZone=\"hand\"を保つ専用オプション(またはcallSelectedのstep.fromオーバーライド優先)があれば解消可能。grep自己検査: callSelected(src/14-ability-script.js:2518-2608、redirectPendingAttack/enteredFromZoneセット含む)/turnOwnerIsOpponent・pendingAttackDefenderIsSelf(src/13-abilities-core.js)/enteredFromZoneIn(src/13-abilities-core.js:1138)/dealDamage(src/15) 全実在確認。VM: 相手ターンの攻撃中にゲージ2を払い手札のこのカードをコールコスト無しでセンターへコール・攻撃対象がこのカードに変更されること、コール直後にダメージ2が発生すること、を実操作経路(useCardAction対抗即解決→resolvePendingResolution)で確認。"
+      "_note": "近似あり(enteredFromZone)。『【コールコスト】ゲージ1を払う』=costs.call:[payGauge(1)]。『反撃』=keywords:[counterattack]。『【対抗】【起動】相手のターンの攻撃中、ゲージ2を払う。払ったら、手札のこのカードを君のセンターに、【コールコスト】を払わずコールし、その攻撃の対象をこのカードに変更する』=kind:activated,fromHandOnly:true,timing:[counter],conditions:[turnOwnerIsOpponent,pendingAttackDefenderIsSelf](bf-x-bt01-0044/bf-d-bt04-0043等『身代わり』カード群の確立conditions),cost:[payGauge(2)](ability自体のコスト=ゲージ2)、script:[selectCards(from:[drop,hand],filter:{name:棘晶竜スピリタス},amount:1,require:true)→callSelected(zone:center固定,redirectPendingAttack:true,resolveOnEnter:true)]（payCostを指定しない=【コールコスト】を払わずコール。bf-pr-0330『追撃の黒翼』のselectCards(from:[hand,drop])+callSelectedToEmptyZones(payCost無指定)型と同型の『コールコストを払わない自己リコール』確立パターン。callSelectedはzone固定文字列(『君のセンター』)+redirectPendingAttack:trueで攻撃対象変更もワンステップで処理=bf-x-sd02-0013型の確立precedent。useHandAbilityActionはcounterTiming使用時script実行前にusedCardをplayer.dropへ積む(src/13-abilities-core.js:223)ため、selectCardsのfromは[drop,hand]の順でdropを優先的に含める）。『相手のターン中、手札からこのカードが登場した時、相手にダメージ2！』=event:enter+conditions:[turnOwnerIsOpponent, enteredFromZoneIn{zones:[hand,drop]}]+effects:[dealDamage{player:opponent,amount:2}]。近似: callSelectedはcalledCard.enteredFromZone=entry.source(=\"drop\")を記録するため（useHandAbilityActionの事前drop退避が発生源）、本来『手札から』のみを指すenteredFromZoneInを[hand,drop]へ拡張して自己リコール経路も『手札から』相当として拾う。副作用として、他カードの効果で真にドロップから場外呼び出しされた場合も相手ターン中なら誤発火し得る（本カードには他のドロップ呼び出し経路は無いため通常到達しないが、汎用ドロップ蘇生カード等との組み合わせでは理論上over-fire）。エンジン班へ: fromHandOnly活性化能力の自己コール系にenteredFromZone=\"hand\"を保つ専用オプション(またはcallSelectedのstep.fromオーバーライド優先)があれば解消可能。grep自己検査: callSelected(src/14-ability-script.js:2518-2608、redirectPendingAttack/enteredFromZoneセット含む)/turnOwnerIsOpponent・pendingAttackDefenderIsSelf(src/13-abilities-core.js)/enteredFromZoneIn(src/13-abilities-core.js:1138)/dealDamage(src/15) 全実在確認。VM: 相手ターンの攻撃中にゲージ2を払い手札のこのカードをコールコスト無しでセンターへコール・攻撃対象がこのカードに変更されること、コール直後にダメージ2が発生すること、を実操作経路(useCardAction対抗即解決→resolvePendingResolution)で確認。 ／【2026-10-08 監査 b037-4】『手札のこのカード』を名前一致(filter.name)で選び直していたため、元からドロップにある同名カードや手札の別の1枚をコールできた。selectCards の filter を sameInstanceAsSource:true（使用したカード自身＝instanceId 一致のみ）に変更。callSelfFromHand はコールコストを払う実装のため『【コールコスト】を払わず』の本カードには使わない。"
     },
     {
       "id": "bf-x-bt02-0112",
@@ -7388,7 +7392,8 @@
                       "op": "selectZone",
                       "var": "z",
                       "cardVar": "c",
-                      "emptyOnly": true
+                      "emptyOnly": true,
+                      "overwriteWhenFull": true
                     },
                     {
                       "op": "payCardCostForSelection",
@@ -7519,7 +7524,8 @@
             "amount": 1,
             "filter": {
               "sizeLte": 3
-            }
+            },
+            "asEffect": true
           }
         ],
         "optional": true
@@ -7556,7 +7562,8 @@
                   "op": "selectZone",
                   "var": "z",
                   "cardVar": "c",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "callSelected",
@@ -7569,7 +7576,7 @@
           ]
         }
       ],
-      "_note": "【コールコスト】ゲージ2=costs.call:[payGauge(2)]。『お互いのアタックフェイズ開始時、君の手札の《カオス》のモンスター1枚を、【コールコスト】を払わずコールしてよい』=event:attackStart(条件無し=お互い。runPhaseStartTriggersがturnOwner→相手の順で両者走査=src/07-actions-turn.js、S-UB-C03/0061 bf-s-ub-c03-ir046の同種お互いのアタックフェイズ開始時トリガーと同型で turnOwnerIsSelf 不使用),optional:true,script:[selectCards{from:hand,controller:self,filter:{cardType:monster,attribute:カオス},min:0,max:1,amount:1,require:false,callable:true}（callableのみでcanPayCost無し=無償コール、H-EB01/0008・H-EB03/0009の【コールコスト】を払わずコール型と同型）,ifSelection{var:c,then:[selectZone{cardVar:c,emptyOnly:true},callSelected{zoneVar:z,resolveOnEnter:true}]}]（bt03-0069魔王のダンジョンのifSelectionガード付き任意コール構造を踏襲。selectZoneはmin:1,max:1で必ずダイアログを出すため、0枚選択時にselectZone/callSelectedへ進まないようifSelectionで包む必要がある＝これを省くと0枚選択時にも空のゾーン選択ダイアログが出る不具合になる）。“C・ドレイン”『このカードが場から離れる場合、君の場のサイズ3以下のモンスター1枚を破壊してよい。破壊したら、このカードを場に残す』=leaveFieldReplacement:{cost:[destroyOwnMonster{amount:1,filter:{sizeLte:3}}],optional:true}（PR/0404制圧兵器ギアゴッドⅦの“C・ドレイン”と一字一句同一の印字文言・同一leaveFieldReplacement形。destroyOwnMonsterはfilter指定時cardType:monster自動付与=src/04-cost-resource.js:683,1107,1823、host自身はsize30のためsizeLte:3で自然除外されexcludeSource不要）。【未実装・報告】『C・テリトリー』（このカードがセンターにいるなら、君はセンターにモンスターを2枚まで置ける）はrulings.md R1（統括裁定・pr-backfill R11踏襲）により表示専用（機構キー無し）。本エンジンのfield.centerは単一nullableスロットでゾーン複数化のプリミティブが存在しないため、PR/0404と同じ扱いで未実装のままrules表示のみとする（任意能力のため「2枚目を置かない」=合法な部分集合）。grep自己検査: attackStart(src/09-attack.js:675,src/15-ability-effects.js:565)/runPhaseStartTriggers両者走査(src/07-actions-turn.js)/selectCards callable(src/14-ability-script.js)/ifSelection(src/14-ability-script.js:334-335)/selectZone(src/14-ability-script.js:2432-2463)/callSelected(src/14-ability-script.js)/leaveFieldReplacement(src/11-destroy-turn.js:261,293,651,712)/destroyOwnMonster+filter.sizeLte(src/04-cost-resource.js:683,src/17-targeting.js) 全実在確認。"
+      "_note": "【コールコスト】ゲージ2=costs.call:[payGauge(2)]。『お互いのアタックフェイズ開始時、君の手札の《カオス》のモンスター1枚を、【コールコスト】を払わずコールしてよい』=event:attackStart(条件無し=お互い。runPhaseStartTriggersがturnOwner→相手の順で両者走査=src/07-actions-turn.js、S-UB-C03/0061 bf-s-ub-c03-ir046の同種お互いのアタックフェイズ開始時トリガーと同型で turnOwnerIsSelf 不使用),optional:true,script:[selectCards{from:hand,controller:self,filter:{cardType:monster,attribute:カオス},min:0,max:1,amount:1,require:false,callable:true}（callableのみでcanPayCost無し=無償コール、H-EB01/0008・H-EB03/0009の【コールコスト】を払わずコール型と同型）,ifSelection{var:c,then:[selectZone{cardVar:c,emptyOnly:true},callSelected{zoneVar:z,resolveOnEnter:true}]}]（bt03-0069魔王のダンジョンのifSelectionガード付き任意コール構造を踏襲。selectZoneはmin:1,max:1で必ずダイアログを出すため、0枚選択時にselectZone/callSelectedへ進まないようifSelectionで包む必要がある＝これを省くと0枚選択時にも空のゾーン選択ダイアログが出る不具合になる）。“C・ドレイン”『このカードが場から離れる場合、君の場のサイズ3以下のモンスター1枚を破壊してよい。破壊したら、このカードを場に残す』=leaveFieldReplacement:{cost:[destroyOwnMonster{amount:1,filter:{sizeLte:3}}],optional:true}（PR/0404制圧兵器ギアゴッドⅦの“C・ドレイン”と一字一句同一の印字文言・同一leaveFieldReplacement形。destroyOwnMonsterはfilter指定時cardType:monster自動付与=src/04-cost-resource.js:683,1107,1823、host自身はsize30のためsizeLte:3で自然除外されexcludeSource不要）。【未実装・報告】『C・テリトリー』（このカードがセンターにいるなら、君はセンターにモンスターを2枚まで置ける）はrulings.md R1（統括裁定・pr-backfill R11踏襲）により表示専用（機構キー無し）。本エンジンのfield.centerは単一nullableスロットでゾーン複数化のプリミティブが存在しないため、PR/0404と同じ扱いで未実装のままrules表示のみとする（任意能力のため「2枚目を置かない」=合法な部分集合）。grep自己検査: attackStart(src/09-attack.js:675,src/15-ability-effects.js:565)/runPhaseStartTriggers両者走査(src/07-actions-turn.js)/selectCards callable(src/14-ability-script.js)/ifSelection(src/14-ability-script.js:334-335)/selectZone(src/14-ability-script.js:2432-2463)/callSelected(src/14-ability-script.js)/leaveFieldReplacement(src/11-destroy-turn.js:261,293,651,712)/destroyOwnMonster+filter.sizeLte(src/04-cost-resource.js:683,src/17-targeting.js) 全実在確認。 ／【2026-10-09 オーナー裁定R8】“C・ドレイン”の『〜を破壊してよい。破壊したら、場に残す』の破壊は効果: leaveFieldReplacement.cost の destroyOwnMonster に asEffect:true（置換を無視せず破壊する。ソウルガード等で場に残っても破壊は成功＝支払い成立でこのカードは場に残る［2026-10-09 オーナー裁定］。破壊耐性等で破壊できなかった時だけ支払い不成立＝このカードは場を離れる）。同期の単体手札戻し経路は従来の近似のまま。"
     },
     {
       "id": "bf-x-bt02-0117",
@@ -7751,7 +7758,8 @@
             "amount": 1,
             "filter": {
               "sizeLte": 3
-            }
+            },
+            "asEffect": true
           }
         ],
         "optional": true
@@ -7788,7 +7796,8 @@
                   "op": "selectZone",
                   "var": "z",
                   "cardVar": "c",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "callSelected",
@@ -7801,7 +7810,7 @@
           ]
         }
       ],
-      "_note": "【コールコスト】ゲージ2=costs.call:[payGauge(2)]。『お互いのアタックフェイズ開始時、君の手札の《カオス》のモンスター1枚を、【コールコスト】を払わずコールしてよい』=event:attackStart(条件無し=お互い。runPhaseStartTriggersがturnOwner→相手の順で両者走査=src/07-actions-turn.js、S-UB-C03/0061 bf-s-ub-c03-ir046の同種お互いのアタックフェイズ開始時トリガーと同型で turnOwnerIsSelf 不使用),optional:true,script:[selectCards{from:hand,controller:self,filter:{cardType:monster,attribute:カオス},min:0,max:1,amount:1,require:false,callable:true}（callableのみでcanPayCost無し=無償コール、H-EB01/0008・H-EB03/0009の【コールコスト】を払わずコール型と同型）,ifSelection{var:c,then:[selectZone{cardVar:c,emptyOnly:true},callSelected{zoneVar:z,resolveOnEnter:true}]}]（bt03-0069魔王のダンジョンのifSelectionガード付き任意コール構造を踏襲。selectZoneはmin:1,max:1で必ずダイアログを出すため、0枚選択時にselectZone/callSelectedへ進まないようifSelectionで包む必要がある＝これを省くと0枚選択時にも空のゾーン選択ダイアログが出る不具合になる）。“C・ドレイン”『このカードが場から離れる場合、君の場のサイズ3以下のモンスター1枚を破壊してよい。破壊したら、このカードを場に残す』=leaveFieldReplacement:{cost:[destroyOwnMonster{amount:1,filter:{sizeLte:3}}],optional:true}（PR/0404制圧兵器ギアゴッドⅦの“C・ドレイン”と一字一句同一の印字文言・同一leaveFieldReplacement形。destroyOwnMonsterはfilter指定時cardType:monster自動付与=src/04-cost-resource.js:683,1107,1823、host自身はsize30のためsizeLte:3で自然除外されexcludeSource不要）。【未実装・報告】『C・テリトリー』（このカードがセンターにいるなら、君はセンターにモンスターを2枚まで置ける）はrulings.md R1（統括裁定・pr-backfill R11踏襲）により表示専用（機構キー無し）。本エンジンのfield.centerは単一nullableスロットでゾーン複数化のプリミティブが存在しないため、PR/0404と同じ扱いで未実装のままrules表示のみとする（任意能力のため「2枚目を置かない」=合法な部分集合）。grep自己検査: attackStart(src/09-attack.js:675,src/15-ability-effects.js:565)/runPhaseStartTriggers両者走査(src/07-actions-turn.js)/selectCards callable(src/14-ability-script.js)/ifSelection(src/14-ability-script.js:334-335)/selectZone(src/14-ability-script.js:2432-2463)/callSelected(src/14-ability-script.js)/leaveFieldReplacement(src/11-destroy-turn.js:261,293,651,712)/destroyOwnMonster+filter.sizeLte(src/04-cost-resource.js:683,src/17-targeting.js) 全実在確認。"
+      "_note": "【コールコスト】ゲージ2=costs.call:[payGauge(2)]。『お互いのアタックフェイズ開始時、君の手札の《カオス》のモンスター1枚を、【コールコスト】を払わずコールしてよい』=event:attackStart(条件無し=お互い。runPhaseStartTriggersがturnOwner→相手の順で両者走査=src/07-actions-turn.js、S-UB-C03/0061 bf-s-ub-c03-ir046の同種お互いのアタックフェイズ開始時トリガーと同型で turnOwnerIsSelf 不使用),optional:true,script:[selectCards{from:hand,controller:self,filter:{cardType:monster,attribute:カオス},min:0,max:1,amount:1,require:false,callable:true}（callableのみでcanPayCost無し=無償コール、H-EB01/0008・H-EB03/0009の【コールコスト】を払わずコール型と同型）,ifSelection{var:c,then:[selectZone{cardVar:c,emptyOnly:true},callSelected{zoneVar:z,resolveOnEnter:true}]}]（bt03-0069魔王のダンジョンのifSelectionガード付き任意コール構造を踏襲。selectZoneはmin:1,max:1で必ずダイアログを出すため、0枚選択時にselectZone/callSelectedへ進まないようifSelectionで包む必要がある＝これを省くと0枚選択時にも空のゾーン選択ダイアログが出る不具合になる）。“C・ドレイン”『このカードが場から離れる場合、君の場のサイズ3以下のモンスター1枚を破壊してよい。破壊したら、このカードを場に残す』=leaveFieldReplacement:{cost:[destroyOwnMonster{amount:1,filter:{sizeLte:3}}],optional:true}（PR/0404制圧兵器ギアゴッドⅦの“C・ドレイン”と一字一句同一の印字文言・同一leaveFieldReplacement形。destroyOwnMonsterはfilter指定時cardType:monster自動付与=src/04-cost-resource.js:683,1107,1823、host自身はsize30のためsizeLte:3で自然除外されexcludeSource不要）。【未実装・報告】『C・テリトリー』（このカードがセンターにいるなら、君はセンターにモンスターを2枚まで置ける）はrulings.md R1（統括裁定・pr-backfill R11踏襲）により表示専用（機構キー無し）。本エンジンのfield.centerは単一nullableスロットでゾーン複数化のプリミティブが存在しないため、PR/0404と同じ扱いで未実装のままrules表示のみとする（任意能力のため「2枚目を置かない」=合法な部分集合）。grep自己検査: attackStart(src/09-attack.js:675,src/15-ability-effects.js:565)/runPhaseStartTriggers両者走査(src/07-actions-turn.js)/selectCards callable(src/14-ability-script.js)/ifSelection(src/14-ability-script.js:334-335)/selectZone(src/14-ability-script.js:2432-2463)/callSelected(src/14-ability-script.js)/leaveFieldReplacement(src/11-destroy-turn.js:261,293,651,712)/destroyOwnMonster+filter.sizeLte(src/04-cost-resource.js:683,src/17-targeting.js) 全実在確認。 ／【2026-10-09 オーナー裁定R8】“C・ドレイン”の『〜を破壊してよい。破壊したら、場に残す』の破壊は効果: leaveFieldReplacement.cost の destroyOwnMonster に asEffect:true（置換を無視せず破壊する。ソウルガード等で場に残っても破壊は成功＝支払い成立でこのカードは場に残る［2026-10-09 オーナー裁定］。破壊耐性等で破壊できなかった時だけ支払い不成立＝このカードは場を離れる）。同期の単体手札戻し経路は従来の近似のまま。"
     },
     {
       "id": "bf-x-bt02-br02",
@@ -7993,7 +8002,8 @@
           ],
           "effects": [
             {
-              "op": "equipSelf"
+              "op": "equipSelf",
+              "effectEquip": true
             }
           ],
           "limit": {
@@ -8002,7 +8012,7 @@
           }
         }
       ],
-      "_note": "『このカードはバディにすることができる！』=canBeBuddy:true（pp01-golden-buddy-pack.json PP01/0055不滅剣デュランダル＝本カードの前身再録元と完全同型カード）。【装備コスト】ゲージ1+ライフ1=costs.equip:[payGauge(1),payLife(1)]+equipCost:{gauge:1,life:1}（bf-h-eb03-hyakurai-no-ou.json H-EB03該当カードの同一equipCost形と同型）。『【対抗】【起動】“王の手”君がカード名に「王剣」を含むアイテムを装備しているなら、手札のこのカードを、【装備コスト】を払って装備する。「王の手」は1ターンに1回だけ使える』の骨格はbf-d-bt03-horobose-daimaryu.json D-BT03/0070聖剣ガラティーン『剣の呼び声』（kind:activated,fromHandOnly:true,timing:[counter],conditions+effects:[equipSelf]+limit:{scope:turn,key}）を踏襲するが、D-BT03/0070の原文『手札のこのカードを装備する』には【装備コスト】を払う旨の記載が無い(コスト無し)のに対し、本カードは原文に明記の『【装備コストを払って】装備する』のため、costs.equipと同一のcost:[payGauge(1),payLife(1)]をability.costにも明記（FIX7の二重宣言。bt05-0053型の『使用コストを払って』二重明記慣例と同型）。effects:[equipSelf]実行時、useHandAbilityAction(src/13-abilities-core.js:144-224)は本能力がkind:activated+isCounterAbility(timing.includes('counter'))=trueのため、pendingAction化せずcostSteps支払い後に即座にusedCardをplayer.dropへ積んでからexecuteAbilityBodyを呼ぶ（src/13:224）。equipSelf(src/15-ability-effects.js:1169-1198)はcontext.card(=usedCard)をhand→field→dropの順に探索し、drop側で発見して装備するため、この経路でも正しく手札カードが装備される。conditionは『アイテムを装備している』のためownFieldCardExists{zones:[item系4枠],filter:{cardType:item,nameIncludes:王剣}}（bf-d-bt04-kagayake-super-sun-dragon.json D-BT04/0068型のitem系4枠列挙+cardType:item+nameIncludes判定）。named-once『「王の手」は1ターンに1回だけ使える』はfromHandOnly:trueのためisHandCastLimitAbility(src/15-ability-effects.js:3190-3192)が真となりabilityLimitKeyが自動的に同名カード単位(base)で共有される＝shared:true不要（D-BT03/0070の実装がshared無しである点と完全一致、CLAUDE.md『named-once bare slug(monster/item namedはshared:true)』は非fromHandOnly系の規約でありfromHandOnly系はisHandCastLimitAbilityで別途自動合算されるため対象外）。『君の場の《英雄》全ては、相手のカードの効果で破壊されない』=continuous:[grantDestroyImmunity{controller:self,filter:{attribute:英雄},from:{byEffect:true,byOpponent:true}}]（bf-x-ub01-buddy-quest.json X-UB01/0030不滅の剣聖ショウセツ『君の場のアイテム全ては相手のカードの効果で破壊されない』の完全precedent、filterをcardType:itemからattribute:英雄に差替）。『装備変更』=keywords:[equipChange]（bf-h-bt02-galaxy-burst.json H-BT02/0016神槍グングニルと同型キー）。grep自己検査: canBeBuddy(src/08-card-use.js:185-186)/payGauge・payLife(src/04-cost-resource.js)/fromHandOnly+isHandCastLimitAbility(src/13-abilities-core.js:77-84,678-681;src/15-ability-effects.js:3164-3192)/useHandAbilityAction counter即時解決経路(src/13-abilities-core.js:200-224)/ownFieldCardExists+zones(src/13-abilities-core.js:1091-1101)/equipSelf(src/15-ability-effects.js:1169)/grantDestroyImmunity継続(src/11-destroy-turn.js:121-145,183)/equipChangeキーワード(src/08-card-use.js:166-169) 全実在確認。VM実測はxbt02-b9-verify.js参照。"
+      "_note": "『このカードはバディにすることができる！』=canBeBuddy:true（pp01-golden-buddy-pack.json PP01/0055不滅剣デュランダル＝本カードの前身再録元と完全同型カード）。【装備コスト】ゲージ1+ライフ1=costs.equip:[payGauge(1),payLife(1)]+equipCost:{gauge:1,life:1}（bf-h-eb03-hyakurai-no-ou.json H-EB03該当カードの同一equipCost形と同型）。『【対抗】【起動】“王の手”君がカード名に「王剣」を含むアイテムを装備しているなら、手札のこのカードを、【装備コスト】を払って装備する。「王の手」は1ターンに1回だけ使える』の骨格はbf-d-bt03-horobose-daimaryu.json D-BT03/0070聖剣ガラティーン『剣の呼び声』（kind:activated,fromHandOnly:true,timing:[counter],conditions+effects:[equipSelf]+limit:{scope:turn,key}）を踏襲するが、D-BT03/0070の原文『手札のこのカードを装備する』には【装備コスト】を払う旨の記載が無い(コスト無し)のに対し、本カードは原文に明記の『【装備コストを払って】装備する』のため、costs.equipと同一のcost:[payGauge(1),payLife(1)]をability.costにも明記（FIX7の二重宣言。bt05-0053型の『使用コストを払って』二重明記慣例と同型）。effects:[equipSelf]実行時、useHandAbilityAction(src/13-abilities-core.js:144-224)は本能力がkind:activated+isCounterAbility(timing.includes('counter'))=trueのため、pendingAction化せずcostSteps支払い後に即座にusedCardをplayer.dropへ積んでからexecuteAbilityBodyを呼ぶ（src/13:224）。equipSelf(src/15-ability-effects.js:1169-1198)はcontext.card(=usedCard)をhand→field→dropの順に探索し、drop側で発見して装備するため、この経路でも正しく手札カードが装備される。conditionは『アイテムを装備している』のためownFieldCardExists{zones:[item系4枠],filter:{cardType:item,nameIncludes:王剣}}（bf-d-bt04-kagayake-super-sun-dragon.json D-BT04/0068型のitem系4枠列挙+cardType:item+nameIncludes判定）。named-once『「王の手」は1ターンに1回だけ使える』はfromHandOnly:trueのためisHandCastLimitAbility(src/15-ability-effects.js:3190-3192)が真となりabilityLimitKeyが自動的に同名カード単位(base)で共有される＝shared:true不要（D-BT03/0070の実装がshared無しである点と完全一致、CLAUDE.md『named-once bare slug(monster/item namedはshared:true)』は非fromHandOnly系の規約でありfromHandOnly系はisHandCastLimitAbilityで別途自動合算されるため対象外）。『君の場の《英雄》全ては、相手のカードの効果で破壊されない』=continuous:[grantDestroyImmunity{controller:self,filter:{attribute:英雄},from:{byEffect:true,byOpponent:true}}]（bf-x-ub01-buddy-quest.json X-UB01/0030不滅の剣聖ショウセツ『君の場のアイテム全ては相手のカードの効果で破壊されない』の完全precedent、filterをcardType:itemからattribute:英雄に差替）。『装備変更』=keywords:[equipChange]（bf-h-bt02-galaxy-burst.json H-BT02/0016神槍グングニルと同型キー）。grep自己検査: canBeBuddy(src/08-card-use.js:185-186)/payGauge・payLife(src/04-cost-resource.js)/fromHandOnly+isHandCastLimitAbility(src/13-abilities-core.js:77-84,678-681;src/15-ability-effects.js:3164-3192)/useHandAbilityAction counter即時解決経路(src/13-abilities-core.js:200-224)/ownFieldCardExists+zones(src/13-abilities-core.js:1091-1101)/equipSelf(src/15-ability-effects.js:1169)/grantDestroyImmunity継続(src/11-destroy-turn.js:121-145,183)/equipChangeキーワード(src/08-card-use.js:166-169) 全実在確認。VM実測はxbt02-b9-verify.js参照。 ／【2026-10-09 オーナー裁定R10】『手札のこのカードを装備する』は能力の効果による装備（宣言を経ない装備）: equipSelf に effectEquip:true。バディギフトは得られず、バディコールの権利も消費しない（変身/搭乗/着任/必殺変身の宣言とは別）。"
     },
     {
       "id": "bf-x-bt02-s001",
@@ -8095,7 +8105,8 @@
           ],
           "effects": [
             {
-              "op": "equipSelf"
+              "op": "equipSelf",
+              "effectEquip": true
             }
           ],
           "limit": {
@@ -8104,7 +8115,7 @@
           }
         }
       ],
-      "_note": "『このカードはバディにすることができる！』=canBeBuddy:true（pp01-golden-buddy-pack.json PP01/0055不滅剣デュランダル＝本カードの前身再録元と完全同型カード）。【装備コスト】ゲージ1+ライフ1=costs.equip:[payGauge(1),payLife(1)]+equipCost:{gauge:1,life:1}（bf-h-eb03-hyakurai-no-ou.json H-EB03該当カードの同一equipCost形と同型）。『【対抗】【起動】“王の手”君がカード名に「王剣」を含むアイテムを装備しているなら、手札のこのカードを、【装備コスト】を払って装備する。「王の手」は1ターンに1回だけ使える』の骨格はbf-d-bt03-horobose-daimaryu.json D-BT03/0070聖剣ガラティーン『剣の呼び声』（kind:activated,fromHandOnly:true,timing:[counter],conditions+effects:[equipSelf]+limit:{scope:turn,key}）を踏襲するが、D-BT03/0070の原文『手札のこのカードを装備する』には【装備コスト】を払う旨の記載が無い(コスト無し)のに対し、本カードは原文に明記の『【装備コストを払って】装備する』のため、costs.equipと同一のcost:[payGauge(1),payLife(1)]をability.costにも明記（FIX7の二重宣言。bt05-0053型の『使用コストを払って』二重明記慣例と同型）。effects:[equipSelf]実行時、useHandAbilityAction(src/13-abilities-core.js:144-224)は本能力がkind:activated+isCounterAbility(timing.includes('counter'))=trueのため、pendingAction化せずcostSteps支払い後に即座にusedCardをplayer.dropへ積んでからexecuteAbilityBodyを呼ぶ（src/13:224）。equipSelf(src/15-ability-effects.js:1169-1198)はcontext.card(=usedCard)をhand→field→dropの順に探索し、drop側で発見して装備するため、この経路でも正しく手札カードが装備される。conditionは『アイテムを装備している』のためownFieldCardExists{zones:[item系4枠],filter:{cardType:item,nameIncludes:王剣}}（bf-d-bt04-kagayake-super-sun-dragon.json D-BT04/0068型のitem系4枠列挙+cardType:item+nameIncludes判定）。named-once『「王の手」は1ターンに1回だけ使える』はfromHandOnly:trueのためisHandCastLimitAbility(src/15-ability-effects.js:3190-3192)が真となりabilityLimitKeyが自動的に同名カード単位(base)で共有される＝shared:true不要（D-BT03/0070の実装がshared無しである点と完全一致、CLAUDE.md『named-once bare slug(monster/item namedはshared:true)』は非fromHandOnly系の規約でありfromHandOnly系はisHandCastLimitAbilityで別途自動合算されるため対象外）。『君の場の《英雄》全ては、相手のカードの効果で破壊されない』=continuous:[grantDestroyImmunity{controller:self,filter:{attribute:英雄},from:{byEffect:true,byOpponent:true}}]（bf-x-ub01-buddy-quest.json X-UB01/0030不滅の剣聖ショウセツ『君の場のアイテム全ては相手のカードの効果で破壊されない』の完全precedent、filterをcardType:itemからattribute:英雄に差替）。『装備変更』=keywords:[equipChange]（bf-h-bt02-galaxy-burst.json H-BT02/0016神槍グングニルと同型キー）。grep自己検査: canBeBuddy(src/08-card-use.js:185-186)/payGauge・payLife(src/04-cost-resource.js)/fromHandOnly+isHandCastLimitAbility(src/13-abilities-core.js:77-84,678-681;src/15-ability-effects.js:3164-3192)/useHandAbilityAction counter即時解決経路(src/13-abilities-core.js:200-224)/ownFieldCardExists+zones(src/13-abilities-core.js:1091-1101)/equipSelf(src/15-ability-effects.js:1169)/grantDestroyImmunity継続(src/11-destroy-turn.js:121-145,183)/equipChangeキーワード(src/08-card-use.js:166-169) 全実在確認。VM実測はxbt02-b9-verify.js参照。"
+      "_note": "『このカードはバディにすることができる！』=canBeBuddy:true（pp01-golden-buddy-pack.json PP01/0055不滅剣デュランダル＝本カードの前身再録元と完全同型カード）。【装備コスト】ゲージ1+ライフ1=costs.equip:[payGauge(1),payLife(1)]+equipCost:{gauge:1,life:1}（bf-h-eb03-hyakurai-no-ou.json H-EB03該当カードの同一equipCost形と同型）。『【対抗】【起動】“王の手”君がカード名に「王剣」を含むアイテムを装備しているなら、手札のこのカードを、【装備コスト】を払って装備する。「王の手」は1ターンに1回だけ使える』の骨格はbf-d-bt03-horobose-daimaryu.json D-BT03/0070聖剣ガラティーン『剣の呼び声』（kind:activated,fromHandOnly:true,timing:[counter],conditions+effects:[equipSelf]+limit:{scope:turn,key}）を踏襲するが、D-BT03/0070の原文『手札のこのカードを装備する』には【装備コスト】を払う旨の記載が無い(コスト無し)のに対し、本カードは原文に明記の『【装備コストを払って】装備する』のため、costs.equipと同一のcost:[payGauge(1),payLife(1)]をability.costにも明記（FIX7の二重宣言。bt05-0053型の『使用コストを払って』二重明記慣例と同型）。effects:[equipSelf]実行時、useHandAbilityAction(src/13-abilities-core.js:144-224)は本能力がkind:activated+isCounterAbility(timing.includes('counter'))=trueのため、pendingAction化せずcostSteps支払い後に即座にusedCardをplayer.dropへ積んでからexecuteAbilityBodyを呼ぶ（src/13:224）。equipSelf(src/15-ability-effects.js:1169-1198)はcontext.card(=usedCard)をhand→field→dropの順に探索し、drop側で発見して装備するため、この経路でも正しく手札カードが装備される。conditionは『アイテムを装備している』のためownFieldCardExists{zones:[item系4枠],filter:{cardType:item,nameIncludes:王剣}}（bf-d-bt04-kagayake-super-sun-dragon.json D-BT04/0068型のitem系4枠列挙+cardType:item+nameIncludes判定）。named-once『「王の手」は1ターンに1回だけ使える』はfromHandOnly:trueのためisHandCastLimitAbility(src/15-ability-effects.js:3190-3192)が真となりabilityLimitKeyが自動的に同名カード単位(base)で共有される＝shared:true不要（D-BT03/0070の実装がshared無しである点と完全一致、CLAUDE.md『named-once bare slug(monster/item namedはshared:true)』は非fromHandOnly系の規約でありfromHandOnly系はisHandCastLimitAbilityで別途自動合算されるため対象外）。『君の場の《英雄》全ては、相手のカードの効果で破壊されない』=continuous:[grantDestroyImmunity{controller:self,filter:{attribute:英雄},from:{byEffect:true,byOpponent:true}}]（bf-x-ub01-buddy-quest.json X-UB01/0030不滅の剣聖ショウセツ『君の場のアイテム全ては相手のカードの効果で破壊されない』の完全precedent、filterをcardType:itemからattribute:英雄に差替）。『装備変更』=keywords:[equipChange]（bf-h-bt02-galaxy-burst.json H-BT02/0016神槍グングニルと同型キー）。grep自己検査: canBeBuddy(src/08-card-use.js:185-186)/payGauge・payLife(src/04-cost-resource.js)/fromHandOnly+isHandCastLimitAbility(src/13-abilities-core.js:77-84,678-681;src/15-ability-effects.js:3164-3192)/useHandAbilityAction counter即時解決経路(src/13-abilities-core.js:200-224)/ownFieldCardExists+zones(src/13-abilities-core.js:1091-1101)/equipSelf(src/15-ability-effects.js:1169)/grantDestroyImmunity継続(src/11-destroy-turn.js:121-145,183)/equipChangeキーワード(src/08-card-use.js:166-169) 全実在確認。VM実測はxbt02-b9-verify.js参照。 ／【2026-10-09 オーナー裁定R10】『手札のこのカードを装備する』は能力の効果による装備（宣言を経ない装備）: equipSelf に effectEquip:true。バディギフトは得られず、バディコールの権利も消費しない（変身/搭乗/着任/必殺変身の宣言とは別）。"
     },
     {
       "id": "bf-x-bt02-s002",
@@ -8336,7 +8347,8 @@
             "amount": 1,
             "filter": {
               "sizeLte": 3
-            }
+            },
+            "asEffect": true
           }
         ],
         "optional": true
@@ -8373,7 +8385,8 @@
                   "op": "selectZone",
                   "var": "z",
                   "cardVar": "c",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "callSelected",
@@ -8386,7 +8399,7 @@
           ]
         }
       ],
-      "_note": "【コールコスト】ゲージ2=costs.call:[payGauge(2)]。『お互いのアタックフェイズ開始時、君の手札の《カオス》のモンスター1枚を、【コールコスト】を払わずコールしてよい』=event:attackStart(条件無し=お互い。runPhaseStartTriggersがturnOwner→相手の順で両者走査=src/07-actions-turn.js、S-UB-C03/0061 bf-s-ub-c03-ir046の同種お互いのアタックフェイズ開始時トリガーと同型で turnOwnerIsSelf 不使用),optional:true,script:[selectCards{from:hand,controller:self,filter:{cardType:monster,attribute:カオス},min:0,max:1,amount:1,require:false,callable:true}（callableのみでcanPayCost無し=無償コール、H-EB01/0008・H-EB03/0009の【コールコスト】を払わずコール型と同型）,ifSelection{var:c,then:[selectZone{cardVar:c,emptyOnly:true},callSelected{zoneVar:z,resolveOnEnter:true}]}]（bt03-0069魔王のダンジョンのifSelectionガード付き任意コール構造を踏襲。selectZoneはmin:1,max:1で必ずダイアログを出すため、0枚選択時にselectZone/callSelectedへ進まないようifSelectionで包む必要がある＝これを省くと0枚選択時にも空のゾーン選択ダイアログが出る不具合になる）。“C・ドレイン”『このカードが場から離れる場合、君の場のサイズ3以下のモンスター1枚を破壊してよい。破壊したら、このカードを場に残す』=leaveFieldReplacement:{cost:[destroyOwnMonster{amount:1,filter:{sizeLte:3}}],optional:true}（PR/0404制圧兵器ギアゴッドⅦの“C・ドレイン”と一字一句同一の印字文言・同一leaveFieldReplacement形。destroyOwnMonsterはfilter指定時cardType:monster自動付与=src/04-cost-resource.js:683,1107,1823、host自身はsize30のためsizeLte:3で自然除外されexcludeSource不要）。【未実装・報告】『C・テリトリー』（このカードがセンターにいるなら、君はセンターにモンスターを2枚まで置ける）はrulings.md R1（統括裁定・pr-backfill R11踏襲）により表示専用（機構キー無し）。本エンジンのfield.centerは単一nullableスロットでゾーン複数化のプリミティブが存在しないため、PR/0404と同じ扱いで未実装のままrules表示のみとする（任意能力のため「2枚目を置かない」=合法な部分集合）。grep自己検査: attackStart(src/09-attack.js:675,src/15-ability-effects.js:565)/runPhaseStartTriggers両者走査(src/07-actions-turn.js)/selectCards callable(src/14-ability-script.js)/ifSelection(src/14-ability-script.js:334-335)/selectZone(src/14-ability-script.js:2432-2463)/callSelected(src/14-ability-script.js)/leaveFieldReplacement(src/11-destroy-turn.js:261,293,651,712)/destroyOwnMonster+filter.sizeLte(src/04-cost-resource.js:683,src/17-targeting.js) 全実在確認。"
+      "_note": "【コールコスト】ゲージ2=costs.call:[payGauge(2)]。『お互いのアタックフェイズ開始時、君の手札の《カオス》のモンスター1枚を、【コールコスト】を払わずコールしてよい』=event:attackStart(条件無し=お互い。runPhaseStartTriggersがturnOwner→相手の順で両者走査=src/07-actions-turn.js、S-UB-C03/0061 bf-s-ub-c03-ir046の同種お互いのアタックフェイズ開始時トリガーと同型で turnOwnerIsSelf 不使用),optional:true,script:[selectCards{from:hand,controller:self,filter:{cardType:monster,attribute:カオス},min:0,max:1,amount:1,require:false,callable:true}（callableのみでcanPayCost無し=無償コール、H-EB01/0008・H-EB03/0009の【コールコスト】を払わずコール型と同型）,ifSelection{var:c,then:[selectZone{cardVar:c,emptyOnly:true},callSelected{zoneVar:z,resolveOnEnter:true}]}]（bt03-0069魔王のダンジョンのifSelectionガード付き任意コール構造を踏襲。selectZoneはmin:1,max:1で必ずダイアログを出すため、0枚選択時にselectZone/callSelectedへ進まないようifSelectionで包む必要がある＝これを省くと0枚選択時にも空のゾーン選択ダイアログが出る不具合になる）。“C・ドレイン”『このカードが場から離れる場合、君の場のサイズ3以下のモンスター1枚を破壊してよい。破壊したら、このカードを場に残す』=leaveFieldReplacement:{cost:[destroyOwnMonster{amount:1,filter:{sizeLte:3}}],optional:true}（PR/0404制圧兵器ギアゴッドⅦの“C・ドレイン”と一字一句同一の印字文言・同一leaveFieldReplacement形。destroyOwnMonsterはfilter指定時cardType:monster自動付与=src/04-cost-resource.js:683,1107,1823、host自身はsize30のためsizeLte:3で自然除外されexcludeSource不要）。【未実装・報告】『C・テリトリー』（このカードがセンターにいるなら、君はセンターにモンスターを2枚まで置ける）はrulings.md R1（統括裁定・pr-backfill R11踏襲）により表示専用（機構キー無し）。本エンジンのfield.centerは単一nullableスロットでゾーン複数化のプリミティブが存在しないため、PR/0404と同じ扱いで未実装のままrules表示のみとする（任意能力のため「2枚目を置かない」=合法な部分集合）。grep自己検査: attackStart(src/09-attack.js:675,src/15-ability-effects.js:565)/runPhaseStartTriggers両者走査(src/07-actions-turn.js)/selectCards callable(src/14-ability-script.js)/ifSelection(src/14-ability-script.js:334-335)/selectZone(src/14-ability-script.js:2432-2463)/callSelected(src/14-ability-script.js)/leaveFieldReplacement(src/11-destroy-turn.js:261,293,651,712)/destroyOwnMonster+filter.sizeLte(src/04-cost-resource.js:683,src/17-targeting.js) 全実在確認。 ／【2026-10-09 オーナー裁定R8】“C・ドレイン”の『〜を破壊してよい。破壊したら、場に残す』の破壊は効果: leaveFieldReplacement.cost の destroyOwnMonster に asEffect:true（置換を無視せず破壊する。ソウルガード等で場に残っても破壊は成功＝支払い成立でこのカードは場に残る［2026-10-09 オーナー裁定］。破壊耐性等で破壊できなかった時だけ支払い不成立＝このカードは場を離れる）。同期の単体手札戻し経路は従来の近似のまま。"
     },
     {
       "id": "bf-x-bt02-s005",

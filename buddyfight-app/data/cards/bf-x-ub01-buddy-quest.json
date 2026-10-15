@@ -319,7 +319,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -441,7 +442,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "xub01-issho-ni-tatakaou"
+            "key": "xub01-issho-ni-tatakaou",
+            "shared": true
           }
         }
       ]
@@ -500,7 +502,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "xub01-sora-wo-seisuru-mono"
+            "key": "xub01-sora-wo-seisuru-mono",
+            "shared": true
           }
         }
       ]
@@ -763,25 +766,44 @@
               "cardType": "monster"
             }
           },
-          "cost": [
+          "script": [
             {
-              "op": "destroyOwnMonster",
-              "amount": 1
-            }
-          ],
-          "effects": [
-            {
-              "op": "standTarget",
-              "target": "$self"
+              "op": "selectCards",
+              "var": "sac",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster"
+              },
+              "amount": 1,
+              "title": "煉獄魔王 ディミオス",
+              "lead": "破壊する君の場のモンスター１枚を選んでください。"
             },
             {
-              "op": "destroy",
-              "target": "$target"
+              "op": "destroySelected",
+              "var": "sac",
+              "require": false
             },
             {
-              "op": "dealDamage",
-              "player": "opponent",
-              "amount": 1
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "standTarget",
+                  "target": "$self"
+                },
+                {
+                  "op": "destroy",
+                  "target": "$target"
+                },
+                {
+                  "op": "dealDamage",
+                  "player": "opponent",
+                  "amount": 1
+                }
+              ]
             }
           ],
           "limit": {
@@ -789,7 +811,7 @@
           }
         }
       ],
-      "_note": "『君の場のモンスター１枚を破壊する』はdestroyOwnMonster（excludeSource無し＝bf-h-bt04-0099執行剣トラジディと同型）。このカード自身を選んで破壊した場合、後続の『このカードをスタンドする』はカードが場に無いためno-op（standTargetは対象が場に見つからなければ何もしない）が、選んだ相手モンスターの破壊とダメージ１は原文通り解決する。原文にこの自己選択を禁じる記述が無いため文字通り実装。"
+      "_note": "『君の場のモンスター１枚を破壊する』は解決時の効果（script: selectCards→destroySelected{require:false}→ifCondition(lastDestroySucceeded)。excludeSource無し＝bf-h-bt04-0099執行剣トラジディと同型）。このカード自身を選んで破壊した場合、後続の『このカードをスタンドする』はカードが場に無いためno-op（standTargetは対象が場に見つからなければ何もしない）が、選んだ相手モンスターの破壊とダメージ１は原文通り解決する。原文にこの自己選択を禁じる記述が無いため文字通り実装。 ／【2026-10-09 オーナー裁定R8】確認のみ（実装は既に効果時破壊＋ゲート。b062-2 の旧 _note 記述 destroyOwnMonster は誤記だったので是正）。"
     },
     {
       "id": "bf-x-ub01-0010",
@@ -1094,7 +1116,8 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": true
+              "require": true,
+              "overwriteWhenFull": true
             }
           ],
           "limit": {
@@ -1170,7 +1193,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "xub01-kiko-rengyaku"
+            "key": "xub01-kiko-rengyaku",
+            "shared": true
           }
         }
       ]
@@ -1204,9 +1228,14 @@
           "timing": [
             "main"
           ],
-          "cost": [
+          "conditions": [
             {
-              "op": "payLife",
+              "op": "cardCountGte",
+              "controller": "both",
+              "pile": "field",
+              "filter": {
+                "soulCountGte": 1
+              },
               "amount": 1
             }
           ],
@@ -1223,12 +1252,21 @@
               "min": 0,
               "require": false,
               "title": "暗殺教団の刺客 サカテ",
-              "lead": "ソウルをドロップゾーンに置く場合、場のカードを選んでください（置かなくてもよい）。"
+              "lead": "ライフ1を払い、ソウルをドロップゾーンに置く場合、場のカードを選んでください（置かなくてもよい）。"
             },
             {
               "op": "ifSelection",
               "var": "h",
               "then": [
+                {
+                  "op": "payCost",
+                  "cost": [
+                    {
+                      "op": "payLife",
+                      "amount": 1
+                    }
+                  ]
+                },
                 {
                   "op": "dropSelectedSoul",
                   "var": "h",
@@ -1246,7 +1284,7 @@
           }
         }
       ],
-      "_note": "『ライフ1を払い、場のカード1枚のソウル1枚を、ドロップゾーンに置いてよい。そうしたら、カード1枚を引く』はability.cost:[payLife:1]（必須・「払い」＝てよい無し）＋script selectCards{from:field,controller:\"any\"（『場のカード』＝所有者無指定＝双方対象。bf-d-bt04-0079型）,filter:{soulCountGte:1},min:0,require:false}→ifSelection→dropSelectedSoul+draw（bf-x-bt01-0096『闇夜の用心棒』型の一体化オプトイン＝てよい～そうしたら をmin:0選択+ifSelectionで表現）。無名『この能力は1ターンに1回だけ使える』=limit{scope:turn}（key省略=ability.id既定・named-once表なし）。callCost行なし=costs省略。grep自己検査: selectCards/ifSelection/dropSelectedSoul/draw/payLife 全実在確認（src/14:394 dropSelectedSoulForScript）。"
+      "_note": "『ライフ1を払い、場のカード1枚のソウル1枚を、ドロップゾーンに置いてよい。そうしたら、カード1枚を引く』の「てよい」は払う・置くの両方にかかる（ルールver2.05 起動能力1.3.1: 効果の行動は全て解決時・任意の可否も解決時に選ぶ）。よってライフ払いは宣言コストにせず、script selectCards{from:field,controller:\"any\"（『場のカード』＝双方対象）,filter:{soulCountGte:1},min:0,require:false}→ifSelection{payCost[payLife1]→dropSelectedSoul→draw} の一体オプトイン。場（両者）にソウルを持つカードが無ければ何もできないため conditions:cardCountGte{controller:both,pile:field,filter:{soulCountGte:1}} で起動不可。無名『1ターンに1回』=limit{scope:turn}。(監査b062-1で修正: 旧実装はcost:payLife必須でソウル無し/辞退でもライフだけ失っていた)"
     },
     {
       "id": "bf-x-ub01-0016",
@@ -1395,7 +1433,8 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -2405,7 +2444,8 @@
               "var": "call",
               "payCost": "call",
               "chooseZones": true,
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -2811,6 +2851,7 @@
           "label": "革命の礎",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "counter"
           ],
@@ -2825,7 +2866,8 @@
               "op": "lookTopSelectToHandRestToBottom",
               "count": 3,
               "max": 1,
-              "altTo": "drop"
+              "altTo": "drop",
+              "min": 1
             }
           ],
           "limit": {
@@ -2971,7 +3013,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "xub01-roshi-no-oshie"
+            "key": "xub01-roshi-no-oshie",
+            "shared": true
           }
         }
       ]
@@ -3189,7 +3232,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "xub01-mao-no-shou"
+            "key": "xub01-mao-no-shou",
+            "shared": true
           }
         }
       ],
@@ -3265,7 +3309,8 @@
               "var": "target",
               "payCost": "call",
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             },
             {
               "op": "shuffleDeck"
@@ -3313,7 +3358,6 @@
           }
         ]
       },
-      "nullifyImmune": true,
       "continuous": [
         {
           "op": "restrictOpponentMonsters",
@@ -3335,7 +3379,10 @@
           "op": "nullifyAbilities",
           "controller": "opponent",
           "battleOpponentOnly": true,
-          "filter": {}
+          "filter": {
+            "cardType": "monster"
+          },
+          "cannotBeNullified": true
         }
       ],
       "keywords": [
@@ -3496,19 +3543,27 @@
                 "cardType": "monster",
                 "sizeIn": [
                   0
-                ]
+                ],
+                "standing": true
               },
               "amount": 1,
               "title": "大司教 ゲンマ",
-              "lead": "レストする、君の場のサイズ０のモンスターを選んでください。"
+              "lead": "レストする、君の場のサイズ０のモンスターを選んでください。",
+              "allowEmpty": true
             },
             {
-              "op": "restSelected",
-              "var": "r"
-            },
-            {
-              "op": "destroy",
-              "target": "$target"
+              "op": "ifSelection",
+              "var": "r",
+              "then": [
+                {
+                  "op": "restSelected",
+                  "var": "r"
+                },
+                {
+                  "op": "destroy",
+                  "target": "$target"
+                }
+              ]
             }
           ]
         }
@@ -3518,7 +3573,7 @@
         "soulguard",
         "lifeLink2"
       ],
-      "_note": "『相手の場のモンスター1枚を選び、君の場のサイズ0のモンスター1枚をレストする。レストしたら、選んだカードを破壊する』はbf-s-ub-c03-0039(三村かな子)型と同様、対象選択(target=$target=相手モンスター、必須)+自分のサイズ0モンスターへのレストは既存にrest失敗概念(destroyImmunity相当)が無い（grep: lastRestSucceeded 0件）ためレストは選択できれば必ず成立＝『レストしたら』を明示的な条件ゲート無しでdestroyへ直結（bf-s-ub-c03-0039も同型で条件ゲート無し）。sizeIn:[0]（size スカラー禁止のため既存語彙）。grep自己検査: target+script $target併用(bf-d-bt04-0078型)/selectCards from field/restSelected(src/14:1504)/destroy(src/15) 全実在確認。"
+      "_note": "『相手の場のモンスター1枚を選び、君の場のサイズ0のモンスター1枚をレストする。レストしたら、選んだカードを破壊する』=target(相手モンスター・必須)+script selectCards{from:field,controller:self,filter:{cardType:monster,sizeIn:[0],standing:true}}（allowEmpty:true＝候補があればレストは必須・候補0は空選択）→ifSelection{restSelected→destroy $target}。レスト済みのカードはレストできない＝『レストしたら』を満たさないため standing:true で候補をスタンド状態に限定し、候補0なら破壊しない（監査b063-1で修正: 旧実装はレスト済みサイズ0を選んでも破壊できた）。sizeIn:[0]（size スカラー禁止のため既存語彙）。"
     },
     {
       "id": "bf-x-ub01-0046",
@@ -3587,7 +3642,8 @@
               "grantConditionalSize": {
                 "size": 0,
                 "unconditional": true
-              }
+              },
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -4337,12 +4393,14 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             }
           ],
           "limit": {
             "scope": "turn",
-            "key": "xub01-shinigami-no-nokoriga"
+            "key": "xub01-shinigami-no-nokoriga",
+            "shared": true
           }
         }
       ],
@@ -4659,7 +4717,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "xub01-kekkaijin"
+            "key": "xub01-kekkaijin",
+            "shared": true
           }
         }
       ],
@@ -4730,39 +4789,14 @@
           ]
         },
         {
-          "id": "bf-x-ub01-0062-link-mark",
-          "kind": "triggered",
-          "event": "attack",
-          "conditions": [
-            {
-              "op": "pendingAttackBySource"
-            },
-            {
-              "op": "pendingAttackIncludesOtherMatching",
-              "filter": {}
-            }
-          ],
-          "effects": [
-            {
-              "op": "grantKeyword",
-              "target": "$self",
-              "keyword": "xub01-0062-linked",
-              "duration": "turn"
-            }
-          ]
-        },
-        {
           "id": "bf-x-ub01-0062-battleend-return",
           "kind": "triggered",
           "event": "battleEnd",
           "optional": true,
           "conditions": [
             {
-              "op": "targetMatches",
-              "ref": "$self",
-              "filter": {
-                "keyword": "xub01-0062-linked"
-              }
+              "op": "lastAttackIsLink",
+              "includesSource": true
             }
           ],
           "effects": [
@@ -4772,7 +4806,7 @@
           ]
         }
       ],
-      "_note": "①『税金↑↑』『このカードが連携攻撃した時、君か相手のドロップゾーンのカード1枚までを持ち主のデッキの下に置いてよい。置いたら、君のライフを＋1』=controller:『君か相手』→\"any\"（\"both\"は無効値・scriptControllerMatchesはself/opponent/anyのみsrc/14:741）。moveSelected{to:deckBottom}は宛先owner省略時=entry.owner=持ち主（scriptMoveDestinationOwner既定・src/14:1384実証）＝toOwner明示不要。原文に『N回』repeat制限が無いためlimit無し（design.md §5注記のとおりキーワード的名称でlimit key不要）。②③『このカードが連携攻撃したバトル終了時、場のこのカードを君の手札に戻してよい』=bf-d-ss03-0008太陽剣バルソード姉妹版と同型の『attack時マーク付与→battleEnd時マーク消費』2段構成: event:attackでpendingAttackBySource+pendingAttackIncludesOtherMatching{filter:{}}(=他の攻撃者が1体以上=連携)を満たしたら$selfへturn限定keyword付与、event:battleEndでtargetMatches{ref:$self,filter:{keyword:...}}を満たしたらoptional:trueでreturnSelfToHand。bareのbattleEndは攻撃者スロットのみ配信(queueBattleEndTriggers/src/10:528)のため自己限定は自然に成立。grep確認: pendingAttackIncludesOtherMatching(src/13:1378)・grantKeyword duration:turn→turnKeywords(src/15:1614)・targetMatches ref解決(src/13:851)・battleEnd(src/10:531)。"
+      "_note": "【audit2 更新】連携判定は attack 時の duration:turn 印キーワード方式をやめ、battleEnd の条件 lastAttackIsLink{includesSource:true(,otherFilter)} に置換（同ターンの後続の単独攻撃で再誘発しないため）。以下の旧記述は履歴。 ①『税金↑↑』『このカードが連携攻撃した時、君か相手のドロップゾーンのカード1枚までを持ち主のデッキの下に置いてよい。置いたら、君のライフを＋1』=controller:『君か相手』→\"any\"（\"both\"は無効値・scriptControllerMatchesはself/opponent/anyのみsrc/14:741）。moveSelected{to:deckBottom}は宛先owner省略時=entry.owner=持ち主（scriptMoveDestinationOwner既定・src/14:1384実証）＝toOwner明示不要。原文に『N回』repeat制限が無いためlimit無し（design.md §5注記のとおりキーワード的名称でlimit key不要）。②③『このカードが連携攻撃したバトル終了時、場のこのカードを君の手札に戻してよい』=bf-d-ss03-0008太陽剣バルソード姉妹版と同型の『attack時マーク付与→battleEnd時マーク消費』2段構成: event:attackでpendingAttackBySource+pendingAttackIncludesOtherMatching{filter:{}}(=他の攻撃者が1体以上=連携)を満たしたら$selfへturn限定keyword付与、event:battleEndでtargetMatches{ref:$self,filter:{keyword:...}}を満たしたらoptional:trueでreturnSelfToHand。bareのbattleEndは攻撃者スロットのみ配信(queueBattleEndTriggers/src/10:528)のため自己限定は自然に成立。grep確認: pendingAttackIncludesOtherMatching(src/13:1378)・grantKeyword duration:turn→turnKeywords(src/15:1614)・targetMatches ref解決(src/13:851)・battleEnd(src/10:531)。"
     },
     {
       "id": "bf-x-ub01-0063",
@@ -5068,7 +5102,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "reserve",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -5250,7 +5285,8 @@
               "op": "selectZone",
               "var": "advZone",
               "cardVar": "adv",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelected",
@@ -5356,7 +5392,6 @@
           "attribute": "魔王"
         }
       ],
-      "uniqueSet": true,
       "abilities": [
         {
           "id": "bf-x-ub01-0070-call",
@@ -5393,7 +5428,8 @@
                   "op": "selectZone",
                   "var": "zone",
                   "cardVar": "enemy",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "payCardCostForSelection",
@@ -5630,7 +5666,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "xub01-issho-ni-tatakaou"
+            "key": "xub01-issho-ni-tatakaou",
+            "shared": true
           }
         }
       ]
@@ -5821,7 +5858,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -5945,7 +5983,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "xub01-issho-ni-tatakaou"
+            "key": "xub01-issho-ni-tatakaou",
+            "shared": true
           }
         }
       ]

@@ -110,7 +110,9 @@
       "costs": {
         "call": [
           {
-            "op": "putSelectedOwnFieldCardsToSoul"
+            "op": "putSelectedOwnFieldCardsToSoul",
+            "min": 1,
+            "max": 1
           },
           {
             "op": "payGauge",
@@ -316,6 +318,7 @@
           "id": "bf-x-cp03-0005-hand-debuff",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "counter"
           ],
@@ -395,7 +398,8 @@
               "op": "gainLife",
               "amount": 1
             }
-          ]
+          ],
+          "damageEventKey": "bf-x-cp03-0006-death-damage-reward"
         },
         {
           "id": "bf-x-cp03-0006-ally-death-damage-reward",
@@ -418,7 +422,8 @@
               "op": "gainLife",
               "amount": 1
             }
-          ]
+          ],
+          "damageEventKey": "bf-x-cp03-0006-death-damage-reward"
         }
       ],
       "_note": "吸魂管理人 ガロウズ・デメント。コール印字コスト行なし＝costsキー省略（無償コール）。『「吸魂管理人 ガロウズ・デメント」は１ターンに１枚だけコールできる。』=callLimitPerTurn:1（bf-d-ss01-0030竜騎士トモエ/bt05-0012竜騎士トモエ前例のカード名単位コール制限。src/07-actions-turn.js:169-182が同名カードのターン内コール回数を参照する現行機構）。『“潜影”このカードは相手のセンターにモンスターがいても、相手を攻撃できる！』=keywords:[canAttackFighterThroughCenter]（bf-pr-0187デスルーラーデアデビル“潜影”前例そのまま）。『君の場の《死》の攻撃で相手にダメージを与えた時、カード１枚を引き、君のライフを＋１！』=event:\"dealDamage\"（このカード自身が《死》属性を持ち自ら攻撃した場合の直接発火）+event:\"allyDealDamage\"（他の自場《死》属性カードが攻撃した場合のフィールドブロードキャスト）の2本立て、各conditions:[damageSourceMatches{filter:{attribute:死}}]（SKILL.md既知の落とし穴『自分自身の攻撃はallyDealDamageの対象外、自身も対象ならdealDamageイベント能力を併せ持たせる』に対応。bf-d-bt02-0015闇狐/bf-h-eb04-0020闇狐/pp01-0049闇狐/bf-d-cbt-0012闇狐の4系列で確立済みのdealDamage+allyDealDamage対セット）+効果:[draw(1), gainLife(1)]（limit記載なし＝無制限、原文に『1ターンに1回』の記載無し）。grep自己検査: callLimitPerTurn(src/07-actions-turn.js:169-182,362)/keywords canAttackFighterThroughCenter(src/09-attack.js:171,src/12,src/18)/event dealDamage(src/10-battle-resolve.js:834)/event allyDealDamage(src/10-battle-resolve.js:848)/damageSourceMatches(src/13、複数前例で実在確認済み)/draw・gainLife(src/15-ability-effects.js) 全実在確認。"
@@ -520,14 +525,24 @@
               "op": "turnOwnerIsSelf"
             }
           ],
-          "cost": [
+          "script": [
             {
-              "op": "dropOwnFieldCardSoul",
-              "filter": {},
+              "op": "selectCards",
+              "var": "soulHost",
+              "from": "field",
+              "controller": "any",
+              "filter": {
+                "soulCountGte": 1
+              },
+              "amount": 1,
+              "title": "邪剣神 ダークカイゼリオン",
+              "lead": "ソウル１枚をドロップゾーンに置く場のカードを１枚選んでください。"
+            },
+            {
+              "op": "dropSelectedSoul",
+              "var": "soulHost",
               "amount": 1
-            }
-          ],
-          "effects": [
+            },
             {
               "op": "standTarget",
               "target": "$self"
@@ -1262,7 +1277,7 @@
           "label": "巻き土産",
           "kind": "triggered",
           "event": "destroyed",
-          "conditions": [
+          "ifConditions": [
             {
               "op": "cardCount",
               "controller": "self",
@@ -1294,7 +1309,7 @@
           }
         }
       ],
-      "_note": "黒竜 ドゥー・ビィ。“巻き土産”『このカードが破壊された時、君の場に必殺技が『設置』されているなら、ゲージ１を払ってよい。払ったら、カード２枚を引く。「巻き土産」は１ターンに1回だけ発動する』=event:destroyed(接頭辞なし・自壊)+conditions:[cardCount{controller:self,pile:field,filter:{cardType:impact},cmp:gte,amount:1}](『必殺技が設置されている』＝場のpileにcardType:impactが在る、必殺技は設置(set1/set2)以外の場所に存在し得ないためfield pile+cardType:impactで正確に判定。placeSetSpellDirect(src/08-card-use.js:203)が魔法/必殺技双方の設置先)+optional:true+cost:[payGauge(1)]+effects:[draw(2)]+limit:{scope:turn,key:'xcp03-巻き土産',shared:true}（『ゲージ1を払ってよい。払ったら〜』はbt03-0048型のoptional:true+cost配列パターン。named-once monsterのためshared:true必須）。grep自己検査: cardCount pile:field filter cardType:impact(src/13-abilities-core.js, cardType判定はsrc/17-targeting.js:311 cardTypeMatches)/destroyed bare event(src/11-destroy-turn.js:1334)/optional ability cost gate(src/14-ability-script.js:56-97 shouldUseOptionalAbility) 全実在確認。VM実測: (A)場に必殺技が設置されていない状態で破壊→能力不発、(B)設置されている状態で破壊されゲージ支払いを選ぶ→ゲージ1消費・2枚ドロー、(C)支払いを断る→ドロー無し、(D)同ターン2枚目の破壊は named-once で不発、を確認。"
+      "_note": "黒竜 ドゥー・ビィ。“巻き土産”『このカードが破壊された時、君の場に必殺技が『設置』されているなら、ゲージ１を払ってよい。払ったら、カード２枚を引く。「巻き土産」は１ターンに1回だけ発動する』=event:destroyed(接頭辞なし・自壊)+conditions:[cardCount{controller:self,pile:field,filter:{cardType:impact},cmp:gte,amount:1}](『必殺技が設置されている』＝場のpileにcardType:impactが在る、必殺技は設置(set1/set2)以外の場所に存在し得ないためfield pile+cardType:impactで正確に判定。placeSetSpellDirect(src/08-card-use.js:203)が魔法/必殺技双方の設置先)+optional:true+cost:[payGauge(1)]+effects:[draw(2)]+limit:{scope:turn,key:'xcp03-巻き土産',shared:true}（『ゲージ1を払ってよい。払ったら〜』はbt03-0048型のoptional:true+cost配列パターン。named-once monsterのためshared:true必須）。grep自己検査: cardCount pile:field filter cardType:impact(src/13-abilities-core.js, cardType判定はsrc/17-targeting.js:311 cardTypeMatches)/destroyed bare event(src/11-destroy-turn.js:1334)/optional ability cost gate(src/14-ability-script.js:56-97 shouldUseOptionalAbility) 全実在確認。VM実測: (A)場に必殺技が設置されていない状態で破壊→能力不発、(B)設置されている状態で破壊されゲージ支払いを選ぶ→ゲージ1消費・2枚ドロー、(C)支払いを断る→ドロー無し、(D)同ターン2枚目の破壊は named-once で不発、を確認。 監査 rule-continuous-5: 「〜時、XならY」の X は ifConditions（解決時の状態条件・不成立でも1ターン1回を消費＝ver2.05 ④「１ターンに１回」Q2/A2）。"
     },
     {
       "id": "bf-x-cp03-0019",
@@ -1447,11 +1462,6 @@
           "id": "bf-x-cp03-0020-attack-start-charge",
           "kind": "triggered",
           "event": "attackStart",
-          "conditions": [
-            {
-              "op": "turnOwnerIsSelf"
-            }
-          ],
           "script": [
             {
               "op": "selectCards",
@@ -1476,9 +1486,6 @@
           "event": "turnEnd",
           "conditions": [
             {
-              "op": "turnOwnerIsSelf"
-            },
-            {
               "op": "not",
               "condition": {
                 "op": "sourceSoulCountGte",
@@ -1501,7 +1508,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "【裁定2026-10-08】カードテキストに誰のターンか明記の無いフェイズ/ターン指定は両者のターンを指す（ユーザー裁定・ver2.05 5.1）。『アタックフェイズ開始時』『ターン終了時』は君の限定が無いため turnOwnerIsSelf を外し、両者のターンで誘発する。"
     },
     {
       "id": "bf-x-cp03-0021",
@@ -1974,6 +1982,14 @@
             "counter",
             "main"
           ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "nameIncludes": "煉獄騎士団"
+              }
+            }
+          ],
           "cost": [
             {
               "op": "payGauge",
@@ -1984,7 +2000,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -2123,7 +2140,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -2434,17 +2452,15 @@
               "amount": 1,
               "conditions": [
                 {
-                  "op": "not",
-                  "condition": {
-                    "op": "lastDestroySucceeded"
-                  }
+                  "op": "targetStillOnField",
+                  "ref": "$target"
                 }
               ]
             }
           ]
         }
       ],
-      "_note": "悪神竜の裁き。使用コスト行なし＝costsキー省略。『君の場に《悪神竜》があるなら使える』=conditions:[ownFieldCardExists{filter:{attribute:悪神竜}}]（bf-d-bt01-0063ザ・シェイド型の確立パターン）。『相手の場のモンスター１枚を選び、そのカードを破壊する』=target:{type:fieldCard,controller:opponent,filter:{cardType:monster}}+effects:[destroy{target:$target}]。『その後、選んだカードが場にいるなら、カード１枚を引く』=destroy失敗（ソウルガード等の破壊耐性で生存）時のみ引く救済効果。lastDestroySucceeded(src/13-abilities-core.js:1267-1269、context.lastDestroyedの真偽=直前destroyが実際に成立したか)の否定={op:not,condition:{op:lastDestroySucceeded}}（notラッパーはmech-X67-B7でも0059タイムセールのコスト条件反転に使用済の確立op）で『破壊が成立しなかった＝選んだカードが場に残っている』を表現。draw成功時=destroy不成立時のみ、という順序はeffects配列の逐次実行(destroy→context.lastDestroyed更新→draw条件評価)で自然に担保される。grep自己検査: ownFieldCardExists(src/13-abilities-core.js、複数箇所)/destroy+context.lastDestroyed設定(src/15-ability-effects.js:1396)/lastDestroySucceeded(src/13-abilities-core.js:1267-1269)/not条件ラッパー(src/13-abilities-core.js、汎用否定)/draw(src/15-ability-effects.js:261) 全実在確認。VM実測(x67-b11-verify.js): 自分の場に《悪神竜》が無いと使用不可（conditions未充足）／相手モンスターに破壊耐性が無ければ破壊成立・ドローなし／相手モンスターがdestroyImmunity等で破壊耐性を持つ場合は破壊不成立・カードは場に残り1枚ドローする、の分岐を実操作経路(useCardAction→resolvePendingResolution)で確認。"
+      "_note": "【audit2 b056-4】draw 条件を not lastDestroySucceeded から targetStillOnField{ref:$target} へ置換（破壊が置換されて手札へ戻る等で場を離れた場合は引かない。下記の旧記述は置換前のもの）。 ／悪神竜の裁き。使用コスト行なし＝costsキー省略。『君の場に《悪神竜》があるなら使える』=conditions:[ownFieldCardExists{filter:{attribute:悪神竜}}]（bf-d-bt01-0063ザ・シェイド型の確立パターン）。『相手の場のモンスター１枚を選び、そのカードを破壊する』=target:{type:fieldCard,controller:opponent,filter:{cardType:monster}}+effects:[destroy{target:$target}]。『その後、選んだカードが場にいるなら、カード１枚を引く』=destroy失敗（ソウルガード等の破壊耐性で生存）時のみ引く救済効果。lastDestroySucceeded(src/13-abilities-core.js:1267-1269、context.lastDestroyedの真偽=直前destroyが実際に成立したか)の否定={op:not,condition:{op:lastDestroySucceeded}}（notラッパーはmech-X67-B7でも0059タイムセールのコスト条件反転に使用済の確立op）で『破壊が成立しなかった＝選んだカードが場に残っている』を表現。draw成功時=destroy不成立時のみ、という順序はeffects配列の逐次実行(destroy→context.lastDestroyed更新→draw条件評価)で自然に担保される。grep自己検査: ownFieldCardExists(src/13-abilities-core.js、複数箇所)/destroy+context.lastDestroyed設定(src/15-ability-effects.js:1396)/lastDestroySucceeded(src/13-abilities-core.js:1267-1269)/not条件ラッパー(src/13-abilities-core.js、汎用否定)/draw(src/15-ability-effects.js:261) 全実在確認。VM実測(x67-b11-verify.js): 自分の場に《悪神竜》が無いと使用不可（conditions未充足）／相手モンスターに破壊耐性が無ければ破壊成立・ドローなし／相手モンスターがdestroyImmunity等で破壊耐性を持つ場合は破壊不成立・カードは場に残り1枚ドローする、の分岐を実操作経路(useCardAction→resolvePendingResolution)で確認。"
     },
     {
       "id": "bf-x-cp03-0036",
@@ -2599,7 +2615,8 @@
             "filter": {
               "cardType": "monster",
               "sizeLte": 2
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -2611,9 +2628,11 @@
               "player": "opponent",
               "amount": 2
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-x-cp03-0039",
@@ -2655,6 +2674,7 @@
       "abilities": [
         {
           "id": "bf-x-cp03-0039-spirit-strike",
+          "label": "霊撃",
           "kind": "triggered",
           "event": "allyMonsterDestroyedByAttack",
           "effects": [
@@ -2982,21 +3002,38 @@
               "op": "turnOwnerIsSelf"
             }
           ],
-          "cost": [
+          "script": [
             {
-              "op": "destroyOwnMonster",
-              "amount": 1,
+              "op": "selectCards",
+              "var": "sac",
+              "from": "field",
+              "controller": "self",
               "filter": {
+                "cardType": "monster",
                 "nameIncludes": "煉獄騎士団"
-              }
-            }
-          ],
-          "effects": [
+              },
+              "amount": 1,
+              "title": "煉獄騎士団 スクラップドリル・ドラゴン",
+              "lead": "破壊する君の場のカード名に「煉獄騎士団」を含むモンスター１枚を選んでください。"
+            },
             {
-              "op": "modifyStats",
-              "target": "$self",
-              "critical": 1,
-              "duration": "turn"
+              "op": "destroySelected",
+              "var": "sac",
+              "require": false
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "modifyStats",
+                  "target": "$self",
+                  "critical": 1,
+                  "duration": "turn"
+                }
+              ]
             }
           ]
         }
@@ -3310,7 +3347,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromSoul",
@@ -3324,6 +3362,7 @@
           "id": "bf-x-cp03-0049-battleend-soul",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "optional": true,
           "script": [
             {
@@ -3703,28 +3742,49 @@
           "conditions": [
             {
               "op": "turnOwnerIsSelf"
+            },
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "attribute": "黒竜"
+              }
             }
           ],
           "optional": true,
-          "cost": [
+          "script": [
             {
-              "op": "destroyOwnMonster",
-              "amount": 1,
+              "op": "selectCards",
+              "var": "sac",
+              "from": "field",
+              "controller": "self",
               "filter": {
                 "attribute": "黒竜"
               },
-              "includeAllTypes": true
-            }
-          ],
-          "effects": [
+              "amount": 1,
+              "title": "黒印の転換",
+              "lead": "破壊する君の場の《黒竜》１枚を選んでください。"
+            },
             {
-              "op": "draw",
-              "amount": 1
+              "op": "destroySelected",
+              "var": "sac",
+              "require": false
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "draw",
+                  "amount": 1
+                }
+              ]
             }
           ]
         }
       ],
-      "_note": "黒印の転換。『設置』（このカードは場に置いて使う）=keywords:[set]。『「黒印の転換」は君の場に1枚だけ設置できる』=uniqueSet:true（bf-x-cp01-0067型）。使用コスト行が無いため costs:{}（同型の設置魔法慣例）。『君のファイナルフェイズ開始時、君の場の《黒竜》1枚を破壊してよい。破壊したら、カード1枚を引く』=event:finalStart+conditions:[turnOwnerIsSelf](bf-x-bt02-0039型の自分限定ゲート)+optional:true+cost:[destroyOwnMonster{filter:{attribute:黒竜},includeAllTypes:true}]（『破壊してよい。破壊したら〜』はability全体を任意コスト化しコスト成立時のみeffectsが走る＝bf-d-bt04-0034型。原文に『このカード以外』の限定が無く、このカード自身は設置魔法(黒竜属性を持たない場合が通常)なのでexcludeSourceは付けない。includeAllTypes:trueで黒竜属性のモンスター以外(アイテム/設置カード)も対象に含める=filter原文『《黒竜》1枚』はカード種別を限定しないため）+effects:[draw{amount:1}]。grep自己検査: finalStart(src/15-ability-effects.js:619,src/09-attack.js:741)/turnOwnerIsSelf(src/13:892)/destroyOwnMonster+includeAllTypes(src/04-cost-resource.js:683)/draw(src/15:261) 全実在確認。VM実測(x67-b13-verify.js): 相手のファイナルフェイズでは不発(turnOwnerIsSelf)、自分のファイナルフェイズ開始で発火し破壊を選択すると場の黒竜が破壊されカードを1枚引く／破壊を選ばない(optional辞退)場合は何も起きないことを確認。"
+      "_note": "黒印の転換。『設置』（このカードは場に置いて使う）=keywords:[set]。『「黒印の転換」は君の場に1枚だけ設置できる』=uniqueSet:true（bf-x-cp01-0067型）。使用コスト行が無いため costs:{}（同型の設置魔法慣例）。『君のファイナルフェイズ開始時、君の場の《黒竜》1枚を破壊してよい。破壊したら、カード1枚を引く』=event:finalStart+conditions:[turnOwnerIsSelf](bf-x-bt02-0039型の自分限定ゲート)+optional:true+cost:[destroyOwnMonster{filter:{attribute:黒竜},includeAllTypes:true}]（『破壊してよい。破壊したら〜』はability全体を任意コスト化しコスト成立時のみeffectsが走る＝bf-d-bt04-0034型。原文に『このカード以外』の限定が無く、このカード自身は設置魔法(黒竜属性を持たない場合が通常)なのでexcludeSourceは付けない。includeAllTypes:trueで黒竜属性のモンスター以外(アイテム/設置カード)も対象に含める=filter原文『《黒竜》1枚』はカード種別を限定しないため）+effects:[draw{amount:1}]。grep自己検査: finalStart(src/15-ability-effects.js:619,src/09-attack.js:741)/turnOwnerIsSelf(src/13:892)/destroyOwnMonster+includeAllTypes(src/04-cost-resource.js:683)/draw(src/15:261) 全実在確認。VM実測(x67-b13-verify.js): 相手のファイナルフェイズでは不発(turnOwnerIsSelf)、自分のファイナルフェイズ開始で発火し破壊を選択すると場の黒竜が破壊されカードを1枚引く／破壊を選ばない(optional辞退)場合は何も起きないことを確認。 ／【2026-10-09 オーナー裁定R8】『〜を破壊してよい。破壊したら』はコストではなく効果。旧 cost:destroyOwnMonster（支払い時に置換無視で破壊）を script（selectCards→destroySelected{require:false}→ifCondition(lastDestroySucceeded)）へ移した。破壊される側はソウルガード等の置換を通常どおり使える。ソウルガード等で場に残っても破壊は成功している（2026-10-09 オーナー裁定）ので後半を行う（lastDestroySucceeded は真）。候補の無い時に誘発確認を出さない旧 canPay 相当は conditions の ownOtherFieldCardExists/ownFieldCardExists で保持（発動回数も従来どおり未消費）。"
     },
     {
       "id": "bf-x-cp03-0057",
@@ -3785,7 +3845,8 @@
                   "op": "selectZone",
                   "var": "zone",
                   "cardVar": "senei",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "payCardCostForSelection",
@@ -3839,7 +3900,12 @@
             },
             {
               "op": "draw",
-              "amount": 1
+              "amount": 1,
+              "conditions": [
+                {
+                  "op": "lastDiscardSucceeded"
+                }
+              ]
             }
           ],
           "limit": {
@@ -4000,7 +4066,6 @@
             "type": "fieldCard",
             "controller": "self",
             "filter": {
-              "cardType": "monster",
               "attribute": "黒竜"
             }
           },
@@ -4092,6 +4157,11 @@
           "timing": [
             "counter"
           ],
+          "conditions": [
+            {
+              "op": "ownMonsterDestroyPending"
+            }
+          ],
           "cost": [
             {
               "op": "payGauge",
@@ -4118,7 +4188,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "【pt-fix-d 2026-10-14】『君の場のモンスターが破壊される時に使える』=ownMonsterDestroyPending（自分の場のモンスターが攻撃されている／相手の宣言に自分の場を破壊しうる op がある時だけ）。"
     },
     {
       "id": "bf-x-cp03-0064",
@@ -4207,24 +4278,13 @@
               "op": "ownCenterEmpty"
             },
             {
-              "op": "any",
-              "conditions": [
-                {
-                  "op": "pendingAttackDefenderIsSelf"
-                },
-                {
-                  "op": "pendingActionResponderIsSelf"
-                }
-              ]
+              "op": "incomingDamagePending"
             }
           ],
           "effects": [
             {
-              "op": "preventNextDamage"
-            },
-            {
-              "op": "gainLife",
-              "amount": 1
+              "op": "preventNextDamage",
+              "gainLife": 1
             }
           ]
         }
@@ -4280,7 +4340,8 @@
             }
           ],
           "limit": {
-            "scope": "turn"
+            "scope": "turn",
+            "key": "bt04-0042-draw"
           }
         }
       ]
@@ -4708,52 +4769,69 @@
             "main",
             "counter"
           ],
-          "cost": [
-            {
-              "op": "destroyOwnMonster",
-              "amount": 1,
-              "filter": {
-                "nameIncludes": "煉獄騎士団"
-              }
-            }
-          ],
           "script": [
             {
-              "op": "chooseBranch",
+              "op": "selectCards",
+              "var": "sac",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "煉獄騎士団"
+              },
+              "amount": 1,
               "title": "哀悼の煉獄騎士団団長 ガイスト・ディミオス",
-              "lead": "次の３つから１つを選んで使ってください。",
-              "options": [
+              "lead": "破壊する君の場のカード名に「煉獄騎士団」を含むモンスター１枚を選んでください。"
+            },
+            {
+              "op": "destroySelected",
+              "var": "sac",
+              "require": false
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
                 {
-                  "key": "stand",
-                  "label": "このカードをスタンドする。",
-                  "script": [
+                  "op": "chooseBranch",
+                  "title": "哀悼の煉獄騎士団団長 ガイスト・ディミオス",
+                  "lead": "次の３つから１つを選んで使ってください。",
+                  "options": [
                     {
-                      "op": "standTarget",
-                      "target": "$self"
-                    }
-                  ]
-                },
-                {
-                  "key": "draw",
-                  "label": "アタックフェイズ中なら、カード１枚を引く。",
-                  "condition": {
-                    "op": "phaseIs",
-                    "phase": "attack"
-                  },
-                  "script": [
+                      "key": "stand",
+                      "label": "このカードをスタンドする。",
+                      "script": [
+                        {
+                          "op": "standTarget",
+                          "target": "$self"
+                        }
+                      ]
+                    },
                     {
-                      "op": "draw",
-                      "amount": 1
-                    }
-                  ]
-                },
-                {
-                  "key": "reduce",
-                  "label": "そのターン中、次に君に与えられるダメージを３減らす。",
-                  "script": [
+                      "key": "draw",
+                      "label": "アタックフェイズ中なら、カード１枚を引く。",
+                      "condition": {
+                        "op": "phaseIs",
+                        "phase": "attack"
+                      },
+                      "script": [
+                        {
+                          "op": "draw",
+                          "amount": 1
+                        }
+                      ]
+                    },
                     {
-                      "op": "reduceNextDamage",
-                      "amount": 3
+                      "key": "reduce",
+                      "label": "そのターン中、次に君に与えられるダメージを３減らす。",
+                      "script": [
+                        {
+                          "op": "reduceNextDamage",
+                          "amount": 3
+                        }
+                      ]
                     }
                   ]
                 }
@@ -4801,6 +4879,14 @@
             "counter",
             "main"
           ],
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "nameIncludes": "煉獄騎士団"
+              }
+            }
+          ],
           "cost": [
             {
               "op": "payGauge",
@@ -4811,7 +4897,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -5053,7 +5140,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -5182,52 +5270,69 @@
             "main",
             "counter"
           ],
-          "cost": [
-            {
-              "op": "destroyOwnMonster",
-              "amount": 1,
-              "filter": {
-                "nameIncludes": "煉獄騎士団"
-              }
-            }
-          ],
           "script": [
             {
-              "op": "chooseBranch",
+              "op": "selectCards",
+              "var": "sac",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "煉獄騎士団"
+              },
+              "amount": 1,
               "title": "哀悼の煉獄騎士団団長 ガイスト・ディミオス",
-              "lead": "次の３つから１つを選んで使ってください。",
-              "options": [
+              "lead": "破壊する君の場のカード名に「煉獄騎士団」を含むモンスター１枚を選んでください。"
+            },
+            {
+              "op": "destroySelected",
+              "var": "sac",
+              "require": false
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
                 {
-                  "key": "stand",
-                  "label": "このカードをスタンドする。",
-                  "script": [
+                  "op": "chooseBranch",
+                  "title": "哀悼の煉獄騎士団団長 ガイスト・ディミオス",
+                  "lead": "次の３つから１つを選んで使ってください。",
+                  "options": [
                     {
-                      "op": "standTarget",
-                      "target": "$self"
-                    }
-                  ]
-                },
-                {
-                  "key": "draw",
-                  "label": "アタックフェイズ中なら、カード１枚を引く。",
-                  "condition": {
-                    "op": "phaseIs",
-                    "phase": "attack"
-                  },
-                  "script": [
+                      "key": "stand",
+                      "label": "このカードをスタンドする。",
+                      "script": [
+                        {
+                          "op": "standTarget",
+                          "target": "$self"
+                        }
+                      ]
+                    },
                     {
-                      "op": "draw",
-                      "amount": 1
-                    }
-                  ]
-                },
-                {
-                  "key": "reduce",
-                  "label": "そのターン中、次に君に与えられるダメージを３減らす。",
-                  "script": [
+                      "key": "draw",
+                      "label": "アタックフェイズ中なら、カード１枚を引く。",
+                      "condition": {
+                        "op": "phaseIs",
+                        "phase": "attack"
+                      },
+                      "script": [
+                        {
+                          "op": "draw",
+                          "amount": 1
+                        }
+                      ]
+                    },
                     {
-                      "op": "reduceNextDamage",
-                      "amount": 3
+                      "key": "reduce",
+                      "label": "そのターン中、次に君に与えられるダメージを３減らす。",
+                      "script": [
+                        {
+                          "op": "reduceNextDamage",
+                          "amount": 3
+                        }
+                      ]
                     }
                   ]
                 }

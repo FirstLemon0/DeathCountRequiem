@@ -90,6 +90,13 @@
               "op": "turnOwnerIsSelf"
             },
             {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "item",
+              "cmp": "gte",
+              "amount": 1
+            },
+            {
               "op": "lifeLte",
               "amount": 4
             }
@@ -110,7 +117,7 @@
           ]
         }
       ],
-      "_note": "『君のターン中、場のこのカードは破壊されない』は継続grantDestroyImmunity(conditions未対応=src/11 grantedDestroyImmunityBlocksがe.conditionsを一切読まない)ではなく、カード級destroyImmunity配列(destroyImmunityBlocksがconditionsをchecked)を使用。全ソース(バトル+効果)保護のため『fromなしconditions付き』(効果破壊のみ一致)＋『from:{byBattle:true}conditions付き』(バトル破壊のみ一致)の2エントリに分割(bf-d-cbt-0085/bf-h-bt04-0109型・design doc C1)。アタックフェイズ開始トリガはbf-d-cbt-0004型でconditions:turnOwnerIsSelf必須(runPhaseStartTriggersが両プレイヤーの場を走査するため)。『２回攻撃』付与と『ライフ4以下で相手モンスター破壊』は独立した条件(君がアイテム装備／君のライフ)を持つため、ability-level targetの不要プロンプトを避けるべく2アビリティに分割(destroy側のみtarget必要)。"
+      "_note": "『君のターン中、場のこのカードは破壊されない』は継続grantDestroyImmunity(conditions未対応=src/11 grantedDestroyImmunityBlocksがe.conditionsを一切読まない)ではなく、カード級destroyImmunity配列(destroyImmunityBlocksがconditionsをchecked)を使用。全ソース(バトル+効果)保護のため『fromなしconditions付き』(効果破壊のみ一致)＋『from:{byBattle:true}conditions付き』(バトル破壊のみ一致)の2エントリに分割(bf-d-cbt-0085/bf-h-bt04-0109型・design doc C1)。アタックフェイズ開始トリガはbf-d-cbt-0004型でconditions:turnOwnerIsSelf必須(runPhaseStartTriggersが両プレイヤーの場を走査するため)。『２回攻撃』付与と『ライフ4以下で相手モンスター破壊』は、ability-level targetの不要プロンプトを避けるべく2アビリティに分割(destroy側のみtarget必要)。ver2.05 ②2.3.2『効果中に条件を参照する場合で、その条件を満たしていない場合、それ以後の効果は解決されません』により「さらに」の破壊はアイテム装備も要求する＝destroy側 conditions にも cardCount(item>=1) を置く（監査 rule-continuous-6）。"
     },
     {
       "id": "bf-x-sd01-0002",
@@ -528,7 +535,8 @@
               "from": "field",
               "controller": "any",
               "filter": {
-                "attribute": "雷帝軍"
+                "attribute": "雷帝軍",
+                "cardType": "monster"
               },
               "onlyBattling": true,
               "amount": 1,

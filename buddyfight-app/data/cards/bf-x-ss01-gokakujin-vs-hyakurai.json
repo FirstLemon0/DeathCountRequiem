@@ -505,14 +505,6 @@
             "counter"
           ],
           "optional": true,
-          "conditions": [
-            {
-              "op": "pendingAttackBySource"
-            },
-            {
-              "op": "attackingAlone"
-            }
-          ],
           "cost": [
             {
               "op": "payGauge",
@@ -521,8 +513,10 @@
           ],
           "effects": [
             {
-              "op": "markPendingAttackUnstoppable",
-              "onlyNullify": true
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "singleAttackCannotBeNullified",
+              "duration": "turn"
             }
           ]
         }
@@ -530,7 +524,8 @@
       "deckAnyFlag": {
         "homeWorld": "カタナW",
         "awayMaxCopies": 1
-      }
+      },
+      "_note": "【監査cards-05 b013-1】『そのターン中、このカードが１枚で攻撃している攻撃は無効化されない』はターン持続＝grantKeyword singleAttackCannotBeNullified duration:turn（判定は src/10 pendingAttackNullifyBlocker）。【対抗】が使える時ならいつでも起動可（旧=自身の単独攻撃中限定・その1回の攻撃のみ）。"
     },
     {
       "id": "bf-x-ss01-0008",
@@ -573,7 +568,7 @@
         "counterattack",
         "lifeLink2"
       ],
-      "destroyReplacement": {
+      "leaveFieldReplacement": {
         "optional": true,
         "cost": [
           {
@@ -688,6 +683,10 @@
           "conditions": [
             {
               "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "incomingDamagePending",
+              "lethal": true
             }
           ],
           "cost": [],
@@ -727,12 +726,37 @@
               "excludeSource": true
             },
             {
-              "op": "setPreventNextDestroy",
-              "target": "$self"
+              "op": "selectCards",
+              "var": "selfCard",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "sameInstanceAsSource": true
+              },
+              "amount": 1,
+              "require": false,
+              "forceDialog": false,
+              "title": "四角炎王 バーンノヴァ",
+              "lead": "そのターン中、破壊されなくするこのカード。"
+            },
+            {
+              "op": "grantTemporaryDestroyImmunitySelected",
+              "var": "selfCard",
+              "immunities": [
+                {
+                  "from": {}
+                },
+                {
+                  "from": {
+                    "byBattle": true
+                  }
+                }
+              ]
             }
           ]
         }
-      ]
+      ],
+      "_note": "【pt-fix-d 2026-10-14】救援コールは「君のライフが０になるなら」＝incomingDamagePending{lethal:true}（これから受けるダメージで自分のライフが０になる時だけ）。"
     },
     {
       "id": "bf-x-ss01-0011",
@@ -1269,7 +1293,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -1368,7 +1393,7 @@
           "kind": "triggered",
           "event": "battleEnd",
           "optional": true,
-          "conditions": [
+          "ifConditions": [
             {
               "op": "not",
               "condition": {
@@ -1693,11 +1718,6 @@
           "timing": [
             "counter"
           ],
-          "conditions": [
-            {
-              "op": "pendingAttackExists"
-            }
-          ],
           "cost": [
             {
               "op": "payGauge",
@@ -1720,7 +1740,7 @@
           ]
         }
       ],
-      "_note": "R3採用：usableInAnyFlag:true（新設マーカー）。engine-notes.md未作成だがsrc実体を直接照合＝確定済み：src/03-setup.js:125-129 canUseCardForFlagで`card.deckAnyFlag || card.usableInAnyFlag`いずれでも任意フラッグ適法、かつfilter.deckAnyFlag(角王枚数判定・src/17 X18)には非波及の別プロパティと明記（角王の証は角王アイコンではないため0002/0029のdrop『角王』選択に誤ヒットしない設計意図と一致）。使用コスト『ゲージ2』は両分岐共通のためability.cost(main/counter双方)に加えtop-level costs.castも明記（bf-h-pp01-0020と同じ二重明記の慣例。実際の支払いはability.cost優先で二重課金なし＝src/13-abilities-core.js:135-138）。timing:[counter]のrest分岐にconditions:[{op:pendingAttackExists}]を付与＝target:fieldCard（battleCardではない）でpendingAttack有無に自然にゲートされないため、D-SS02/0005『未来占星術』の_note記載の実機バグ（counter-onlyでconditions無しのabilityがisCounterPlayTiming先取り経路によりメインフェイズでもmain分岐を覆い隠す）と同型の穴を防ぐ目的で明記。main分岐は『デッキから角王を持つモンスター1枚までを手札に加え、デッキをシャッフルする』＝searchDeckToHand{filter:{deckAnyFlag:true,cardType:monster},amount:1,optional:true}（デフォルトでシャッフル込み・src/15-ability-effects.js:333-366 effect.shuffle!==false）。counter分岐『相手の場のサイズ2以下のモンスター1枚をレストする』はrestTarget（bf-h-ss01-0009ドラゴデスパレートと同型）。『1ターンに1回』clauseは原文に無いためlimit無し。"
+      "_note": "R3採用：usableInAnyFlag:true（新設マーカー）。engine-notes.md未作成だがsrc実体を直接照合＝確定済み：src/03-setup.js:125-129 canUseCardForFlagで`card.deckAnyFlag || card.usableInAnyFlag`いずれでも任意フラッグ適法、かつfilter.deckAnyFlag(角王枚数判定・src/17 X18)には非波及の別プロパティと明記（角王の証は角王アイコンではないため0002/0029のdrop『角王』選択に誤ヒットしない設計意図と一致）。使用コスト『ゲージ2』は両分岐共通のためability.cost(main/counter双方)に加えtop-level costs.castも明記（bf-h-pp01-0020と同じ二重明記の慣例。実際の支払いはability.cost優先で二重課金なし＝src/13-abilities-core.js:135-138）。【監査cards-22是正】rest分岐の旧conditions:[pendingAttackExists]は原文に無い制限（攻撃中以外の対抗窓＝相手の呪文への応答や攻撃宣言前に使えなかった）のため削除。自分のメインフェイズでのmain/counter両分岐の2択はhasMainAndCounterHandChoice→chooseHandAbility(src/08)のチューザが処理する。main分岐は『デッキから角王を持つモンスター1枚までを手札に加え、デッキをシャッフルする』＝searchDeckToHand{filter:{deckAnyFlag:true,cardType:monster},amount:1,optional:true}（デフォルトでシャッフル込み・src/15-ability-effects.js:333-366 effect.shuffle!==false）。counter分岐『相手の場のサイズ2以下のモンスター1枚をレストする』はrestTarget（bf-h-ss01-0009ドラゴデスパレートと同型）。『1ターンに1回』clauseは原文に無いためlimit無し。"
     },
     {
       "id": "bf-x-ss01-0026",
@@ -1867,7 +1887,10 @@
             {
               "op": "ownFieldCardExists",
               "zones": [
-                "item"
+                "item",
+                "item2",
+                "item3",
+                "item4"
               ],
               "filter": {
                 "cardType": "item"
@@ -2207,7 +2230,8 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             },
             {
               "op": "shuffleDeck",
@@ -2252,7 +2276,8 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             },
             {
               "op": "shuffleDeck",
@@ -2293,6 +2318,21 @@
           "id": "bf-x-ss01-0033-enter-recover",
           "kind": "triggered",
           "event": "enter",
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ]
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
           "optional": true,
           "cost": [
             {
@@ -2309,13 +2349,13 @@
                   3
                 ]
               },
-              "amount": 1,
-              "optional": true
+              "amount": 1
             }
-          ]
+          ],
+          "selectBeforeCost": true
         }
       ],
-      "_note": "コールコスト表記無し＝costs.call:[]+callCost:{gauge:0}（bf-h-bt03系の無コストモンスター慣例）。『このカードが登場した時、君のドロップゾーンのサイズ３のモンスター1枚を選び、ライフ1を払ってよい。払ったら、選んだカードを手札に加える』はbf-h-eb02-0017（RDトランスミッション）『ライフ1を払ってよい。払ったら、ドロップの《RD》を含むカード1枚までを手札に加える』と同型の構造（kind:triggered,event:enter,optional:true,cost:[payLife(1)],effects:[moveMatchingDropToHand{filter,amount:1,optional:true}]）。moveMatchingDropToHandはfilter一致ドロップカードから対話選択して手札に加える実装（src/15-ability-effects.js:781-797・optional:trueでmin:0）。原文の『選び、ライフを払ってよい』という選択→支払いの記述順は、cost先払い＋効果内選択という同エンジンの標準構成に正規化（既存前例と同一の抽象化・機能的等価）。filter{cardType:monster,sizeIn:[3]}（『サイズ3のモンスター』＝sizeInで正確表現）。自己再帰: 手札への移動はenterを再発火しないため連鎖なし。"
+      "_note": "コールコスト表記無し＝costs.call:[]+callCost:{gauge:0}（bf-h-bt03系の無コストモンスター慣例）。『このカードが登場した時、君のドロップゾーンのサイズ３のモンスター1枚を選び、ライフ1を払ってよい。払ったら、選んだカードを手札に加える』はbf-h-eb02-0017（RDトランスミッション）『ライフ1を払ってよい。払ったら、ドロップの《RD》を含むカード1枚までを手札に加える』と同型の構造（kind:triggered,event:enter,optional:true,cost:[payLife(1)],effects:[moveMatchingDropToHand{filter,amount:1,optional:true}]）。moveMatchingDropToHandはfilter一致ドロップカードから対話選択して手札に加える実装（src/15-ability-effects.js:781-797・optional:trueでmin:0）。原文の『選び、ライフを払ってよい』という選択→支払いの記述順は、cost先払い＋効果内選択という同エンジンの標準構成に正規化（既存前例と同一の抽象化・機能的等価）。filter{cardType:monster,sizeIn:[3]}（『サイズ3のモンスター』＝sizeInで正確表現）。自己再帰: 手札への移動はenterを再発火しないため連鎖なし。 【R5 2026-10-09 オーナー裁定】「〜を選び、…を払ってよい。払ったら」は選べるカードが無いなら支払えない（何も起きない）＝能力に selectBeforeCost:true（先頭の選択に候補が無ければコストを提示しない）。旧 _note の「optional 承諾＝コスト先払い→script 内で選択」の近似は、候補0でもコストだけ払えてしまう点が誤りだった。"
     },
     {
       "id": "bf-x-ss01-0034",
@@ -2578,7 +2618,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -2982,7 +3023,8 @@
                   "op": "selectZone",
                   "var": "z",
                   "cardVar": "call",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "payCardCostForSelection",
@@ -3073,14 +3115,6 @@
           "timing": [
             "counter"
           ],
-          "conditions": [
-            {
-              "op": "pendingAttackBySource"
-            },
-            {
-              "op": "attackingAlone"
-            }
-          ],
           "cost": [
             {
               "op": "payGauge",
@@ -3089,8 +3123,10 @@
           ],
           "effects": [
             {
-              "op": "markPendingAttackUnstoppable",
-              "onlyNullify": true
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "singleAttackCannotBeNullified",
+              "duration": "turn"
             }
           ]
         }
@@ -3160,7 +3196,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "call",
               "chooseZones": true,
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -3648,7 +3685,7 @@
       "castCost": {
         "gauge": 1
       },
-      "nullifyImmune": true,
+      "cannotBeNullified": true,
       "abilities": [
         {
           "id": "bf-x-ss01-0054-nullify",

@@ -84,7 +84,7 @@
         "■【コールコスト】ゲージ３を払い、君の場のモンスターか「許しの門 -フォーギブン-」１枚を君のデッキの下に置く。",
         "■このカードが攻撃した時、君のドロップゾーンの《ドラゴンＷ》か《天国》を合計３枚まで君のデッキの下に好きな順番で置く。３枚置いたら、相手の場のカード全てを手札に戻し、戻した枚数分、相手にダメージ！！"
       ],
-      "_note": "callCost第2節『君の場のモンスターか「許しの門 -フォーギブン-」1枚をデッキの下に置く』はエンジン班フォローアップ E3' の putOwnFieldCardsToDeckBottom（field→deckBottom コストop・putOwnFieldCardsToGauge と同型）で忠実化済み。離場の正規処理（ソウルのドロップ送り・ライフリンク）を通し、本体はドロップに増えずデッキ最下段へ（天国アーキタイプの趣旨どおり）。／攻撃時能力の対象は公式原文『君のドロップゾーンの《ドラゴンＷ》か《天国》を合計3枚まで』（r1が公式詳細ページの生HTMLで確定）。raw scrapeが世界アイコン《ドラゴンＷ》を<...>除去で取りこぼし『の』『か』が浮いて見えていた（≠属性天国のみ）。フィルタはifCondition条件・then/else両selectCardsの計3箇所とも anyOf[world:ドラゴンW / attribute:天国] で忠実化（world値は半角W／rules・leadの表示は全角Ｗ《ドラゴンＷ》）。／『3枚置いたら』の閾値ゲートは、選択var長のconditionopがエンジンに無いため、事前にcardCount>=3をifConditionで判定し、真ならmin=max=3で強制選択（3枚に達する場合は必ず3枚置く近似。プレイヤーが到達可能でもあえて少なく置く自由裁量は失われるが、ボーナスは常に有利なので実害なし）、偽なら0〜2枚の任意選択（ボーナス無し）に分岐する共通パターンを採用（0013/0014/0019も同型）。",
+      "_note": "callCost第2節『君の場のモンスターか「許しの門 -フォーギブン-」1枚をデッキの下に置く』はエンジン班フォローアップ E3' の putOwnFieldCardsToDeckBottom（field→deckBottom コストop・putOwnFieldCardsToGauge と同型）で忠実化済み。離場の正規処理（ソウルのドロップ送り・ライフリンク）を通し、本体はドロップに増えずデッキ最下段へ（天国アーキタイプの趣旨どおり）。／攻撃時能力の対象は公式原文『君のドロップゾーンの《ドラゴンＷ》か《天国》を合計3枚まで』（r1が公式詳細ページの生HTMLで確定）。raw scrapeが世界アイコン《ドラゴンＷ》を<...>除去で取りこぼし『の』『か』が浮いて見えていた（≠属性天国のみ）。フィルタはifCondition条件・then/else両selectCardsの計3箇所とも anyOf[world:ドラゴンW / attribute:天国] で忠実化（world値は半角W／rules・leadの表示は全角Ｗ《ドラゴンＷ》）。／『3枚置いたら』の閾値ゲートは、選択var長のconditionopがエンジンに無いため、事前にcardCount>=3をifConditionで判定し、真ならmin=max=3で強制選択（3枚に達する場合は必ず3枚置く近似。プレイヤーが到達可能でもあえて少なく置く自由裁量は失われるが、ボーナスは常に有利なので実害なし）、偽なら0〜2枚の任意選択（ボーナス無し）に分岐する共通パターンを採用（0013/0014/0019も同型）。 【R1 2026-10-09 オーナー裁定】「3枚まで…置く。3枚置いたら」＝候補が3枚以上でも 0〜3 枚を選べる（旧実装は3枚以上あると3枚強制）。selectCards{min:0,max:3}→ifCondition selectionMatches{var:d,min:3} で「3枚置いたら」を判定。",
       "costs": {
         "call": [
           {
@@ -114,51 +114,44 @@
           "event": "attack",
           "script": [
             {
+              "op": "selectCards",
+              "var": "d",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "anyOf": [
+                  {
+                    "world": "ドラゴンW"
+                  },
+                  {
+                    "attribute": "天国"
+                  }
+                ]
+              },
+              "min": 0,
+              "max": 3,
+              "amount": 3,
+              "require": false,
+              "allowEmpty": true,
+              "emptyMessage": "君のドロップゾーンに《ドラゴンＷ》も《天国》もありません。",
+              "title": "アヴァロン “ベネディクト・レイ”",
+              "lead": "デッキの下に好きな順番で置く《ドラゴンＷ》か《天国》を3枚まで選んでください（3枚置いたら相手の場のカード全てを手札に戻す）。",
+              "purpose": "fill"
+            },
+            {
+              "op": "moveSelectedToDeckBottomOrdered",
+              "var": "d",
+              "require": false
+            },
+            {
               "op": "ifCondition",
               "condition": {
-                "op": "cardCount",
-                "controller": "self",
-                "pile": "drop",
-                "filter": {
-                  "anyOf": [
-                    {
-                      "world": "ドラゴンW"
-                    },
-                    {
-                      "attribute": "天国"
-                    }
-                  ]
-                },
-                "cmp": "gte",
-                "amount": 3
+                "op": "selectionMatches",
+                "var": "d",
+                "filter": {},
+                "min": 3
               },
               "then": [
-                {
-                  "op": "selectCards",
-                  "var": "d",
-                  "from": "drop",
-                  "controller": "self",
-                  "filter": {
-                    "anyOf": [
-                      {
-                        "world": "ドラゴンW"
-                      },
-                      {
-                        "attribute": "天国"
-                      }
-                    ]
-                  },
-                  "min": 3,
-                  "max": 3,
-                  "amount": 3,
-                  "require": false,
-                  "title": "アヴァロン “ベネディクト・レイ”",
-                  "lead": "デッキの下に好きな順番で置く《ドラゴンＷ》か《天国》を3枚選んでください。"
-                },
-                {
-                  "op": "moveSelectedToDeckBottomOrdered",
-                  "var": "d"
-                },
                 {
                   "op": "returnAllToHand",
                   "controller": "opponent"
@@ -169,37 +162,6 @@
                   "amountFrom": {
                     "source": "returnedCount"
                   }
-                }
-              ],
-              "else": [
-                {
-                  "op": "selectCards",
-                  "var": "d",
-                  "from": "drop",
-                  "controller": "self",
-                  "filter": {
-                    "anyOf": [
-                      {
-                        "world": "ドラゴンW"
-                      },
-                      {
-                        "attribute": "天国"
-                      }
-                    ]
-                  },
-                  "min": 0,
-                  "max": 3,
-                  "amount": 3,
-                  "require": false,
-                  "allowEmpty": true,
-                  "emptyMessage": "君のドロップゾーンに《ドラゴンＷ》も《天国》もありません。",
-                  "title": "アヴァロン “ベネディクト・レイ”",
-                  "lead": "デッキの下に好きな順番で置く《ドラゴンＷ》か《天国》を選んでください（選ばなくてもよい）。"
-                },
-                {
-                  "op": "moveSelectedToDeckBottomOrdered",
-                  "var": "d",
-                  "require": false
                 }
               ]
             }
@@ -330,6 +292,7 @@
           "effects": [
             {
               "op": "preventOpponentCounterThisTurn",
+              "sourceMustAttack": true,
               "conditions": [
                 {
                   "op": "attackingAlone"
@@ -780,7 +743,8 @@
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
-            "filter": {}
+            "filter": {},
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -803,9 +767,11 @@
           ],
           "limit": {
             "scope": "turn"
-          }
+          },
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-d-eb03-0011",
@@ -1002,61 +968,44 @@
           "event": "enter",
           "script": [
             {
+              "op": "selectCards",
+              "var": "d",
+              "from": "drop",
+              "controller": "self",
+              "min": 0,
+              "max": 3,
+              "amount": 3,
+              "require": false,
+              "allowEmpty": true,
+              "emptyMessage": "君のドロップゾーンにカードがありません。",
+              "title": "楽園の守護神竜 アヴァロン",
+              "lead": "デッキの下に好きな順番で置くドロップゾーンのカードを3枚まで選んでください（3枚置いたらライフ+1）。",
+              "purpose": "fill"
+            },
+            {
+              "op": "moveSelectedToDeckBottomOrdered",
+              "var": "d",
+              "require": false
+            },
+            {
               "op": "ifCondition",
               "condition": {
-                "op": "cardCount",
-                "controller": "self",
-                "pile": "drop",
-                "cmp": "gte",
-                "amount": 3
+                "op": "selectionMatches",
+                "var": "d",
+                "filter": {},
+                "min": 3
               },
               "then": [
                 {
-                  "op": "selectCards",
-                  "var": "d",
-                  "from": "drop",
-                  "controller": "self",
-                  "min": 3,
-                  "max": 3,
-                  "amount": 3,
-                  "require": false,
-                  "title": "楽園の守護神竜 アヴァロン",
-                  "lead": "デッキの下に好きな順番で置くドロップゾーンのカードを3枚選んでください。"
-                },
-                {
-                  "op": "moveSelectedToDeckBottomOrdered",
-                  "var": "d"
-                },
-                {
                   "op": "gainLife",
                   "amount": 1
-                }
-              ],
-              "else": [
-                {
-                  "op": "selectCards",
-                  "var": "d",
-                  "from": "drop",
-                  "controller": "self",
-                  "min": 0,
-                  "max": 3,
-                  "amount": 3,
-                  "require": false,
-                  "allowEmpty": true,
-                  "emptyMessage": "君のドロップゾーンにカードがありません。",
-                  "title": "楽園の守護神竜 アヴァロン",
-                  "lead": "デッキの下に好きな順番で置くドロップゾーンのカードを選んでください（選ばなくてもよい）。"
-                },
-                {
-                  "op": "moveSelectedToDeckBottomOrdered",
-                  "var": "d",
-                  "require": false
                 }
               ]
             }
           ]
         }
-      ]
+      ],
+      "_note": "【R1 2026-10-09 オーナー裁定】「3枚まで…置く。3枚置いたら」＝候補が3枚以上でも 0〜3 枚を選べる（旧実装は3枚以上あると3枚強制）。selectCards{min:0,max:3}→ifCondition selectionMatches{var:d,min:3} で「3枚置いたら」を判定。"
     },
     {
       "id": "bf-d-eb03-0014",
@@ -1079,7 +1028,7 @@
         "■【起動】君のドロップゾーンの《武装騎竜》か《天国》を合計２枚まで君のデッキの下に好きな順番で置く。２枚置いたら、相手の場のカード１枚を破壊する。この能力は１ターンに１回だけ使える。",
         "『２回攻撃』"
       ],
-      "_note": "『武装騎竜か天国を合計2枚まで』はattributeIn:['武装騎竜','天国']で表現（filter.attributeIn=いずれかの属性を持てば一致）。",
+      "_note": "『武装騎竜か天国を合計2枚まで』はattributeIn:['武装騎竜','天国']で表現（filter.attributeIn=いずれかの属性を持てば一致）。 【R1 2026-10-09 オーナー裁定】「2枚まで…置く。2枚置いたら」＝候補が2枚以上でも 0〜2 枚を選べる（旧実装は2枚以上あると2枚強制）。selectCards{min:0,max:2}→ifCondition selectionMatches{var:d,min:2} で「2枚置いたら」を判定。",
       "costs": {
         "call": [
           {
@@ -1100,43 +1049,40 @@
           ],
           "script": [
             {
+              "op": "selectCards",
+              "var": "d",
+              "from": "drop",
+              "controller": "self",
+              "filter": {
+                "attributeIn": [
+                  "武装騎竜",
+                  "天国"
+                ]
+              },
+              "min": 0,
+              "max": 2,
+              "amount": 2,
+              "require": false,
+              "allowEmpty": true,
+              "emptyMessage": "君のドロップゾーンに《武装騎竜》も《天国》もありません。",
+              "title": "清白の執行竜 ジャッジ・シャルティア",
+              "lead": "デッキの下に好きな順番で置く《武装騎竜》か《天国》を2枚まで選んでください（2枚置いたら相手の場のカード1枚を破壊）。",
+              "purpose": "fill"
+            },
+            {
+              "op": "moveSelectedToDeckBottomOrdered",
+              "var": "d",
+              "require": false
+            },
+            {
               "op": "ifCondition",
               "condition": {
-                "op": "cardCount",
-                "controller": "self",
-                "pile": "drop",
-                "filter": {
-                  "attributeIn": [
-                    "武装騎竜",
-                    "天国"
-                  ]
-                },
-                "cmp": "gte",
-                "amount": 2
+                "op": "selectionMatches",
+                "var": "d",
+                "filter": {},
+                "min": 2
               },
               "then": [
-                {
-                  "op": "selectCards",
-                  "var": "d",
-                  "from": "drop",
-                  "controller": "self",
-                  "filter": {
-                    "attributeIn": [
-                      "武装騎竜",
-                      "天国"
-                    ]
-                  },
-                  "min": 2,
-                  "max": 2,
-                  "amount": 2,
-                  "require": false,
-                  "title": "清白の執行竜 ジャッジ・シャルティア",
-                  "lead": "デッキの下に好きな順番で置く《武装騎竜》か《天国》を2枚選んでください。"
-                },
-                {
-                  "op": "moveSelectedToDeckBottomOrdered",
-                  "var": "d"
-                },
                 {
                   "op": "selectCards",
                   "var": "kill",
@@ -1151,33 +1097,6 @@
                 {
                   "op": "destroySelected",
                   "var": "kill",
-                  "require": false
-                }
-              ],
-              "else": [
-                {
-                  "op": "selectCards",
-                  "var": "d",
-                  "from": "drop",
-                  "controller": "self",
-                  "filter": {
-                    "attributeIn": [
-                      "武装騎竜",
-                      "天国"
-                    ]
-                  },
-                  "min": 0,
-                  "max": 2,
-                  "amount": 2,
-                  "require": false,
-                  "allowEmpty": true,
-                  "emptyMessage": "君のドロップゾーンに《武装騎竜》も《天国》もありません。",
-                  "title": "清白の執行竜 ジャッジ・シャルティア",
-                  "lead": "デッキの下に好きな順番で置く《武装騎竜》か《天国》を選んでください（選ばなくてもよい）。"
-                },
-                {
-                  "op": "moveSelectedToDeckBottomOrdered",
-                  "var": "d",
                   "require": false
                 }
               ]
@@ -1246,6 +1165,9 @@
               "item",
               "spell"
             ]
+          },
+          "from": {
+            "byOpponent": true
           }
         }
       ],
@@ -1266,7 +1188,7 @@
           ]
         }
       ],
-      "_note": "『相手のカードの効果で、破壊されず、手札に戻せない』はgrantDestroyImmunity側のみfrom:{byEffect,byOpponent}で忠実化。preventReturnToHand(field継続)はfromゲート未実装のため近似(自分の効果由来の手札戻しも封じる。前例bf-d-ss01-0043ドラゴンスローンと同型・自アイテム/魔法の自己バウンス機会は実質皆無で実害なし)。"
+      "_note": "『相手のカードの効果で、破壊されず、手札に戻せない』はgrantDestroyImmunity側のみfrom:{byEffect,byOpponent}で忠実化。preventReturnToHand(field継続)はfromゲート未実装のため近似(自分の効果由来の手札戻しも封じる。前例bf-d-ss01-0043ドラゴンスローンと同型・自アイテム/魔法の自己バウンス機会は実質皆無で実害なし)。 ／【audit2 return-to-hand-cause】preventReturnToHand に from:{byOpponent:true} を付与。cannotReturnToHand(card, cause) が原因を受け取り from を判定するよう拡張したため、自分の効果・コストによる手札戻しは止めない（上記の近似は解消）。"
     },
     {
       "id": "bf-d-eb03-0016",
@@ -1292,7 +1214,7 @@
           "label": "ブレッシング・ピアス",
           "kind": "triggered",
           "event": "enter",
-          "conditions": [
+          "ifConditions": [
             {
               "op": "any",
               "conditions": [
@@ -1487,7 +1409,7 @@
         "■【起動】君のドロップゾーンのカード３枚までを君のデッキの下に置く。３枚置いたら、君のライフを＋1。この能力は１ターンに１回だけ使える。",
         "■【起動】君の場にモンスターがいなくて、君のドロップゾーンが０枚なら、君の手札１枚をデッキの下に置く。置いたら、君のデッキから《天国》のモンスター１枚までを【コールコスト】を払ってコールし、デッキをシャッフルする。この能力は１ターンに１回だけ使える。"
       ],
-      "_note": "第3能力『デッキから《天国》のモンスター1枚までを【コールコスト】を払ってコールし、シャッフル』はH-EB03/0010（ゲート・オブ・ダークネスドラゴン）と同型のselectCards{canPayCost:call,callable:true}+callSelectedToEmptyZones{payCost:call}で実装（callSelectedToEmptyZonesは選択カードのcosts.callを自動課金する経路＝C6の懸念どおりcallSelected単体では課金しないが、ToEmptyZones版は課金する）。第3能力の前段『君の手札1枚をデッキの下に置く』はコストタグ無しの本文中アクションのためability.costではなくscript（selectCards from:hand + moveSelectedToDeckBottomOrdered）で表現。",
+      "_note": "第3能力『デッキから《天国》のモンスター1枚までを【コールコスト】を払ってコールし、シャッフル』はH-EB03/0010（ゲート・オブ・ダークネスドラゴン）と同型のselectCards{canPayCost:call,callable:true}+callSelectedToEmptyZones{payCost:call}で実装（callSelectedToEmptyZonesは選択カードのcosts.callを自動課金する経路＝C6の懸念どおりcallSelected単体では課金しないが、ToEmptyZones版は課金する）。第3能力の前段『君の手札1枚をデッキの下に置く』はコストタグ無しの本文中アクションのためability.costではなくscript（selectCards from:hand + moveSelectedToDeckBottomOrdered）で表現。 【R1 2026-10-09 オーナー裁定】「3枚まで…置く。3枚置いたら」＝候補が3枚以上でも 0〜3 枚を選べる（旧実装は3枚以上あると3枚強制）。selectCards{min:0,max:3}→ifCondition selectionMatches{var:d,min:3} で「3枚置いたら」を判定。",
       "keywords": [
         "set"
       ],
@@ -1501,55 +1423,37 @@
           ],
           "script": [
             {
+              "op": "selectCards",
+              "var": "d",
+              "from": "drop",
+              "controller": "self",
+              "min": 0,
+              "max": 3,
+              "amount": 3,
+              "require": false,
+              "allowEmpty": true,
+              "emptyMessage": "君のドロップゾーンにカードがありません。",
+              "title": "許しの門 -フォーギブン-",
+              "lead": "デッキの下に置くドロップゾーンのカードを3枚まで選んでください（3枚置いたらライフ+1）。",
+              "purpose": "fill"
+            },
+            {
+              "op": "moveSelectedToDeckBottomOrdered",
+              "var": "d",
+              "require": false
+            },
+            {
               "op": "ifCondition",
               "condition": {
-                "op": "cardCount",
-                "controller": "self",
-                "pile": "drop",
-                "cmp": "gte",
-                "amount": 3
+                "op": "selectionMatches",
+                "var": "d",
+                "filter": {},
+                "min": 3
               },
               "then": [
                 {
-                  "op": "selectCards",
-                  "var": "d",
-                  "from": "drop",
-                  "controller": "self",
-                  "min": 3,
-                  "max": 3,
-                  "amount": 3,
-                  "require": false,
-                  "title": "許しの門 -フォーギブン-",
-                  "lead": "デッキの下に置くドロップゾーンのカードを3枚選んでください。"
-                },
-                {
-                  "op": "moveSelectedToDeckBottomOrdered",
-                  "var": "d"
-                },
-                {
                   "op": "gainLife",
                   "amount": 1
-                }
-              ],
-              "else": [
-                {
-                  "op": "selectCards",
-                  "var": "d",
-                  "from": "drop",
-                  "controller": "self",
-                  "min": 0,
-                  "max": 3,
-                  "amount": 3,
-                  "require": false,
-                  "allowEmpty": true,
-                  "emptyMessage": "君のドロップゾーンにカードがありません。",
-                  "title": "許しの門 -フォーギブン-",
-                  "lead": "デッキの下に置くドロップゾーンのカードを選んでください（選ばなくてもよい）。"
-                },
-                {
-                  "op": "moveSelectedToDeckBottomOrdered",
-                  "var": "d",
-                  "require": false
                 }
               ]
             }
@@ -1629,7 +1533,8 @@
                   "var": "call",
                   "payCost": "call",
                   "chooseZones": true,
-                  "require": false
+                  "require": false,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "shuffleDeck",
@@ -1682,7 +1587,8 @@
             "filter": {
               "cardType": "monster",
               "sizeLte": 2
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -1702,9 +1608,11 @@
                 }
               ]
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-d-eb03-0021",
@@ -2144,7 +2052,8 @@
               ],
               "payCost": "call",
               "chooseZones": true,
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ],
           "limit": {
@@ -3088,6 +2997,7 @@
           "target": {
             "type": "battleCard",
             "filter": {
+              "cardType": "monster",
               "attribute": "天国"
             }
           },
@@ -3590,7 +3500,8 @@
               "controller": "self",
               "emptyOnly": true,
               "title": "猛毒の獄卒 シルエット・ルロイ",
-              "lead": "コールするエリアを選んでください。"
+              "lead": "コールするエリアを選んでください。",
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -3880,7 +3791,8 @@
               "controller": "self",
               "emptyOnly": true,
               "title": "山津波",
-              "lead": "宝物の獄卒 ソンダーダッハをコールするエリアを選んでください。"
+              "lead": "宝物の獄卒 ソンダーダッハをコールするエリアを選んでください。",
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -4090,7 +4002,16 @@
                   "key": "mill",
                   "label": "君のデッキの上から４枚をドロップゾーンに置く",
                   "condition": {
-                    "op": "turnOwnerIsSelf"
+                    "op": "all",
+                    "conditions": [
+                      {
+                        "op": "turnOwnerIsSelf"
+                      },
+                      {
+                        "op": "phaseIs",
+                        "phase": "main"
+                      }
+                    ]
                   },
                   "script": [
                     {
@@ -4109,6 +4030,7 @@
                       "from": "field",
                       "controller": "any",
                       "filter": {
+                        "cardType": "monster",
                         "attribute": "地獄"
                       },
                       "onlyBattling": true,
@@ -4457,61 +4379,44 @@
           "event": "enter",
           "script": [
             {
+              "op": "selectCards",
+              "var": "d",
+              "from": "drop",
+              "controller": "self",
+              "min": 0,
+              "max": 3,
+              "amount": 3,
+              "require": false,
+              "allowEmpty": true,
+              "emptyMessage": "君のドロップゾーンにカードがありません。",
+              "title": "楽園の守護神竜 アヴァロン",
+              "lead": "デッキの下に好きな順番で置くドロップゾーンのカードを3枚まで選んでください（3枚置いたらライフ+1）。",
+              "purpose": "fill"
+            },
+            {
+              "op": "moveSelectedToDeckBottomOrdered",
+              "var": "d",
+              "require": false
+            },
+            {
               "op": "ifCondition",
               "condition": {
-                "op": "cardCount",
-                "controller": "self",
-                "pile": "drop",
-                "cmp": "gte",
-                "amount": 3
+                "op": "selectionMatches",
+                "var": "d",
+                "filter": {},
+                "min": 3
               },
               "then": [
                 {
-                  "op": "selectCards",
-                  "var": "d",
-                  "from": "drop",
-                  "controller": "self",
-                  "min": 3,
-                  "max": 3,
-                  "amount": 3,
-                  "require": false,
-                  "title": "楽園の守護神竜 アヴァロン",
-                  "lead": "デッキの下に好きな順番で置くドロップゾーンのカードを3枚選んでください。"
-                },
-                {
-                  "op": "moveSelectedToDeckBottomOrdered",
-                  "var": "d"
-                },
-                {
                   "op": "gainLife",
                   "amount": 1
-                }
-              ],
-              "else": [
-                {
-                  "op": "selectCards",
-                  "var": "d",
-                  "from": "drop",
-                  "controller": "self",
-                  "min": 0,
-                  "max": 3,
-                  "amount": 3,
-                  "require": false,
-                  "allowEmpty": true,
-                  "emptyMessage": "君のドロップゾーンにカードがありません。",
-                  "title": "楽園の守護神竜 アヴァロン",
-                  "lead": "デッキの下に好きな順番で置くドロップゾーンのカードを選んでください（選ばなくてもよい）。"
-                },
-                {
-                  "op": "moveSelectedToDeckBottomOrdered",
-                  "var": "d",
-                  "require": false
                 }
               ]
             }
           ]
         }
-      ]
+      ],
+      "_note": "【R1 2026-10-09 オーナー裁定】「3枚まで…置く。3枚置いたら」＝候補が3枚以上でも 0〜3 枚を選べる（旧実装は3枚以上あると3枚強制）。selectCards{min:0,max:3}→ifCondition selectionMatches{var:d,min:3} で「3枚置いたら」を判定。"
     },
     {
       "id": "bf-d-eb03-0062",

@@ -28,8 +28,6 @@
         "『逆天殺ReBOOT』〔君のメインフェイズ中、手札１枚を捨てる〕君のドロップゾーンのモンスター３枚までを、【コールコスト】を払わずコールする。さらに、君のライフが３以下なら、君のライフを10にする！！！（『逆天殺ReBOOT』は無効化されず、相手は【対抗】できず、ファイト中に１回だけ使える。）",
         "『C・テリトリー』"
       ],
-      "nullifyImmune": true,
-      "cannotBeNullified": true,
       "costs": {
         "call": [
           {
@@ -49,7 +47,8 @@
             "amount": 1,
             "filter": {
               "sizeLte": 3
-            }
+            },
+            "asEffect": true
           }
         ],
         "optional": true
@@ -58,6 +57,7 @@
         {
           "id": "bf-x-ub03-0001-reversalkill-reboot",
           "label": "逆天殺ReBOOT",
+          "cannotBeNullified": true,
           "kind": "activated",
           "keyword": "reversalKillReboot",
           "noCounterWindow": true,
@@ -99,7 +99,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "c",
               "chooseZones": true,
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "ifCondition",
@@ -121,7 +122,7 @@
           }
         }
       ],
-      "_note": "究極に至るC ギアゴッド ver.1ØØØØ（S10000/100000/4/10000）。①【コールコスト】『君の場のカード名に「ギアゴッド」を含むモンスター1枚をドロップゾーンに置く』=costs.call:[dropOwnFieldCard{amount:1,filter:{cardType:monster,nameIncludes:ギアゴッド}}]（bf-x-cbt01-akaki-raitei.json X-CBT01/0070轟天覇王竜バールバッツ・ドラグロイヤー『バッツ』nameIncludesコスト、bf-d-eb03-heaven-and-hell.json D-EB03/0004ガガルガリオスのdropOwnFieldCard cost、と同型。コール時点でこのカード自身はまだ場にいない=excludeSource不要。カード名自身に『ギアゴッド』を含むが場の別カード=同名の他インスタンスも対象になり得る、原文に自己除外句なし）。②“C・ドレイン”『このカードが場から離れる場合、君の場のサイズ3以下のモンスター1枚を破壊したら、場に残せる。』=leaveFieldReplacement:{cost:[destroyOwnMonster{amount:1,filter:{sizeLte:3}}],optional:true}（bf-x-bt02-chaos-control-crisis.json X-BT02/0116 Cの支配者ギアゴッドⅦ・bf-x-bt04-rainbow-striker.json X-BT04/0099・bf-x-bt03-gyakuten-raiteigun.json X-BT03/0111と同一leaveFieldReplacement機構。既存3例の印字文言は『破壊してよい。破壊したら、このカードを場に残す。』、本カードは『破壊したら、場に残せる。』と語順が異なるが、いずれも『任意で場のサイズ3以下モンスター1枚を破壊するコストを払えば、このカードを場に残せる』という同一の任意コスト置換であり、leaveFieldReplacement.optional:trueの意味論（コストを払わない場合は通常どおり場を離れる）と完全に一致する。テキスト差は表記ゆれとして扱う）。③『逆天殺ReBOOT』〔君のメインフェイズ中、手札1枚を捨てる〕君のドロップゾーンのモンスター3枚までを、【コールコスト】を払わずコールする。さらに、君のライフが3以下なら、君のライフを10にする！！！（無効化されず、相手は対抗できず、ファイト中に1回）: E-XB55（rulings.md R7・エンジン班確定、src/15-ability-effects.js:3706-3712 normalizedAbilityLimitが keyword:'reversalKillReboot' から scope:'fight'/key:'reversalKillReboot' を自動導出＝reversal/reversalKill/greatReversalとは独立プール）。kind:activated,timing:[main],conditions:[turnOwnerIsSelf,phaseIs(main)]（X74-B18/0009超進化増進機ギアゴッド ver.1ØØØの『逆天殺』kind:activated,keyword:reversal,timing:[main]と同型骨格）,cost:[discardHand{amount:1}]（手札1枚を捨てる）,script:[selectCards{from:drop,controller:self,filter:{cardType:monster},min:0,max:3,require:false,callable:true}（canPayCost未指定=コールコストを払わない無償コール、H-EB01/0008デスマスターレラグ・モナークのmax:2無償版を3枚版に拡張した直接precedent。マスプロダクション型(bf-x-cbt02-kuroki-kishin.json ミニギアゴッド・ゴールド)のmin:0,max:3,require:falseと同型セレクタにcanPayCostを外して無償化）,callSelectedToEmptyZones{chooseZones:true,resolveOnEnter:true}]（H-EB01/0008と同型のchooseZones:trueで複数体を別々のゾーンへ配置）,limit:{scope:fight,key:reversalKillReboot}（keyword自動導出と同値を明示・大逆天greatReversalの明示limit併記慣例に倣う）。【E-XB56＝掃討で本格実装（rulings.md R10・エンジン班確定・src実在をgrep確認）】(a)『さらに、君のライフが3以下なら、君のライフを10にする』: isScriptEffectStep(src/14-ability-script.js:3343-3454)のホワイトリストへ setLife を追加した（3399行「setLife」・effect版 src/15-ability-effects.js:675 へ委譲）ため、script末尾に {op:ifCondition,condition:{op:lifeLte,amount:3},then:[{op:setLife,life:10}]} を置き、無償複数コール(selectCards/callSelectedToEmptyZones=script専用op)と同一 ability.script 内で忠実に両立できるようになった。原文の節順（コール→ライフ判定）どおりに callSelectedToEmptyZones の直後へ配置。ifCondition(script)自体は既に動作（bf-hd-pr.json PR/0381サンダー×シュレッダーのifCondition{lifeLte}precedent）で、then節に setLife をホワイトリスト追加により置けるようになった。(b)『相手は【対抗】できず』: ability レベル noCounterWindow:true を新設（src/13-abilities-core.js:204・365 で参照）。kind:activated の場発動(useFieldAbilityAction)は既定で宣言時に自前で pendingAction を開き対抗ウィンドウを与える（src/13-abilities-core.js:200-215）ため、triggered 型 preventOpponentCounterThisTurn では『宣言そのもの』を遡って守れなかった（対抗ウィンドウが閉じた後にしか効かない構造問題）。noCounterWindow:true はこの宣言前バリアとして、宣言時に対抗ウィンドウを開かず即時解決経路へ落とす（未指定=既存カード全ては従来どおり対抗ウィンドウを開く＝後方互換）。加えて『無効化されず』のうち実務上最重要の経路（相手の対抗魔法が nullifyPendingAction でこの宣言自体を打ち消す）は card級 cannotBeNullified:true で別途カバー済み（nullifyPendingAction→cardCannotBeNullified、src/07-actions-turn.js:1313-1322,1329）＝isAbilitiesNullified系(nullifyImmune)とは独立の第2の無効化経路。rules原文は4行とも改変せずそのまま収録。以上で①〜③（ライフ3以下→10・相手対抗不可・無効化されず）を原文どおり実装完了（着手時の未実装2件を掃討で解消）。④『C・テリトリー』はrulings.md R1（統括裁定・pr-backfill R11踏襲、field.centerが単一nullableスロットのため場構造拡張が必要で単一カードのDSLでは表現不能）により表示専用・機構キー無し（多数の既存precedent=bf-x-bt02-0116/bf-x-bt03-0111/bf-x-td02-0001等と同じ扱い）。⑤card級nullifyImmune:true+cannotBeNullified:trueは本カードのabilities配列がreversalKillReboot 1件のみのため副作用なく正しくスコープする（nullifyImmune→isAbilitiesNullified冒頭ガードsrc/05-stats.js:124、cannotBeNullified→cardCannotBeNullified src/07-actions-turn.js:1313-1322が共にcard直下の静的プロパティを読むだけで宣言タイミング非依存＝preventOpponentCounterThisTurnと異なりシーケンス問題が無い）。grep自己検査: dropOwnFieldCard(src/04-cost-resource.js:744,1198,2111、X-CBT01/0070実例)/leaveFieldReplacement配線(src/11-destroy-turn.js:247-277,637-640,698-701、X-BT02/0116実例)/destroyOwnMonster+filter.sizeLte(src/04-cost-resource.js:801,1245,2022)/normalizedAbilityLimit keyword:reversalKillReboot(src/15-ability-effects.js:3706-3712)/selectCards from:drop+callable無償(src/14-ability-script.js:532台、H-EB01/0008実例)/callSelectedToEmptyZones chooseZones(src/14-ability-script.js:2616-2707、H-EB01/0008実例)/isAbilitiesNullified冒頭card.nullifyImmuneガード(src/05-stats.js:124)/cardCannotBeNullified+nullifyPendingAction(src/07-actions-turn.js:1313-1336)/isScriptEffectStepホワイトリストにsetLife在(src/14-ability-script.js:3399)/ability.noCounterWindow参照(src/13-abilities-core.js:204,365) 全実在確認。VM検証: x76-b1-verify.js test0001参照——(A)callMonster実経路でコールコスト（場の『ギアゴッド』含みモンスター1枚をドロップへ）が課金されること、(B)destroyFieldCard実経路でC・ドレインの任意コスト置換（サイズ3以下1体を破壊すれば場に残る／破壊しなければ通常どおり場を離れる）、(C)useFieldAbilityAction/resolvePendingResolution実経路で逆天殺ReBOOTを使うと手札1枚を捨ててドロップのモンスター最大3枚まで無償コールされること・かつ noCounterWindow:true により宣言時に対抗ウィンドウ(pendingAction)を開かず即時解決されること・ライフ3以下から script末尾の ifCondition{lifeLte:3}→setLife{life:10} でライフが10になること、(D)ファイト中2回目の逆天殺ReBOOTがfightLimits[owner].reversalKillRebootにより不発かつ既存の『逆天』『逆天殺』『大逆天』プールには一切影響しないこと、(E)nullifyPendingAction実経路でこの宣言が無効化されないこと（cannotBeNullified）、を実測。"
+      "_note": "究極に至るC ギアゴッド ver.1ØØØØ（S10000/100000/4/10000）。①【コールコスト】『君の場のカード名に「ギアゴッド」を含むモンスター1枚をドロップゾーンに置く』=costs.call:[dropOwnFieldCard{amount:1,filter:{cardType:monster,nameIncludes:ギアゴッド}}]（bf-x-cbt01-akaki-raitei.json X-CBT01/0070轟天覇王竜バールバッツ・ドラグロイヤー『バッツ』nameIncludesコスト、bf-d-eb03-heaven-and-hell.json D-EB03/0004ガガルガリオスのdropOwnFieldCard cost、と同型。コール時点でこのカード自身はまだ場にいない=excludeSource不要。カード名自身に『ギアゴッド』を含むが場の別カード=同名の他インスタンスも対象になり得る、原文に自己除外句なし）。②“C・ドレイン”『このカードが場から離れる場合、君の場のサイズ3以下のモンスター1枚を破壊したら、場に残せる。』=leaveFieldReplacement:{cost:[destroyOwnMonster{amount:1,filter:{sizeLte:3}}],optional:true}（bf-x-bt02-chaos-control-crisis.json X-BT02/0116 Cの支配者ギアゴッドⅦ・bf-x-bt04-rainbow-striker.json X-BT04/0099・bf-x-bt03-gyakuten-raiteigun.json X-BT03/0111と同一leaveFieldReplacement機構。既存3例の印字文言は『破壊してよい。破壊したら、このカードを場に残す。』、本カードは『破壊したら、場に残せる。』と語順が異なるが、いずれも『任意で場のサイズ3以下モンスター1枚を破壊するコストを払えば、このカードを場に残せる』という同一の任意コスト置換であり、leaveFieldReplacement.optional:trueの意味論（コストを払わない場合は通常どおり場を離れる）と完全に一致する。テキスト差は表記ゆれとして扱う）。③『逆天殺ReBOOT』〔君のメインフェイズ中、手札1枚を捨てる〕君のドロップゾーンのモンスター3枚までを、【コールコスト】を払わずコールする。さらに、君のライフが3以下なら、君のライフを10にする！！！（無効化されず、相手は対抗できず、ファイト中に1回）: E-XB55（rulings.md R7・エンジン班確定、src/15-ability-effects.js:3706-3712 normalizedAbilityLimitが keyword:'reversalKillReboot' から scope:'fight'/key:'reversalKillReboot' を自動導出＝reversal/reversalKill/greatReversalとは独立プール）。kind:activated,timing:[main],conditions:[turnOwnerIsSelf,phaseIs(main)]（X74-B18/0009超進化増進機ギアゴッド ver.1ØØØの『逆天殺』kind:activated,keyword:reversal,timing:[main]と同型骨格）,cost:[discardHand{amount:1}]（手札1枚を捨てる）,script:[selectCards{from:drop,controller:self,filter:{cardType:monster},min:0,max:3,require:false,callable:true}（canPayCost未指定=コールコストを払わない無償コール、H-EB01/0008デスマスターレラグ・モナークのmax:2無償版を3枚版に拡張した直接precedent。マスプロダクション型(bf-x-cbt02-kuroki-kishin.json ミニギアゴッド・ゴールド)のmin:0,max:3,require:falseと同型セレクタにcanPayCostを外して無償化）,callSelectedToEmptyZones{chooseZones:true,resolveOnEnter:true}]（H-EB01/0008と同型のchooseZones:trueで複数体を別々のゾーンへ配置）,limit:{scope:fight,key:reversalKillReboot}（keyword自動導出と同値を明示・大逆天greatReversalの明示limit併記慣例に倣う）。【E-XB56＝掃討で本格実装（rulings.md R10・エンジン班確定・src実在をgrep確認）】(a)『さらに、君のライフが3以下なら、君のライフを10にする』: isScriptEffectStep(src/14-ability-script.js:3343-3454)のホワイトリストへ setLife を追加した（3399行「setLife」・effect版 src/15-ability-effects.js:675 へ委譲）ため、script末尾に {op:ifCondition,condition:{op:lifeLte,amount:3},then:[{op:setLife,life:10}]} を置き、無償複数コール(selectCards/callSelectedToEmptyZones=script専用op)と同一 ability.script 内で忠実に両立できるようになった。原文の節順（コール→ライフ判定）どおりに callSelectedToEmptyZones の直後へ配置。ifCondition(script)自体は既に動作（bf-hd-pr.json PR/0381サンダー×シュレッダーのifCondition{lifeLte}precedent）で、then節に setLife をホワイトリスト追加により置けるようになった。(b)『相手は【対抗】できず』: ability レベル noCounterWindow:true を新設（src/13-abilities-core.js:204・365 で参照）。kind:activated の場発動(useFieldAbilityAction)は既定で宣言時に自前で pendingAction を開き対抗ウィンドウを与える（src/13-abilities-core.js:200-215）ため、triggered 型 preventOpponentCounterThisTurn では『宣言そのもの』を遡って守れなかった（対抗ウィンドウが閉じた後にしか効かない構造問題）。noCounterWindow:true はこの宣言前バリアとして、宣言時に対抗ウィンドウを開かず即時解決経路へ落とす（未指定=既存カード全ては従来どおり対抗ウィンドウを開く＝後方互換）。加えて『無効化されず』のうち実務上最重要の経路（相手の対抗魔法が nullifyPendingAction でこの宣言自体を打ち消す）は card級 cannotBeNullified:true で別途カバー済み（nullifyPendingAction→cardCannotBeNullified、src/07-actions-turn.js:1313-1322,1329）＝isAbilitiesNullified系(nullifyImmune)とは独立の第2の無効化経路。rules原文は4行とも改変せずそのまま収録。以上で①〜③（ライフ3以下→10・相手対抗不可・無効化されず）を原文どおり実装完了（着手時の未実装2件を掃討で解消）。④『C・テリトリー』はrulings.md R1（統括裁定・pr-backfill R11踏襲、field.centerが単一nullableスロットのため場構造拡張が必要で単一カードのDSLでは表現不能）により表示専用・機構キー無し（多数の既存precedent=bf-x-bt02-0116/bf-x-bt03-0111/bf-x-td02-0001等と同じ扱い）。⑤card級nullifyImmune:true+cannotBeNullified:trueは本カードのabilities配列がreversalKillReboot 1件のみのため副作用なく正しくスコープする（nullifyImmune→isAbilitiesNullified冒頭ガードsrc/05-stats.js:124、cannotBeNullified→cardCannotBeNullified src/07-actions-turn.js:1313-1322が共にcard直下の静的プロパティを読むだけで宣言タイミング非依存＝preventOpponentCounterThisTurnと異なりシーケンス問題が無い）。grep自己検査: dropOwnFieldCard(src/04-cost-resource.js:744,1198,2111、X-CBT01/0070実例)/leaveFieldReplacement配線(src/11-destroy-turn.js:247-277,637-640,698-701、X-BT02/0116実例)/destroyOwnMonster+filter.sizeLte(src/04-cost-resource.js:801,1245,2022)/normalizedAbilityLimit keyword:reversalKillReboot(src/15-ability-effects.js:3706-3712)/selectCards from:drop+callable無償(src/14-ability-script.js:532台、H-EB01/0008実例)/callSelectedToEmptyZones chooseZones(src/14-ability-script.js:2616-2707、H-EB01/0008実例)/isAbilitiesNullified冒頭card.nullifyImmuneガード(src/05-stats.js:124)/cardCannotBeNullified+nullifyPendingAction(src/07-actions-turn.js:1313-1336)/isScriptEffectStepホワイトリストにsetLife在(src/14-ability-script.js:3399)/ability.noCounterWindow参照(src/13-abilities-core.js:204,365) 全実在確認。VM検証: x76-b1-verify.js test0001参照——(A)callMonster実経路でコールコスト（場の『ギアゴッド』含みモンスター1枚をドロップへ）が課金されること、(B)destroyFieldCard実経路でC・ドレインの任意コスト置換（サイズ3以下1体を破壊すれば場に残る／破壊しなければ通常どおり場を離れる）、(C)useFieldAbilityAction/resolvePendingResolution実経路で逆天殺ReBOOTを使うと手札1枚を捨ててドロップのモンスター最大3枚まで無償コールされること・かつ noCounterWindow:true により宣言時に対抗ウィンドウ(pendingAction)を開かず即時解決されること・ライフ3以下から script末尾の ifCondition{lifeLte:3}→setLife{life:10} でライフが10になること、(D)ファイト中2回目の逆天殺ReBOOTがfightLimits[owner].reversalKillRebootにより不発かつ既存の『逆天』『逆天殺』『大逆天』プールには一切影響しないこと、(E)nullifyPendingAction実経路でこの宣言が無効化されないこと（cannotBeNullified）、を実測。 ／【2026-10-09 オーナー裁定R8】“C・ドレイン”の『〜を破壊してよい。破壊したら、場に残す』の破壊は効果: leaveFieldReplacement.cost の destroyOwnMonster に asEffect:true（置換を無視せず破壊する。ソウルガード等で場に残っても破壊は成功＝支払い成立でこのカードは場に残る［2026-10-09 オーナー裁定］。破壊耐性等で破壊できなかった時だけ支払い不成立＝このカードは場を離れる）。同期の単体手札戻し経路は従来の近似のまま。"
     },
     {
       "id": "bf-x-ub03-0002",
@@ -197,7 +198,9 @@
             }
           ],
           "limit": {
-            "scope": "turn"
+            "scope": "turn",
+            "shared": true,
+            "key": "bf-x-ub03-0002-gb-burst"
           }
         }
       ],
@@ -357,7 +360,9 @@
             }
           ],
           "limit": {
-            "scope": "turn"
+            "scope": "turn",
+            "shared": true,
+            "key": "bf-x-ub03-0004-breaking-birth"
           }
         }
       ],
@@ -794,7 +799,8 @@
                     "size": 0,
                     "unconditional": true
                   },
-                  "resolveOnEnter": true
+                  "resolveOnEnter": true,
+                  "overwriteWhenFull": true
                 }
               ],
               "else": [
@@ -822,7 +828,8 @@
                       "op": "callSelectedToEmptyZones",
                       "var": "pickCh",
                       "payCost": "call",
-                      "resolveOnEnter": true
+                      "resolveOnEnter": true,
+                      "overwriteWhenFull": true
                     }
                   ]
                 }
@@ -926,9 +933,33 @@
             "key": "xub03-虹色特権",
             "shared": true
           }
+        },
+        {
+          "id": "bf-x-ub03-0010-rainbow-privilege-self",
+          "label": "虹色特権",
+          "kind": "triggered",
+          "event": "movedToDrop",
+          "fromZones": [
+            "field"
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
+            },
+            {
+              "op": "draw",
+              "amount": 1
+            }
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xub03-虹色特権",
+            "shared": true
+          }
         }
       ],
-      "_note": "ミニギアゴッド・レインボー（S3/7000/2/1000）。“虹色特権”『君の場のカード名に「ミニギアゴッド」を含むモンスターがドロップゾーンに置かれた時、君のデッキの上から1枚をゲージに置き、カード1枚を引く。「虹色特権」は1ターンに1回だけ発動する。』【E-XB57＝掃討で忠実化（rulings.md R11・エンジン班確定・src実在をgrep確認）＝2 ability 方式】: 原文は場全体（同名ファミリーのどのカードでも）の『ドロップゾーンに置かれた時』汎用トリガーで、破壊由来と非破壊由来（コスト/効果）の両ドロップを拾う必要がある。エンジン班が field-wide の movedToDrop broadcast（ally/opponentMovedToDrop）を新設した（src/11-destroy-turn.js:1202 queueMovedToDropFieldTriggers・1220 runFieldEventTriggers(movedToDrop,...)。非破壊のドロップ移動＝dropFieldCardByRule(同1591)と putCardsToDropWithTrigger fromZone===field(src/15-ability-effects.js:139)からのみ配送し destroyFieldCard からは呼ばない）。重複発火の分担は設計固定（src/11-destroy-turn.js:1195-1201コメント）＝破壊→allyDestroyed のみ／非破壊→allyMovedToDrop のみで、同一のドロップが destroyed と movedToDrop の両方を発火することは無い。本カードは『破壊された時』と『（非破壊で）ドロップに置かれた時』の両方を拾うため2つのlistenerを別 ability として持つ: ①event:allyDestroyed（破壊経路＝バトル/効果破壊）②event:allyMovedToDrop（非破壊経路＝0045ミニギアゴッド・ピンクの自己effect drop・コスト由来のdropOwnFieldCard等）。両abilityとも同条件 eventCardMatches{nameIncludes:ミニギアゴッド,cardType:monster}・同effects[putTopDeckToGauge{amount:1},draw{amount:1}]・同じ shared limit（key:xub03-虹色特権,scope:turn,shared:true）で束ね、named-once『1ターンに1回だけ発動する』を担保（どちらの経路で発火しても同一枠を消費＝2 abilityで1ターン合計1回のみ）。以上で近似（着手時のallyDestroyed単独＝非破壊ドロップ未捕捉）を掃討し原文どおり忠実化。grep自己検査: queueMovedToDropFieldTriggers+runFieldEventTriggers(movedToDrop)(src/11-destroy-turn.js:1202-1225)/dropFieldCardByRule配線(src/11-destroy-turn.js:1591)/putCardsToDropWithTrigger fromZone===field配線(src/15-ability-effects.js:135-141)/destroyFieldCardは非破壊broadcastを呼ばない＝破壊は allyDestroyed のみ(src/11-destroy-turn.js:1195-1201設計コメント)/allyDestroyed+eventCardMatches precedent(bf-x-ss02-radiant-vs-rengoku.json 0030/0043/0044) 全実在確認。VM検証: x76-b1-verify.js test0010参照——(A)destroyFieldCard実経路(allyDestroyed)で自場の『ミニギアゴッド』含み別モンスターが破壊された時にゲージ+1・ドロー+1が発火すること、(A2)dropFieldCardByRule実経路(allyMovedToDrop)で自場の『ミニギアゴッド』含みモンスターが非破壊でドロップへ移動した時にも同じく発火すること、(B)『ミニギアゴッド』を含まないモンスターのドロップでは不発、(C)destroyとmovedToDropは shared limit で1ターン合計1回のみ発火すること、を実測。"
+      "_note": "ミニギアゴッド・レインボー（S3/7000/2/1000）。“虹色特権”『君の場のカード名に「ミニギアゴッド」を含むモンスターがドロップゾーンに置かれた時、君のデッキの上から1枚をゲージに置き、カード1枚を引く。「虹色特権」は1ターンに1回だけ発動する。』【E-XB57＝掃討で忠実化（rulings.md R11・エンジン班確定・src実在をgrep確認）＝2 ability 方式】: 原文は場全体（同名ファミリーのどのカードでも）の『ドロップゾーンに置かれた時』汎用トリガーで、破壊由来と非破壊由来（コスト/効果）の両ドロップを拾う必要がある。エンジン班が field-wide の movedToDrop broadcast（ally/opponentMovedToDrop）を新設した（src/11-destroy-turn.js:1202 queueMovedToDropFieldTriggers・1220 runFieldEventTriggers(movedToDrop,...)。非破壊のドロップ移動＝dropFieldCardByRule(同1591)と putCardsToDropWithTrigger fromZone===field(src/15-ability-effects.js:139)からのみ配送し destroyFieldCard からは呼ばない）。重複発火の分担は設計固定（src/11-destroy-turn.js:1195-1201コメント）＝破壊→allyDestroyed のみ／非破壊→allyMovedToDrop のみで、同一のドロップが destroyed と movedToDrop の両方を発火することは無い。本カードは『破壊された時』と『（非破壊で）ドロップに置かれた時』の両方を拾うため2つのlistenerを別 ability として持つ: ①event:allyDestroyed（破壊経路＝バトル/効果破壊）②event:allyMovedToDrop（非破壊経路＝0045ミニギアゴッド・ピンクの自己effect drop・コスト由来のdropOwnFieldCard等）。両abilityとも同条件 eventCardMatches{nameIncludes:ミニギアゴッド,cardType:monster}・同effects[putTopDeckToGauge{amount:1},draw{amount:1}]・同じ shared limit（key:xub03-虹色特権,scope:turn,shared:true）で束ね、named-once『1ターンに1回だけ発動する』を担保（どちらの経路で発火しても同一枠を消費＝2 abilityで1ターン合計1回のみ）。以上で近似（着手時のallyDestroyed単独＝非破壊ドロップ未捕捉）を掃討し原文どおり忠実化。grep自己検査: queueMovedToDropFieldTriggers+runFieldEventTriggers(movedToDrop)(src/11-destroy-turn.js:1202-1225)/dropFieldCardByRule配線(src/11-destroy-turn.js:1591)/putCardsToDropWithTrigger fromZone===field配線(src/15-ability-effects.js:135-141)/destroyFieldCardは非破壊broadcastを呼ばない＝破壊は allyDestroyed のみ(src/11-destroy-turn.js:1195-1201設計コメント)/allyDestroyed+eventCardMatches precedent(bf-x-ss02-radiant-vs-rengoku.json 0030/0043/0044) 全実在確認。VM検証: x76-b1-verify.js test0010参照——(A)destroyFieldCard実経路(allyDestroyed)で自場の『ミニギアゴッド』含み別モンスターが破壊された時にゲージ+1・ドロー+1が発火すること、(A2)dropFieldCardByRule実経路(allyMovedToDrop)で自場の『ミニギアゴッド』含みモンスターが非破壊でドロップへ移動した時にも同じく発火すること、(B)『ミニギアゴッド』を含まないモンスターのドロップでは不発、(C)destroyとmovedToDropは shared limit で1ターン合計1回のみ発火すること、を実測。【監査b066-2追補】ally系 broadcast は移動後の場を走査するため、ドロップへ移った0010“自身”（自分もカード名に「ミニギアゴッド」を含む＝原文の対象）を拾えなかった。③event:movedToDrop,fromZones:[field]（自己誘発 queueMovedToDropTriggers＝destroyFieldCard の破壊経路と dropFieldCardByRule/putCardsToDropWithTrigger の非破壊経路の両方から発火）を追加し、同じ shared limit で束ねた（0025マドスライドの自己該当2ability規約と同趣旨）。"
     },
     {
       "id": "bf-x-ub03-0011",
@@ -1439,50 +1470,31 @@
               "amount": 1
             }
           ],
-          "script": [
+          "effects": [
             {
-              "op": "selectCards",
-              "var": "self",
-              "from": "field",
-              "controller": "self",
-              "filter": {
-                "sameInstanceAsSource": true
+              "op": "setNextAllyAttackTrigger",
+              "persistent": true,
+              "attackerFilter": {
+                "cardType": "monster",
+                "attribute": "デュエルゴーレム"
               },
-              "amount": 1,
-              "require": false,
-              "forceDialog": false
-            },
-            {
-              "op": "grantTemporaryTriggeredAbilitySelected",
-              "var": "self",
-              "ability": {
-                "event": "allyAttack",
-                "conditions": [
-                  {
-                    "op": "eventCardMatches",
-                    "filter": {
-                      "cardType": "monster",
-                      "attribute": "デュエルゴーレム"
-                    }
-                  }
-                ],
-                "target": {
-                  "type": "fieldCard",
-                  "controller": "opponent",
-                  "allowMissingTarget": true,
-                  "filter": {}
+              "chooseTarget": {
+                "type": "fieldCard",
+                "controller": "opponent",
+                "allowMissingTarget": true,
+                "filter": {}
+              },
+              "allowMissingTarget": true,
+              "effects": [
+                {
+                  "op": "destroy",
+                  "target": "$target"
                 },
-                "effects": [
-                  {
-                    "op": "destroy",
-                    "target": "$target"
-                  },
-                  {
-                    "op": "dealDamage",
-                    "amount": 1
-                  }
-                ]
-              }
+                {
+                  "op": "dealDamage",
+                  "amount": 1
+                }
+              ]
             }
           ],
           "limit": {
@@ -1491,7 +1503,7 @@
           }
         }
       ],
-      "_note": "終魔岩機兵 ドラゴレム・ドルマドル。①【コールコスト】『君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う』=costs.call:[putTopDeckToSoul{amount:1},payGauge{amount:2}]（原文記載順どおり、bf-d-eb03-0001悠久の御使いエリクシエル等の定型）。②『君の場のモンスター全ては相手のカードの効果でレストされない。』=continuous:[grantRestImmunity{controller:self,filter:{cardType:monster},from:{byOpponent:true}}]（bf-d-eb01-0044借物の騎士ジェイク『相手のカードの効果でレストされない』のfilter:{cardType:item}をmonster版に差替えた完全同型。src/05-stats.js:1082のrest→grantRestImmunityエイリアスで既存レスト耐性判定へ合流）。③『逆天殺』〔君のメインフェイズ中、ゲージ１を払う〕『このターン中、君の場の《デュエルゴーレム》が攻撃した時、相手の場のカード１枚を破壊し、相手にダメージ１！！』=kind:activated,keyword:reversal,label:逆天殺,timing:[main],conditions:[turnOwnerIsSelf,phaseIs(main)]（bf-x-bt03-0107・bf-x-cbt02-0004の確立逆天殺骨格）+cost:[payGauge(1)]+script:[selectCards{var:self,filter:{sameInstanceAsSource:true},from:field,controller:self,amount:1,require:false,forceDialog:false}(候補=自分自身1枚のみなのでプロンプト無しで確定、bf-x-cbt02-0004型)→grantTemporaryTriggeredAbilitySelected{var:self,ability:{event:allyAttack,conditions:[eventCardMatches{filter:{cardType:monster,attribute:デュエルゴーレム}}],target:{fieldCard,controller:opponent,allowMissingTarget:true,filter:{}},effects:[destroy{target:$target},dealDamage{amount:1}]}}]（E-PR11確立op。card 0015自身へ『そのターン中のみ有効なallyAttack監視トリガー』を付与する形で『君の場の《デュエルゴーレム》が攻撃した時』を実現：runFieldEventTriggers(\"attack\",...)が攻撃宣言ごとにally<Base>を所有者側全field走査でbroadcastし(src/07-actions-turn.js:664-697)、runTriggeredAbilitiesはcard.abilitiesとcard.grantedTempAbilitiesを合流して同一event/kindで評価する(src/14-ability-script.js:13-18)ため、0015自身(デュエルゴーレム属性)含め自陣のどのデュエルゴーレムが攻撃してもeventCardMatchesで捕捉できる。E-PR11自体の「grantしたカード自身に」という通常用法(bf-x-bt03-0071)をevent:allyAttack(field broadcast)で使う点が新規組み合わせだが、既存opの合成のみで新op追加は不要。相手の場のカード=cardType不問のためfilter:{}、allowMissingTargetで相手の場が空でも安全）+limit:{scope:fight,key:reversalKill}。④『移動』『貫通』『ソウルガード』=keywords:[move,penetrate,soulguard]。grep自己検査: putTopDeckToSoul cost(src/04-cost-resource.js)/grantRestImmunity(src/05-stats.js:1082、bf-d-eb01-0044実例)/kind:activated+keyword:reversal+limit.key:reversalKill(src/13-abilities-core.js:1012-1018、bf-x-bt03-0107実例)/selectCards+sameInstanceAsSource(src/14-ability-script.js、bf-x-cbt02-0004実例)/grantTemporaryTriggeredAbilitySelected(src/14-ability-script.js:375-376,1654-1671、bf-x-bt03-0071実例)/allyAttack broadcast(src/09-attack.js:472,src/07-actions-turn.js:664-697)/eventCardMatches(src/13-abilities-core.js:1571-1573)/destroy target・dealDamage既定opponent(src/15-ability-effects.js:1106-1108) 全実在確認。"
+      "_note": "終魔岩機兵 ドラゴレム・ドルマドル。①【コールコスト】『君のデッキの上から１枚をこのカードのソウルに入れ、ゲージ２を払う』=costs.call:[putTopDeckToSoul{amount:1},payGauge{amount:2}]（原文記載順どおり、bf-d-eb03-0001悠久の御使いエリクシエル等の定型）。②『君の場のモンスター全ては相手のカードの効果でレストされない。』=continuous:[grantRestImmunity{controller:self,filter:{cardType:monster},from:{byOpponent:true}}]（bf-d-eb01-0044借物の騎士ジェイク『相手のカードの効果でレストされない』のfilter:{cardType:item}をmonster版に差替えた完全同型。src/05-stats.js:1082のrest→grantRestImmunityエイリアスで既存レスト耐性判定へ合流）。③『逆天殺』〔君のメインフェイズ中、ゲージ１を払う〕『このターン中、君の場の《デュエルゴーレム》が攻撃した時、相手の場のカード１枚を破壊し、相手にダメージ１！！』=kind:activated,keyword:reversal,label:逆天殺,timing:[main],conditions:[turnOwnerIsSelf,phaseIs(main)]（bf-x-bt03-0107・bf-x-cbt02-0004の確立逆天殺骨格）+cost:[payGauge(1)]+script:[selectCards{var:self,filter:{sameInstanceAsSource:true},from:field,controller:self,amount:1,require:false,forceDialog:false}(候補=自分自身1枚のみなのでプロンプト無しで確定、bf-x-cbt02-0004型)→grantTemporaryTriggeredAbilitySelected{var:self,ability:{event:allyAttack,conditions:[eventCardMatches{filter:{cardType:monster,attribute:デュエルゴーレム}}],target:{fieldCard,controller:opponent,allowMissingTarget:true,filter:{}},effects:[destroy{target:$target},dealDamage{amount:1}]}}]（E-PR11確立op。card 0015自身へ『そのターン中のみ有効なallyAttack監視トリガー』を付与する形で『君の場の《デュエルゴーレム》が攻撃した時』を実現：runFieldEventTriggers(\"attack\",...)が攻撃宣言ごとにally<Base>を所有者側全field走査でbroadcastし(src/07-actions-turn.js:664-697)、runTriggeredAbilitiesはcard.abilitiesとcard.grantedTempAbilitiesを合流して同一event/kindで評価する(src/14-ability-script.js:13-18)ため、0015自身(デュエルゴーレム属性)含め自陣のどのデュエルゴーレムが攻撃してもeventCardMatchesで捕捉できる。E-PR11自体の「grantしたカード自身に」という通常用法(bf-x-bt03-0071)をevent:allyAttack(field broadcast)で使う点が新規組み合わせだが、既存opの合成のみで新op追加は不要。相手の場のカード=cardType不問のためfilter:{}、allowMissingTargetで相手の場が空でも安全）+limit:{scope:fight,key:reversalKill}。④『移動』『貫通』『ソウルガード』=keywords:[move,penetrate,soulguard]。grep自己検査: putTopDeckToSoul cost(src/04-cost-resource.js)/grantRestImmunity(src/05-stats.js:1082、bf-d-eb01-0044実例)/kind:activated+keyword:reversal+limit.key:reversalKill(src/13-abilities-core.js:1012-1018、bf-x-bt03-0107実例)/selectCards+sameInstanceAsSource(src/14-ability-script.js、bf-x-cbt02-0004実例)/grantTemporaryTriggeredAbilitySelected(src/14-ability-script.js:375-376,1654-1671、bf-x-bt03-0071実例)/allyAttack broadcast(src/09-attack.js:472,src/07-actions-turn.js:664-697)/eventCardMatches(src/13-abilities-core.js:1571-1573)/destroy target・dealDamage既定opponent(src/15-ability-effects.js:1106-1108) 全実在確認。 ／【監査2 b066-1】③逆天殺の『このターン中、君の場の《デュエルゴーレム》が攻撃した時』はプレイヤー単位の持続誘発。旧実装は 0015 自身への grantTemporaryTriggeredAbilitySelected(allyAttack) だったため、0015 が離場/能力無効化されると以後の《デュエルゴーレム》の攻撃で不発だった。setNextAllyAttackTrigger{persistent:true, attackerFilter:{cardType:monster, attribute:デュエルゴーレム}} へ変更（発生源に依存せずターン終了まで、攻撃宣言1回につき1回、相手の場のカード1枚破壊→相手にダメージ1。相手の場が空でもダメージは与える＝allowMissingTarget）。"
     },
     {
       "id": "bf-x-ub03-0016",
@@ -1949,7 +1961,8 @@
                 {
                   "op": "selectZone",
                   "var": "z",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "callSelfFromHand",
@@ -2117,7 +2130,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -2752,7 +2766,7 @@
               "require": false,
               "allowEmpty": true,
               "title": "死病術師 モルドル",
-              "lead": "君の場の《病》のモンスターのソウルに入れる手札のカードを1枚まで選んでください（選ばなくてもよい）。"
+              "lead": "君の場の《病》のカードのソウルに入れる手札のカードを1枚まで選んでください（選ばなくてもよい）。"
             },
             {
               "op": "ifSelection",
@@ -2764,13 +2778,12 @@
                   "from": "field",
                   "controller": "self",
                   "filter": {
-                    "cardType": "monster",
                     "attribute": "病"
                   },
                   "amount": 1,
                   "require": true,
                   "title": "死病術師 モルドル",
-                  "lead": "ソウルに入れる先の、君の場の《病》のモンスターを選んでください。"
+                  "lead": "ソウルに入れる先の、君の場の《病》のカードを選んでください。"
                 },
                 {
                   "op": "moveSelectedToSelectedSoul",
@@ -2786,7 +2799,7 @@
           ]
         }
       ],
-      "_note": "死病術師 モルドル。コール印字コスト行なし＝costsキー省略（無償コール）。『相手のターン開始時、君の手札１枚を君の場の《病》１枚のソウルに入れてよい。入れたら、カード１枚を引く。』=kind:triggered,event:turnStart,conditions:[turnOwnerIsOpponent]（bf-x-cbt02-0005死病神官ザイルエボラのevent:turnStart+turnOwnerIsSelf型を反転）+script:[selectCards(hand,filter:{},min:0,allowEmpty:true)→ifSelection(then:[selectCards(field,self,filter:{cardType:monster,attribute:病})→moveSelectedToSelectedSoul→draw{amount:1}])]（bf-d-cbt-0004超星竜アストロビーコン『手札１枚を君の場のモンスター１枚のソウルに入れてよい。入れたら、カード１枚を引く。』の確立骨格をそのまま流用し、ソウル先候補filterにattribute:病を追加。『してよい』は最初のselectCards自体がmin:0+allowEmpty:trueで任意選択を表現、ifSelectionが選択有無で分岐＝コストstep化しない規約どおり）。grep自己検査: turnStart event+turnOwnerIsOpponent(src/13-abilities-core.js:1009、bf-x-cbt02-0005実例)/selectCards・ifSelection(src/14-ability-script.js:330-341,1192-1198、bf-d-cbt-0004実例)/moveSelectedToSelectedSoul(src/14-ability-script.js、bf-d-cbt-0004実例)/draw(src/15-ability-effects.js:281) 全実在確認。VM検証: x76-b5-verify.js test0030参照。"
+      "_note": "死病術師 モルドル。コール印字コスト行なし＝costsキー省略（無償コール）。『相手のターン開始時、君の手札１枚を君の場の《病》１枚のソウルに入れてよい。入れたら、カード１枚を引く。』=kind:triggered,event:turnStart,conditions:[turnOwnerIsOpponent]（bf-x-cbt02-0005死病神官ザイルエボラのevent:turnStart+turnOwnerIsSelf型を反転）+script:[selectCards(hand,filter:{},min:0,allowEmpty:true)→ifSelection(then:[selectCards(field,self,filter:{cardType:monster,attribute:病})→moveSelectedToSelectedSoul→draw{amount:1}])]（bf-d-cbt-0004超星竜アストロビーコン『手札１枚を君の場のモンスター１枚のソウルに入れてよい。入れたら、カード１枚を引く。』の確立骨格をそのまま流用し、ソウル先候補filterはattribute:病のみ（原文『君の場の《病》１枚』はカードの種類を限定しない＝ソウルを持つ《病》アイテム bf-x-cbt02-0079 死の学術書 アナト・ミカイ等も入れ先に選べる。監査b067-1でcardType:monster限定を撤去）。『してよい』は最初のselectCards自体がmin:0+allowEmpty:trueで任意選択を表現、ifSelectionが選択有無で分岐＝コストstep化しない規約どおり）。grep自己検査: turnStart event+turnOwnerIsOpponent(src/13-abilities-core.js:1009、bf-x-cbt02-0005実例)/selectCards・ifSelection(src/14-ability-script.js:330-341,1192-1198、bf-d-cbt-0004実例)/moveSelectedToSelectedSoul(src/14-ability-script.js、bf-d-cbt-0004実例)/draw(src/15-ability-effects.js:281) 全実在確認。VM検証: x76-b5-verify.js test0030参照。"
     },
     {
       "id": "bf-x-ub03-0031",
@@ -2816,15 +2829,6 @@
           "byOpponent": true
         }
       },
-      "useConditions": [
-        {
-          "op": "ownFieldCardExists",
-          "filter": {
-            "cardType": "item",
-            "attribute": "病"
-          }
-        }
-      ],
       "abilities": [
         {
           "id": "bf-x-ub03-0031-counter-restrict-effect-call",
@@ -2836,7 +2840,16 @@
             {
               "op": "restrictCallThisTurn",
               "player": "opponent",
-              "byEffectOnly": true
+              "byEffectOnly": true,
+              "whileConditions": [
+                {
+                  "op": "ownFieldCardExists",
+                  "filter": {
+                    "cardType": "item",
+                    "attribute": "病"
+                  }
+                }
+              ]
             }
           ]
         }
@@ -2869,7 +2882,7 @@
           ]
         }
       ],
-      "_note": "エニグマ・ウィルス。3文とも実装（①②はE-XB59で掃討済み・③は近似実装）。①『【対抗】そのターン中、君の場に《病》のアイテムがあるなら、相手はカードの効果でモンスターをコールできない。』=【E-XB59①＝掃討で実装（rulings.md R13・エンジン班確定・src実在をgrep確認）】restrictCallThisTurn に by-effect 限定キー byEffectOnly:true を新設（src/15-ability-effects.js:472）。通常コール（手打ち）を判定する isCallRestricted(src/18-tooltip-format.js:374-381) は byEffectOnly エントリを読み飛ばし、効果コール5op を判定する turnCallRestrictionBlocks(src/07-actions-turn.js:279-281) は byEffectOnly の有無に関わらず掛かる＝『カードの効果でのコールだけ』を狙い撃つ（手打ちの通常コールは許可）。実装形: kind:spell,timing:[counter]+effects:[restrictCallThisTurn{player:opponent,byEffectOnly:true}]。『君の場に《病》のアイテムがあるなら』=card級 useConditions:[ownFieldCardExists{filter:{cardType:item,attribute:病}}]（使用ゲート・0053の同型 ownFieldCardExists パターンに cardType:item を加えた形）。未指定は従来どおりの全面禁止（後方互換）。②『《病》のソウルにあるこのカードは、相手のカードの効果でドロップゾーンに置かれない。』=【E-XB59②＝掃討で実装（rulings.md R13・エンジン班確定・src実在をgrep確認）】ソウル札“自身”の自己保護経路 selfInSoulProtection:{kinds:[soulDrop],from:{byOpponent:true}} を card 直下の印字プロパティとして新設（src/05-stats.js:1268 soulCardSelfProtectedFrom が、ソウルドロップ実行点 dropSelectedSoul(src/14-ability-script.js:1832)・dropTargetSoul(src/15-ability-effects.js:2060) の両経路で候補から除外）。既存の grantSoulDiscardImmunity は『場の継続を持つカードが対象カード群を守る』第三者付与型で保護元が場札限定のため『ソウルの中にいるこのカード自身が自分を守る』自己言及型を表現できなかったが、本キーは soulCard 自身の印字プロパティを直接読む。cause.byOpponent（このドロップが相手発か＝ソウル持ちカードの持ち主と効果主体が別席）を見て相手発のみ守り、自発（自分のコスト等）は from:{byOpponent:true} を通さない。近似点: 原文『《病》のソウルにあるこのカードは』のホスト属性=病の限定は selfInSoulProtection に無い（過大許容側の軽微近似・実運用では0031は病ホストのソウルへ入るのが通常）。bf-d-bt02-0099・x74 0056 の同族ギャップも将来この経路で忠実化可能。③『相手のカードの効果で、君の場の《病》のソウルがドロップゾーンに置かれた時、このカードが《病》のソウルにあるなら、相手にダメージ１！』=近似実装。event:allySoulCardDropped（src/11-destroy-turn.js:1228-1260 queueSoulCardDroppedTriggersがrunFieldEventTriggersで場全体へブロードキャスト、bf-d-bt02-0065舎弟見習いヘルパー・成の実例）+conditions:[eventCardMatches{filter:{attribute:病}}（『君の場の《病》のソウルが...』＝ドロップされたソウルの宿主が病属性）,targetMatches{ref:\"$self\",filter:{attribute:病}}（『このカードが《病》のソウルにあるなら』＝soulAbilities発火時のcontext.card=このカードが現在宿っているホスト自身が病属性か。resolveEffectReference(\"$self\")はsrc/15-ability-effects.js:3166でcontext.cardを返す）]+effects:[dealDamage{amount:1}]（既定でopponentへ、soulAbilities文脈のcontext.ownerは自陣ホストの持ち主のため極性は原文と一致）。近似点: 『相手のカードの効果で』の発生源限定が未実装（queueSoulCardDroppedTriggersの発火経路はコスト消費/効果/バトルキーワード等の複数ソースを区別せず一律でsoulCardDroppedイベントを発火し、cause情報がdetailsに一切乗らない＝相手起因かどうかを条件で判定する手段がエンジンに無い。engine班へcauseスレッド化（queueSoulCardDroppedTriggers呼出元でmakeEffectCause相当を渡す）を提案。実運用では病ソウルの剥がし効果は大半が相手由来のため実害は限定的だが、自分自身のコスト経由の病ソウル消費でも誤発火し得る点は既知の乖離としてここに明記）。grep自己検査: soulAbilities発火(src/14-ability-script.js:19-23、bf-d-bt02-0099系の既存パターン)/allySoulCardDropped配送(src/11-destroy-turn.js:1228-1260、bf-d-bt02-0065実例)/eventCardMatches(src/13-abilities-core.js:1571-1573)/targetMatches+ref:\"$self\"(src/13-abilities-core.js:975-988,resolveEffectReference src/15-ability-effects.js:3166-3196)/dealDamage既定opponent(src/15-ability-effects.js:1106-1108)/selfInSoulProtection/soulCardSelfProtectedFrom(src/05-stats.js:1268-1287)/dropSelectedSoul faceDown・selfInSoulProtection除外(src/14-ability-script.js:1832)/dropTargetSoul selfInSoulProtection除外(src/15-ability-effects.js:2060)/restrictCallThisTurn byEffectOnly(src/15-ability-effects.js:472,476)/isCallRestricted byEffectOnly読み飛ばし(src/18-tooltip-format.js:374-381) 全実在確認。VM検証: x76-b5-verify.js test0031参照（①効果コール禁止＝byEffectOnly／②selfInSoulProtection の相手効果ドロップ耐性／③病ソウル落下時ダメージ、の3文とも実測）。"
+      "_note": "エニグマ・ウィルス。3文とも実装（①②はE-XB59で掃討済み・③は近似実装）。①『【対抗】そのターン中、君の場に《病》のアイテムがあるなら、相手はカードの効果でモンスターをコールできない。』=【E-XB59①＝掃討で実装（rulings.md R13・エンジン班確定・src実在をgrep確認）】restrictCallThisTurn に by-effect 限定キー byEffectOnly:true を新設（src/15-ability-effects.js:472）。通常コール（手打ち）を判定する isCallRestricted(src/18-tooltip-format.js:374-381) は byEffectOnly エントリを読み飛ばし、効果コール5op を判定する turnCallRestrictionBlocks(src/07-actions-turn.js:279-281) は byEffectOnly の有無に関わらず掛かる＝『カードの効果でのコールだけ』を狙い撃つ（手打ちの通常コールは許可）。実装形: kind:spell,timing:[counter]+effects:[restrictCallThisTurn{player:opponent,byEffectOnly:true}]。『君の場に《病》のアイテムがあるなら』=card級 useConditions:[ownFieldCardExists{filter:{cardType:item,attribute:病}}]（使用ゲート・0053の同型 ownFieldCardExists パターンに cardType:item を加えた形）。未指定は従来どおりの全面禁止（後方互換）。②『《病》のソウルにあるこのカードは、相手のカードの効果でドロップゾーンに置かれない。』=【E-XB59②＝掃討で実装（rulings.md R13・エンジン班確定・src実在をgrep確認）】ソウル札“自身”の自己保護経路 selfInSoulProtection:{kinds:[soulDrop],from:{byOpponent:true}} を card 直下の印字プロパティとして新設（src/05-stats.js:1268 soulCardSelfProtectedFrom が、ソウルドロップ実行点 dropSelectedSoul(src/14-ability-script.js:1832)・dropTargetSoul(src/15-ability-effects.js:2060) の両経路で候補から除外）。既存の grantSoulDiscardImmunity は『場の継続を持つカードが対象カード群を守る』第三者付与型で保護元が場札限定のため『ソウルの中にいるこのカード自身が自分を守る』自己言及型を表現できなかったが、本キーは soulCard 自身の印字プロパティを直接読む。cause.byOpponent（このドロップが相手発か＝ソウル持ちカードの持ち主と効果主体が別席）を見て相手発のみ守り、自発（自分のコスト等）は from:{byOpponent:true} を通さない。近似点: 原文『《病》のソウルにあるこのカードは』のホスト属性=病の限定は selfInSoulProtection に無い（過大許容側の軽微近似・実運用では0031は病ホストのソウルへ入るのが通常）。bf-d-bt02-0099・x74 0056 の同族ギャップも将来この経路で忠実化可能。③『相手のカードの効果で、君の場の《病》のソウルがドロップゾーンに置かれた時、このカードが《病》のソウルにあるなら、相手にダメージ１！』=近似実装。event:allySoulCardDropped（src/11-destroy-turn.js:1228-1260 queueSoulCardDroppedTriggersがrunFieldEventTriggersで場全体へブロードキャスト、bf-d-bt02-0065舎弟見習いヘルパー・成の実例）+conditions:[eventCardMatches{filter:{attribute:病}}（『君の場の《病》のソウルが...』＝ドロップされたソウルの宿主が病属性）,targetMatches{ref:\"$self\",filter:{attribute:病}}（『このカードが《病》のソウルにあるなら』＝soulAbilities発火時のcontext.card=このカードが現在宿っているホスト自身が病属性か。resolveEffectReference(\"$self\")はsrc/15-ability-effects.js:3166でcontext.cardを返す）]+effects:[dealDamage{amount:1}]（既定でopponentへ、soulAbilities文脈のcontext.ownerは自陣ホストの持ち主のため極性は原文と一致）。近似点: 『相手のカードの効果で』の発生源限定が未実装（queueSoulCardDroppedTriggersの発火経路はコスト消費/効果/バトルキーワード等の複数ソースを区別せず一律でsoulCardDroppedイベントを発火し、cause情報がdetailsに一切乗らない＝相手起因かどうかを条件で判定する手段がエンジンに無い。engine班へcauseスレッド化（queueSoulCardDroppedTriggers呼出元でmakeEffectCause相当を渡す）を提案。実運用では病ソウルの剥がし効果は大半が相手由来のため実害は限定的だが、自分自身のコスト経由の病ソウル消費でも誤発火し得る点は既知の乖離としてここに明記）。grep自己検査: soulAbilities発火(src/14-ability-script.js:19-23、bf-d-bt02-0099系の既存パターン)/allySoulCardDropped配送(src/11-destroy-turn.js:1228-1260、bf-d-bt02-0065実例)/eventCardMatches(src/13-abilities-core.js:1571-1573)/targetMatches+ref:\"$self\"(src/13-abilities-core.js:975-988,resolveEffectReference src/15-ability-effects.js:3166-3196)/dealDamage既定opponent(src/15-ability-effects.js:1106-1108)/selfInSoulProtection/soulCardSelfProtectedFrom(src/05-stats.js:1268-1287)/dropSelectedSoul faceDown・selfInSoulProtection除外(src/14-ability-script.js:1832)/dropTargetSoul selfInSoulProtection除外(src/15-ability-effects.js:2060)/restrictCallThisTurn byEffectOnly(src/15-ability-effects.js:472,476)/isCallRestricted byEffectOnly読み飛ばし(src/18-tooltip-format.js:374-381) 全実在確認。VM検証: x76-b5-verify.js test0031参照（①効果コール禁止＝byEffectOnly／②selfInSoulProtection の相手効果ドロップ耐性／③病ソウル落下時ダメージ、の3文とも実測）。 裁定 R9（2026-10-09）: 「そのターン中、君の場に《病》のアイテムがあるなら、相手は…できない」の条件は使用時ゲートではなくターン中ずっと判定＝useConditions を外し restrictCallThisTurn{whileConditions}（後から装備しても効き、離れたら外れる）。"
     },
     {
       "id": "bf-x-ub03-0032",
@@ -2982,7 +2995,9 @@
               "max": 1,
               "filter": {},
               "title": "アンフリージング",
-              "lead": "手札に加えるカードを選んでください（加えなくてもよい）。"
+              "lead": "手札に加えるカードを１枚選んでください（残りはデッキの下に好きな順番で置きます）。",
+              "min": 1,
+              "orderRest": true
             }
           ],
           "limit": {
@@ -3519,38 +3534,13 @@
       },
       "abilities": [
         {
-          "id": "bf-x-ub03-0041-link-mark",
-          "kind": "triggered",
-          "event": "attack",
-          "conditions": [
-            {
-              "op": "pendingAttackBySource"
-            },
-            {
-              "op": "pendingAttackIncludesOtherMatching",
-              "filter": {}
-            }
-          ],
-          "effects": [
-            {
-              "op": "grantKeyword",
-              "target": "$self",
-              "keyword": "xub03-0041-linked",
-              "duration": "turn"
-            }
-          ]
-        },
-        {
           "id": "bf-x-ub03-0041-battleend-call",
           "kind": "triggered",
           "event": "battleEnd",
           "conditions": [
             {
-              "op": "targetMatches",
-              "ref": "$self",
-              "filter": {
-                "keyword": "xub03-0041-linked"
-              }
+              "op": "lastAttackIsLink",
+              "includesSource": true
             }
           ],
           "script": [
@@ -3583,12 +3573,13 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             }
           ]
         }
       ],
-      "_note": "C・メラグレイブ。①【コールコスト】ゲージ１=costs.call:[payGauge(1)]。②『このカードが連携攻撃したバトル終了時、君のデッキの上から２枚をドロップゾーンに置き、その中のサイズ３のモンスター１枚までを【コールコスト】を払ってコールする。』は単一イベントで表現不可（queueBattleEndTriggers起動時点でstate.pendingAttackは既にnull化されておりbattleEnd側でpendingAttackBySource等は常に偽＝src/10-battle-resolve.jsの同期実行順序）。data/cards/bf-x-ub01-buddy-quest.json X-UB01/0062「女帝 クィーン・アゲハ」“税金↑↑”の２つ目の条項『このカードが連携攻撃したバトル終了時、場のこのカードを君の手札に戻してよい。』（attribute限定無しの単純『連携攻撃したバトル終了時』）の確立2ability橋渡し技法をそのまま流用: (a)event:attack+conditions:[pendingAttackBySource,pendingAttackIncludesOtherMatching{filter:{}}](=自分が攻撃者かつ他の攻撃者が1体以上=連携)で$selfへturn限定マーカーkeyword(xub03-0041-linked)を付与、(b)event:battleEndでconditions:[targetMatches{ref:$self,filter:{keyword:xub03-0041-linked}}]を満たした場合のみ本体解決（bareのbattleEndは攻撃者スロットのみ配信のため自己限定は自然に成立）。本体『デッキの上から２枚をドロップゾーンに置き、その中のサイズ３のモンスター１枚までを【コールコスト】を払ってコールする』はdata/cards/bf-x-bt01-reborn-of-satan.json内_note記載のbt03-0028/迅雷フォーメーション定型(moveTopDeckToDrop→selectCards{from:'movedToDrop',callable:true,canPayCost:'call'}→callSelectedToEmptyZones{payCost:'call'})をそのまま適用（filter.sizeスカラー禁止のためsizeIn:[3]使用、X-SS03/0040前例と同様）。未選択分はドロップに留まるため『残りをドロップゾーンに置く』を追加opなしで自動充足。原文に『1ターンに1回』表記が無いためlimit無し。grep自己検査: payGauge(src/04-cost-resource.js)/pendingAttackBySource(src/13-abilities-core.js:1598、X-UB01/0062実例)/pendingAttackIncludesOtherMatching(src/13-abilities-core.js:1685、X-UB01/0062実例)/grantKeyword+duration:turn(src/15-ability-effects.js:1984)/battleEnd配信(src/10-battle-resolve.js)/targetMatches ref(src/13-abilities-core.js:975、X-UB01/0062実例)/moveTopDeckToDrop(src/15-ability-effects.js:362)/selectCards from:movedToDrop(src/14-ability-script.js:694-707)/callSelectedToEmptyZones+payCost(src/14-ability-script.js:472,3133-3188) 全実在確認。VM検証: x76-b4-verify.js test0041参照。"
+      "_note": "【audit2 更新】連携判定は attack 時の duration:turn 印キーワード方式をやめ、battleEnd の条件 lastAttackIsLink{includesSource:true(,otherFilter)} に置換（同ターンの後続の単独攻撃で再誘発しないため）。以下の旧記述は履歴。 C・メラグレイブ。①【コールコスト】ゲージ１=costs.call:[payGauge(1)]。②『このカードが連携攻撃したバトル終了時、君のデッキの上から２枚をドロップゾーンに置き、その中のサイズ３のモンスター１枚までを【コールコスト】を払ってコールする。』は単一イベントで表現不可（queueBattleEndTriggers起動時点でstate.pendingAttackは既にnull化されておりbattleEnd側でpendingAttackBySource等は常に偽＝src/10-battle-resolve.jsの同期実行順序）。data/cards/bf-x-ub01-buddy-quest.json X-UB01/0062「女帝 クィーン・アゲハ」“税金↑↑”の２つ目の条項『このカードが連携攻撃したバトル終了時、場のこのカードを君の手札に戻してよい。』（attribute限定無しの単純『連携攻撃したバトル終了時』）の確立2ability橋渡し技法をそのまま流用: (a)event:attack+conditions:[pendingAttackBySource,pendingAttackIncludesOtherMatching{filter:{}}](=自分が攻撃者かつ他の攻撃者が1体以上=連携)で$selfへturn限定マーカーkeyword(xub03-0041-linked)を付与、(b)event:battleEndでconditions:[targetMatches{ref:$self,filter:{keyword:xub03-0041-linked}}]を満たした場合のみ本体解決（bareのbattleEndは攻撃者スロットのみ配信のため自己限定は自然に成立）。本体『デッキの上から２枚をドロップゾーンに置き、その中のサイズ３のモンスター１枚までを【コールコスト】を払ってコールする』はdata/cards/bf-x-bt01-reborn-of-satan.json内_note記載のbt03-0028/迅雷フォーメーション定型(moveTopDeckToDrop→selectCards{from:'movedToDrop',callable:true,canPayCost:'call'}→callSelectedToEmptyZones{payCost:'call'})をそのまま適用（filter.sizeスカラー禁止のためsizeIn:[3]使用、X-SS03/0040前例と同様）。未選択分はドロップに留まるため『残りをドロップゾーンに置く』を追加opなしで自動充足。原文に『1ターンに1回』表記が無いためlimit無し。grep自己検査: payGauge(src/04-cost-resource.js)/pendingAttackBySource(src/13-abilities-core.js:1598、X-UB01/0062実例)/pendingAttackIncludesOtherMatching(src/13-abilities-core.js:1685、X-UB01/0062実例)/grantKeyword+duration:turn(src/15-ability-effects.js:1984)/battleEnd配信(src/10-battle-resolve.js)/targetMatches ref(src/13-abilities-core.js:975、X-UB01/0062実例)/moveTopDeckToDrop(src/15-ability-effects.js:362)/selectCards from:movedToDrop(src/14-ability-script.js:694-707)/callSelectedToEmptyZones+payCost(src/14-ability-script.js:472,3133-3188) 全実在確認。VM検証: x76-b4-verify.js test0041参照。"
     },
     {
       "id": "bf-x-ub03-0042",
@@ -3895,14 +3886,18 @@
               "op": "pendingAttackDefenderIsSelf"
             }
           ],
-          "cost": [
-            {
-              "op": "destroySource"
-            }
-          ],
           "effects": [
             {
-              "op": "nullifyAttack"
+              "op": "destroy",
+              "target": "$self"
+            },
+            {
+              "op": "nullifyAttack",
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
             }
           ]
         }
@@ -4749,7 +4744,8 @@
                   "cmp": "gte",
                   "amount": 10
                 }
-              ]
+              ],
+              "upTo": true
             },
             {
               "op": "searchDeckToHand",
@@ -4775,7 +4771,7 @@
           }
         }
       ],
-      "_note": "ザ・カオス・アップグレード。①『ファイト開始時に選んだ君のフラッグが「the Chaos」なら使える。』=useConditions:[flagNameIs{name:'the Chaos'}]（src/13-abilities-core.js:1266-1274。現在のplayer.flag.nameを見る=昇格後は『∞ the Chaos ∞』になり本カードのuseConditionsは不成立に転じるが、the Chaosは単一の開始フラッグ選択でありデッキに複数コピーの本カードがあっても昇格後の再使用が意味を持たない=実害の無い近似）。②『君のドロップゾーンが10枚以上なら、君のフラッグの下にある裏向きのカード1枚までを、君のフラッグの上に表向きで重ね、君のデッキからカード名に「ギアゴッド」を含むカード1枚までを手札に加え、デッキをシャッフルする。「ザ・カオス・アップグレード」は1ターンに1回だけ使える。』=effects:[promoteFlagReserve{conditions:[cardCount{controller:self,pile:drop,cmp:gte,amount:10}]},searchDeckToHand{filter:{nameIncludes:ギアゴッド},amount:1,conditions:[同条件]}]。promoteFlagReserveはE-XB54b（rulings.md R6、src/15-ability-effects.js:1484-1508）で本カード専用に着地済みのop＝『控えフラッグ(player.flagReserve)の先頭1枚を表向きにして現フラッグの上に重ね(soulへ格納する保存則)、以後の主フラッグへ差し替える』を1手で行う。控えが無ければ冪等に何もしない（0019を仕込んでいないデッキでは常に不活性）。searchDeckToHandはfilter.nameIncludes:ギアゴッドでデッキ検索(src/15-ability-effects.js:395-428)、effect.optional省略時のデフォルトmin:0（『1枚まで』を自然に満たす）、effect.shuffle省略時のデフォルトtrue（『デッキをシャッフルする』を自動実行）。両effectとも同一のeffect.conditions（ドロップ10枚以上）で個別にゲート＝原文の『10枚以上なら、[昇格]、[検索+shuffle]』という単一のなら節を2つのeffectへ分配（executeAbilityEffectの汎用conditionsゲートで各々独立判定）。named-once=limit:{scope:turn,key:xub03-ザ・カオス・アップグレード,shared:true}。使用コスト印字なし。grep自己検査: flagNameIs(src/13-abilities-core.js:1266-1274)/promoteFlagReserve(src/15-ability-effects.js:1484-1508、E-XB54b実装コメントで本カードを名指し)/searchDeckToHand(src/15-ability-effects.js:395-428)/cardCount pile:drop(src/13-abilities-core.js:921-955) 全実在確認。VM検証: x76-b1-verify.js test0058参照——(A)useCardAction実経路で、現フラッグが『the Chaos』かつドロップ10枚未満なら昇格も検索も発生しないこと（カードは消費される）、(B)ドロップ10枚以上でplayer.flagReserveに控えがあれば昇格しplayer.flag.nameが『∞ the Chaos ∞』に変わり、旧フラッグ(the Chaos)が新フラッグのsoulへ保存されること、(C)同時にデッキから『ギアゴッド』を含むカードを1枚まで手札に加えデッキがシャッフルされること、(D)現フラッグが『the Chaos』以外ならuseConditions不成立で使用できないこと、(E)同ターン内2回目は不発、を実測。"
+      "_note": "ザ・カオス・アップグレード。①『ファイト開始時に選んだ君のフラッグが「the Chaos」なら使える。』=useConditions:[flagNameIs{name:'the Chaos'}]（src/13-abilities-core.js:1266-1274。現在のplayer.flag.nameを見る=昇格後は『∞ the Chaos ∞』になり本カードのuseConditionsは不成立に転じるが、the Chaosは単一の開始フラッグ選択でありデッキに複数コピーの本カードがあっても昇格後の再使用が意味を持たない=実害の無い近似）。②『君のドロップゾーンが10枚以上なら、君のフラッグの下にある裏向きのカード1枚までを、君のフラッグの上に表向きで重ね、君のデッキからカード名に「ギアゴッド」を含むカード1枚までを手札に加え、デッキをシャッフルする。「ザ・カオス・アップグレード」は1ターンに1回だけ使える。』=effects:[promoteFlagReserve{conditions:[cardCount{controller:self,pile:drop,cmp:gte,amount:10}]},searchDeckToHand{filter:{nameIncludes:ギアゴッド},amount:1,conditions:[同条件]}]。promoteFlagReserveはE-XB54b（rulings.md R6、src/15-ability-effects.js:1484-1508）で本カード専用に着地済みのop＝『控えフラッグ(player.flagReserve)の先頭1枚を表向きにして現フラッグの上に重ね(soulへ格納する保存則)、以後の主フラッグへ差し替える』を1手で行う。控えが無ければ冪等に何もしない（0019を仕込んでいないデッキでは常に不活性）。searchDeckToHandはfilter.nameIncludes:ギアゴッドでデッキ検索(src/15-ability-effects.js:395-428)、effect.optional省略時のデフォルトmin:0（『1枚まで』＝0〜1枚を選べる）、effect.shuffle省略時のデフォルトtrue（『デッキをシャッフルする』を自動実行）。両effectとも同一のeffect.conditions（ドロップ10枚以上）で個別にゲート＝原文の『10枚以上なら、[昇格]、[検索+shuffle]』という単一のなら節を2つのeffectへ分配（executeAbilityEffectの汎用conditionsゲートで各々独立判定）。named-once=limit:{scope:turn,key:xub03-ザ・カオス・アップグレード,shared:true}。使用コスト印字なし。grep自己検査: flagNameIs(src/13-abilities-core.js:1266-1274)/promoteFlagReserve(src/15-ability-effects.js:1484-1508、E-XB54b実装コメントで本カードを名指し)/searchDeckToHand(src/15-ability-effects.js:395-428)/cardCount pile:drop(src/13-abilities-core.js:921-955) 全実在確認。VM検証: x76-b1-verify.js test0058参照——(A)useCardAction実経路で、現フラッグが『the Chaos』かつドロップ10枚未満なら昇格も検索も発生しないこと（カードは消費される）、(B)ドロップ10枚以上でplayer.flagReserveに控えがあれば昇格しplayer.flag.nameが『∞ the Chaos ∞』に変わり、旧フラッグ(the Chaos)が新フラッグのsoulへ保存されること、(C)同時にデッキから『ギアゴッド』を含むカードを1枚まで手札に加えデッキがシャッフルされること、(D)現フラッグが『the Chaos』以外ならuseConditions不成立で使用できないこと、(E)同ターン内2回目は不発、を実測。 【R1 2026-10-09 オーナー裁定】「裏向きのカード１枚までを…重ね」＝重ねる/重ねないを選ぶ（promoteFlagReserve upTo:true。CPU既定=重ねる）。"
     },
     {
       "id": "bf-x-ub03-0059",
@@ -4871,8 +4867,6 @@
       ],
       "altArtOf": "bf-x-ub03-0001",
       "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/XUB03_BR01_RGB.png",
-      "nullifyImmune": true,
-      "cannotBeNullified": true,
       "costs": {
         "call": [
           {
@@ -4892,7 +4886,8 @@
             "amount": 1,
             "filter": {
               "sizeLte": 3
-            }
+            },
+            "asEffect": true
           }
         ],
         "optional": true
@@ -4901,6 +4896,7 @@
         {
           "id": "bf-x-ub03-0001-reversalkill-reboot",
           "label": "逆天殺ReBOOT",
+          "cannotBeNullified": true,
           "kind": "activated",
           "keyword": "reversalKillReboot",
           "noCounterWindow": true,
@@ -4942,7 +4938,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "c",
               "chooseZones": true,
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "ifCondition",
@@ -4964,7 +4961,7 @@
           }
         }
       ],
-      "_note": "究極に至るC ギアゴッド ver.1ØØØØ（S10000/100000/4/10000）。①【コールコスト】『君の場のカード名に「ギアゴッド」を含むモンスター1枚をドロップゾーンに置く』=costs.call:[dropOwnFieldCard{amount:1,filter:{cardType:monster,nameIncludes:ギアゴッド}}]（bf-x-cbt01-akaki-raitei.json X-CBT01/0070轟天覇王竜バールバッツ・ドラグロイヤー『バッツ』nameIncludesコスト、bf-d-eb03-heaven-and-hell.json D-EB03/0004ガガルガリオスのdropOwnFieldCard cost、と同型。コール時点でこのカード自身はまだ場にいない=excludeSource不要。カード名自身に『ギアゴッド』を含むが場の別カード=同名の他インスタンスも対象になり得る、原文に自己除外句なし）。②“C・ドレイン”『このカードが場から離れる場合、君の場のサイズ3以下のモンスター1枚を破壊したら、場に残せる。』=leaveFieldReplacement:{cost:[destroyOwnMonster{amount:1,filter:{sizeLte:3}}],optional:true}（bf-x-bt02-chaos-control-crisis.json X-BT02/0116 Cの支配者ギアゴッドⅦ・bf-x-bt04-rainbow-striker.json X-BT04/0099・bf-x-bt03-gyakuten-raiteigun.json X-BT03/0111と同一leaveFieldReplacement機構。既存3例の印字文言は『破壊してよい。破壊したら、このカードを場に残す。』、本カードは『破壊したら、場に残せる。』と語順が異なるが、いずれも『任意で場のサイズ3以下モンスター1枚を破壊するコストを払えば、このカードを場に残せる』という同一の任意コスト置換であり、leaveFieldReplacement.optional:trueの意味論（コストを払わない場合は通常どおり場を離れる）と完全に一致する。テキスト差は表記ゆれとして扱う）。③『逆天殺ReBOOT』〔君のメインフェイズ中、手札1枚を捨てる〕君のドロップゾーンのモンスター3枚までを、【コールコスト】を払わずコールする。さらに、君のライフが3以下なら、君のライフを10にする！！！（無効化されず、相手は対抗できず、ファイト中に1回）: E-XB55（rulings.md R7・エンジン班確定、src/15-ability-effects.js:3706-3712 normalizedAbilityLimitが keyword:'reversalKillReboot' から scope:'fight'/key:'reversalKillReboot' を自動導出＝reversal/reversalKill/greatReversalとは独立プール）。kind:activated,timing:[main],conditions:[turnOwnerIsSelf,phaseIs(main)]（X74-B18/0009超進化増進機ギアゴッド ver.1ØØØの『逆天殺』kind:activated,keyword:reversal,timing:[main]と同型骨格）,cost:[discardHand{amount:1}]（手札1枚を捨てる）,script:[selectCards{from:drop,controller:self,filter:{cardType:monster},min:0,max:3,require:false,callable:true}（canPayCost未指定=コールコストを払わない無償コール、H-EB01/0008デスマスターレラグ・モナークのmax:2無償版を3枚版に拡張した直接precedent。マスプロダクション型(bf-x-cbt02-kuroki-kishin.json ミニギアゴッド・ゴールド)のmin:0,max:3,require:falseと同型セレクタにcanPayCostを外して無償化）,callSelectedToEmptyZones{chooseZones:true,resolveOnEnter:true}]（H-EB01/0008と同型のchooseZones:trueで複数体を別々のゾーンへ配置）,limit:{scope:fight,key:reversalKillReboot}（keyword自動導出と同値を明示・大逆天greatReversalの明示limit併記慣例に倣う）。【E-XB56＝掃討で本格実装（rulings.md R10・エンジン班確定・src実在をgrep確認）】(a)『さらに、君のライフが3以下なら、君のライフを10にする』: isScriptEffectStep(src/14-ability-script.js:3343-3454)のホワイトリストへ setLife を追加した（3399行「setLife」・effect版 src/15-ability-effects.js:675 へ委譲）ため、script末尾に {op:ifCondition,condition:{op:lifeLte,amount:3},then:[{op:setLife,life:10}]} を置き、無償複数コール(selectCards/callSelectedToEmptyZones=script専用op)と同一 ability.script 内で忠実に両立できるようになった。原文の節順（コール→ライフ判定）どおりに callSelectedToEmptyZones の直後へ配置。ifCondition(script)自体は既に動作（bf-hd-pr.json PR/0381サンダー×シュレッダーのifCondition{lifeLte}precedent）で、then節に setLife をホワイトリスト追加により置けるようになった。(b)『相手は【対抗】できず』: ability レベル noCounterWindow:true を新設（src/13-abilities-core.js:204・365 で参照）。kind:activated の場発動(useFieldAbilityAction)は既定で宣言時に自前で pendingAction を開き対抗ウィンドウを与える（src/13-abilities-core.js:200-215）ため、triggered 型 preventOpponentCounterThisTurn では『宣言そのもの』を遡って守れなかった（対抗ウィンドウが閉じた後にしか効かない構造問題）。noCounterWindow:true はこの宣言前バリアとして、宣言時に対抗ウィンドウを開かず即時解決経路へ落とす（未指定=既存カード全ては従来どおり対抗ウィンドウを開く＝後方互換）。加えて『無効化されず』のうち実務上最重要の経路（相手の対抗魔法が nullifyPendingAction でこの宣言自体を打ち消す）は card級 cannotBeNullified:true で別途カバー済み（nullifyPendingAction→cardCannotBeNullified、src/07-actions-turn.js:1313-1322,1329）＝isAbilitiesNullified系(nullifyImmune)とは独立の第2の無効化経路。rules原文は4行とも改変せずそのまま収録。以上で①〜③（ライフ3以下→10・相手対抗不可・無効化されず）を原文どおり実装完了（着手時の未実装2件を掃討で解消）。④『C・テリトリー』はrulings.md R1（統括裁定・pr-backfill R11踏襲、field.centerが単一nullableスロットのため場構造拡張が必要で単一カードのDSLでは表現不能）により表示専用・機構キー無し（多数の既存precedent=bf-x-bt02-0116/bf-x-bt03-0111/bf-x-td02-0001等と同じ扱い）。⑤card級nullifyImmune:true+cannotBeNullified:trueは本カードのabilities配列がreversalKillReboot 1件のみのため副作用なく正しくスコープする（nullifyImmune→isAbilitiesNullified冒頭ガードsrc/05-stats.js:124、cannotBeNullified→cardCannotBeNullified src/07-actions-turn.js:1313-1322が共にcard直下の静的プロパティを読むだけで宣言タイミング非依存＝preventOpponentCounterThisTurnと異なりシーケンス問題が無い）。grep自己検査: dropOwnFieldCard(src/04-cost-resource.js:744,1198,2111、X-CBT01/0070実例)/leaveFieldReplacement配線(src/11-destroy-turn.js:247-277,637-640,698-701、X-BT02/0116実例)/destroyOwnMonster+filter.sizeLte(src/04-cost-resource.js:801,1245,2022)/normalizedAbilityLimit keyword:reversalKillReboot(src/15-ability-effects.js:3706-3712)/selectCards from:drop+callable無償(src/14-ability-script.js:532台、H-EB01/0008実例)/callSelectedToEmptyZones chooseZones(src/14-ability-script.js:2616-2707、H-EB01/0008実例)/isAbilitiesNullified冒頭card.nullifyImmuneガード(src/05-stats.js:124)/cardCannotBeNullified+nullifyPendingAction(src/07-actions-turn.js:1313-1336)/isScriptEffectStepホワイトリストにsetLife在(src/14-ability-script.js:3399)/ability.noCounterWindow参照(src/13-abilities-core.js:204,365) 全実在確認。VM検証: x76-b1-verify.js test0001参照——(A)callMonster実経路でコールコスト（場の『ギアゴッド』含みモンスター1枚をドロップへ）が課金されること、(B)destroyFieldCard実経路でC・ドレインの任意コスト置換（サイズ3以下1体を破壊すれば場に残る／破壊しなければ通常どおり場を離れる）、(C)useFieldAbilityAction/resolvePendingResolution実経路で逆天殺ReBOOTを使うと手札1枚を捨ててドロップのモンスター最大3枚まで無償コールされること・かつ noCounterWindow:true により宣言時に対抗ウィンドウ(pendingAction)を開かず即時解決されること・ライフ3以下から script末尾の ifCondition{lifeLte:3}→setLife{life:10} でライフが10になること、(D)ファイト中2回目の逆天殺ReBOOTがfightLimits[owner].reversalKillRebootにより不発かつ既存の『逆天』『逆天殺』『大逆天』プールには一切影響しないこと、(E)nullifyPendingAction実経路でこの宣言が無効化されないこと（cannotBeNullified）、を実測。"
+      "_note": "究極に至るC ギアゴッド ver.1ØØØØ（S10000/100000/4/10000）。①【コールコスト】『君の場のカード名に「ギアゴッド」を含むモンスター1枚をドロップゾーンに置く』=costs.call:[dropOwnFieldCard{amount:1,filter:{cardType:monster,nameIncludes:ギアゴッド}}]（bf-x-cbt01-akaki-raitei.json X-CBT01/0070轟天覇王竜バールバッツ・ドラグロイヤー『バッツ』nameIncludesコスト、bf-d-eb03-heaven-and-hell.json D-EB03/0004ガガルガリオスのdropOwnFieldCard cost、と同型。コール時点でこのカード自身はまだ場にいない=excludeSource不要。カード名自身に『ギアゴッド』を含むが場の別カード=同名の他インスタンスも対象になり得る、原文に自己除外句なし）。②“C・ドレイン”『このカードが場から離れる場合、君の場のサイズ3以下のモンスター1枚を破壊したら、場に残せる。』=leaveFieldReplacement:{cost:[destroyOwnMonster{amount:1,filter:{sizeLte:3}}],optional:true}（bf-x-bt02-chaos-control-crisis.json X-BT02/0116 Cの支配者ギアゴッドⅦ・bf-x-bt04-rainbow-striker.json X-BT04/0099・bf-x-bt03-gyakuten-raiteigun.json X-BT03/0111と同一leaveFieldReplacement機構。既存3例の印字文言は『破壊してよい。破壊したら、このカードを場に残す。』、本カードは『破壊したら、場に残せる。』と語順が異なるが、いずれも『任意で場のサイズ3以下モンスター1枚を破壊するコストを払えば、このカードを場に残せる』という同一の任意コスト置換であり、leaveFieldReplacement.optional:trueの意味論（コストを払わない場合は通常どおり場を離れる）と完全に一致する。テキスト差は表記ゆれとして扱う）。③『逆天殺ReBOOT』〔君のメインフェイズ中、手札1枚を捨てる〕君のドロップゾーンのモンスター3枚までを、【コールコスト】を払わずコールする。さらに、君のライフが3以下なら、君のライフを10にする！！！（無効化されず、相手は対抗できず、ファイト中に1回）: E-XB55（rulings.md R7・エンジン班確定、src/15-ability-effects.js:3706-3712 normalizedAbilityLimitが keyword:'reversalKillReboot' から scope:'fight'/key:'reversalKillReboot' を自動導出＝reversal/reversalKill/greatReversalとは独立プール）。kind:activated,timing:[main],conditions:[turnOwnerIsSelf,phaseIs(main)]（X74-B18/0009超進化増進機ギアゴッド ver.1ØØØの『逆天殺』kind:activated,keyword:reversal,timing:[main]と同型骨格）,cost:[discardHand{amount:1}]（手札1枚を捨てる）,script:[selectCards{from:drop,controller:self,filter:{cardType:monster},min:0,max:3,require:false,callable:true}（canPayCost未指定=コールコストを払わない無償コール、H-EB01/0008デスマスターレラグ・モナークのmax:2無償版を3枚版に拡張した直接precedent。マスプロダクション型(bf-x-cbt02-kuroki-kishin.json ミニギアゴッド・ゴールド)のmin:0,max:3,require:falseと同型セレクタにcanPayCostを外して無償化）,callSelectedToEmptyZones{chooseZones:true,resolveOnEnter:true}]（H-EB01/0008と同型のchooseZones:trueで複数体を別々のゾーンへ配置）,limit:{scope:fight,key:reversalKillReboot}（keyword自動導出と同値を明示・大逆天greatReversalの明示limit併記慣例に倣う）。【E-XB56＝掃討で本格実装（rulings.md R10・エンジン班確定・src実在をgrep確認）】(a)『さらに、君のライフが3以下なら、君のライフを10にする』: isScriptEffectStep(src/14-ability-script.js:3343-3454)のホワイトリストへ setLife を追加した（3399行「setLife」・effect版 src/15-ability-effects.js:675 へ委譲）ため、script末尾に {op:ifCondition,condition:{op:lifeLte,amount:3},then:[{op:setLife,life:10}]} を置き、無償複数コール(selectCards/callSelectedToEmptyZones=script専用op)と同一 ability.script 内で忠実に両立できるようになった。原文の節順（コール→ライフ判定）どおりに callSelectedToEmptyZones の直後へ配置。ifCondition(script)自体は既に動作（bf-hd-pr.json PR/0381サンダー×シュレッダーのifCondition{lifeLte}precedent）で、then節に setLife をホワイトリスト追加により置けるようになった。(b)『相手は【対抗】できず』: ability レベル noCounterWindow:true を新設（src/13-abilities-core.js:204・365 で参照）。kind:activated の場発動(useFieldAbilityAction)は既定で宣言時に自前で pendingAction を開き対抗ウィンドウを与える（src/13-abilities-core.js:200-215）ため、triggered 型 preventOpponentCounterThisTurn では『宣言そのもの』を遡って守れなかった（対抗ウィンドウが閉じた後にしか効かない構造問題）。noCounterWindow:true はこの宣言前バリアとして、宣言時に対抗ウィンドウを開かず即時解決経路へ落とす（未指定=既存カード全ては従来どおり対抗ウィンドウを開く＝後方互換）。加えて『無効化されず』のうち実務上最重要の経路（相手の対抗魔法が nullifyPendingAction でこの宣言自体を打ち消す）は card級 cannotBeNullified:true で別途カバー済み（nullifyPendingAction→cardCannotBeNullified、src/07-actions-turn.js:1313-1322,1329）＝isAbilitiesNullified系(nullifyImmune)とは独立の第2の無効化経路。rules原文は4行とも改変せずそのまま収録。以上で①〜③（ライフ3以下→10・相手対抗不可・無効化されず）を原文どおり実装完了（着手時の未実装2件を掃討で解消）。④『C・テリトリー』はrulings.md R1（統括裁定・pr-backfill R11踏襲、field.centerが単一nullableスロットのため場構造拡張が必要で単一カードのDSLでは表現不能）により表示専用・機構キー無し（多数の既存precedent=bf-x-bt02-0116/bf-x-bt03-0111/bf-x-td02-0001等と同じ扱い）。⑤card級nullifyImmune:true+cannotBeNullified:trueは本カードのabilities配列がreversalKillReboot 1件のみのため副作用なく正しくスコープする（nullifyImmune→isAbilitiesNullified冒頭ガードsrc/05-stats.js:124、cannotBeNullified→cardCannotBeNullified src/07-actions-turn.js:1313-1322が共にcard直下の静的プロパティを読むだけで宣言タイミング非依存＝preventOpponentCounterThisTurnと異なりシーケンス問題が無い）。grep自己検査: dropOwnFieldCard(src/04-cost-resource.js:744,1198,2111、X-CBT01/0070実例)/leaveFieldReplacement配線(src/11-destroy-turn.js:247-277,637-640,698-701、X-BT02/0116実例)/destroyOwnMonster+filter.sizeLte(src/04-cost-resource.js:801,1245,2022)/normalizedAbilityLimit keyword:reversalKillReboot(src/15-ability-effects.js:3706-3712)/selectCards from:drop+callable無償(src/14-ability-script.js:532台、H-EB01/0008実例)/callSelectedToEmptyZones chooseZones(src/14-ability-script.js:2616-2707、H-EB01/0008実例)/isAbilitiesNullified冒頭card.nullifyImmuneガード(src/05-stats.js:124)/cardCannotBeNullified+nullifyPendingAction(src/07-actions-turn.js:1313-1336)/isScriptEffectStepホワイトリストにsetLife在(src/14-ability-script.js:3399)/ability.noCounterWindow参照(src/13-abilities-core.js:204,365) 全実在確認。VM検証: x76-b1-verify.js test0001参照——(A)callMonster実経路でコールコスト（場の『ギアゴッド』含みモンスター1枚をドロップへ）が課金されること、(B)destroyFieldCard実経路でC・ドレインの任意コスト置換（サイズ3以下1体を破壊すれば場に残る／破壊しなければ通常どおり場を離れる）、(C)useFieldAbilityAction/resolvePendingResolution実経路で逆天殺ReBOOTを使うと手札1枚を捨ててドロップのモンスター最大3枚まで無償コールされること・かつ noCounterWindow:true により宣言時に対抗ウィンドウ(pendingAction)を開かず即時解決されること・ライフ3以下から script末尾の ifCondition{lifeLte:3}→setLife{life:10} でライフが10になること、(D)ファイト中2回目の逆天殺ReBOOTがfightLimits[owner].reversalKillRebootにより不発かつ既存の『逆天』『逆天殺』『大逆天』プールには一切影響しないこと、(E)nullifyPendingAction実経路でこの宣言が無効化されないこと（cannotBeNullified）、を実測。 ／【2026-10-09 オーナー裁定R8】“C・ドレイン”の『〜を破壊してよい。破壊したら、場に残す』の破壊は効果: leaveFieldReplacement.cost の destroyOwnMonster に asEffect:true（置換を無視せず破壊する。ソウルガード等で場に残っても破壊は成功＝支払い成立でこのカードは場に残る［2026-10-09 オーナー裁定］。破壊耐性等で破壊できなかった時だけ支払い不成立＝このカードは場を離れる）。同期の単体手札戻し経路は従来の近似のまま。"
     },
     {
       "id": "bf-x-ub03-br02",
@@ -5042,7 +5039,9 @@
             }
           ],
           "limit": {
-            "scope": "turn"
+            "scope": "turn",
+            "shared": true,
+            "key": "bf-x-ub03-0002-gb-burst"
           }
         }
       ],
@@ -5070,8 +5069,6 @@
       ],
       "altArtOf": "bf-x-ub03-0001",
       "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/xub_03_S001.png",
-      "nullifyImmune": true,
-      "cannotBeNullified": true,
       "costs": {
         "call": [
           {
@@ -5091,7 +5088,8 @@
             "amount": 1,
             "filter": {
               "sizeLte": 3
-            }
+            },
+            "asEffect": true
           }
         ],
         "optional": true
@@ -5100,6 +5098,7 @@
         {
           "id": "bf-x-ub03-0001-reversalkill-reboot",
           "label": "逆天殺ReBOOT",
+          "cannotBeNullified": true,
           "kind": "activated",
           "keyword": "reversalKillReboot",
           "noCounterWindow": true,
@@ -5141,7 +5140,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "c",
               "chooseZones": true,
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "ifCondition",
@@ -5163,7 +5163,7 @@
           }
         }
       ],
-      "_note": "究極に至るC ギアゴッド ver.1ØØØØ（S10000/100000/4/10000）。①【コールコスト】『君の場のカード名に「ギアゴッド」を含むモンスター1枚をドロップゾーンに置く』=costs.call:[dropOwnFieldCard{amount:1,filter:{cardType:monster,nameIncludes:ギアゴッド}}]（bf-x-cbt01-akaki-raitei.json X-CBT01/0070轟天覇王竜バールバッツ・ドラグロイヤー『バッツ』nameIncludesコスト、bf-d-eb03-heaven-and-hell.json D-EB03/0004ガガルガリオスのdropOwnFieldCard cost、と同型。コール時点でこのカード自身はまだ場にいない=excludeSource不要。カード名自身に『ギアゴッド』を含むが場の別カード=同名の他インスタンスも対象になり得る、原文に自己除外句なし）。②“C・ドレイン”『このカードが場から離れる場合、君の場のサイズ3以下のモンスター1枚を破壊したら、場に残せる。』=leaveFieldReplacement:{cost:[destroyOwnMonster{amount:1,filter:{sizeLte:3}}],optional:true}（bf-x-bt02-chaos-control-crisis.json X-BT02/0116 Cの支配者ギアゴッドⅦ・bf-x-bt04-rainbow-striker.json X-BT04/0099・bf-x-bt03-gyakuten-raiteigun.json X-BT03/0111と同一leaveFieldReplacement機構。既存3例の印字文言は『破壊してよい。破壊したら、このカードを場に残す。』、本カードは『破壊したら、場に残せる。』と語順が異なるが、いずれも『任意で場のサイズ3以下モンスター1枚を破壊するコストを払えば、このカードを場に残せる』という同一の任意コスト置換であり、leaveFieldReplacement.optional:trueの意味論（コストを払わない場合は通常どおり場を離れる）と完全に一致する。テキスト差は表記ゆれとして扱う）。③『逆天殺ReBOOT』〔君のメインフェイズ中、手札1枚を捨てる〕君のドロップゾーンのモンスター3枚までを、【コールコスト】を払わずコールする。さらに、君のライフが3以下なら、君のライフを10にする！！！（無効化されず、相手は対抗できず、ファイト中に1回）: E-XB55（rulings.md R7・エンジン班確定、src/15-ability-effects.js:3706-3712 normalizedAbilityLimitが keyword:'reversalKillReboot' から scope:'fight'/key:'reversalKillReboot' を自動導出＝reversal/reversalKill/greatReversalとは独立プール）。kind:activated,timing:[main],conditions:[turnOwnerIsSelf,phaseIs(main)]（X74-B18/0009超進化増進機ギアゴッド ver.1ØØØの『逆天殺』kind:activated,keyword:reversal,timing:[main]と同型骨格）,cost:[discardHand{amount:1}]（手札1枚を捨てる）,script:[selectCards{from:drop,controller:self,filter:{cardType:monster},min:0,max:3,require:false,callable:true}（canPayCost未指定=コールコストを払わない無償コール、H-EB01/0008デスマスターレラグ・モナークのmax:2無償版を3枚版に拡張した直接precedent。マスプロダクション型(bf-x-cbt02-kuroki-kishin.json ミニギアゴッド・ゴールド)のmin:0,max:3,require:falseと同型セレクタにcanPayCostを外して無償化）,callSelectedToEmptyZones{chooseZones:true,resolveOnEnter:true}]（H-EB01/0008と同型のchooseZones:trueで複数体を別々のゾーンへ配置）,limit:{scope:fight,key:reversalKillReboot}（keyword自動導出と同値を明示・大逆天greatReversalの明示limit併記慣例に倣う）。【E-XB56＝掃討で本格実装（rulings.md R10・エンジン班確定・src実在をgrep確認）】(a)『さらに、君のライフが3以下なら、君のライフを10にする』: isScriptEffectStep(src/14-ability-script.js:3343-3454)のホワイトリストへ setLife を追加した（3399行「setLife」・effect版 src/15-ability-effects.js:675 へ委譲）ため、script末尾に {op:ifCondition,condition:{op:lifeLte,amount:3},then:[{op:setLife,life:10}]} を置き、無償複数コール(selectCards/callSelectedToEmptyZones=script専用op)と同一 ability.script 内で忠実に両立できるようになった。原文の節順（コール→ライフ判定）どおりに callSelectedToEmptyZones の直後へ配置。ifCondition(script)自体は既に動作（bf-hd-pr.json PR/0381サンダー×シュレッダーのifCondition{lifeLte}precedent）で、then節に setLife をホワイトリスト追加により置けるようになった。(b)『相手は【対抗】できず』: ability レベル noCounterWindow:true を新設（src/13-abilities-core.js:204・365 で参照）。kind:activated の場発動(useFieldAbilityAction)は既定で宣言時に自前で pendingAction を開き対抗ウィンドウを与える（src/13-abilities-core.js:200-215）ため、triggered 型 preventOpponentCounterThisTurn では『宣言そのもの』を遡って守れなかった（対抗ウィンドウが閉じた後にしか効かない構造問題）。noCounterWindow:true はこの宣言前バリアとして、宣言時に対抗ウィンドウを開かず即時解決経路へ落とす（未指定=既存カード全ては従来どおり対抗ウィンドウを開く＝後方互換）。加えて『無効化されず』のうち実務上最重要の経路（相手の対抗魔法が nullifyPendingAction でこの宣言自体を打ち消す）は card級 cannotBeNullified:true で別途カバー済み（nullifyPendingAction→cardCannotBeNullified、src/07-actions-turn.js:1313-1322,1329）＝isAbilitiesNullified系(nullifyImmune)とは独立の第2の無効化経路。rules原文は4行とも改変せずそのまま収録。以上で①〜③（ライフ3以下→10・相手対抗不可・無効化されず）を原文どおり実装完了（着手時の未実装2件を掃討で解消）。④『C・テリトリー』はrulings.md R1（統括裁定・pr-backfill R11踏襲、field.centerが単一nullableスロットのため場構造拡張が必要で単一カードのDSLでは表現不能）により表示専用・機構キー無し（多数の既存precedent=bf-x-bt02-0116/bf-x-bt03-0111/bf-x-td02-0001等と同じ扱い）。⑤card級nullifyImmune:true+cannotBeNullified:trueは本カードのabilities配列がreversalKillReboot 1件のみのため副作用なく正しくスコープする（nullifyImmune→isAbilitiesNullified冒頭ガードsrc/05-stats.js:124、cannotBeNullified→cardCannotBeNullified src/07-actions-turn.js:1313-1322が共にcard直下の静的プロパティを読むだけで宣言タイミング非依存＝preventOpponentCounterThisTurnと異なりシーケンス問題が無い）。grep自己検査: dropOwnFieldCard(src/04-cost-resource.js:744,1198,2111、X-CBT01/0070実例)/leaveFieldReplacement配線(src/11-destroy-turn.js:247-277,637-640,698-701、X-BT02/0116実例)/destroyOwnMonster+filter.sizeLte(src/04-cost-resource.js:801,1245,2022)/normalizedAbilityLimit keyword:reversalKillReboot(src/15-ability-effects.js:3706-3712)/selectCards from:drop+callable無償(src/14-ability-script.js:532台、H-EB01/0008実例)/callSelectedToEmptyZones chooseZones(src/14-ability-script.js:2616-2707、H-EB01/0008実例)/isAbilitiesNullified冒頭card.nullifyImmuneガード(src/05-stats.js:124)/cardCannotBeNullified+nullifyPendingAction(src/07-actions-turn.js:1313-1336)/isScriptEffectStepホワイトリストにsetLife在(src/14-ability-script.js:3399)/ability.noCounterWindow参照(src/13-abilities-core.js:204,365) 全実在確認。VM検証: x76-b1-verify.js test0001参照——(A)callMonster実経路でコールコスト（場の『ギアゴッド』含みモンスター1枚をドロップへ）が課金されること、(B)destroyFieldCard実経路でC・ドレインの任意コスト置換（サイズ3以下1体を破壊すれば場に残る／破壊しなければ通常どおり場を離れる）、(C)useFieldAbilityAction/resolvePendingResolution実経路で逆天殺ReBOOTを使うと手札1枚を捨ててドロップのモンスター最大3枚まで無償コールされること・かつ noCounterWindow:true により宣言時に対抗ウィンドウ(pendingAction)を開かず即時解決されること・ライフ3以下から script末尾の ifCondition{lifeLte:3}→setLife{life:10} でライフが10になること、(D)ファイト中2回目の逆天殺ReBOOTがfightLimits[owner].reversalKillRebootにより不発かつ既存の『逆天』『逆天殺』『大逆天』プールには一切影響しないこと、(E)nullifyPendingAction実経路でこの宣言が無効化されないこと（cannotBeNullified）、を実測。"
+      "_note": "究極に至るC ギアゴッド ver.1ØØØØ（S10000/100000/4/10000）。①【コールコスト】『君の場のカード名に「ギアゴッド」を含むモンスター1枚をドロップゾーンに置く』=costs.call:[dropOwnFieldCard{amount:1,filter:{cardType:monster,nameIncludes:ギアゴッド}}]（bf-x-cbt01-akaki-raitei.json X-CBT01/0070轟天覇王竜バールバッツ・ドラグロイヤー『バッツ』nameIncludesコスト、bf-d-eb03-heaven-and-hell.json D-EB03/0004ガガルガリオスのdropOwnFieldCard cost、と同型。コール時点でこのカード自身はまだ場にいない=excludeSource不要。カード名自身に『ギアゴッド』を含むが場の別カード=同名の他インスタンスも対象になり得る、原文に自己除外句なし）。②“C・ドレイン”『このカードが場から離れる場合、君の場のサイズ3以下のモンスター1枚を破壊したら、場に残せる。』=leaveFieldReplacement:{cost:[destroyOwnMonster{amount:1,filter:{sizeLte:3}}],optional:true}（bf-x-bt02-chaos-control-crisis.json X-BT02/0116 Cの支配者ギアゴッドⅦ・bf-x-bt04-rainbow-striker.json X-BT04/0099・bf-x-bt03-gyakuten-raiteigun.json X-BT03/0111と同一leaveFieldReplacement機構。既存3例の印字文言は『破壊してよい。破壊したら、このカードを場に残す。』、本カードは『破壊したら、場に残せる。』と語順が異なるが、いずれも『任意で場のサイズ3以下モンスター1枚を破壊するコストを払えば、このカードを場に残せる』という同一の任意コスト置換であり、leaveFieldReplacement.optional:trueの意味論（コストを払わない場合は通常どおり場を離れる）と完全に一致する。テキスト差は表記ゆれとして扱う）。③『逆天殺ReBOOT』〔君のメインフェイズ中、手札1枚を捨てる〕君のドロップゾーンのモンスター3枚までを、【コールコスト】を払わずコールする。さらに、君のライフが3以下なら、君のライフを10にする！！！（無効化されず、相手は対抗できず、ファイト中に1回）: E-XB55（rulings.md R7・エンジン班確定、src/15-ability-effects.js:3706-3712 normalizedAbilityLimitが keyword:'reversalKillReboot' から scope:'fight'/key:'reversalKillReboot' を自動導出＝reversal/reversalKill/greatReversalとは独立プール）。kind:activated,timing:[main],conditions:[turnOwnerIsSelf,phaseIs(main)]（X74-B18/0009超進化増進機ギアゴッド ver.1ØØØの『逆天殺』kind:activated,keyword:reversal,timing:[main]と同型骨格）,cost:[discardHand{amount:1}]（手札1枚を捨てる）,script:[selectCards{from:drop,controller:self,filter:{cardType:monster},min:0,max:3,require:false,callable:true}（canPayCost未指定=コールコストを払わない無償コール、H-EB01/0008デスマスターレラグ・モナークのmax:2無償版を3枚版に拡張した直接precedent。マスプロダクション型(bf-x-cbt02-kuroki-kishin.json ミニギアゴッド・ゴールド)のmin:0,max:3,require:falseと同型セレクタにcanPayCostを外して無償化）,callSelectedToEmptyZones{chooseZones:true,resolveOnEnter:true}]（H-EB01/0008と同型のchooseZones:trueで複数体を別々のゾーンへ配置）,limit:{scope:fight,key:reversalKillReboot}（keyword自動導出と同値を明示・大逆天greatReversalの明示limit併記慣例に倣う）。【E-XB56＝掃討で本格実装（rulings.md R10・エンジン班確定・src実在をgrep確認）】(a)『さらに、君のライフが3以下なら、君のライフを10にする』: isScriptEffectStep(src/14-ability-script.js:3343-3454)のホワイトリストへ setLife を追加した（3399行「setLife」・effect版 src/15-ability-effects.js:675 へ委譲）ため、script末尾に {op:ifCondition,condition:{op:lifeLte,amount:3},then:[{op:setLife,life:10}]} を置き、無償複数コール(selectCards/callSelectedToEmptyZones=script専用op)と同一 ability.script 内で忠実に両立できるようになった。原文の節順（コール→ライフ判定）どおりに callSelectedToEmptyZones の直後へ配置。ifCondition(script)自体は既に動作（bf-hd-pr.json PR/0381サンダー×シュレッダーのifCondition{lifeLte}precedent）で、then節に setLife をホワイトリスト追加により置けるようになった。(b)『相手は【対抗】できず』: ability レベル noCounterWindow:true を新設（src/13-abilities-core.js:204・365 で参照）。kind:activated の場発動(useFieldAbilityAction)は既定で宣言時に自前で pendingAction を開き対抗ウィンドウを与える（src/13-abilities-core.js:200-215）ため、triggered 型 preventOpponentCounterThisTurn では『宣言そのもの』を遡って守れなかった（対抗ウィンドウが閉じた後にしか効かない構造問題）。noCounterWindow:true はこの宣言前バリアとして、宣言時に対抗ウィンドウを開かず即時解決経路へ落とす（未指定=既存カード全ては従来どおり対抗ウィンドウを開く＝後方互換）。加えて『無効化されず』のうち実務上最重要の経路（相手の対抗魔法が nullifyPendingAction でこの宣言自体を打ち消す）は card級 cannotBeNullified:true で別途カバー済み（nullifyPendingAction→cardCannotBeNullified、src/07-actions-turn.js:1313-1322,1329）＝isAbilitiesNullified系(nullifyImmune)とは独立の第2の無効化経路。rules原文は4行とも改変せずそのまま収録。以上で①〜③（ライフ3以下→10・相手対抗不可・無効化されず）を原文どおり実装完了（着手時の未実装2件を掃討で解消）。④『C・テリトリー』はrulings.md R1（統括裁定・pr-backfill R11踏襲、field.centerが単一nullableスロットのため場構造拡張が必要で単一カードのDSLでは表現不能）により表示専用・機構キー無し（多数の既存precedent=bf-x-bt02-0116/bf-x-bt03-0111/bf-x-td02-0001等と同じ扱い）。⑤card級nullifyImmune:true+cannotBeNullified:trueは本カードのabilities配列がreversalKillReboot 1件のみのため副作用なく正しくスコープする（nullifyImmune→isAbilitiesNullified冒頭ガードsrc/05-stats.js:124、cannotBeNullified→cardCannotBeNullified src/07-actions-turn.js:1313-1322が共にcard直下の静的プロパティを読むだけで宣言タイミング非依存＝preventOpponentCounterThisTurnと異なりシーケンス問題が無い）。grep自己検査: dropOwnFieldCard(src/04-cost-resource.js:744,1198,2111、X-CBT01/0070実例)/leaveFieldReplacement配線(src/11-destroy-turn.js:247-277,637-640,698-701、X-BT02/0116実例)/destroyOwnMonster+filter.sizeLte(src/04-cost-resource.js:801,1245,2022)/normalizedAbilityLimit keyword:reversalKillReboot(src/15-ability-effects.js:3706-3712)/selectCards from:drop+callable無償(src/14-ability-script.js:532台、H-EB01/0008実例)/callSelectedToEmptyZones chooseZones(src/14-ability-script.js:2616-2707、H-EB01/0008実例)/isAbilitiesNullified冒頭card.nullifyImmuneガード(src/05-stats.js:124)/cardCannotBeNullified+nullifyPendingAction(src/07-actions-turn.js:1313-1336)/isScriptEffectStepホワイトリストにsetLife在(src/14-ability-script.js:3399)/ability.noCounterWindow参照(src/13-abilities-core.js:204,365) 全実在確認。VM検証: x76-b1-verify.js test0001参照——(A)callMonster実経路でコールコスト（場の『ギアゴッド』含みモンスター1枚をドロップへ）が課金されること、(B)destroyFieldCard実経路でC・ドレインの任意コスト置換（サイズ3以下1体を破壊すれば場に残る／破壊しなければ通常どおり場を離れる）、(C)useFieldAbilityAction/resolvePendingResolution実経路で逆天殺ReBOOTを使うと手札1枚を捨ててドロップのモンスター最大3枚まで無償コールされること・かつ noCounterWindow:true により宣言時に対抗ウィンドウ(pendingAction)を開かず即時解決されること・ライフ3以下から script末尾の ifCondition{lifeLte:3}→setLife{life:10} でライフが10になること、(D)ファイト中2回目の逆天殺ReBOOTがfightLimits[owner].reversalKillRebootにより不発かつ既存の『逆天』『逆天殺』『大逆天』プールには一切影響しないこと、(E)nullifyPendingAction実経路でこの宣言が無効化されないこと（cannotBeNullified）、を実測。 ／【2026-10-09 オーナー裁定R8】“C・ドレイン”の『〜を破壊してよい。破壊したら、場に残す』の破壊は効果: leaveFieldReplacement.cost の destroyOwnMonster に asEffect:true（置換を無視せず破壊する。ソウルガード等で場に残っても破壊は成功＝支払い成立でこのカードは場に残る［2026-10-09 オーナー裁定］。破壊耐性等で破壊できなかった時だけ支払い不成立＝このカードは場を離れる）。同期の単体手札戻し経路は従来の近似のまま。"
     },
     {
       "id": "bf-x-ub03-s002",

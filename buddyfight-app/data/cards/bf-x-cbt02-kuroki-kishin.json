@@ -224,7 +224,7 @@
           "label": "補給機の任務",
           "kind": "triggered",
           "event": "enter",
-          "conditions": [
+          "ifConditions": [
             {
               "op": "cardCount",
               "controller": "self",
@@ -257,7 +257,7 @@
           }
         }
       ],
-      "_note": "補給機 C・ペンタ。印字に【コールコスト】行が無い=無償コール(costsキー省略、bf-x-ss04-0039C・オーサー・クラインツ等の確立前例と同型)。『“補給機の任務”このカードが登場した時、君の場にこのカード以外の《機神軍》があるなら、君のデッキの上から１枚をゲージに置き、君のライフを＋１し、カード１枚を引く。「補給機の任務」は１ターンに１回だけ発動する。』=event:enter+conditions:[cardCount{controller:self,pile:field,excludeSource:true,filter:{attribute:機神軍},amount:1}](bf-pr-0469と同型)+effects:[putTopDeckToGauge{amount:1},gainLife{amount:1},draw{amount:1}](bf-d-td01-0010竜王伝のeffects:[putTopDeckToGauge,gainLife,draw]確立3点セットをそのまま踏襲、選択を伴わない自動効果のためscriptではなくeffectsを使用)。『“XX”…「XX」は１ターンに１回だけ発動する』の名前付き制限=公式裁定で同名カード合算(ファイター単位)1回のためlimit.shared:true(bf-x-bt01-0001乱射魔グロブス“報酬山分け”の確立前例=src/15-ability-effects.js:3665-3667shared分岐参照)。keyはnamed-once bare禁止規約に従いxcbt02-接頭辞+日本語名。labelはbf-x-ss04-0039“ヘビークエリエイト”と同型でability.label(src/13-abilities-core.js:782-783で参照される実働フィールド)に能力名を明記。grep自己検査: cardCount excludeSource/putTopDeckToGauge(src/14-ability-script.js:3358許可リスト)/gainLife(src/15-ability-effects.js:642)/draw(src/15-ability-effects.js:281)/limit.shared(src/15-ability-effects.js:3665-3667)/ability.label参照(src/13-abilities-core.js:782-783) 全実在確認。VM検証(x74-b12-verify.js): (a)他に機神軍が場に無い状態での登場は不発、(b)他に機神軍が1枚居る状態での登場でゲージ+1・ライフ+1・ドロー1が発生する、(c)同一ターン中に「補給機の任務」を発動する別インスタンス(同名重複)がいても2回目は不発(shared limit)、を確認。"
+      "_note": "補給機 C・ペンタ。印字に【コールコスト】行が無い=無償コール(costsキー省略、bf-x-ss04-0039C・オーサー・クラインツ等の確立前例と同型)。『“補給機の任務”このカードが登場した時、君の場にこのカード以外の《機神軍》があるなら、君のデッキの上から１枚をゲージに置き、君のライフを＋１し、カード１枚を引く。「補給機の任務」は１ターンに１回だけ発動する。』=event:enter+conditions:[cardCount{controller:self,pile:field,excludeSource:true,filter:{attribute:機神軍},amount:1}](bf-pr-0469と同型)+effects:[putTopDeckToGauge{amount:1},gainLife{amount:1},draw{amount:1}](bf-d-td01-0010竜王伝のeffects:[putTopDeckToGauge,gainLife,draw]確立3点セットをそのまま踏襲、選択を伴わない自動効果のためscriptではなくeffectsを使用)。『“XX”…「XX」は１ターンに１回だけ発動する』の名前付き制限=公式裁定で同名カード合算(ファイター単位)1回のためlimit.shared:true(bf-x-bt01-0001乱射魔グロブス“報酬山分け”の確立前例=src/15-ability-effects.js:3665-3667shared分岐参照)。keyはnamed-once bare禁止規約に従いxcbt02-接頭辞+日本語名。labelはbf-x-ss04-0039“ヘビークエリエイト”と同型でability.label(src/13-abilities-core.js:782-783で参照される実働フィールド)に能力名を明記。grep自己検査: cardCount excludeSource/putTopDeckToGauge(src/14-ability-script.js:3358許可リスト)/gainLife(src/15-ability-effects.js:642)/draw(src/15-ability-effects.js:281)/limit.shared(src/15-ability-effects.js:3665-3667)/ability.label参照(src/13-abilities-core.js:782-783) 全実在確認。VM検証(x74-b12-verify.js): (a)他に機神軍が場に無い状態での登場は不発、(b)他に機神軍が1枚居る状態での登場でゲージ+1・ライフ+1・ドロー1が発生する、(c)同一ターン中に「補給機の任務」を発動する別インスタンス(同名重複)がいても2回目は不発(shared limit)、を確認。 監査 rule-continuous-5: 「〜時、XならY」の X は ifConditions（解決時の状態条件・不成立でも1ターン1回を消費＝ver2.05 ④「１ターンに１回」Q2/A2）。"
     },
     {
       "id": "bf-x-cbt02-0004",
@@ -577,7 +577,9 @@
             }
           ],
           "limit": {
-            "scope": "turn"
+            "scope": "turn",
+            "shared": true,
+            "key": "bf-x-cbt02-0006-majingakushi"
           }
         },
         {
@@ -620,7 +622,7 @@
               "target": "$target",
               "options": {
                 "ignoreSoulguard": true,
-                "ignoreDestroyImmunity": true,
+                "ignoreOwnDestroyImmunity": true,
                 "ignoreDestroyReplacement": true,
                 "suppressDestroyedTriggers": true,
                 "suppressLifeLink": true
@@ -734,6 +736,13 @@
         "■このカードが１枚で攻撃しているバトル中、君の場に《英雄》が４枚以上あるなら、相手は【対抗】を使えない。",
         "『貫通』『２回攻撃』"
       ],
+      "equipConditions": [
+        {
+          "op": "ownDropAttributeCountGte",
+          "attribute": "英雄",
+          "amount": 10
+        }
+      ],
       "costs": {
         "equip": [
           {
@@ -741,19 +750,7 @@
             "filter": {
               "nameIncludes": "王剣"
             },
-            "amount": 1,
-            "conditions": [
-              {
-                "op": "cardCount",
-                "controller": "self",
-                "pile": "drop",
-                "filter": {
-                  "attribute": "英雄"
-                },
-                "cmp": "gte",
-                "amount": 10
-              }
-            ]
+            "amount": 1
           }
         ]
       },
@@ -784,6 +781,7 @@
           "effects": [
             {
               "op": "preventOpponentCounterThisTurn",
+              "sourceMustAttack": true,
               "conditions": [
                 {
                   "op": "attackingAlone"
@@ -803,7 +801,7 @@
           ]
         }
       ],
-      "_note": "聖魔王剣 エクスカリバー・レプリカ。①『【装備コスト】君のドロップゾーンに《英雄》10枚以上がある時、君の手札のカード名に「王剣」を含むカード１枚を捨てる。』=costs.equip:[discardHand{filter:{nameIncludes:王剣},amount:1,conditions:[cardCount{controller:self,pile:drop,filter:{attribute:英雄},cmp:gte,amount:10}]}]（条件付きコストstep=costStepApplies(src/04-cost-resource.js:950-959)がconditionsを満たす時だけそのstepを課金対象に含める正の条件ゲート＝条件が偽なら無償装備になる。既存precedentは大半が『not(...)』の免除型だが、costStepApplies自体はconditionsを単純に真偽評価するだけで否定の有無を問わない汎用機構＝bf-h-bt04-0006/s003のputDropToSoul{conditions:[sourceIsBuddy]}が同型の正条件precedent、grep確認済み）。nameIncludes:王剣は既存DB多数（bf-x-bt02-chaos-control-crisis.json等）で確立済みの語彙。②『このカードが１枚で攻撃しているバトル中、君の場に《英雄》が４枚以上あるなら、相手は【対抗】を使えない。』=kind:triggered,event:attack(カード自身への直接発火・接頭辞なし。アイテムでも武器攻撃で自己発火する＝bt03-0043勇者の剣ソマーソード等の武器item event:attack precedentと同型)+conditions:[attackingAlone(src/13-abilities-core.js:964-966),cardCount{controller:self,pile:field,filter:{attribute:英雄},cmp:gte,amount:4}]+effects:[preventOpponentCounterThisTurn{conditions:[attackingAlone,cardCount英雄≥4]}](第9回メカレビュー是正で効果側にもトリガーと同じconditionsを付与＝ロックのwhileとなりバトル毎に再評価。D-EB03/0004 ガガルガリオスの per-battle パターンに一致。旧実装は効果側conditions空でwhile=[]→連携攻撃バトルや英雄<4に落ちた後も過剰ブロックしていた。『そのバトル中』はそのバトル限定＝attackingAlone単体はジウン/エネルゲイアと同precedent、本カードはcardCount≥4を直列AND追加)。③『貫通』『２回攻撃』=keywords:[penetrate,doubleAttack]。grep自己検査: discardHand+filter+conditions 3経路(src/04-cost-resource.js:629-639canPay,1804-1811pay,1444-1465相当のpayWithSelection側discardHand選択)/costStepApplies(src/04-cost-resource.js:950-959)/cardCount pile:drop・pile:field(src/13-abilities-core.js:917-953)/attackingAlone/preventOpponentCounterThisTurn(src/15-ability-effects.js:2411-2417) 全実在確認。VM検証(x74-b14-verify.js): (a)equipConditions無し・ドロップの《英雄》が10枚未満なら装備コストは手札を捨てずに無償で装備できる、(b)ドロップの《英雄》が10枚以上ある状態で手札に「王剣」を含むカードが無ければ装備コストが支払えず装備できない、(c)ドロップの《英雄》が10枚以上あり手札に「王剣」を含むカードがあれば、それを捨てて装備できる、(d)単独攻撃時に自分の場の《英雄》が4枚未満ならpreventOpponentCounterThisTurnは発火しない(直後に対抗が使える)、(e)単独攻撃時に自分の場の《英雄》が4枚以上あれば発火し、そのバトル中は相手が対抗を使えなくなる、を確認。"
+      "_note": "聖魔王剣 エクスカリバー・レプリカ。①『【装備コスト】君のドロップゾーンに《英雄》10枚以上がある時、君の手札のカード名に「王剣」を含むカード１枚を捨てる。』=costs.equip:[discardHand{filter:{nameIncludes:王剣},amount:1,conditions:[cardCount{controller:self,pile:drop,filter:{attribute:英雄},cmp:gte,amount:10}]}]（[監査cards-19是正] 旧実装＝discardHand.conditions(条件付きコストstep)では条件偽で無償装備になっていた。同文言の王剣 エクスカリバー(bt04-0005/bf-pr-0464)と同じく『ドロップに《英雄》10枚以上』は装備条件=equipConditions:[ownDropAttributeCountGte{attribute:英雄,amount:10}]、コストは無条件discardHandへ是正。以下は旧記述：条件付きコストstep=costStepApplies(src/04-cost-resource.js:950-959)がconditionsを満たす時だけそのstepを課金対象に含める正の条件ゲート＝条件が偽なら無償装備になる。既存precedentは大半が『not(...)』の免除型だが、costStepApplies自体はconditionsを単純に真偽評価するだけで否定の有無を問わない汎用機構＝bf-h-bt04-0006/s003のputDropToSoul{conditions:[sourceIsBuddy]}が同型の正条件precedent、grep確認済み）。nameIncludes:王剣は既存DB多数（bf-x-bt02-chaos-control-crisis.json等）で確立済みの語彙。②『このカードが１枚で攻撃しているバトル中、君の場に《英雄》が４枚以上あるなら、相手は【対抗】を使えない。』=kind:triggered,event:attack(カード自身への直接発火・接頭辞なし。アイテムでも武器攻撃で自己発火する＝bt03-0043勇者の剣ソマーソード等の武器item event:attack precedentと同型)+conditions:[attackingAlone(src/13-abilities-core.js:964-966),cardCount{controller:self,pile:field,filter:{attribute:英雄},cmp:gte,amount:4}]+effects:[preventOpponentCounterThisTurn{conditions:[attackingAlone,cardCount英雄≥4]}](第9回メカレビュー是正で効果側にもトリガーと同じconditionsを付与＝ロックのwhileとなりバトル毎に再評価。D-EB03/0004 ガガルガリオスの per-battle パターンに一致。旧実装は効果側conditions空でwhile=[]→連携攻撃バトルや英雄<4に落ちた後も過剰ブロックしていた。『そのバトル中』はそのバトル限定＝attackingAlone単体はジウン/エネルゲイアと同precedent、本カードはcardCount≥4を直列AND追加)。③『貫通』『２回攻撃』=keywords:[penetrate,doubleAttack]。grep自己検査: discardHand+filter+conditions 3経路(src/04-cost-resource.js:629-639canPay,1804-1811pay,1444-1465相当のpayWithSelection側discardHand選択)/costStepApplies(src/04-cost-resource.js:950-959)/cardCount pile:drop・pile:field(src/13-abilities-core.js:917-953)/attackingAlone/preventOpponentCounterThisTurn(src/15-ability-effects.js:2411-2417) 全実在確認。VM検証(x74-b14-verify.js): (a)[是正後]ドロップの《英雄》が10枚未満なら装備できない、(b)ドロップの《英雄》が10枚以上ある状態で手札に「王剣」を含むカードが無ければ装備コストが支払えず装備できない、(c)ドロップの《英雄》が10枚以上あり手札に「王剣」を含むカードがあれば、それを捨てて装備できる、(d)単独攻撃時に自分の場の《英雄》が4枚未満ならpreventOpponentCounterThisTurnは発火しない(直後に対抗が使える)、(e)単独攻撃時に自分の場の《英雄》が4枚以上あれば発火し、そのバトル中は相手が対抗を使えなくなる、を確認。"
     },
     {
       "id": "bf-x-cbt02-0009",
@@ -874,7 +872,8 @@
               "var": "call",
               "payCost": "call",
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             }
           ]
         },
@@ -944,7 +943,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "mon",
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             },
             {
               "op": "shuffleDeck"
@@ -1195,7 +1195,8 @@
               "controller": "self",
               "title": "アイアン・フロッキン",
               "lead": "鋼嘴のヴァルゴレムをコールするエリアを選んでください。",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -1294,7 +1295,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-x-cbt02-0014-venom-bubble"
+            "key": "bf-x-cbt02-0014-venom-bubble",
+            "shared": true
           }
         }
       ],
@@ -1723,7 +1725,8 @@
                   "op": "selectZone",
                   "var": "z",
                   "cardVar": "c",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "payCardCostForSelection",
@@ -1800,7 +1803,8 @@
               "var": "call",
               "payCost": "call",
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             }
           ],
           "limit": {
@@ -1957,7 +1961,8 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             },
             {
               "op": "shuffleDeck"
@@ -2415,7 +2420,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-x-cbt02-0029-eruptive-fever"
+            "key": "bf-x-cbt02-0029-eruptive-fever",
+            "shared": true
           }
         }
       ],
@@ -3053,7 +3059,8 @@
               "max": 99,
               "require": false,
               "title": "ミニギアゴッド・シルバー",
-              "lead": "攻撃力＋3000し『貫通』を与える、君の場のカード名に「ミニギアゴッド」を含むモンスターを選んでください。"
+              "lead": "攻撃力＋3000し『貫通』を与える、君の場のカード名に「ミニギアゴッド」を含むモンスターを選んでください。",
+              "selectAll": true
             },
             {
               "op": "modifySelectedStats",
@@ -3189,6 +3196,9 @@
           "filter": {
             "attribute": "機神軍"
           },
+          "from": {
+            "byOpponent": true
+          },
           "conditions": [
             {
               "op": "turnOwnerIsSelf"
@@ -3208,7 +3218,7 @@
           ]
         }
       ],
-      "_note": "軍師機 C・ファニング。【コールコスト】ゲージ1=costs.call:[payGauge{amount:1}]。『君のターン中、君の場の《機神軍》全ては、相手のカードの効果で、レストされず、手札に戻されず、能力を無効化されない。』=bf-x-cp01-0031名軍師ファニング(本カードの無印/雷帝軍版=同名別属性の直接precedent。あちらは『レストされず、手札に戻せない』の二句のみ)のcontinuous 2本(grantRestImmunity{controller:self,filter:{attribute:X},from:{byOpponent:true},conditions:[turnOwnerIsSelf]}+preventReturnToHand{controller:self,filter:{attribute:X},conditions:[turnOwnerIsSelf]})をそのまま踏襲し、本カードのみ追加される三句目『能力を無効化されない』をgrantNullifyImmunity{controller:self,filter:{attribute:機神軍},from:{byOpponent:true},conditions:[turnOwnerIsSelf]}で追加(grantNullifyImmunityはgrantRestImmunityと同じZ4PROTECTION_OP_BY_KINDゲートに属しfromパラメータを正しく評価する、src/05-stats.js:1066-1071,1088-1120)。preventReturnToHandのみfromキーを付けない: continuousEffectApplies(src/05-stats.js)がpreventReturnToHandのeffect.fromを一切判定しない既存実装のため(bf-x-cp01-0031の note で実証済みの制約=既存DB全preventReturnToHand共通)、fromを書いても無効=『相手の効果限定』は表現できず近似のまま(実害は無し=自分から自分の機神軍を手札に戻す効果は本弾に無い)。grep自己検査: grantRestImmunity/preventReturnToHand/grantNullifyImmunity+PROTECTION_OP_BY_KIND(src/05-stats.js:1066-1120)/continuousEffectApplies fromキー不読(preventReturnToHandのみ) 全実在確認。VM検証(x74-b12-verify.js): (a)callMonster実経路でゲージ1を払ってコールできる、(b)自分のターン中、相手の効果で機神軍モンスターをレストしようとしても阻止される、(c)自分のターン中、相手の効果で機神軍モンスターを手札に戻そうとしても阻止される、(d)自分のターン中、相手の効果で機神軍モンスターの能力を無効化しようとしても阻止される、(e)相手のターン中はこれらの保護が働かない(turnOwnerIsSelf不成立)、を確認。【R17(x78) 出荷済み是正・衛生】grantNullifyImmunity の不活性 from:{byOpponent:true} キーを除去（挙動不変）。理由: 能力無効化耐性の唯一の判定経路 isAbilitiesNullified(src/05-stats.js)→cardProtectedFrom(card,\"nullify\") は cause 引数を渡さず呼ぶため、grantedProtectionBlocks の from ゲート `if (e.from && cause)` は恒久的に評価されない＝from を書いても『相手の効果限定』は効かず常時保護（本カードは自陣で自機神軍を無効化するカードが無く実害なし）。上記本文の『fromパラメータを正しく評価する』は nullify 種別では該当せず（呼び出し点が cause 未伝播）、キーを外して衛生化した。回帰: tests/effects-regression.test.js R17-cbt02-0041（from キー不在の構造断言）。"
+      "_note": "軍師機 C・ファニング。【コールコスト】ゲージ1=costs.call:[payGauge{amount:1}]。『君のターン中、君の場の《機神軍》全ては、相手のカードの効果で、レストされず、手札に戻されず、能力を無効化されない。』=bf-x-cp01-0031名軍師ファニング(本カードの無印/雷帝軍版=同名別属性の直接precedent。あちらは『レストされず、手札に戻せない』の二句のみ)のcontinuous 2本(grantRestImmunity{controller:self,filter:{attribute:X},from:{byOpponent:true},conditions:[turnOwnerIsSelf]}+preventReturnToHand{controller:self,filter:{attribute:X},conditions:[turnOwnerIsSelf]})をそのまま踏襲し、本カードのみ追加される三句目『能力を無効化されない』をgrantNullifyImmunity{controller:self,filter:{attribute:機神軍},from:{byOpponent:true},conditions:[turnOwnerIsSelf]}で追加(grantNullifyImmunityはgrantRestImmunityと同じZ4PROTECTION_OP_BY_KINDゲートに属しfromパラメータを正しく評価する、src/05-stats.js:1066-1071,1088-1120)。preventReturnToHandのみfromキーを付けない: continuousEffectApplies(src/05-stats.js)がpreventReturnToHandのeffect.fromを一切判定しない既存実装のため(bf-x-cp01-0031の note で実証済みの制約=既存DB全preventReturnToHand共通)、fromを書いても無効=『相手の効果限定』は表現できず近似のまま(実害は無し=自分から自分の機神軍を手札に戻す効果は本弾に無い)。grep自己検査: grantRestImmunity/preventReturnToHand/grantNullifyImmunity+PROTECTION_OP_BY_KIND(src/05-stats.js:1066-1120)/continuousEffectApplies fromキー不読(preventReturnToHandのみ) 全実在確認。VM検証(x74-b12-verify.js): (a)callMonster実経路でゲージ1を払ってコールできる、(b)自分のターン中、相手の効果で機神軍モンスターをレストしようとしても阻止される、(c)自分のターン中、相手の効果で機神軍モンスターを手札に戻そうとしても阻止される、(d)自分のターン中、相手の効果で機神軍モンスターの能力を無効化しようとしても阻止される、(e)相手のターン中はこれらの保護が働かない(turnOwnerIsSelf不成立)、を確認。【R17(x78) 出荷済み是正・衛生】grantNullifyImmunity の不活性 from:{byOpponent:true} キーを除去（挙動不変）。理由: 能力無効化耐性の唯一の判定経路 isAbilitiesNullified(src/05-stats.js)→cardProtectedFrom(card,\"nullify\") は cause 引数を渡さず呼ぶため、grantedProtectionBlocks の from ゲート `if (e.from && cause)` は恒久的に評価されない＝from を書いても『相手の効果限定』は効かず常時保護（本カードは自陣で自機神軍を無効化するカードが無く実害なし）。上記本文の『fromパラメータを正しく評価する』は nullify 種別では該当せず（呼び出し点が cause 未伝播）、キーを外して衛生化した。回帰: tests/effects-regression.test.js R17-cbt02-0041（from キー不在の構造断言）。 ／【audit2 return-to-hand-cause】preventReturnToHand に from:{byOpponent:true} を付与。cannotReturnToHand(card, cause) が原因を受け取り from を判定するよう拡張したため、自分の効果・コストによる手札戻しは止めない（上記の近似は解消）。"
     },
     {
       "id": "bf-x-cbt02-0042",
@@ -4063,6 +4073,7 @@
           "effects": [
             {
               "op": "setPreventNextDestroy",
+              "optional": true,
               "target": "$target",
               "amount": 1
             }
@@ -4701,7 +4712,7 @@
           ]
         }
       ],
-      "_note": "偽王剣 ズルフィカール・レプリカ。①【装備コスト】ライフ1=costs.equip:[payLife(1)]（bt03-0050竜剣ドラゴゼーレ等の確立型）。②『「偽王剣 ズルフィカール・レプリカ」以外の君の場のカード名に「王剣」を含むカードが場から離れる場合、場のこのカードをドロップゾーンに置いてよい。置いたら、そのカード１枚を場に残す。』=『場から離れる場合』(破壊だけでなく手札戻し/ドロップ送り/ゲージ送り等の離場全般)なのでallyDestroyReplacement（破壊限定）ではなくallyLeaveFieldReplacement（bf-d-eb02-0031バリア発動！の確立op。src/11-destroy-turn.js:637-694 fieldHasLeaveFieldReplacer/applyAllyLeaveFieldReplacement）。filter:{nameIncludes:王剣,nameNot:偽王剣 ズルフィカール・レプリカ}（『王剣』は本カード自身の名前にも部分一致するため、原文の『「偽王剣 ズルフィカール・レプリカ」以外の』を厳密な完全一致除外=nameNot(matchNames.includes、src/17-targeting.js:497)で表現。他の2種の偽王剣レプリカ(フロッティ/ホヴズ)はこの完全一致に該当しないため保護対象に含まれる=原文どおり）。原文に『相手のカードの効果で』等の限定が無い（無条件の『場から離れる場合』）ためrule.fromキーは付与しない=applyAllyLeaveFieldReplacementのfromチェック分岐(if(rule.from){...})はrule.from未指定で素通り=全cause(戦闘/効果/自他問わず)で発動（bf-d-eb02-0031が明示的にfrom:{byOpponent:true,byEffect:true}を持つのとの対比）。cost:[dropSource](既定と同一だが明示)+optional:true(『してよい』)。『置いたら、そのカード１枚を場に残す』はallyLeaveFieldReplacement成立時のエンジン既定動作そのもの（離場をキャンセルし場に残す）で追加effectは不要。③『君の場に《英雄》が４枚以上あるなら、このカードは『貫通』を得る。』=continuous:[grantKeyword{controller:self,filter:{sameInstanceAsSource:true},keyword:penetrate,conditions:[cardCount{controller:self,pile:field,filter:{attribute:英雄},cmp:gte,amount:4}]}]（mech-X74-B12.json 0002騎竜機C・ケーゲル・バイドの継続骨格と同型。pile:fieldはモンスター/アイテム問わず全field cardを数える＝このカード自身(英雄属性を持つ)も含めてカウントされる、原文に自身除外の言及が無いため素直に含める）。grep自己検査: payLife(src/04-cost-resource.js)/allyLeaveFieldReplacement+fieldHasLeaveFieldReplacer+applyAllyLeaveFieldReplacement(src/11-destroy-turn.js:637-694、呼出元:destroyFieldCard 390/src/15-ability-effects.js:1681,1697,2359)/nameIncludes+nameNot(src/17-targeting.js:494,497)/dropSource(src/04-cost-resource.js:1127)/grantKeyword+hasKeyword継続スキャン(src/18-tooltip-format.js:262-271)/cardCount pile:field(src/13-abilities-core.js:917) 全実在確認。VM検証(x74-b15-verify.js): (a)useCardAction実経路(手札から)でライフ1を払い装備される、(b)場に「王剣」を名に含む別カード(このカードと別名)がいる状態でdestroyFieldCardを試みると(window.confirm既定trueで)身代わり成立=対象カードは破壊されず場に残り、身代わりに本カード自身がドロップへ置かれる、(c)window.confirmをfalseにすると身代わりを辞退でき対象カードは通常通り破壊され本カードは場に残ったまま、(d)『王剣』を名に含まない無関係カードの離場では身代わりが発動しない、(e)全く同じ名前(「偽王剣 ズルフィカール・レプリカ」)の別インスタンスの離場では身代わり対象外(nameNot)、(f)場の《英雄》属性カードが4枚未満では貫通を持たず、4枚以上になると貫通を得る、を確認。"
+      "_note": "偽王剣 ズルフィカール・レプリカ。①【装備コスト】ライフ1=costs.equip:[payLife(1)]（bt03-0050竜剣ドラゴゼーレ等の確立型）。②『「偽王剣 ズルフィカール・レプリカ」以外の君の場のカード名に「王剣」を含むカードが場から離れる場合、場のこのカードをドロップゾーンに置いてよい。置いたら、そのカード１枚を場に残す。』=『場から離れる場合』(破壊だけでなく手札戻し/ドロップ送り/ゲージ送り等の離場全般)なのでallyDestroyReplacement（破壊限定）ではなくallyLeaveFieldReplacement（bf-d-eb02-0031バリア発動！の確立op。src/11-destroy-turn.js:637-694 fieldHasLeaveFieldReplacer/applyAllyLeaveFieldReplacement）。filter:{nameIncludes:王剣,nameNot:偽王剣 ズルフィカール・レプリカ}（『王剣』は本カード自身の名前にも部分一致するため、原文の『「偽王剣 ズルフィカール・レプリカ」以外の』を厳密な完全一致除外=nameNot(matchNames.includes、src/17-targeting.js:497)で表現。他の2種の偽王剣レプリカ(フロッティ/ホヴズ)はこの完全一致に該当しないため保護対象に含まれる=原文どおり）。原文に『相手のカードの効果で』等の限定が無い（無条件の『場から離れる場合』）ためrule.fromキーは付与しない=applyAllyLeaveFieldReplacementのfromチェック分岐(if(rule.from){...})はrule.from未指定で素通り=全cause(戦闘/効果/自他問わず)で発動（bf-d-eb02-0031が明示的にfrom:{byOpponent:true,byEffect:true}を持つのとの対比）。cost:[dropSource](既定と同一だが明示)+optional:true(『してよい』)。『置いたら、そのカード１枚を場に残す』はallyLeaveFieldReplacement成立時のエンジン既定動作そのもの（離場をキャンセルし場に残す）で追加effectは不要。③『君の場に《英雄》が４枚以上あるなら、このカードは『貫通』を得る。』=continuous:[grantKeyword{controller:self,filter:{sameInstanceAsSource:true},keyword:penetrate,conditions:[cardCount{controller:self,pile:field,filter:{attribute:英雄},cmp:gte,amount:4}]}]（mech-X74-B12.json 0002騎竜機C・ケーゲル・バイドの継続骨格と同型。pile:fieldはモンスター/アイテム問わず全field cardを数える＝このカード自身(英雄属性を持つ)も含めてカウントされる、原文に自身除外の言及が無いため素直に含める）。grep自己検査: payLife(src/04-cost-resource.js)/allyLeaveFieldReplacement+fieldHasLeaveFieldReplacer+applyAllyLeaveFieldReplacement(src/11-destroy-turn.js:637-694、呼出元:destroyFieldCard 390/src/15-ability-effects.js:1681,1697,2359)/nameIncludes+nameNot(src/17-targeting.js:494,497)/dropSource(src/04-cost-resource.js:1127)/grantKeyword+hasKeyword継続スキャン(src/18-tooltip-format.js:262-271)/cardCount pile:field(src/13-abilities-core.js:917) 全実在確認。VM検証(x74-b15-verify.js): (a)useCardAction実経路(手札から)でライフ1を払い装備される、(b)場に「王剣」を名に含む別カード(このカードと別名)がいる状態でdestroyFieldCardを試みると(window.confirm既定trueで)身代わり成立=対象カードは場に残り(破壊による離場なら、2026-10-09 オーナー裁定以降は破壊は成功した扱い＝破壊された時等は発生)、身代わりに本カード自身がドロップへ置かれる、(c)window.confirmをfalseにすると身代わりを辞退でき対象カードは通常通り破壊され本カードは場に残ったまま、(d)『王剣』を名に含まない無関係カードの離場では身代わりが発動しない、(e)全く同じ名前(「偽王剣 ズルフィカール・レプリカ」)の別インスタンスの離場では身代わり対象外(nameNot)、(f)場の《英雄》属性カードが4枚未満では貫通を持たず、4枚以上になると貫通を得る、を確認。"
     },
     {
       "id": "bf-x-cbt02-0066",
@@ -5007,7 +5018,9 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true,
+              "excludeSourceZone": true
             },
             {
               "op": "shuffleDeck"
@@ -5567,7 +5580,8 @@
               "op": "gainLife",
               "amount": 1
             }
-          ]
+          ],
+          "selectBeforeCost": true
         },
         {
           "id": "bf-x-cbt02-0079-turnstart-draw",
@@ -5590,7 +5604,7 @@
           ]
         }
       ],
-      "_note": "死の学術書 アナト・ミカイ。①『【装備コスト】ライフ１を払う。』=costs.equip:[payLife(1)]。②『【起動】君のドロップゾーンの《病》の魔法１枚を選び、このカードをレストしてよい。レストしたら、選んだカードをこのカードのソウルに入れ、君のライフを＋１！』=kind:activated,timing:[main],cost:[restSource]（『このカードをレストしてよい』の任意性は起動能力の発動可否として吸収する確立パターン=src/04-cost-resource.js:768-773コメント『0037/0108「このカードをレストしてよい」』が示すとおりrestSourceコスト自体が0037ガンロッド ベーゼンドルフ/0108魔導書テウルギアの直接前例。カードが既にレスト中/場に無ければコスト支払い不可=自然に『レスト済みなら使えない』を体現）+script:[selectCards(from:drop,controller:self,filter:{attribute:病,cardType:spell},min1max1require:true)→moveSelected(to:soul,require:false,log)→gainLife(1)]（moveSelected(to:\"soul\")はcontext.card=自分自身のソウルへ入れる、src/14-ability-script.js:1124-1126）。原文に『1ターンに1回』の記載が無いためlimitキーは付与しない(レスト済みかどうかの自然ゲートのみ)。③『君のターン開始時、このカードのソウルが３枚以上なら、カード１枚を引く。』=event:turnStart,conditions:[turnOwnerIsSelf,sourceSoulCountGte{amount:3}],effects:[draw(1)]（bf-h-bt02-galaxy-burst.json H-BT02/0016の event:turnStart+conditions:[turnOwnerIsSelf] 確立骨格に、sourceSoulCountGte（context.card.soul.length、src/13-abilities-core.js:1815-1816）を追加。turnStartはrunPhaseStartTriggersが両陣営の場カードへ配送するためturnOwnerIsSelf必須）。④『ソウルガード』=keywords:[soulguard]。grep自己検査: costs.equip payLife/restSource(src/04-cost-resource.js:769-773,1199,1930、D-BT01/0037・0108実例)/selectCards from:drop(src/14:330)/moveSelected to:soul(src/14:1124-1126)/gainLife(src/15:642)/event:turnStart+runPhaseStartTriggers(src/07-actions-turn.js:97,984-999)/turnOwnerIsSelf(src/13:998-999)/sourceSoulCountGte(src/13:1815-1816)/draw(isScriptEffectStep許可,src/14:3347)/keywords soulguard 全実在確認。VM検証: x74-b11-verify.js test0079参照（装備コスト・起動能力の実操作経路・ターン開始誘発の充足/不充足両方）。"
+      "_note": "死の学術書 アナト・ミカイ。①『【装備コスト】ライフ１を払う。』=costs.equip:[payLife(1)]。②『【起動】君のドロップゾーンの《病》の魔法１枚を選び、このカードをレストしてよい。レストしたら、選んだカードをこのカードのソウルに入れ、君のライフを＋１！』=kind:activated,timing:[main],cost:[restSource]（『このカードをレストしてよい』の任意性は起動能力の発動可否として吸収する確立パターン=src/04-cost-resource.js:768-773コメント『0037/0108「このカードをレストしてよい」』が示すとおりrestSourceコスト自体が0037ガンロッド ベーゼンドルフ/0108魔導書テウルギアの直接前例。カードが既にレスト中/場に無ければコスト支払い不可=自然に『レスト済みなら使えない』を体現）+script:[selectCards(from:drop,controller:self,filter:{attribute:病,cardType:spell},min1max1require:true)→moveSelected(to:soul,require:false,log)→gainLife(1)]（moveSelected(to:\"soul\")はcontext.card=自分自身のソウルへ入れる、src/14-ability-script.js:1124-1126）。原文に『1ターンに1回』の記載が無いためlimitキーは付与しない(レスト済みかどうかの自然ゲートのみ)。③『君のターン開始時、このカードのソウルが３枚以上なら、カード１枚を引く。』=event:turnStart,conditions:[turnOwnerIsSelf,sourceSoulCountGte{amount:3}],effects:[draw(1)]（bf-h-bt02-galaxy-burst.json H-BT02/0016の event:turnStart+conditions:[turnOwnerIsSelf] 確立骨格に、sourceSoulCountGte（context.card.soul.length、src/13-abilities-core.js:1815-1816）を追加。turnStartはrunPhaseStartTriggersが両陣営の場カードへ配送するためturnOwnerIsSelf必須）。④『ソウルガード』=keywords:[soulguard]。grep自己検査: costs.equip payLife/restSource(src/04-cost-resource.js:769-773,1199,1930、D-BT01/0037・0108実例)/selectCards from:drop(src/14:330)/moveSelected to:soul(src/14:1124-1126)/gainLife(src/15:642)/event:turnStart+runPhaseStartTriggers(src/07-actions-turn.js:97,984-999)/turnOwnerIsSelf(src/13:998-999)/sourceSoulCountGte(src/13:1815-1816)/draw(isScriptEffectStep許可,src/14:3347)/keywords soulguard 全実在確認。VM検証: x74-b11-verify.js test0079参照（装備コスト・起動能力の実操作経路・ターン開始誘発の充足/不充足両方）。 【R5 2026-10-09 オーナー裁定】「〜を選び、…を払ってよい。払ったら」は選べるカードが無いなら支払えない（何も起きない）＝能力に selectBeforeCost:true（先頭の選択に候補が無ければコストを提示しない）。旧 _note の「optional 承諾＝コスト先払い→script 内で選択」の近似は、候補0でもコストだけ払えてしまう点が誤りだった。"
     },
     {
       "id": "bf-x-cbt02-br01",
@@ -5689,7 +5703,9 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true,
+              "excludeSourceZone": true
             },
             {
               "op": "shuffleDeck"
@@ -6027,7 +6043,8 @@
               "var": "call",
               "payCost": "call",
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             }
           ]
         },
@@ -6097,7 +6114,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "mon",
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             },
             {
               "op": "shuffleDeck"

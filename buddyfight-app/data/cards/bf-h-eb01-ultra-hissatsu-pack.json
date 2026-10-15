@@ -145,6 +145,7 @@
           "id": "bf-h-eb01-0003-battle-end",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "dropSelf"
@@ -526,7 +527,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "ds",
               "chooseZones": true,
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -871,7 +873,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -1090,7 +1093,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -1413,7 +1417,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -1541,14 +1546,16 @@
           "cardType": "monster",
           "sizeIn": [
             3
-          ]
+          ],
+          "world": "ダンジョンW"
         },
         "cost": [
           {
             "op": "dropSource"
           }
         ]
-      }
+      },
+      "_note": "【R-BR24(ブラウザレビュー bf-h-eb01-B2) 出荷済み是正】破壊置換の対象が原文「サイズ３の＜ダンジョンワールド＞のモンスター」なのに filter が {cardType:monster,sizeIn:[3]} で world 制限を欠き非ダンジョンWのサイズ3も庇えた（兄弟 bf-h-bt04-0002/bf-x-cp02-0008 は原文が「サイズ３のモンスター」＝world無しが正）→filter.world:ダンジョンW 付与。"
     },
     {
       "id": "bf-h-eb01-0025",
@@ -2049,7 +2056,8 @@
               "op": "dropSelf"
             },
             {
-              "op": "lockOwnSetThisTurn"
+              "op": "lockOwnSetThisTurn",
+              "byName": true
             }
           ]
         }
@@ -2458,6 +2466,14 @@
         "■【使用コスト】君のデッキの上から５枚をドロップゾーンに置く。",
         "■君のドロップゾーンのカード１枚を君の場のカードのソウルに入れる。"
       ],
+      "costs": {
+        "cast": [
+          {
+            "op": "putTopDeckToDrop",
+            "amount": 5
+          }
+        ]
+      },
       "abilities": [
         {
           "id": "bf-h-eb01-0043-impact",
@@ -2474,11 +2490,13 @@
               "amount": 1
             }
           ],
-          "script": [
+          "cost": [
             {
-              "op": "moveTopDeckToDrop",
+              "op": "putTopDeckToDrop",
               "amount": 5
-            },
+            }
+          ],
+          "script": [
             {
               "op": "selectCards",
               "var": "card",
@@ -2487,6 +2505,7 @@
               "filter": {},
               "amount": 1,
               "require": true,
+              "allowEmpty": true,
               "title": "魔装門 AMDゲート！",
               "lead": "ソウルに入れるドロップゾーンのカードを１枚選んでください。"
             },
@@ -2508,7 +2527,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "D6(2026-10): 【使用コスト】を効果側(script/effects)で処理していたのをコスト(costs.cast＋ability.cost)へ移した（支払えない時は使用不可・無効化されてもコストは支払済み、のコスト意味論に合わせる。H-PP01/0020 型の両記）。 使用可否の事前判定はコスト支払い前のドロップを見るため、ドロップ選択に allowEmpty:true（空の時のみ0枚許容。コスト後は5枚以上あるので解決時は必ず1枚選ぶ）。"
     },
     {
       "id": "bf-h-eb01-0044",
@@ -2962,7 +2982,8 @@
               "var": "mission",
               "amount": 1,
               "controller": "self",
-              "require": false
+              "require": false,
+              "faceDown": true
             }
           ]
         }
@@ -3077,41 +3098,49 @@
           "script": [
             {
               "op": "putTopDeckToSoul",
-              "amount": 1
+              "amount": 1,
+              "faceDown": true
+            }
+          ]
+        },
+        {
+          "id": "h-eb01-0054-mission-complete",
+          "kind": "triggered",
+          "event": "allySoulCardAdded",
+          "conditions": [
+            {
+              "op": "eventCardIsSource"
             },
             {
-              "op": "ifCondition",
-              "condition": {
-                "op": "sourceSoulCountGte",
-                "amount": 2
-              },
-              "then": [
-                {
-                  "op": "selectCards",
-                  "var": "keep",
-                  "from": "soul",
-                  "controller": "self",
-                  "amount": 1,
-                  "title": "ミッションカード “THE チームワーク”",
-                  "lead": "手札に加えるソウルを１枚選んでください。"
-                },
-                {
-                  "op": "moveSelected",
-                  "var": "keep",
-                  "to": "hand"
-                },
-                {
-                  "op": "moveSoulToGauge"
-                },
-                {
-                  "op": "moveTargetToDrop",
-                  "target": "$self"
-                },
-                {
-                  "op": "gainLife",
-                  "amount": 1
-                }
-              ]
+              "op": "sourceSoulCountGte",
+              "amount": 2
+            }
+          ],
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "keep",
+              "from": "soul",
+              "controller": "self",
+              "amount": 1,
+              "title": "ミッションカード “THE チームワーク”",
+              "lead": "手札に加えるソウルを１枚選んでください。"
+            },
+            {
+              "op": "moveSelected",
+              "var": "keep",
+              "to": "hand"
+            },
+            {
+              "op": "moveSoulToGauge"
+            },
+            {
+              "op": "moveTargetToDrop",
+              "target": "$self"
+            },
+            {
+              "op": "gainLife",
+              "amount": 1
             }
           ]
         }
@@ -3180,7 +3209,22 @@
                   "key": "draw",
                   "label": "カード２枚を引く",
                   "condition": {
-                    "op": "turnOwnerIsSelf"
+                    "op": "all",
+                    "conditions": [
+                      {
+                        "op": "turnOwnerIsSelf"
+                      },
+                      {
+                        "op": "phaseIs",
+                        "phase": "final"
+                      },
+                      {
+                        "op": "not",
+                        "condition": {
+                          "op": "pendingAttackExists"
+                        }
+                      }
+                    ]
                   },
                   "script": [
                     {
@@ -3406,6 +3450,7 @@
           "effects": [
             {
               "op": "setPreventNextDestroy",
+              "optional": true,
               "target": "$target"
             }
           ]
@@ -3778,6 +3823,7 @@
           "id": "bf-h-eb01-0003-battle-end",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "dropSelf"

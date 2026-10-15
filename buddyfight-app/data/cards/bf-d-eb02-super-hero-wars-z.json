@@ -41,25 +41,10 @@
           }
         },
         {
-          "from": {
-            "byEffect": true
-          }
+          "from": {}
         }
       ],
       "abilities": [
-        {
-          "id": "bf-d-eb02-0001-ride-hand",
-          "kind": "activated",
-          "fromHandOnly": true,
-          "timing": [
-            "main"
-          ],
-          "effects": [
-            {
-              "op": "equipSelf"
-            }
-          ]
-        },
         {
           "id": "bf-d-eb02-0001-ride-field",
           "kind": "activated",
@@ -82,6 +67,9 @@
             }
           ]
         }
+      ],
+      "equipOnlyViaSource": [
+        "カードワイバーン"
       ]
     },
     {
@@ -142,19 +130,6 @@
       ],
       "abilities": [
         {
-          "id": "bf-d-eb02-0002-ride-hand",
-          "kind": "activated",
-          "fromHandOnly": true,
-          "timing": [
-            "main"
-          ],
-          "effects": [
-            {
-              "op": "equipSelf"
-            }
-          ]
-        },
-        {
           "id": "bf-d-eb02-0002-ride-field",
           "kind": "activated",
           "timing": [
@@ -195,6 +170,9 @@
             }
           ]
         }
+      ],
+      "equipOnlyViaSource": [
+        "RC隊長 ウイニング・マキシマム"
       ]
     },
     {
@@ -264,6 +242,7 @@
               "then": [
                 {
                   "op": "moveSelected",
+                  "discard": true,
                   "var": "d",
                   "to": "drop"
                 },
@@ -283,6 +262,9 @@
             }
           ]
         }
+      ],
+      "equipOnlyViaSource": [
+        "変身ベルト カードワインダー"
       ]
     },
     {
@@ -426,6 +408,9 @@
           ],
           "fromHandOnly": true,
           "conditions": [
+            {
+              "op": "pendingAttackDefenderIsSelf"
+            },
             {
               "op": "pendingAttackTargetMatches",
               "filter": {
@@ -667,6 +652,9 @@
             }
           ]
         }
+      ],
+      "equipOnlyViaSource": [
+        "変身ベルト カードワインダー"
       ]
     },
     {
@@ -764,7 +752,7 @@
           "id": "bf-d-eb02-0009-enter-shinuchi",
           "kind": "triggered",
           "event": "enter",
-          "conditions": [
+          "ifConditions": [
             {
               "op": "cardCount",
               "controller": "self",
@@ -792,7 +780,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "監査 rule-continuous-5: 「〜時、XならY」の X は ifConditions（解決時の状態条件・不成立でも1ターン1回を消費＝ver2.05 ④「１ターンに１回」Q2/A2）。"
     },
     {
       "id": "bf-d-eb02-0010",
@@ -855,7 +844,8 @@
               "filter": {
                 "attribute": "ライドチェンジャー"
               },
-              "max": 2
+              "max": 2,
+              "orderRest": true
             }
           ]
         }
@@ -998,6 +988,7 @@
           "id": "bf-d-eb02-0012-battle-end",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "returnToHand",
@@ -1034,19 +1025,6 @@
       "cannotCallNormally": true,
       "abilities": [
         {
-          "id": "bf-d-eb02-0013-ride-hand",
-          "kind": "activated",
-          "fromHandOnly": true,
-          "timing": [
-            "main"
-          ],
-          "effects": [
-            {
-              "op": "equipSelf"
-            }
-          ]
-        },
-        {
           "id": "bf-d-eb02-0013-ride-field",
           "kind": "activated",
           "timing": [
@@ -1079,6 +1057,9 @@
             }
           ]
         }
+      ],
+      "equipOnlyViaSource": [
+        "RC シルバービーク"
       ]
     },
     {
@@ -1353,6 +1334,7 @@
               "then": [
                 {
                   "op": "moveSelected",
+                  "discard": true,
                   "var": "d",
                   "to": "drop"
                 },
@@ -1385,6 +1367,7 @@
           "id": "bf-d-eb02-0017-battle-end",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "returnToHand",
@@ -1666,7 +1649,8 @@
                       "op": "selectZone",
                       "var": "z",
                       "cardVar": "form",
-                      "emptyOnly": true
+                      "emptyOnly": true,
+                      "overwriteWhenFull": true
                     },
                     {
                       "op": "callSelected",
@@ -1963,7 +1947,7 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-d-eb02-0025-charge"
+            "key": "bf-h-bt01-0039-charge"
           }
         }
       ]
@@ -2035,7 +2019,7 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-d-eb02-0026-search"
+            "key": "bf-h-bt01-0019-search"
           }
         }
       ]
@@ -2511,19 +2495,6 @@
       "cannotCallNormally": true,
       "abilities": [
         {
-          "id": "bf-d-eb02-0034-ride-hand",
-          "kind": "activated",
-          "fromHandOnly": true,
-          "timing": [
-            "main"
-          ],
-          "effects": [
-            {
-              "op": "equipSelf"
-            }
-          ]
-        },
-        {
           "id": "bf-d-eb02-0034-ride-field",
           "kind": "activated",
           "timing": [
@@ -2562,6 +2533,9 @@
             }
           ]
         }
+      ],
+      "equipOnlyViaSource": [
+        "RC スパイカー"
       ]
     },
     {
@@ -2843,6 +2817,7 @@
               "then": [
                 {
                   "op": "moveSelected",
+                  "discard": true,
                   "var": "d",
                   "to": "drop"
                 },
@@ -2854,6 +2829,9 @@
             }
           ]
         }
+      ],
+      "equipOnlyViaSource": [
+        "変身ベルト カードワインダー"
       ]
     },
     {
@@ -2936,6 +2914,7 @@
           "id": "bf-d-eb02-0040-hand-gauge",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "main"
           ],
@@ -3257,7 +3236,8 @@
                       "op": "selectZone",
                       "var": "z",
                       "cardVar": "form",
-                      "emptyOnly": true
+                      "emptyOnly": true,
+                      "overwriteWhenFull": true
                     },
                     {
                       "op": "callSelected",
@@ -3411,7 +3391,8 @@
                       "op": "selectZone",
                       "var": "z",
                       "cardVar": "form",
-                      "emptyOnly": true
+                      "emptyOnly": true,
+                      "overwriteWhenFull": true
                     },
                     {
                       "op": "callSelected",
@@ -3572,7 +3553,8 @@
             "controller": "opponent",
             "filter": {
               "cardType": "monster"
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -3584,9 +3566,11 @@
               "player": "opponent",
               "amount": 1
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-d-eb02-0048",
@@ -3772,7 +3756,8 @@
                       "var": "m",
                       "resolveOnEnter": true,
                       "chooseZones": true,
-                      "require": true
+                      "require": true,
+                      "overwriteWhenFull": true
                     }
                   ]
                 }
@@ -3827,7 +3812,8 @@
               "var": "m",
               "resolveOnEnter": true,
               "chooseZones": true,
-              "require": true
+              "require": true,
+              "overwriteWhenFull": true
             }
           ],
           "limit": {
@@ -4040,7 +4026,8 @@
                   "op": "selectZone",
                   "var": "z",
                   "cardVar": "callee",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "callSelected",
@@ -4218,6 +4205,7 @@
                   "script": [
                     {
                       "op": "setPreventNextDestroy",
+                      "optional": true,
                       "target": "$target"
                     }
                   ]
@@ -4499,7 +4487,8 @@
               "op": "dropSelf"
             },
             {
-              "op": "lockOwnSetThisTurn"
+              "op": "lockOwnSetThisTurn",
+              "byName": true
             }
           ]
         }
@@ -4798,25 +4787,10 @@
           }
         },
         {
-          "from": {
-            "byEffect": true
-          }
+          "from": {}
         }
       ],
       "abilities": [
-        {
-          "id": "bf-d-eb02-0064-ride-hand",
-          "kind": "activated",
-          "fromHandOnly": true,
-          "timing": [
-            "main"
-          ],
-          "effects": [
-            {
-              "op": "equipSelf"
-            }
-          ]
-        },
         {
           "id": "bf-d-eb02-0064-ride-field",
           "kind": "activated",
@@ -4839,6 +4813,9 @@
             }
           ]
         }
+      ],
+      "equipOnlyViaSource": [
+        "カードワイバーン"
       ]
     },
     {
@@ -4899,19 +4876,6 @@
       ],
       "abilities": [
         {
-          "id": "bf-d-eb02-0065-ride-hand",
-          "kind": "activated",
-          "fromHandOnly": true,
-          "timing": [
-            "main"
-          ],
-          "effects": [
-            {
-              "op": "equipSelf"
-            }
-          ]
-        },
-        {
           "id": "bf-d-eb02-0065-ride-field",
           "kind": "activated",
           "timing": [
@@ -4952,6 +4916,9 @@
             }
           ]
         }
+      ],
+      "equipOnlyViaSource": [
+        "RC隊長 ウイニング・マキシマム"
       ]
     },
     {

@@ -133,7 +133,6 @@
               "from": "drop",
               "controller": "self",
               "filter": {
-                "cardType": "monster",
                 "attribute": "太陽竜"
               },
               "min": 2,
@@ -172,7 +171,7 @@
           ]
         }
       ],
-      "_note": "無邪気な太陽神 バルドラゴン。①【コールコスト】デッキ上1枚をソウルへ+ゲージ1=costs.call:[putTopDeckToSoul(1),payGauge(1)]（多数precedent標準形）。②『このカードが登場した時、君のドロップゾーンの《太陽竜》２枚を君のデッキの下に好きな順番で置いてよい。置いたら、君のライフを６にし、君のデッキから《太陽竜》の、アイテムか必殺モンスター１枚までを手札に加え、デッキをシャッフルする。』=event:enter+script:[selectCards(from:drop,filter:{cardType:monster,attribute:太陽竜},min:2,max:2,amount:2,require:false)→moveSelectedToDeckBottomOrdered(require:false)→ifSelection(then:[setLife(6),searchDeckToHand(filter:{attribute:太陽竜,cardTypeIn:[item,impactMonster]},amount:1)])]（『２枚を…置いてよい』＝0枚か2枚の二択。data/cards/bf-x2-bt01-legend-buddies.json X2-BT01/0005 再誕の氷竜 ロワ・ミセリアの『３枚を…置いてよい』min:max:3,require:falseと同型・枚数のみ2に差替。setLife=『ライフを６にし』の固定代入、gainLifeの加算では表現不可なため専用op使用（src/15-ability-effects.js:692、bf-x-ub03-complete-chaos.json等の確立precedent）。『《太陽竜》の、アイテムか必殺モンスター』=filter:{attribute:太陽竜,cardTypeIn:[item,impactMonster]}（cardTypeIn内OR・attributeとAND、src/17-targeting.js:367）。searchDeckToHandは既定でshuffle!==false=自動デッキシャッフル込み（『デッキをシャッフルする』を追加op無しで充足、src/15-ability-effects.js:400-437）。③『貫通』『ソウルガード』=keywords:[penetrate,soulguard]。grep自己検査: putTopDeckToSoul/payGauge(src/04-cost-resource.js)/selectCards from:drop min:max:2 require:false(src/14-ability-script.js、X2-BT01/0005実例)/moveSelectedToDeckBottomOrdered(src/14-ability-script.js:1405)/ifSelection(src/14-ability-script.js:1200)/setLife(src/15-ability-effects.js:692、script許可=src/14:3411)/searchDeckToHand+cardTypeIn(src/15-ability-effects.js:400、src/17-targeting.js:367) 全実在確認。VM検証: x78-b4-verify.js test0002参照（ドロップに太陽竜が1枚以下では登場時に何も起きない／2枚以上ある状態で2枚を選んでデッキ下へ置くとライフが6になり、デッキから太陽竜のアイテムか必殺モンスターを1枚まで手札に加えデッキがシャッフルされる／選ばない場合は何も起きないことを確認）。"
+      "_note": "無邪気な太陽神 バルドラゴン。①【コールコスト】デッキ上1枚をソウルへ+ゲージ1=costs.call:[putTopDeckToSoul(1),payGauge(1)]（多数precedent標準形）。②『このカードが登場した時、君のドロップゾーンの《太陽竜》２枚を君のデッキの下に好きな順番で置いてよい。置いたら、君のライフを６にし、君のデッキから《太陽竜》の、アイテムか必殺モンスター１枚までを手札に加え、デッキをシャッフルする。』=event:enter+script:[selectCards(from:drop,filter:{cardType:monster,attribute:太陽竜},min:2,max:2,amount:2,require:false)→moveSelectedToDeckBottomOrdered(require:false)→ifSelection(then:[setLife(6),searchDeckToHand(filter:{attribute:太陽竜,cardTypeIn:[item,impactMonster]},amount:1)])]（『２枚を…置いてよい』＝0枚か2枚の二択。data/cards/bf-x2-bt01-legend-buddies.json X2-BT01/0005 再誕の氷竜 ロワ・ミセリアの『３枚を…置いてよい』min:max:3,require:falseと同型・枚数のみ2に差替。setLife=『ライフを６にし』の固定代入、gainLifeの加算では表現不可なため専用op使用（src/15-ability-effects.js:692、bf-x-ub03-complete-chaos.json等の確立precedent）。『《太陽竜》の、アイテムか必殺モンスター』=filter:{attribute:太陽竜,cardTypeIn:[item,impactMonster]}（cardTypeIn内OR・attributeとAND、src/17-targeting.js:367）。searchDeckToHandは既定でshuffle!==false=自動デッキシャッフル込み（『デッキをシャッフルする』を追加op無しで充足、src/15-ability-effects.js:400-437）。③『貫通』『ソウルガード』=keywords:[penetrate,soulguard]。grep自己検査: putTopDeckToSoul/payGauge(src/04-cost-resource.js)/selectCards from:drop min:max:2 require:false(src/14-ability-script.js、X2-BT01/0005実例)/moveSelectedToDeckBottomOrdered(src/14-ability-script.js:1405)/ifSelection(src/14-ability-script.js:1200)/setLife(src/15-ability-effects.js:692、script許可=src/14:3411)/searchDeckToHand+cardTypeIn(src/15-ability-effects.js:400、src/17-targeting.js:367) 全実在確認。VM検証: x78-b4-verify.js test0002参照（ドロップに太陽竜が1枚以下では登場時に何も起きない／2枚以上ある状態で2枚を選んでデッキ下へ置くとライフが6になり、デッキから太陽竜のアイテムか必殺モンスターを1枚まで手札に加えデッキがシャッフルされる／選ばない場合は何も起きないことを確認）。 【audit-cards-28 b071-1/b073-4】原文『君のドロップゾーンの《太陽竜》２枚』は種別指定なし＝selectCards.filter から cardType:monster を除去（アイテム/魔法の《太陽竜》も選べる）。"
     },
     {
       "id": "bf-x2-sp-0003",
@@ -466,7 +465,8 @@
               "grantConditionalSize": {
                 "size": 0,
                 "unconditional": true
-              }
+              },
+              "overwriteWhenFull": true
             }
           ]
         },
@@ -982,6 +982,7 @@
         },
         {
           "op": "grantNullifyImmunity",
+          "scope": "abilities",
           "controller": "self",
           "filter": {}
         }
@@ -1611,6 +1612,19 @@
                 "attribute": "太陽竜",
                 "sizeGte": 2
               }
+            },
+            {
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "phaseIs",
+                  "phase": "main"
+                },
+                {
+                  "op": "phaseIs",
+                  "phase": "final"
+                }
+              ]
             }
           ],
           "effects": [
@@ -1628,7 +1642,7 @@
           }
         }
       ],
-      "_note": "忠竜 フレアファング・ドラゴン。コール印字コスト行なし＝costsキー省略（無償コール）。①『君の場に他の元々のサイズが３の《太陽竜》がいるなら、場のこのカードのサイズを１減らす。』=continuous modifyStats{controller:self,filter:{sameInstanceAsSource:true},size:-1,conditions:[cardCount{controller:self,pile:field,filter:{attribute:太陽竜,baseSize:3},excludeSource:true,cmp:gte,amount:1}]}（data/cards/bf-x-cp01-100-yen-dragon.json X-CP01/0017太陽神の欠片 バルフランムの『他の元々のサイズが３の《太陽竜》がいるなら、場のこのカードのサイズを２減らす』と一字一句同型の直接precedent。baseSize=印字[元々の]サイズ参照でeffectiveSize再入を回避、src/17-targeting.js:417-419。減少量のみ2→1に差替）。②『君の場にサイズ２以上の《太陽竜》のモンスターが登場した時、君のデッキの上から１枚をゲージに置き、カード１枚を引く。この能力はメインフェイズとファイナルフェイズに１回ずつ発動する。』=event:allyEnter+conditions:[eventCardMatches{filter:{cardType:monster,attribute:太陽竜,sizeGte:2}}]（src/07-actions-turn.js:651でカードが自分の場へ登場する度に動的発火。sizeGteは登場時点のeffectiveSizeを見る＝『元々の』限定が無いため妥当）+effects:[putTopDeckToGauge(1),draw(1)]+limit:{scope:phase}（data/cards/bf-d-bt04-kagayake-super-sun-dragon.json D-BT04/0056太陽拳 バルナックル・チャージの『アタックフェイズとファイナルフェイズに１回ずつ発動する』=limit:{scope:phase}と同型のフェイズ単位limit、メイン/ファイナルへ名称のみ差替。原文の限定フェイズ2種と実際のゲームフェイズ進行が一致すれば自動でメイン1回・ファイナル1回に配分される）。grep自己検査: modifyStats+baseSize+excludeSource+cardCount(src/17-targeting.js:417-419、X-CP01/0017実例)/allyEnter動的生成(src/07-actions-turn.js:651)/eventCardMatches+sizeGte(src/13-abilities-core.js,src/17-targeting.js:401-402)/putTopDeckToGauge・draw(src/15-ability-effects.js)/limit.scope:phase(src/15-ability-effects.js、D-BT04/0056実例) 全実在確認。VM検証: x78-b4-verify.js test0018参照（元々のサイズ3の太陽竜が場にいなければサイズ不変／いればサイズ-1／サイズ2以上の太陽竜モンスターが場に登場するとデッキ上1枚がゲージへ+カード1枚を引く／メインフェイズとファイナルフェイズそれぞれ1回ずつ発動し同一フェイズ内2回目は発動しないことを確認）。"
+      "_note": "忠竜 フレアファング・ドラゴン。コール印字コスト行なし＝costsキー省略（無償コール）。①『君の場に他の元々のサイズが３の《太陽竜》がいるなら、場のこのカードのサイズを１減らす。』=continuous modifyStats{controller:self,filter:{sameInstanceAsSource:true},size:-1,conditions:[cardCount{controller:self,pile:field,filter:{attribute:太陽竜,baseSize:3},excludeSource:true,cmp:gte,amount:1}]}（data/cards/bf-x-cp01-100-yen-dragon.json X-CP01/0017太陽神の欠片 バルフランムの『他の元々のサイズが３の《太陽竜》がいるなら、場のこのカードのサイズを２減らす』と一字一句同型の直接precedent。baseSize=印字[元々の]サイズ参照でeffectiveSize再入を回避、src/17-targeting.js:417-419。減少量のみ2→1に差替）。②『君の場にサイズ２以上の《太陽竜》のモンスターが登場した時、君のデッキの上から１枚をゲージに置き、カード１枚を引く。この能力はメインフェイズとファイナルフェイズに１回ずつ発動する。』=event:allyEnter+conditions:[eventCardMatches{filter:{cardType:monster,attribute:太陽竜,sizeGte:2}}]（src/07-actions-turn.js:651でカードが自分の場へ登場する度に動的発火。sizeGteは登場時点のeffectiveSizeを見る＝『元々の』限定が無いため妥当）+effects:[putTopDeckToGauge(1),draw(1)]+limit:{scope:phase}（data/cards/bf-d-bt04-kagayake-super-sun-dragon.json D-BT04/0056太陽拳 バルナックル・チャージの『アタックフェイズとファイナルフェイズに１回ずつ発動する』=limit:{scope:phase}と同型のフェイズ単位limit、メイン/ファイナルへ名称のみ差替。原文の限定フェイズ2種と実際のゲームフェイズ進行が一致すれば自動でメイン1回・ファイナル1回に配分される）。grep自己検査: modifyStats+baseSize+excludeSource+cardCount(src/17-targeting.js:417-419、X-CP01/0017実例)/allyEnter動的生成(src/07-actions-turn.js:651)/eventCardMatches+sizeGte(src/13-abilities-core.js,src/17-targeting.js:401-402)/putTopDeckToGauge・draw(src/15-ability-effects.js)/limit.scope:phase(src/15-ability-effects.js、D-BT04/0056実例) 全実在確認。VM検証: x78-b4-verify.js test0018参照（元々のサイズ3の太陽竜が場にいなければサイズ不変／いればサイズ-1／サイズ2以上の太陽竜モンスターが場に登場するとデッキ上1枚がゲージへ+カード1枚を引く／メインフェイズとファイナルフェイズそれぞれ1回ずつ発動し同一フェイズ内2回目は発動しないことを確認）。 【audit-cards-28 b072-2】『メインフェイズとファイナルフェイズに１回ずつ発動する』＝発動できるのはその2フェイズのみ。conditions に any[phaseIs main, phaseIs final] を追加（limit scope:phase と併用で各1回）。アタックフェイズ中の登場では発動しない。"
     },
     {
       "id": "bf-x2-sp-0019",
@@ -1680,7 +1694,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-x2-sp-0019-jinrai-no-hitoya"
+            "key": "bf-x2-sp-0019-jinrai-no-hitoya",
+            "shared": true
           }
         }
       ],
@@ -1917,7 +1932,8 @@
                   "op": "selectZone",
                   "var": "z",
                   "cardVar": "im",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "payCardCostForSelection",
@@ -2311,7 +2327,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "self",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelected",
@@ -3252,10 +3269,11 @@
                 }
               ]
             }
-          ]
+          ],
+          "includeDefender": true
         }
       ],
-      "_note": "ブーメラン・ドラゴン・リターンズ。使用コスト行なし＝costsキー省略（無償コール）。『このカードのバトル終了時、君の手札１枚をゲージに置いてよい。置いたら、カード１枚を引き、このカードを手札に戻す。』=event:battleEnd（data/cards/bf-hd-pr.json PR/0092ブーメラン・ドラゴン（本カードの前身/元ネタ）の『このカードのバトル終了時、このカードを君の手札に戻す！』と同じ bare event:battleEnd＝カード自身へ直接発火）+script:[selectCards{from:hand,controller:self,amount:1,require:false}→ifSelection{then:[moveSelected(to:gauge), draw{amount:1}, returnToHand{target:$self}]}]（data/cards/bf-x-bt03-gyakuten-raiteigun.json X-BT03/0002エドワード・ザ・Cの『君の手札１枚をゲージに置いてよい。置いたら、〜』selectCards(require:false)→ifSelection確立形をそのまま踏襲し、効果をdraw+returnToHandへ差替。returnToHandはtarget:$self明示（『returnToHand $selfはfield=nullを読むため不可』はdestroyed誘発限定の落とし穴だが、本カードは場に居る状態でのbattleEnd誘発のため$self解決は正常））。原文に『1ターンに1回』の限定が無いため無条件（バトル終了ごとに毎回発動）。grep自己検査: event:battleEnd(PR/0092実例)/selectCards(from:hand,require:false)/ifSelection/moveSelected(to:gauge)/draw/returnToHand(target:$self) 全実在確認。VM検証: x78-b3-verify.js test0037参照（バトル終了時に手札を選ぶとゲージへ置かれ、カードを1枚引きこのカードが手札に戻る／手札を選ばない場合は何も起きない、を確認）。"
+      "_note": "ブーメラン・ドラゴン・リターンズ。使用コスト行なし＝costsキー省略（無償コール）。『このカードのバトル終了時、君の手札１枚をゲージに置いてよい。置いたら、カード１枚を引き、このカードを手札に戻す。』=event:battleEnd（data/cards/bf-hd-pr.json PR/0092ブーメラン・ドラゴン（本カードの前身/元ネタ）の『このカードのバトル終了時、このカードを君の手札に戻す！』と同じ bare event:battleEnd＝カード自身へ直接発火）+script:[selectCards{from:hand,controller:self,amount:1,require:false}→ifSelection{then:[moveSelected(to:gauge), draw{amount:1}, returnToHand{target:$self}]}]（data/cards/bf-x-bt03-gyakuten-raiteigun.json X-BT03/0002エドワード・ザ・Cの『君の手札１枚をゲージに置いてよい。置いたら、〜』selectCards(require:false)→ifSelection確立形をそのまま踏襲し、効果をdraw+returnToHandへ差替。returnToHandはtarget:$self明示（『returnToHand $selfはfield=nullを読むため不可』はdestroyed誘発限定の落とし穴だが、本カードは場に居る状態でのbattleEnd誘発のため$self解決は正常））。原文に『1ターンに1回』の限定が無いため無条件（バトル終了ごとに毎回発動）。grep自己検査: event:battleEnd(PR/0092実例)/selectCards(from:hand,require:false)/ifSelection/moveSelected(to:gauge)/draw/returnToHand(target:$self) 全実在確認。VM検証: x78-b3-verify.js test0037参照（バトル終了時に手札を選ぶとゲージへ置かれ、カードを1枚引きこのカードが手札に戻る／手札を選ばない場合は何も起きない、を確認）。 【audit-cards-28 b073-3】『このカードのバトル終了時』は攻撃側/防御側を限定しない＝includeDefender:true を付与（X-CP01/0035 等と同型）。"
     },
     {
       "id": "bf-x2-sp-0038",
@@ -3281,22 +3299,20 @@
         "homeWorld": "レジェンドW",
         "awayMaxCopies": 1
       },
-      "allyLeaveFieldReplacement": [
-        {
-          "filter": {
-            "cardType": "monster"
-          },
-          "from": {
-            "byOpponent": true
-          },
-          "cost": [
-            {
-              "op": "dropSource"
-            }
-          ],
-          "optional": true
-        }
-      ],
+      "allyDestroyReplacement": {
+        "filter": {
+          "cardType": "monster"
+        },
+        "from": {
+          "byOpponent": true
+        },
+        "cost": [
+          {
+            "op": "dropSource"
+          }
+        ],
+        "optional": true
+      },
       "abilities": [
         {
           "id": "bf-x2-sp-0038-revive",
@@ -3315,8 +3331,7 @@
           "script": [
             {
               "op": "selectZone",
-              "var": "z",
-              "emptyOnly": true
+              "var": "z"
             },
             {
               "op": "callSelfFromHand",
@@ -3325,7 +3340,7 @@
           ]
         }
       ],
-      "_note": "不死の賢王 ドーン伯爵（角王・印字コスト行なし=costs/callCostキー省略、無償コール。X-UB02以降の最新慣例）。①『お互いのアタックフェイズ開始時、このカードが君のドロップゾーンにあるなら、ライフ１を払ってよい。払ったら、ドロップゾーンのこのカードをコールする。』=kind:triggered,event:\"attackStart\",triggerZones:[\"drop\"]（ドロップゾーンに居る間もフェイズ開始誘発を拾う、src/07-actions-turn.js:1039-1056のドロップスキャンがtriggerZones:[\"drop\"]/fromDropZoneを持つ能力を両プレイヤーのdropから走査。turnOwnerIsSelf条件を付けないため『お互いの』＝自分・相手それぞれの攻撃フェイズ開始ごとに機会がある）,optional:true,cost:[payLife{amount:1}],script:[selectZone{var:z,emptyOnly:true},callSelfFromHand{zoneVar:z}]。bf-h-bt02-galaxy-burst.json H-BT02/0005七角地王ドーン伯爵『君のターン開始時、このカードが君のドロップゾーンにあるなら、ライフ１を払ってよい。払ったら、ドロップゾーンにあるこのカードをコールする。』（同一キャラクター『ドーン伯爵』シリーズの直接precedent、turnStart+turnOwnerIsSelf版）のtriggerZones+optional+cost+script骨格をそのまま踏襲し、eventをattackStartへ差替えturnOwnerIsSelf条件を除去（『君の』→『お互いの』への対応差分）。②『君の場の他のモンスターが相手のカードに破壊される場合、場のこのカードをドロップゾーンに置いてよい。置いたら、そのモンスター１枚を場に残す。』=card級allyLeaveFieldReplacement:[{filter:{cardType:monster},from:{byOpponent:true},cost:[{op:dropSource}],optional:true}]（bf-x2-bt01-legend-buddies.json X2-BT01/0063怪力少女ひき子さんの『君の場の《トイレ》が相手のカードの効果で場を離れる場合、場のこのカードをドロップゾーンに置いてよい。置いたら、そのカードを場に残す。』allyLeaveFieldReplacement確立骨格を踏襲。applyAllyLeaveFieldReplacement[src/11-destroy-turn.js:685-717]はreplacer自身[本カード]をcard[破壊対象]から自動除外する[instanceId一致でcontinue]ため『他の』は明示filter不要。『破壊される場合』はbyBattle/byEffect双方を指すため、from:{byOpponent:true}のみを指定（byBattle/byEffectいずれも未指定＝destroyImmunityEntryBlocksと同系のper-flag判定ロジックにより、rule.from.byBattle/byEffectが偽の間は該当チェックをスキップするため両cause[戦闘由来/効果由来]の相手起因破壊をどちらもブロック対象にできる。既存precedentは『場を離れる場合』[離場全般]でbyEffect:true併記だが、本カードは『破壊される場合』[破壊のみ・手段問わず]のためbyEffectを付けない一般化）。角王(deckAnyFlag)={homeWorld:レジェンドW,awayMaxCopies:1}。grep自己検査: event:attackStart+triggerZones:[drop]ドロップスキャン(src/07-actions-turn.js:1039-1056、H-BT02/0005実例)/optional+payLife+selectZone+callSelfFromHand(src/14-ability-script.js、H-BT02/0005実例)/allyLeaveFieldReplacement+fieldHasLeaveFieldReplacer+applyAllyLeaveFieldReplacement(src/11-destroy-turn.js:397,668-717、X2-BT01/0063実例)/dropSource cost(src/04-cost-resource.js) 全実在確認。VM検証(x78-b1-verify.js): (A)このカードがドロップにある状態で自分/相手いずれの攻撃フェイズ開始時にも、ライフ1を払ってよいの確認に応じるとドロップのこのカードが空きエリアへコールされる（払わない選択も可）、(B)場に居る状態で自場の他のモンスターが相手の効果/相手とのバトルいずれで破壊されそうになっても、場のこのカードをドロップに置くことでそのモンスターを場に残せる（置かない選択も可）、(C)自分自身が破壊されそうな時（=庇う対象がこのカード自身）は発動しない、(D)自分の効果や自分とのバトルなど相手起因でない破壊では発動しない、を実測。"
+      "_note": "不死の賢王 ドーン伯爵（角王・印字コスト行なし=costs/callCostキー省略、無償コール。X-UB02以降の最新慣例）。①『お互いのアタックフェイズ開始時、このカードが君のドロップゾーンにあるなら、ライフ１を払ってよい。払ったら、ドロップゾーンのこのカードをコールする。』=kind:triggered,event:\"attackStart\",triggerZones:[\"drop\"]（ドロップゾーンに居る間もフェイズ開始誘発を拾う、src/07-actions-turn.js:1039-1056のドロップスキャンがtriggerZones:[\"drop\"]/fromDropZoneを持つ能力を両プレイヤーのdropから走査。turnOwnerIsSelf条件を付けないため『お互いの』＝自分・相手それぞれの攻撃フェイズ開始ごとに機会がある）,optional:true,cost:[payLife{amount:1}],script:[selectZone{var:z,emptyOnly:true},callSelfFromHand{zoneVar:z}]。bf-h-bt02-galaxy-burst.json H-BT02/0005七角地王ドーン伯爵『君のターン開始時、このカードが君のドロップゾーンにあるなら、ライフ１を払ってよい。払ったら、ドロップゾーンにあるこのカードをコールする。』（同一キャラクター『ドーン伯爵』シリーズの直接precedent、turnStart+turnOwnerIsSelf版）のtriggerZones+optional+cost+script骨格をそのまま踏襲し、eventをattackStartへ差替えturnOwnerIsSelf条件を除去（『君の』→『お互いの』への対応差分）。②『君の場の他のモンスターが相手のカードに破壊される場合、場のこのカードをドロップゾーンに置いてよい。置いたら、そのモンスター１枚を場に残す。』=card級allyLeaveFieldReplacement:[{filter:{cardType:monster},from:{byOpponent:true},cost:[{op:dropSource}],optional:true}]（bf-x2-bt01-legend-buddies.json X2-BT01/0063怪力少女ひき子さんの『君の場の《トイレ》が相手のカードの効果で場を離れる場合、場のこのカードをドロップゾーンに置いてよい。置いたら、そのカードを場に残す。』allyLeaveFieldReplacement確立骨格を踏襲。applyAllyLeaveFieldReplacement[src/11-destroy-turn.js:685-717]はreplacer自身[本カード]をcard[破壊対象]から自動除外する[instanceId一致でcontinue]ため『他の』は明示filter不要。『破壊される場合』はbyBattle/byEffect双方を指すため、from:{byOpponent:true}のみを指定（byBattle/byEffectいずれも未指定＝destroyImmunityEntryBlocksと同系のper-flag判定ロジックにより、rule.from.byBattle/byEffectが偽の間は該当チェックをスキップするため両cause[戦闘由来/効果由来]の相手起因破壊をどちらもブロック対象にできる。既存precedentは『場を離れる場合』[離場全般]でbyEffect:true併記だが、本カードは『破壊される場合』[破壊のみ・手段問わず]のためbyEffectを付けない一般化）。角王(deckAnyFlag)={homeWorld:レジェンドW,awayMaxCopies:1}。grep自己検査: event:attackStart+triggerZones:[drop]ドロップスキャン(src/07-actions-turn.js:1039-1056、H-BT02/0005実例)/optional+payLife+selectZone+callSelfFromHand(src/14-ability-script.js、H-BT02/0005実例)/allyLeaveFieldReplacement+fieldHasLeaveFieldReplacer+applyAllyLeaveFieldReplacement(src/11-destroy-turn.js:397,668-717、X2-BT01/0063実例)/dropSource cost(src/04-cost-resource.js) 全実在確認。VM検証(x78-b1-verify.js): (A)このカードがドロップにある状態で自分/相手いずれの攻撃フェイズ開始時にも、ライフ1を払ってよいの確認に応じるとドロップのこのカードが空きエリアへコールされる（払わない選択も可）、(B)場に居る状態で自場の他のモンスターが相手の効果/相手とのバトルいずれで破壊されそうになっても、場のこのカードをドロップに置くことでそのモンスターを場に残せる（置かない選択も可）、(C)自分自身が破壊されそうな時（=庇う対象がこのカード自身）は発動しない、(D)自分の効果や自分とのバトルなど相手起因でない破壊では発動しない、を実測。 【audit-cards-28 b073-2/b073-6】②『相手のカードに破壊される場合』は破壊専用＝allyLeaveFieldReplacement→allyDestroyReplacement（手札戻し/ドロップ送り/ゲージ送りでは身代わり不可）。①『ドロップゾーンのこのカードをコールする』はエリア制限なし＝selectZone の emptyOnly を除去（埋まったエリアへもコール可・元のモンスターはドロップへ）。"
     },
     {
       "id": "bf-x2-sp-0039",
@@ -3473,17 +3488,6 @@
           "amount": 2
         }
       ],
-      "costs": {
-        "cast": [
-          {
-            "op": "payGauge",
-            "amount": 2
-          }
-        ]
-      },
-      "castCost": {
-        "gauge": 2
-      },
       "abilities": [
         {
           "id": "bf-x2-sp-0041-gotcha",
@@ -3503,12 +3507,6 @@
               "amount": 2
             }
           ],
-          "cost": [
-            {
-              "op": "payGauge",
-              "amount": 2
-            }
-          ],
           "effects": [
             {
               "op": "setNextActivatedCostMayUseOpponentGauge",
@@ -3522,7 +3520,7 @@
           }
         }
       ],
-      "_note": "【R15/E-XB73 配線済み・掃討反映】setNextActivatedCostMayUseOpponentGauge に includeSpellCost:true を追加済み（『次の君の魔法の【使用コスト】』でも相手ゲージから払える＝nextSpellCostMayUseOpponentGauge を併せて立てる）。以下は当時のギャップ分析（記録として保持）。ガッチャ！(捕まえたぜ！)。①『君の場に《魔術師》のモンスター２枚以上がいるなら使える。』=useConditions+ability.conditions二重明記:[cardCount{filter:{cardType:monster,attribute:魔術師},cmp:gte,amount:2}]（cardCountはpile省略時field既定・controller省略時self既定、src/13-abilities-core.js:927-976）。使用条件の二重記載はdata/cards/bt03-dododo-adventure.json BT03/0033ガッチャ！（本カードの旧版base同名カード）の骨格を踏襲しFIX7二重明記慣例に揃えた。②【使用コスト】ゲージ２=costs.cast+ability.cost二重明記（FIX7）。③『そのターン中、次に君の魔法の【使用コスト】か君の場のモンスターの【起動】でゲージを払う時、君のゲージと相手のゲージから払える。』のうち『君の場のモンスターの【起動】でゲージを払う時』はsetNextActivatedCostMayUseOpponentGauge（BT03/0033の直接precedent、player.nextActivatedCostMayUseOpponentGaugeを立て、useFieldAbilityAction(src/13-abilities-core.js:329-334)がkind:activatedのゲージコスト支払い時にincludeOpponentGauge:trueとしてpayStructuredCostWithSelectionへ渡す＝忠実に機能）で実装。【表現不能・エンジン拡張要】『君の魔法の【使用コスト】でゲージを払う時』（本カードの新規追加部分、BT03/0033には無い半分）は同フラグの消費経路が現状useFieldAbilityAction（起動能力専用）のみに配線されており、手札魔法の使用コスト支払い経路（useHandAbilityAction、src/13-abilities-core.js:144-230、及びcastSpell系）は一切player.nextActivatedCostMayUseOpponentGaugeを参照しない（grep確認: 'nextActivatedCostMayUseOpponentGauge'文字列がsrc/13-abilities-core.js:329-352にのみ出現し、src/08-card-use.js・useHandAbilityAction内には出現しない＝配線が起動能力専用に限定されている）。よってsetNextActivatedCostMayUseOpponentGaugeを収録しても、次にプレイヤーが自分の魔法を使用コストで唱えるケースでは相手ゲージを併用できず（起動能力の分だけ機能する半分実装）。エンジン班への提案: useHandAbilityAction（またはその上流のadjustedCostSteps呼び出し側）でも、ability.kind==='spell'かつゲージコストを含む場合にplayer.nextActivatedCostMayUseOpponentGaugeを読み、useFieldAbilityAction同様にincludeOpponentGauge/payStructuredCostWithSelectionへ伝播する分岐を追加すれば復元可能（フラグ名をMayUseOpponentGaugeへ一般化するか、専用のnextCastCostMayUseOpponentGaugeを並走させる方式のいずれか）。『無いopは創作せず報告』の方針により本バッチはsetNextActivatedCostMayUseOpponentGaugeのみを収録（起動能力の半分は忠実、魔法の使用コスト半分は現状不発）。grep自己検査: cardCount(src/13-abilities-core.js:927-976)/payGauge(src/04-cost-resource.js)/kind:spell+timing:main(BT03/0033実例)/setNextActivatedCostMayUseOpponentGauge(src/15-ability-effects.js、BT03/0033実例)/nextActivatedCostMayUseOpponentGauge消費がuseFieldAbilityAction限定(src/13-abilities-core.js:329-352)/useHandAbilityAction未配線(src/13-abilities-core.js:144-230、grep該当文字列0件) 全確認。VM: x78-b5-verify.js test0041参照（自場の魔術師が1体以下では使用不可・2体以上で使用可、ゲージ2を払うことを実測／使用後、次の場モンスターの【起動】ゲージコストで相手ゲージを併用できることを実測＝忠実部分／1ターンに1回だけ使えることを実測）。"
+      "_note": "【R15/E-XB73 配線済み・掃討反映】setNextActivatedCostMayUseOpponentGauge に includeSpellCost:true を追加済み（『次の君の魔法の【使用コスト】』でも相手ゲージから払える＝nextSpellCostMayUseOpponentGauge を併せて立てる）。以下は当時のギャップ分析（記録として保持）。ガッチャ！(捕まえたぜ！)。①『君の場に《魔術師》のモンスター２枚以上がいるなら使える。』=useConditions+ability.conditions二重明記:[cardCount{filter:{cardType:monster,attribute:魔術師},cmp:gte,amount:2}]（cardCountはpile省略時field既定・controller省略時self既定、src/13-abilities-core.js:927-976）。使用条件の二重記載はdata/cards/bt03-dododo-adventure.json BT03/0033ガッチャ！（本カードの旧版base同名カード）の骨格を踏襲しFIX7二重明記慣例に揃えた。②【使用コスト】ゲージ２=costs.cast+ability.cost二重明記（FIX7）。③『そのターン中、次に君の魔法の【使用コスト】か君の場のモンスターの【起動】でゲージを払う時、君のゲージと相手のゲージから払える。』のうち『君の場のモンスターの【起動】でゲージを払う時』はsetNextActivatedCostMayUseOpponentGauge（BT03/0033の直接precedent、player.nextActivatedCostMayUseOpponentGaugeを立て、useFieldAbilityAction(src/13-abilities-core.js:329-334)がkind:activatedのゲージコスト支払い時にincludeOpponentGauge:trueとしてpayStructuredCostWithSelectionへ渡す＝忠実に機能）で実装。【表現不能・エンジン拡張要】『君の魔法の【使用コスト】でゲージを払う時』（本カードの新規追加部分、BT03/0033には無い半分）は同フラグの消費経路が現状useFieldAbilityAction（起動能力専用）のみに配線されており、手札魔法の使用コスト支払い経路（useHandAbilityAction、src/13-abilities-core.js:144-230、及びcastSpell系）は一切player.nextActivatedCostMayUseOpponentGaugeを参照しない（grep確認: 'nextActivatedCostMayUseOpponentGauge'文字列がsrc/13-abilities-core.js:329-352にのみ出現し、src/08-card-use.js・useHandAbilityAction内には出現しない＝配線が起動能力専用に限定されている）。よってsetNextActivatedCostMayUseOpponentGaugeを収録しても、次にプレイヤーが自分の魔法を使用コストで唱えるケースでは相手ゲージを併用できず（起動能力の分だけ機能する半分実装）。エンジン班への提案: useHandAbilityAction（またはその上流のadjustedCostSteps呼び出し側）でも、ability.kind==='spell'かつゲージコストを含む場合にplayer.nextActivatedCostMayUseOpponentGaugeを読み、useFieldAbilityAction同様にincludeOpponentGauge/payStructuredCostWithSelectionへ伝播する分岐を追加すれば復元可能（フラグ名をMayUseOpponentGaugeへ一般化するか、専用のnextCastCostMayUseOpponentGaugeを並走させる方式のいずれか）。『無いopは創作せず報告』の方針により本バッチはsetNextActivatedCostMayUseOpponentGaugeのみを収録（起動能力の半分は忠実、魔法の使用コスト半分は現状不発）。grep自己検査: cardCount(src/13-abilities-core.js:927-976)/payGauge(src/04-cost-resource.js)/kind:spell+timing:main(BT03/0033実例)/setNextActivatedCostMayUseOpponentGauge(src/15-ability-effects.js、BT03/0033実例)/nextActivatedCostMayUseOpponentGauge消費がuseFieldAbilityAction限定(src/13-abilities-core.js:329-352)/useHandAbilityAction未配線(src/13-abilities-core.js:144-230、grep該当文字列0件) 全確認。VM: x78-b5-verify.js test0041参照（自場の魔術師が1体以下では使用不可・2体以上で使用可、ゲージ2を払うことを実測／使用後、次の場モンスターの【起動】ゲージコストで相手ゲージを併用できることを実測＝忠実部分／1ターンに1回だけ使えることを実測）。 【audit-cards-28 b073-1】公式X2-SP/0041には【使用コスト】行が無い（rules も2行のみ）。旧版BT03/0033から流用していた costs.cast/castCost/ability.cost のゲージ2を削除＝コスト0。上記②の記述は旧版由来の誤り。"
     },
     {
       "id": "bf-x2-sp-0042",
@@ -3880,7 +3878,6 @@
               "from": "drop",
               "controller": "self",
               "filter": {
-                "cardType": "monster",
                 "attribute": "太陽竜"
               },
               "min": 2,
@@ -3919,7 +3916,7 @@
           ]
         }
       ],
-      "_note": "無邪気な太陽神 バルドラゴン。①【コールコスト】デッキ上1枚をソウルへ+ゲージ1=costs.call:[putTopDeckToSoul(1),payGauge(1)]（多数precedent標準形）。②『このカードが登場した時、君のドロップゾーンの《太陽竜》２枚を君のデッキの下に好きな順番で置いてよい。置いたら、君のライフを６にし、君のデッキから《太陽竜》の、アイテムか必殺モンスター１枚までを手札に加え、デッキをシャッフルする。』=event:enter+script:[selectCards(from:drop,filter:{cardType:monster,attribute:太陽竜},min:2,max:2,amount:2,require:false)→moveSelectedToDeckBottomOrdered(require:false)→ifSelection(then:[setLife(6),searchDeckToHand(filter:{attribute:太陽竜,cardTypeIn:[item,impactMonster]},amount:1)])]（『２枚を…置いてよい』＝0枚か2枚の二択。data/cards/bf-x2-bt01-legend-buddies.json X2-BT01/0005 再誕の氷竜 ロワ・ミセリアの『３枚を…置いてよい』min:max:3,require:falseと同型・枚数のみ2に差替。setLife=『ライフを６にし』の固定代入、gainLifeの加算では表現不可なため専用op使用（src/15-ability-effects.js:692、bf-x-ub03-complete-chaos.json等の確立precedent）。『《太陽竜》の、アイテムか必殺モンスター』=filter:{attribute:太陽竜,cardTypeIn:[item,impactMonster]}（cardTypeIn内OR・attributeとAND、src/17-targeting.js:367）。searchDeckToHandは既定でshuffle!==false=自動デッキシャッフル込み（『デッキをシャッフルする』を追加op無しで充足、src/15-ability-effects.js:400-437）。③『貫通』『ソウルガード』=keywords:[penetrate,soulguard]。grep自己検査: putTopDeckToSoul/payGauge(src/04-cost-resource.js)/selectCards from:drop min:max:2 require:false(src/14-ability-script.js、X2-BT01/0005実例)/moveSelectedToDeckBottomOrdered(src/14-ability-script.js:1405)/ifSelection(src/14-ability-script.js:1200)/setLife(src/15-ability-effects.js:692、script許可=src/14:3411)/searchDeckToHand+cardTypeIn(src/15-ability-effects.js:400、src/17-targeting.js:367) 全実在確認。VM検証: x78-b4-verify.js test0002参照（ドロップに太陽竜が1枚以下では登場時に何も起きない／2枚以上ある状態で2枚を選んでデッキ下へ置くとライフが6になり、デッキから太陽竜のアイテムか必殺モンスターを1枚まで手札に加えデッキがシャッフルされる／選ばない場合は何も起きないことを確認）。"
+      "_note": "無邪気な太陽神 バルドラゴン。①【コールコスト】デッキ上1枚をソウルへ+ゲージ1=costs.call:[putTopDeckToSoul(1),payGauge(1)]（多数precedent標準形）。②『このカードが登場した時、君のドロップゾーンの《太陽竜》２枚を君のデッキの下に好きな順番で置いてよい。置いたら、君のライフを６にし、君のデッキから《太陽竜》の、アイテムか必殺モンスター１枚までを手札に加え、デッキをシャッフルする。』=event:enter+script:[selectCards(from:drop,filter:{cardType:monster,attribute:太陽竜},min:2,max:2,amount:2,require:false)→moveSelectedToDeckBottomOrdered(require:false)→ifSelection(then:[setLife(6),searchDeckToHand(filter:{attribute:太陽竜,cardTypeIn:[item,impactMonster]},amount:1)])]（『２枚を…置いてよい』＝0枚か2枚の二択。data/cards/bf-x2-bt01-legend-buddies.json X2-BT01/0005 再誕の氷竜 ロワ・ミセリアの『３枚を…置いてよい』min:max:3,require:falseと同型・枚数のみ2に差替。setLife=『ライフを６にし』の固定代入、gainLifeの加算では表現不可なため専用op使用（src/15-ability-effects.js:692、bf-x-ub03-complete-chaos.json等の確立precedent）。『《太陽竜》の、アイテムか必殺モンスター』=filter:{attribute:太陽竜,cardTypeIn:[item,impactMonster]}（cardTypeIn内OR・attributeとAND、src/17-targeting.js:367）。searchDeckToHandは既定でshuffle!==false=自動デッキシャッフル込み（『デッキをシャッフルする』を追加op無しで充足、src/15-ability-effects.js:400-437）。③『貫通』『ソウルガード』=keywords:[penetrate,soulguard]。grep自己検査: putTopDeckToSoul/payGauge(src/04-cost-resource.js)/selectCards from:drop min:max:2 require:false(src/14-ability-script.js、X2-BT01/0005実例)/moveSelectedToDeckBottomOrdered(src/14-ability-script.js:1405)/ifSelection(src/14-ability-script.js:1200)/setLife(src/15-ability-effects.js:692、script許可=src/14:3411)/searchDeckToHand+cardTypeIn(src/15-ability-effects.js:400、src/17-targeting.js:367) 全実在確認。VM検証: x78-b4-verify.js test0002参照（ドロップに太陽竜が1枚以下では登場時に何も起きない／2枚以上ある状態で2枚を選んでデッキ下へ置くとライフが6になり、デッキから太陽竜のアイテムか必殺モンスターを1枚まで手札に加えデッキがシャッフルされる／選ばない場合は何も起きないことを確認）。 【audit-cards-28 b071-1/b073-4】原文『君のドロップゾーンの《太陽竜》２枚』は種別指定なし＝selectCards.filter から cardType:monster を除去（アイテム/魔法の《太陽竜》も選べる）。"
     },
     {
       "id": "bf-x2-sp-br03",
@@ -4092,7 +4089,8 @@
               "op": "lookTopSelectToHandRestToBottom",
               "count": 3,
               "max": 1,
-              "altTo": "gauge"
+              "altTo": "gauge",
+              "min": 1
             },
             {
               "op": "gainLife",

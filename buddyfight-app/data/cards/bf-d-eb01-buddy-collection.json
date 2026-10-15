@@ -175,6 +175,7 @@
      "id": "bf-d-eb01-0003-battle-end-return",
      "kind": "triggered",
      "event": "battleEnd",
+     "includeDefender": true,
      "effects": [
       {
        "op": "returnToHand",
@@ -441,7 +442,7 @@
     "doubleAttack",
     "canAttackFighterThroughCenter"
    ],
-   "deckAnyFlag": true,
+   "usableInAnyFlag": true,
    "leaveFieldReplacement": {
     "cost": [
      {
@@ -844,7 +845,7 @@
      ]
     }
    ],
-   "deckAnyFlag": true,
+   "usableInAnyFlag": true,
    "_note": "コールコストは returnOwnFieldCardToHand(filter: cardType monster + nameIncludes 煉獄騎士団 + baseSizeGte:2) ＋ payGauge2（H-EB04/0010のcallStack filterと同じキー構成）。callStackは無し（本カードは『重ねる』記述が無く空きゾーンへの通常コール）。対抗起動の破壊は、H-EB04/0010（同名キャラの再録先例）がdestroySelected+ifCondition(lastDestroySucceeded)を使っているが、destroySelectedはcontext.lastDestroyedを設定しないため、その組み合わせは事実上lastDestroySucceededが常にfalseになる（既存カードの潜在バグ・本パックでは踏襲しない）。かわりにability.target(type:fieldCard, excludeSource:true, filter)＋destroy{target:\"$target\"}を使い、destroy効果が正しくcontext.lastDestroyedを立てるようにした。対象がいない時はfieldAbilityUsableのtarget事前チェックでこの起動能力自体が選択肢に出ない（cardCount条件の重複指定は不要）。destroyByAttackトリガーのスタンドは対象カードを特定不要のため target:\"$self\" 直書き。deckAnyFlag:true追記(2026-07-16・201706_11対応): 公式レシピ201706_11「ゼータデッキ」（ヒーローワールド・ジェムクローンbuddy）が本カードのヒーローＷでの使用を実証。ジェムクローン構築緩和の soft rule 近似＝同パック0007のFD8/R5と同扱い（deckAnyFlag:true で全フラッグ構築可・mech/rules無変更）。"
   },
   {
@@ -1033,6 +1034,7 @@
      "id": "bf-d-eb01-0015-battleend-arm-soul",
      "kind": "triggered",
      "event": "battleEnd",
+     "includeDefender": true,
      "optional": true,
      "script": [
       {
@@ -1282,6 +1284,7 @@
       },
       {
        "op": "moveSelected",
+       "discard": true,
        "var": "ninpo",
        "to": "drop",
        "log": "discard"
@@ -1485,6 +1488,7 @@
       },
       {
        "op": "moveSelected",
+       "discard": true,
        "var": "x",
        "to": "drop",
        "log": "discard"
@@ -1624,7 +1628,8 @@
         "size": 0,
         "unconditional": true
        },
-       "grantFinalPhaseAttack": true
+       "grantFinalPhaseAttack": true,
+       "overwriteWhenFull": true
       }
      ]
     }
@@ -2606,6 +2611,7 @@
        "then": [
         {
          "op": "moveSelected",
+         "discard": true,
          "var": "h",
          "to": "drop",
          "log": "discard"
@@ -2665,11 +2671,8 @@
      ],
      "effects": [
       {
-       "op": "preventNextDamage"
-      },
-      {
-       "op": "gainLife",
-       "amount": 1
+       "op": "preventNextDamage",
+       "gainLife": 1
       }
      ]
     }
@@ -2711,7 +2714,8 @@
       "filter": {
        "cardType": "monster",
        "keyword": "soulguard"
-      }
+      },
+      "allowMissingTarget": true
      },
      "effects": [
       {
@@ -2721,9 +2725,11 @@
        "op": "dropTargetSoul",
        "target": "$target"
       }
-     ]
+     ],
+     "allowMissingTarget": true
     }
-   ]
+   ],
+   "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
   },
   {
    "id": "bf-d-eb01-0041",
@@ -2854,8 +2860,17 @@
        "op": "pendingActionIsOpponent"
       },
       {
-       "op": "pendingActionCardType",
-       "cardType": "spell"
+       "op": "any",
+       "conditions": [
+        {
+         "op": "pendingActionKind",
+         "kind": "spell"
+        },
+        {
+         "op": "pendingActionKind",
+         "kind": "setSpell"
+        }
+       ]
       }
      ],
      "cost": [
@@ -3402,7 +3417,6 @@
       "type": "fieldCard",
       "controller": "self",
       "filter": {
-       "cardType": "monster",
        "attribute": "黒竜"
       }
      },
@@ -3479,12 +3493,17 @@
       },
       {
        "op": "destroy",
-       "target": "$target"
+       "target": "$target",
+       "conditions": [
+        {
+         "op": "lastDestroySucceeded"
+        }
+       ]
       }
      ]
     }
    ],
-   "_note": "『このカードを破壊し、ライフ2を払う。そうしたら〜』はdbt01-0040『黒き炎 インフレイム』と同じ確立済み慣用形：ライフ支払いをcost、自壊をeffects先頭のdestroySelfとし、本文の記述順（自壊→ライフ）とJSON実装順（costライフ→自壊effect→本効果）が異なる点もdbt01-0040の_note通り。対象必須ハウススタイル(design.md §5)：相手の場にアイテムが0枚ならこの起動能力自体が選択肢に出ない（ability.target必須）。"
+   "_note": "『このカードを破壊し、ライフ2を払う。そうしたら〜』はdbt01-0040『黒き炎 インフレイム』と同じ確立済み慣用形：ライフ支払いをcost、自壊をeffects先頭のdestroySelfとし、本文の記述順（自壊→ライフ）とJSON実装順（costライフ→自壊effect→本効果）が異なる点もdbt01-0040の_note通り。対象必須ハウススタイル(design.md §5)：相手の場にアイテムが0枚ならこの起動能力自体が選択肢に出ない（ability.target必須）。 ／【2026-10-09 オーナー裁定R8】『このカードを破壊する。そうしたら/破壊したら』: destroySelf の後続効果に lastDestroySucceeded ゲートを追加（破壊耐性やゲージ/手札へ移る置換で破壊にならなかったら後半を行わない。ソウルガード等で場に残った場合は破壊成功＝後半を行う［2026-10-09 オーナー裁定］）。"
   },
   {
    "id": "bf-d-eb01-0053",
@@ -3987,45 +4006,33 @@
      ],
      "script": [
       {
-       "op": "chooseBranch",
-       "title": "ダメージ・コントロール",
-       "lead": "捨てる手札を選んでください。",
-       "options": [
+       "op": "discardHand",
+       "amount": 1,
+       "var": "discarded"
+      },
+      {
+       "op": "ifCondition",
+       "condition": {
+        "op": "selectionMatches",
+        "var": "discarded",
+        "filter": {
+         "attribute": "戦神機"
+        }
+       },
+       "then": [
         {
-         "key": "sengineki",
-         "label": "《戦神機》を捨てる（次に受けるダメージ−4）",
+         "op": "reduceNextDamage",
+         "amount": 4
+        }
+       ],
+       "else": [
+        {
+         "op": "ifCondition",
          "condition": {
-          "op": "cardCount",
-          "controller": "self",
-          "pile": "hand",
-          "filter": {
-           "attribute": "戦神機"
-          },
-          "cmp": "gte",
-          "amount": 1
+          "op": "selectionMatches",
+          "var": "discarded"
          },
-         "script": [
-          {
-           "op": "discardHand",
-           "amount": 1,
-           "filter": {
-            "attribute": "戦神機"
-           }
-          },
-          {
-           "op": "reduceNextDamage",
-           "amount": 4
-          }
-         ]
-        },
-        {
-         "key": "other",
-         "label": "手札１枚を捨てる（次に受けるダメージ−2）",
-         "script": [
-          {
-           "op": "discardHand",
-           "amount": 1
-          },
+         "then": [
           {
            "op": "reduceNextDamage",
            "amount": 2

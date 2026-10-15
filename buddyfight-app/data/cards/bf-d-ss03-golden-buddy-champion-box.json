@@ -63,7 +63,8 @@
               "max": 1,
               "discardOnPick": 1,
               "title": "大いなる太陽竜 バルドラゴン",
-              "lead": "デッキの上から５枚を見て、手札に加えるモンスターかアイテムを１枚まで選んでください（必殺モンスターも対象）。残りはデッキの下に好きな順番で置きます。"
+              "lead": "デッキの上から５枚を見て、手札に加えるモンスターかアイテムを１枚まで選んでください（必殺モンスターも対象）。残りはデッキの下に好きな順番で置きます。",
+              "orderRest": true
             }
           ]
         }
@@ -411,40 +412,16 @@
       ],
       "abilities": [
         {
-          "id": "bf-d-ss03-0008-link-mark",
-          "kind": "triggered",
-          "event": "attack",
-          "conditions": [
-            {
-              "op": "pendingAttackBySource"
-            },
-            {
-              "op": "pendingAttackIncludesOtherMatching",
-              "filter": {
-                "attribute": "太陽竜"
-              }
-            }
-          ],
-          "effects": [
-            {
-              "op": "grantKeyword",
-              "target": "$self",
-              "keyword": "dss03-0008-linked",
-              "duration": "turn"
-            }
-          ]
-        },
-        {
           "id": "bf-d-ss03-0008-battleend-return",
           "kind": "triggered",
           "event": "battleEnd",
           "optional": true,
           "conditions": [
             {
-              "op": "targetMatches",
-              "ref": "$self",
-              "filter": {
-                "keyword": "dss03-0008-linked"
+              "op": "lastAttackIsLink",
+              "includesSource": true,
+              "otherFilter": {
+                "attribute": "太陽竜"
               }
             }
           ],
@@ -455,7 +432,7 @@
           ]
         }
       ],
-      "_note": "『このカードが他の《太陽竜》と連携攻撃したバトルの終了時』は単一イベントで表現不可（queueBattleEndTriggersが起動するattack宣言時点のstate.pendingAttackはclearPendingAttackで既にnull化されておりpendingAttackBySource等がbattleEnd側では常に偽になる／src/10-battle-resolve.js:492-494の同期実行順序を実装前にソース確認）。よって2能力構成で橋渡し: (a)event:attackでリンク成立を検知したら自分に一時マーカーkeyword(dss03-0008-linked)をduration:turnで付与（grantKeyword→card.turnKeywords、clearBattleModifiers(battle終了時処理)ではなくclearTurnModifiers(ターン終了)まで残る）、(b)event:battleEndでtargetMatches(ref:$self, filter:{keyword:...})によりmatchesCardFilterのfilter.keyword→hasKeyword経由でマーカーを判定し、成立時のみreturnSelfToHand(ability optional:trueで『戻してよい』)。filter.keywordをbf-h-eb02-w-hero-warsのhenshin/rideと同じ用法（カスタムマーカーとしての一般キーワード判定）で流用・targetMatches(ref:$self)はD-SS02/0003ネブローサ(bf-hd-pr)のbattleEnd+targetMatches($self)前例と同型技法。既知の残差: このカード自身が他の効果で『２回攻撃』等の追加攻撃を得た場合、同一ターン内の2回目(非連携)の攻撃のbattleEndでも直前のマーカーが残り誤発動しうる（turnKeywordsは個別クリアフックが無くターン終了まで保持されるため）。本カード自体は多段攻撃キーワードを持たないため通常到達しない稀な残差として明記。"
+      "_note": "【audit2 更新】連携判定は attack 時の duration:turn 印キーワード方式をやめ、battleEnd の条件 lastAttackIsLink{includesSource:true(,otherFilter)} に置換（同ターンの後続の単独攻撃で再誘発しないため）。以下の旧記述は履歴。 『このカードが他の《太陽竜》と連携攻撃したバトルの終了時』は単一イベントで表現不可（queueBattleEndTriggersが起動するattack宣言時点のstate.pendingAttackはclearPendingAttackで既にnull化されておりpendingAttackBySource等がbattleEnd側では常に偽になる／src/10-battle-resolve.js:492-494の同期実行順序を実装前にソース確認）。よって2能力構成で橋渡し: (a)event:attackでリンク成立を検知したら自分に一時マーカーkeyword(dss03-0008-linked)をduration:turnで付与（grantKeyword→card.turnKeywords、clearBattleModifiers(battle終了時処理)ではなくclearTurnModifiers(ターン終了)まで残る）、(b)event:battleEndでtargetMatches(ref:$self, filter:{keyword:...})によりmatchesCardFilterのfilter.keyword→hasKeyword経由でマーカーを判定し、成立時のみreturnSelfToHand(ability optional:trueで『戻してよい』)。filter.keywordをbf-h-eb02-w-hero-warsのhenshin/rideと同じ用法（カスタムマーカーとしての一般キーワード判定）で流用・targetMatches(ref:$self)はD-SS02/0003ネブローサ(bf-hd-pr)のbattleEnd+targetMatches($self)前例と同型技法。既知の残差: このカード自身が他の効果で『２回攻撃』等の追加攻撃を得た場合、同一ターン内の2回目(非連携)の攻撃のbattleEndでも直前のマーカーが残り誤発動しうる（turnKeywordsは個別クリアフックが無くターン終了まで保持されるため）。本カード自体は多段攻撃キーワードを持たないため通常到達しない稀な残差として明記。"
     },
     {
       "id": "bf-d-ss03-0009",
@@ -636,7 +613,8 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": true
+              "require": true,
+              "overwriteWhenFull": true
             }
           ],
           "limit": {
@@ -792,6 +770,7 @@
           "effects": [
             {
               "op": "setPreventNextDestroy",
+              "optional": true,
               "target": "$target",
               "amount": 1,
               "gainLife": 2
@@ -819,6 +798,9 @@
         "■場のこのカードは破壊されず、手札に戻せず、能力は無効化されず、このカードはファイナルフェイズ中にも攻撃できる。",
         "■このカードが他の《太陽竜》と連携攻撃した時、相手の場のモンスター全てを破壊し、破壊した枚数分、相手にダメージ！"
       ],
+      "keywords": [
+        "releaseCondition"
+      ],
       "equipConditions": [
         {
           "op": "lifeLte",
@@ -840,7 +822,7 @@
           }
         ]
       },
-      "cannotBeNullified": true,
+      "nullifyImmune": true,
       "cannotReturnToHand": true,
       "destroyImmunity": [
         {
@@ -849,9 +831,7 @@
           }
         },
         {
-          "from": {
-            "byEffect": true
-          }
+          "from": {}
         }
       ],
       "canAttackInFinalPhase": true,
@@ -889,7 +869,7 @@
           ]
         }
       ],
-      "_note": "解放条件！＋常在4点セットは bf-d-bt03-horobose-daimaryu.json bf-d-bt03-0001(ドラゴンフォース(ドラゴンワールド))と同型を踏襲（equipConditions lifeLte6+ownFieldCardExists{nameIncludes:バルドラゴン,cardType:monster}／costs.equip payGauge2／cannotBeNullified/cannotReturnToHand/destroyImmunity(byBattle+byEffect)/canAttackInFinalPhase）。連携攻撃時能力は bf-d-bt03-0026 ゼルホルスの destroy{scope:all}→dealDamage{amountFrom:lastDestroyedCount} パターンを scope:opponent に絞って踏襲（『相手の場のモンスター全てを破壊し、破壊した枚数分、相手にダメージ』）。lastDestroyedCountは実際に破壊できた枚数(耐性で生き残った分は含まない)。"
+      "_note": "解放条件！＋常在4点セットは bf-d-bt03-horobose-daimaryu.json bf-d-bt03-0001(ドラゴンフォース(ドラゴンワールド))と同型を踏襲（equipConditions lifeLte6+ownFieldCardExists{nameIncludes:バルドラゴン,cardType:monster}／costs.equip payGauge2／cannotBeNullified/cannotReturnToHand/destroyImmunity(byBattle+byEffect)/canAttackInFinalPhase）。連携攻撃時能力は bf-d-bt03-0026 ゼルホルスの destroy{scope:all}→dealDamage{amountFrom:lastDestroyedCount} パターンを scope:opponent に絞って踏襲（『相手の場のモンスター全てを破壊し、破壊した枚数分、相手にダメージ』）。lastDestroyedCountは実際に破壊できた枚数(耐性で生き残った分は含まない)。 【監査cards-05 b012-1】『能力は無効化されず』は能力無効化への耐性＝nullifyImmune:true（src/05 isAbilitiesNullified）。旧 cannotBeNullified はカード使用/装備宣言の打ち消し耐性で原文に無いため削除。"
     },
     {
       "id": "bf-d-ss03-0016",
@@ -1223,9 +1203,7 @@
           ]
         },
         {
-          "from": {
-            "byEffect": true
-          },
+          "from": {},
           "conditions": [
             {
               "op": "sourceZoneIn",
@@ -1361,8 +1339,8 @@
           }
         ]
       },
-      "deckAnyFlag": true,
-      "_note": "R5近似(rulings.md)。公式は『ジェムクローン(D-SS03/0028)がバディゾーンにあり、君のフラッグがヒーローＷの時のみ、ヒーローＷ以外のワールド(本カードはエンシェントW)の必殺モンスターも使用可』という条件付きデッキ構築緩和。エンジンはバディゾーン条件付きの構築合法性を持たないため、本カードにdeckAnyFlag:trueを付与し、どのフラッグのデッキにも無条件で採用可能にする近似(soft rule)。ジェムクローンがバディゾーンにある前提は非強制。callCostはC3実測(engine-notes)どおりputSelectedOwnFieldCardsToSoulでコールされる当カード自身のソウルへ入る(改修不要)。filter:{cardType:monster}未指定だと非モンスターも候補に入るため明示(design C3の例示どおり)。"
+      "usableInAnyFlag": true,
+      "_note": "R5近似(rulings.md)。公式は『ジェムクローン(D-SS03/0028)がバディゾーンにあり、君のフラッグがヒーローＷの時のみ、ヒーローＷ以外のワールド(本カードはエンシェントW)の必殺モンスターも使用可』という条件付きデッキ構築緩和。エンジンはバディゾーン条件付きの構築合法性を持たないため、本カードにdeckAnyFlag:trueを付与し、どのフラッグのデッキにも無条件で採用可能にする近似(soft rule)。ジェムクローンがバディゾーンにある前提は非強制。callCostはC3実測(engine-notes)どおりputSelectedOwnFieldCardsToSoulでコールされる当カード自身のソウルへ入る(改修不要)。filter:{cardType:monster}未指定だと非モンスターも候補に入るため明示(design C3の例示どおり)。 D2(2026-10): 角王アイコンではない構築緩和のため deckAnyFlag:true→usableInAnyFlag:true へ分離（角王判定 filter.deckAnyFlag・角王の非ホーム1枚制限に波及させない）。"
     },
     {
       "id": "bf-d-ss03-0022",
@@ -1431,8 +1409,8 @@
           ]
         }
       ],
-      "deckAnyFlag": true,
-      "_note": "R5近似(0021と同旨。ダークネスドラゴンWの複製必殺): デッキ構築をdeckAnyFlag:trueで無条件許可(soft rule、詳細は0021参照)。callCostはガロウズ(bf-d-bt01-0017)型のpayGauge+destroyOwnMonster(filter省略=既定でcardType:monsterへ自動限定。src/04 destroyOwnMonster分岐)。第2能力『このカードの攻撃で相手のモンスターを破壊した時』はevent:destroyByAttack(src/10、攻撃側カード自身にのみ発火=自己限定として正確)。第3能力『このカードの攻撃が無効化された時』はevent:allyAttackNullified＋conditions:[{op:selfIsNullifiedAttacker}]で自己限定化(E4追補)。allyAttackNullified は『君の場のカードの攻撃が無効化された時』を攻撃側席の場全体へ配送する既存イベント(nullifyPendingAttack が clearPendingAttack 済み＝発火時点で state.pendingAttack は null なので pendingAttackBySource は機能しない＝VM実測で確認)。無効化直前の攻撃側スロットを state.lastAttackOutcome.attackers に凍結してあるので、新condition op selfIsNullifiedAttacker(src/13)がそれに context.card(この listener)のスロットが含まれるかで自分の攻撃の無効化だけに絞る。他の味方の攻撃が無効化されても発火しない(過剰トリガの近似を解消)。"
+      "usableInAnyFlag": true,
+      "_note": "R5近似(0021と同旨。ダークネスドラゴンWの複製必殺): デッキ構築をdeckAnyFlag:trueで無条件許可(soft rule、詳細は0021参照)。callCostはガロウズ(bf-d-bt01-0017)型のpayGauge+destroyOwnMonster(filter省略=既定でcardType:monsterへ自動限定。src/04 destroyOwnMonster分岐)。第2能力『このカードの攻撃で相手のモンスターを破壊した時』はevent:destroyByAttack(src/10、攻撃側カード自身にのみ発火=自己限定として正確)。第3能力『このカードの攻撃が無効化された時』はevent:allyAttackNullified＋conditions:[{op:selfIsNullifiedAttacker}]で自己限定化(E4追補)。allyAttackNullified は『君の場のカードの攻撃が無効化された時』を攻撃側席の場全体へ配送する既存イベント(nullifyPendingAttack が clearPendingAttack 済み＝発火時点で state.pendingAttack は null なので pendingAttackBySource は機能しない＝VM実測で確認)。無効化直前の攻撃側スロットを state.lastAttackOutcome.attackers に凍結してあるので、新condition op selfIsNullifiedAttacker(src/13)がそれに context.card(この listener)のスロットが含まれるかで自分の攻撃の無効化だけに絞る。他の味方の攻撃が無効化されても発火しない(過剰トリガの近似を解消)。 D2(2026-10): 角王アイコンではない構築緩和のため deckAnyFlag:true→usableInAnyFlag:true へ分離（角王判定 filter.deckAnyFlag・角王の非ホーム1枚制限に波及させない）。"
     },
     {
       "id": "bf-d-ss03-0023",
@@ -1481,8 +1459,8 @@
           "critical": 1
         }
       ],
-      "deckAnyFlag": true,
-      "_note": "R5近似(0021と同旨。ドラゴンWの複製必殺): デッキ構築をdeckAnyFlag:trueで無条件許可(soft rule、詳細は0021参照)。callCostはputOwnFieldCardsToGauge(filter既定{}は非モンスターも候補に入る=src/04 ownFieldCostCandidates。filter:{cardType:monster}を明示)。『君が装備しているアイテムの打撃力+1』はbf-d-eb01-0004 絆の星竜ジャックナイフの『さらに、君の場のアイテムの攻撃力+2000』と同型のmodifyStats{controller:self, filter:{cardType:item}}パターンをcritical(打撃力)へ適用(『打撃力』はcritical、power誤用に注意)。"
+      "usableInAnyFlag": true,
+      "_note": "R5近似(0021と同旨。ドラゴンWの複製必殺): デッキ構築をdeckAnyFlag:trueで無条件許可(soft rule、詳細は0021参照)。callCostはputOwnFieldCardsToGauge(filter既定{}は非モンスターも候補に入る=src/04 ownFieldCostCandidates。filter:{cardType:monster}を明示)。『君が装備しているアイテムの打撃力+1』はbf-d-eb01-0004 絆の星竜ジャックナイフの『さらに、君の場のアイテムの攻撃力+2000』と同型のmodifyStats{controller:self, filter:{cardType:item}}パターンをcritical(打撃力)へ適用(『打撃力』はcritical、power誤用に注意)。 D2(2026-10): 角王アイコンではない構築緩和のため deckAnyFlag:true→usableInAnyFlag:true へ分離（角王判定 filter.deckAnyFlag・角王の非ホーム1枚制限に波及させない）。"
     },
     {
       "id": "bf-d-ss03-0024",
@@ -1540,8 +1518,8 @@
           ]
         }
       ],
-      "deckAnyFlag": true,
-      "_note": "R5近似(0021と同旨。スタードラゴンWの複製必殺): デッキ構築をdeckAnyFlag:trueで無条件許可(soft rule、詳細は0021参照)。callStackは属性指定の無い『君の場のモンスター1枚の上に重ねる』のため、bf-d-bt01-0050/0078型(filter:{cardType:monster}、attribute指定なし)を採用(bf-d-bt01-0002/0008のattribute限定版とは区別)。『手札に加えてよい』はmoveMatchingDropToHand{optional:true}(min:0相当)で表現。"
+      "usableInAnyFlag": true,
+      "_note": "R5近似(0021と同旨。スタードラゴンWの複製必殺): デッキ構築をdeckAnyFlag:trueで無条件許可(soft rule、詳細は0021参照)。callStackは属性指定の無い『君の場のモンスター1枚の上に重ねる』のため、bf-d-bt01-0050/0078型(filter:{cardType:monster}、attribute指定なし)を採用(bf-d-bt01-0002/0008のattribute限定版とは区別)。『手札に加えてよい』はmoveMatchingDropToHand{optional:true}(min:0相当)で表現。 D2(2026-10): 角王アイコンではない構築緩和のため deckAnyFlag:true→usableInAnyFlag:true へ分離（角王判定 filter.deckAnyFlag・角王の非ホーム1枚制限に波及させない）。"
     },
     {
       "id": "bf-d-ss03-0025",
@@ -1612,6 +1590,7 @@
           "effects": [
             {
               "op": "addTurnContinuous",
+              "freezeAmount": true,
               "continuous": {
                 "op": "modifyStats",
                 "controller": "self",
@@ -1633,8 +1612,8 @@
           ]
         }
       ],
-      "deckAnyFlag": true,
-      "_note": "R5近似(0021と同旨。ダンジョンWの複製必殺): デッキ構築をdeckAnyFlag:trueで無条件許可(soft rule、詳細は0021参照)。callCostはケルベロス(bf-d-bt03-0031)型のpayGauge+dropOwnMonster(filter省略=既定でcardType:monsterへ自動限定。src/04-cost-resource.js dropOwnMonsterCostCandidates)。第1能力『アイテムを装備しているなら』はcardCount{pile:item,cmp:gte,amount:1}(bf-d-eb01-0004と同型)。相手モンスター破壊はbf-d-td01-0001/bf-h-eb02-0003型のtarget:{type:fieldCard,controller:opponent,allowMissingTarget:true}+allowMissingTarget:true(相手に破壊対象が無ければ静かにスキップ=正常挙動)。第2能力『ドロップの必殺モンスター1種類につき打撃力+1』はdesign C3/§3A記載のmodifyStats{amountFrom:{source:dropAttributeCount,distinct:true,filter:{cardType:impactMonster},per:{critical:1}}}をaddTurnContinuous(bf-d-bt01-0131型)でこのカード自身(filter:sameInstanceAsSource)へそのターン中付与。distinct:trueは『1種類につき』=ドロップの必殺モンスターを名前の種類数で数える(src/05-stats.js continuousDropStatAmount)。"
+      "usableInAnyFlag": true,
+      "_note": "R5近似(0021と同旨。ダンジョンWの複製必殺): デッキ構築をdeckAnyFlag:trueで無条件許可(soft rule、詳細は0021参照)。callCostはケルベロス(bf-d-bt03-0031)型のpayGauge+dropOwnMonster(filter省略=既定でcardType:monsterへ自動限定。src/04-cost-resource.js dropOwnMonsterCostCandidates)。第1能力『アイテムを装備しているなら』はcardCount{pile:item,cmp:gte,amount:1}(bf-d-eb01-0004と同型)。相手モンスター破壊はbf-d-td01-0001/bf-h-eb02-0003型のtarget:{type:fieldCard,controller:opponent,allowMissingTarget:true}+allowMissingTarget:true(相手に破壊対象が無ければ静かにスキップ=正常挙動)。第2能力『ドロップの必殺モンスター1種類につき打撃力+1』はdesign C3/§3A記載のmodifyStats{amountFrom:{source:dropAttributeCount,distinct:true,filter:{cardType:impactMonster},per:{critical:1}}}をaddTurnContinuous(bf-d-bt01-0131型)でこのカード自身(filter:sameInstanceAsSource)へそのターン中付与。distinct:trueは『1種類につき』=ドロップの必殺モンスターを名前の種類数で数える(src/05-stats.js continuousDropStatAmount)。 D2(2026-10): 角王アイコンではない構築緩和のため deckAnyFlag:true→usableInAnyFlag:true へ分離（角王判定 filter.deckAnyFlag・角王の非ホーム1枚制限に波及させない）。 裁定 R3（2026-10-09）: 攻撃時に得る「そのターン中、〜１種類につき打撃力＋1」は能力の解決時（攻撃時）に数えて固定＝addTurnContinuous{freezeAmount:true}。"
     },
     {
       "id": "bf-d-ss03-0026",
@@ -1660,6 +1639,7 @@
           "id": "bf-d-ss03-0026-enter-destroy-selfburn",
           "kind": "triggered",
           "event": "enter",
+          "allowMissingTarget": true,
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
@@ -1673,14 +1653,26 @@
             {
               "op": "destroy",
               "target": "$target"
-            },
+            }
+          ]
+        },
+        {
+          "id": "bf-d-ss03-0026-turnend-destroy",
+          "kind": "triggered",
+          "event": "turnEnd",
+          "conditions": [
             {
-              "op": "setDelayedDestroy",
-              "when": "ownTurnEnd"
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroySelf"
             }
           ]
         }
-      ]
+      ],
+      "_note": "【監査cards-05 b012-2】『君のターン終了時、このカードを破壊する』は場にある限り毎回誘発する独立の自動能力（turnEnd+turnOwnerIsSelf→destroySelf）。旧=登場時能力内の1回限りの setDelayedDestroy は、ジェムクローン(0029)のソウル置換で残ると以後破壊されなかったため置換。"
     },
     {
       "id": "bf-d-ss03-0027",
@@ -1706,6 +1698,7 @@
           "id": "bf-d-ss03-0027-enter-soul-drop-selfburn",
           "kind": "triggered",
           "event": "enter",
+          "allowMissingTarget": true,
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
@@ -1719,14 +1712,26 @@
               "op": "dropTargetSoul",
               "target": "$target",
               "amount": 1
-            },
+            }
+          ]
+        },
+        {
+          "id": "bf-d-ss03-0027-turnend-destroy",
+          "kind": "triggered",
+          "event": "turnEnd",
+          "conditions": [
             {
-              "op": "setDelayedDestroy",
-              "when": "ownTurnEnd"
+              "op": "turnOwnerIsSelf"
+            }
+          ],
+          "effects": [
+            {
+              "op": "destroySelf"
             }
           ]
         }
-      ]
+      ],
+      "_note": "【監査cards-05 b012-2】『君のターン終了時、このカードを破壊する』は場にある限り毎回誘発する独立の自動能力（turnEnd+turnOwnerIsSelf→destroySelf）。旧=登場時能力内の1回限りの setDelayedDestroy は、ジェムクローン(0029)のソウル置換で残ると以後破壊されなかったため置換。"
     },
     {
       "id": "bf-d-ss03-0028",
@@ -1958,7 +1963,7 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-d-ss03-0031-charge"
+            "key": "bf-h-bt01-0039-charge"
           }
         }
       ]
@@ -2204,7 +2209,8 @@
               "var": "im",
               "payCost": "call",
               "chooseZones": true,
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -2454,7 +2460,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "call",
               "payCost": "call",
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -2777,7 +2784,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "call",
               "payCost": "call",
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -2829,7 +2837,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -2971,6 +2980,7 @@
             "counter"
           ],
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "conditions": [
             {
               "op": "pendingAttackDefenderIsSelf"
@@ -3266,6 +3276,7 @@
           "id": "bf-d-ss03-0054-preserve",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "counter",
             "main"
@@ -3329,12 +3340,17 @@
           "id": "bf-d-ss03-0055-nullify",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "counter"
           ],
           "conditions": [
             {
               "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
             },
             {
               "op": "flagNameIs",
@@ -3348,7 +3364,7 @@
           ]
         }
       ],
-      "_note": "グラキエス型（bf-d-td01-0005・fromHandOnly活性化=手札のこのカードを捨てるは暗黙・costにdiscardHand不要）にflagNameIsフル表記条件を追加。ライフ支払いは原文に無いためcostなし。"
+      "_note": "グラキエス型（bf-d-td01-0005・fromHandOnly活性化=手札のこのカードを捨てるは暗黙・costにdiscardHand不要）にflagNameIsフル表記条件を追加。ライフ支払いは原文に無いためcostなし。 【監査cards-05 b013-2】『君が攻撃されている攻撃中』＝ファイターへの攻撃に限る（古竜の盾 bf-h-sd01-0011 と同形の pendingAttackTargetIs{targetType:fighter} を追加）。"
     },
     {
       "id": "bf-d-ss03-0056",

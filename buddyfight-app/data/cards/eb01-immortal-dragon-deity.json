@@ -129,7 +129,7 @@
         {
           "op": "modifyStats",
           "filter": {
-            "sameIdAsSource": true
+            "sameInstanceAsSource": true
           },
           "power": 4000,
           "defense": 4000,
@@ -235,12 +235,14 @@
                         },
                         {
                           "op": "moveSelected",
+                          "discard": true,
                           "var": "discard",
                           "to": "drop",
                           "log": "discard"
                         },
                         {
                           "op": "setPreventNextDestroy",
+                          "optional": true,
                           "target": "$self"
                         }
                       ]
@@ -262,8 +264,17 @@
                             "op": "pendingActionIsOpponent"
                           },
                           {
-                            "op": "pendingActionCardType",
-                            "cardType": "spell"
+                            "op": "any",
+                            "conditions": [
+                              {
+                                "op": "pendingActionKind",
+                                "kind": "spell"
+                              },
+                              {
+                                "op": "pendingActionKind",
+                                "kind": "setSpell"
+                              }
+                            ]
                           }
                         ]
                       },
@@ -279,6 +290,7 @@
                         },
                         {
                           "op": "moveSelected",
+                          "discard": true,
                           "var": "discard",
                           "to": "drop",
                           "log": "discard"
@@ -327,6 +339,7 @@
             "main"
           ],
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "conditions": [
             {
               "op": "ownFieldCardExists",
@@ -927,6 +940,7 @@
             "main"
           ],
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "conditions": [
             {
               "op": "ownFieldCardExists",
@@ -1207,6 +1221,7 @@
             },
             {
               "op": "moveSelected",
+              "discard": true,
               "var": "discard",
               "to": "drop",
               "log": "discard"
@@ -1279,6 +1294,7 @@
             "main"
           ],
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "conditions": [
             {
               "op": "ownFieldCardExists",
@@ -1351,6 +1367,7 @@
             "main"
           ],
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "conditions": [
             {
               "op": "ownFieldCardExists",
@@ -1492,7 +1509,8 @@
             "role": null,
             "filter": {
               "attribute": "ドラゴンロード"
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -1505,9 +1523,11 @@
               "op": "gainLife",
               "amount": 1
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "eb01-0027",
@@ -1844,7 +1864,8 @@
             "filter": {
               "cardType": "monster",
               "keyword": "soulguard"
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -1854,9 +1875,11 @@
               "op": "dropTargetSoul",
               "target": "$target"
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "eb01-0035",
@@ -1970,6 +1993,7 @@
             "counter"
           ],
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "conditions": [
             {
               "op": "pendingAttackDefenderIsSelf"
@@ -2437,7 +2461,7 @@
         {
           "op": "modifyStats",
           "filter": {
-            "sameIdAsSource": true
+            "sameInstanceAsSource": true
           },
           "power": 4000,
           "defense": 4000,
@@ -2543,12 +2567,14 @@
                         },
                         {
                           "op": "moveSelected",
+                          "discard": true,
                           "var": "discard",
                           "to": "drop",
                           "log": "discard"
                         },
                         {
                           "op": "setPreventNextDestroy",
+                          "optional": true,
                           "target": "$self"
                         }
                       ]
@@ -2570,8 +2596,17 @@
                             "op": "pendingActionIsOpponent"
                           },
                           {
-                            "op": "pendingActionCardType",
-                            "cardType": "spell"
+                            "op": "any",
+                            "conditions": [
+                              {
+                                "op": "pendingActionKind",
+                                "kind": "spell"
+                              },
+                              {
+                                "op": "pendingActionKind",
+                                "kind": "setSpell"
+                              }
+                            ]
                           }
                         ]
                       },
@@ -2587,6 +2622,7 @@
                         },
                         {
                           "op": "moveSelected",
+                          "discard": true,
                           "var": "discard",
                           "to": "drop",
                           "log": "discard"

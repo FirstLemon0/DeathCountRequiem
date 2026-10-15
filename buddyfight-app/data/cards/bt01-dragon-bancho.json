@@ -236,6 +236,7 @@
             },
             {
               "op": "moveSelected",
+              "discard": true,
               "var": "discard",
               "to": "drop",
               "log": "discard"
@@ -1063,10 +1064,6 @@
               "op": "pendingAttackDefenderIsSelf"
             },
             {
-              "op": "pendingAttackTargetIs",
-              "targetType": "fighter"
-            },
-            {
               "op": "ownCenterEmpty"
             }
           ],
@@ -1565,7 +1562,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "calls",
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             },
             {
               "op": "shuffleDropIntoDeck"
@@ -1876,6 +1874,10 @@
           "conditions": [
             {
               "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
             },
             {
               "op": "pendingAttackByOpponentCardMatches",
@@ -2548,8 +2550,17 @@
               "op": "pendingActionIsOpponent"
             },
             {
-              "op": "pendingActionCardType",
-              "cardType": "spell"
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "pendingActionKind",
+                  "kind": "spell"
+                },
+                {
+                  "op": "pendingActionKind",
+                  "kind": "setSpell"
+                }
+              ]
             }
           ],
           "effects": [
@@ -2813,12 +2824,6 @@
           "id": "battle-spirit-unite-counter",
           "timing": [
             "counter"
-          ],
-          "conditions": [
-            {
-              "op": "ownItemHasAttribute",
-              "attribute": "武器"
-            }
           ],
           "kind": "spell",
           "target": {
@@ -3527,7 +3532,14 @@
             }
           ],
           "target": {
-            "type": "fieldCard"
+            "type": "fieldCard",
+            "filter": {
+              "cardTypeIn": [
+                "monster",
+                "item",
+                "spell"
+              ]
+            }
           },
           "effects": [
             {
@@ -4307,6 +4319,7 @@
             },
             {
               "op": "moveSelected",
+              "discard": true,
               "var": "discard",
               "to": "drop",
               "log": "discard"

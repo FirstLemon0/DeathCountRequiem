@@ -34,7 +34,6 @@
           {
             "op": "putSelectedOwnFieldCardsToSoul",
             "filter": {
-              "cardType": "monster",
               "attribute": "雷帝軍"
             },
             "min": 1,
@@ -107,7 +106,7 @@
           }
         }
       ],
-      "_note": "バールバッツ・ザ・ライトニング。①【コールコスト】『君の場の《雷帝軍》1枚をこのカードのソウルに入れ、ゲージ1を払う』=costs.call:[putSelectedOwnFieldCardsToSoul{filter:{cardType:monster,attribute:雷帝軍},min:1,max:1},payGauge{amount:1}]（bf-x-cp01-0009バルドラゴン“ダブル・バルバライズ・ブレード！”等の確立形＝filter+min1+max1）。②『君のライフが4以下なら、このカードの打撃力＋1！』=continuous:[modifyStats{controller:self,filter:{sameInstanceAsSource:true},critical:1,conditions:[lifeLte{amount:4}]}]（X-BT03/0097雷帝竜バールバッツ・X-BT03/0001執行隊長クアッド・ラング等『バッツ』系列の確立イディオム）。③『『逆天』〔君のアタックフェイズ開始時、ゲージ1を払い、ライフ1を払う〕相手の場のカード全てを破壊し、破壊した枚数分、相手にダメージ！！』は原文取得raw(_scratch/x72-slice/raw/x72-raw.json)に「（『逆天』はファイト中に1回だけ…）」括弧が無いprint-literal（R5裁定・R9規約）=keyword:reversal機構(fight共有limit)を使わずlabel:『逆天』のみ付与: kind:triggered,event:attackStart(bf-pr-0468轟く雷鳴バールバッツの確立書式=アタックフェイズ開始時のみ発火するphase-start trigger、runPhaseStartTriggers(\"attackStart\",...)),optional:true,conditions:[turnOwnerIsSelf],cost:[payGauge(1),payLife(1)](原文記載順どおり)+effects:[destroy{scope:opponent,filter:{}}(『カード全て』=cardType無指定でモンスター+アイテム全ゾーン。bf-x-bt01-reborn-of-satan.json X-BT01/0009剣竜隊長ドライ・エックの同型前例),dealDamage{amountFrom:{source:lastDestroyedCount}}(bf-x-cr-saikyou-maou.jsonサンダー×ボルト等の確立形＝実際に破壊できた枚数のみ計上・耐性で生き残った分は非計上)]。④『2回攻撃』『ソウルガード』=keywords:[doubleAttack,soulguard]。grep自己検査: putSelectedOwnFieldCardsToSoul(src/04-cost-resource.js:691,1120,1428,1852)/payGauge・payLife(src/04-cost-resource.js多数)/modifyStats continuous+lifeLte(src/13-abilities-core.js lifeLte・src/05-stats.js継続合成)/attackStart(src/09-attack.js:675 runPhaseStartTriggers)/turnOwnerIsSelf(src/13-abilities-core.js)/destroy scope+filter(src/15-ability-effects.js:1365以降)/dealDamage+amountFrom lastDestroyedCount(src/15-ability-effects.js:927-943,3026-3032)/doubleAttack・soulguardエイリアス(src/18-tooltip-format.js) 全実在確認。VM実測: x72-b1-verify.js参照（callMonster実経路でソウル送り+ゲージ1課金／ライフ4以下でvisibleCritical+1／useFieldAbilityAction実経路で逆天がゲージ1+ライフ1を払い相手の場を全破壊しその枚数分ダメージを与える・自分のターンでない/アタックフェイズ開始時以外では発動しないことを確認）。／【R23(x73) fix】素ラベル『逆天』もキーワード＝1ファイトに1回に確定（旧 print-literal＝無制限読みを上書き）。ただし本能力は kind:triggered のため keyword:\"reversal\" を付けると isFieldActivatedAbility(src/13:716-717) が真化し、timing 無し＝場での手動起動として全フェイズに誤露出する。よって keyword は付けず limit:{scope:\"fight\",key:\"reversal\"} のみ付与＝誘発経路(src/14:56,96)が isAbilityLimitUsed/markAbilityLimit で1ファイト1回に制限し state.fightLimits[owner].reversal を記帳（0069 と連動）。表示は既存 label:\"逆天\" が担う。"
+      "_note": "バールバッツ・ザ・ライトニング。①【コールコスト】『君の場の《雷帝軍》1枚をこのカードのソウルに入れ、ゲージ1を払う』=costs.call:[putSelectedOwnFieldCardsToSoul{filter:{cardType:monster,attribute:雷帝軍},min:1,max:1},payGauge{amount:1}]（bf-x-cp01-0009バルドラゴン“ダブル・バルバライズ・ブレード！”等の確立形＝filter+min1+max1）。②『君のライフが4以下なら、このカードの打撃力＋1！』=continuous:[modifyStats{controller:self,filter:{sameInstanceAsSource:true},critical:1,conditions:[lifeLte{amount:4}]}]（X-BT03/0097雷帝竜バールバッツ・X-BT03/0001執行隊長クアッド・ラング等『バッツ』系列の確立イディオム）。③『『逆天』〔君のアタックフェイズ開始時、ゲージ1を払い、ライフ1を払う〕相手の場のカード全てを破壊し、破壊した枚数分、相手にダメージ！！』は原文取得raw(_scratch/x72-slice/raw/x72-raw.json)に「（『逆天』はファイト中に1回だけ…）」括弧が無いprint-literal（R5裁定・R9規約）=keyword:reversal機構(fight共有limit)を使わずlabel:『逆天』のみ付与: kind:triggered,event:attackStart(bf-pr-0468轟く雷鳴バールバッツの確立書式=アタックフェイズ開始時のみ発火するphase-start trigger、runPhaseStartTriggers(\"attackStart\",...)),optional:true,conditions:[turnOwnerIsSelf],cost:[payGauge(1),payLife(1)](原文記載順どおり)+effects:[destroy{scope:opponent,filter:{}}(『カード全て』=cardType無指定でモンスター+アイテム全ゾーン。bf-x-bt01-reborn-of-satan.json X-BT01/0009剣竜隊長ドライ・エックの同型前例),dealDamage{amountFrom:{source:lastDestroyedCount}}(bf-x-cr-saikyou-maou.jsonサンダー×ボルト等の確立形＝実際に破壊できた枚数のみ計上・耐性で生き残った分は非計上)]。④『2回攻撃』『ソウルガード』=keywords:[doubleAttack,soulguard]。grep自己検査: putSelectedOwnFieldCardsToSoul(src/04-cost-resource.js:691,1120,1428,1852)/payGauge・payLife(src/04-cost-resource.js多数)/modifyStats continuous+lifeLte(src/13-abilities-core.js lifeLte・src/05-stats.js継続合成)/attackStart(src/09-attack.js:675 runPhaseStartTriggers)/turnOwnerIsSelf(src/13-abilities-core.js)/destroy scope+filter(src/15-ability-effects.js:1365以降)/dealDamage+amountFrom lastDestroyedCount(src/15-ability-effects.js:927-943,3026-3032)/doubleAttack・soulguardエイリアス(src/18-tooltip-format.js) 全実在確認。VM実測: x72-b1-verify.js参照（callMonster実経路でソウル送り+ゲージ1課金／ライフ4以下でvisibleCritical+1／useFieldAbilityAction実経路で逆天がゲージ1+ライフ1を払い相手の場を全破壊しその枚数分ダメージを与える・自分のターンでない/アタックフェイズ開始時以外では発動しないことを確認）。／【R23(x73) fix】素ラベル『逆天』もキーワード＝1ファイトに1回に確定（旧 print-literal＝無制限読みを上書き）。ただし本能力は kind:triggered のため keyword:\"reversal\" を付けると isFieldActivatedAbility(src/13:716-717) が真化し、timing 無し＝場での手動起動として全フェイズに誤露出する。よって keyword は付けず limit:{scope:\"fight\",key:\"reversal\"} のみ付与＝誘発経路(src/14:56,96)が isAbilityLimitUsed/markAbilityLimit で1ファイト1回に制限し state.fightLimits[owner].reversal を記帳（0069 と連動）。表示は既存 label:\"逆天\" が担う。 ／【監査修正 b059-1】原文『君の場の《雷帝軍》１枚』にカード種別の指定は無い（bf-x-bt03-0049 の x70 統括修正と同じ）。コールコストの filter から cardType:monster を除去し {attribute:雷帝軍} に＝場の《雷帝軍》アイテム/設置魔法もソウルに入れられる。"
     },
     {
       "id": "bf-x-ss04-0002",
@@ -281,7 +280,8 @@
                   "op": "selectZone",
                   "var": "z",
                   "cardVar": "call",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "payCardCostForSelection",
@@ -899,6 +899,7 @@
           "id": "bf-x-ss04-0012-grant-solo-unnullify",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "main"
           ],
@@ -1325,24 +1326,40 @@
               "op": "any",
               "conditions": [
                 {
-                  "op": "pendingAttackIncludesOtherMatching",
-                  "filter": {
-                    "cardType": "monster",
-                    "attributeIn": [
-                      "ドラゴンロード",
-                      "雷帝軍"
-                    ]
-                  }
+                  "op": "all",
+                  "conditions": [
+                    {
+                      "op": "turnOwnerIsSelf"
+                    },
+                    {
+                      "op": "pendingAttackIncludesOtherMatching",
+                      "filter": {
+                        "cardType": "monster",
+                        "attributeIn": [
+                          "ドラゴンロード",
+                          "雷帝軍"
+                        ]
+                      }
+                    }
+                  ]
                 },
                 {
-                  "op": "pendingAttackTargetMatches",
-                  "filter": {
-                    "cardType": "monster",
-                    "attributeIn": [
-                      "ドラゴンロード",
-                      "雷帝軍"
-                    ]
-                  }
+                  "op": "all",
+                  "conditions": [
+                    {
+                      "op": "turnOwnerIsOpponent"
+                    },
+                    {
+                      "op": "pendingAttackTargetMatches",
+                      "filter": {
+                        "cardType": "monster",
+                        "attributeIn": [
+                          "ドラゴンロード",
+                          "雷帝軍"
+                        ]
+                      }
+                    }
+                  ]
                 }
               ]
             }
@@ -1353,7 +1370,8 @@
             "controller": "self",
             "filter": {
               "cardType": "monster"
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -1366,10 +1384,11 @@
               "power": 4000,
               "defense": 4000
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
       ],
-      "_note": "『君の場の《ドラゴンロード》か《雷帝軍》のモンスターのバトル中に使える』は、使える条件(攻撃側/防御側いずれかに該当モンスターがいるか)と『バトルしている君のモンスター１枚を選び』(攻撃/防御いずれのバトル参加者でも良い・原文に属性制限無し)が別文だと解釈し、過剰絞り込み回避のため両者を分離して実装＝ability.conditions:[any:[pendingAttackIncludesOtherMatching{filter:{cardType:monster,attributeIn:[ドラゴンロード,雷帝軍]}}(自分が攻撃側の場合。context.card=手札の呪文でfindFieldCardSlotがnull→sourceSlot除外分岐は不発=素直に攻撃者フィルタ判定になる。src/13:1511), pendingAttackTargetMatches{同filter}(自分が防御側の場合。バトルの対象は常に非アクティブ側=防御側なので、この分岐が真になるのは常にcaster側が防御側の時)]]。target側はattributeIn制限を付けない{type:battleCard,role:null,controller:self,filter:{cardType:monster}}(eb01-0026竜命励起は使える条件を明示せずtarget自体にattributeIn相当のfilterを付ける一体型だが、0019は使える条件と対象選択の文が分離しているため対象選択は属性非制限のまま=原文『バトルしている君のモンスター１枚を選び』を忠実に反映。連携攻撃で複数の君の場のモンスターがバトルしている場合、ドラゴンロード/雷帝軍以外も選択候補になり得るのは意図どおり)。『カード１枚を引き』＝draw{amount:1}(src/15:263)。『このバトル中、攻撃力＋4000、防御力＋4000』＝modifyStats{target:$target,power:4000,defense:4000}(duration省略=単体modifyStatsの既定battle=SKILL.md記載どおり)。grep自己検査: any条件コンビネータ(src/13-abilities-core.js:766、実カード使用39件確認済み)/pendingAttackIncludesOtherMatching(src/13:1511)/pendingAttackTargetMatches(src/13:1519)/battleCard target type(src/17-targeting.js:169,186,controller:self対応)/draw(src/15:263)/modifyStats(多数) 全実在確認。VM実測: 自分の《雷帝軍》モンスターで攻撃宣言中(攻撃側)に対抗発動でき、カードを1枚引き選んだ攻撃モンスターがそのバトル中+4000/+4000されることを確認／属性を持たない自分のモンスターのみがバトル中の場合は対抗不成立(any条件不成立)であることを確認。"
+      "_note": "『君の場の《ドラゴンロード》か《雷帝軍》のモンスターのバトル中に使える』は、使える条件(攻撃側/防御側いずれかに該当モンスターがいるか)と『バトルしている君のモンスター１枚を選び』(攻撃/防御いずれのバトル参加者でも良い・原文に属性制限無し)が別文だと解釈し、過剰絞り込み回避のため両者を分離して実装＝ability.conditions:[any:[pendingAttackIncludesOtherMatching{filter:{cardType:monster,attributeIn:[ドラゴンロード,雷帝軍]}}(自分が攻撃側の場合。context.card=手札の呪文でfindFieldCardSlotがnull→sourceSlot除外分岐は不発=素直に攻撃者フィルタ判定になる。src/13:1511), pendingAttackTargetMatches{同filter}(自分が防御側の場合。バトルの対象は常に非アクティブ側=防御側なので、この分岐が真になるのは常にcaster側が防御側の時)]]。target側はattributeIn制限を付けない{type:battleCard,role:null,controller:self,filter:{cardType:monster}}(eb01-0026竜命励起は使える条件を明示せずtarget自体にattributeIn相当のfilterを付ける一体型だが、0019は使える条件と対象選択の文が分離しているため対象選択は属性非制限のまま=原文『バトルしている君のモンスター１枚を選び』を忠実に反映。連携攻撃で複数の君の場のモンスターがバトルしている場合、ドラゴンロード/雷帝軍以外も選択候補になり得るのは意図どおり)。『カード１枚を引き』＝draw{amount:1}(src/15:263)。『このバトル中、攻撃力＋4000、防御力＋4000』＝modifyStats{target:$target,power:4000,defense:4000}(duration省略=単体modifyStatsの既定battle=SKILL.md記載どおり)。grep自己検査: any条件コンビネータ(src/13-abilities-core.js:766、実カード使用39件確認済み)/pendingAttackIncludesOtherMatching(src/13:1511)/pendingAttackTargetMatches(src/13:1519)/battleCard target type(src/17-targeting.js:169,186,controller:self対応)/draw(src/15:263)/modifyStats(多数) 全実在確認。VM実測: 自分の《雷帝軍》モンスターで攻撃宣言中(攻撃側)に対抗発動でき、カードを1枚引き選んだ攻撃モンスターがそのバトル中+4000/+4000されることを確認／属性を持たない自分のモンスターのみがバトル中の場合は対抗不成立(any条件不成立)であることを確認。 ／【監査修正 b060-1】『君の場の』の限定が欠けていた（相手の《雷帝軍》の攻撃や、相手の《ドラゴンロード》への攻撃でも使えた）。攻撃側は常にターンプレイヤー・攻撃対象は常に非ターンプレイヤーの場のカードなので、any[all[turnOwnerIsSelf, pendingAttackIncludesOtherMatching], all[turnOwnerIsOpponent, pendingAttackTargetMatches]] に変更＝君の場の該当モンスターがバトルしている時だけ使える（既存条件opの合成のみ・エンジン変更なし）。 【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-x-ss04-0020",
@@ -1766,7 +1785,8 @@
                   "op": "selectZone",
                   "var": "z",
                   "cardVar": "c",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "callSelected",
@@ -1991,12 +2011,7 @@
             "type": "fieldCard",
             "controller": "opponent",
             "allowMissingTarget": true,
-            "filter": {
-              "cardTypeIn": [
-                "monster",
-                "item"
-              ]
-            }
+            "filter": {}
           },
           "effects": [
             {
@@ -2006,7 +2021,7 @@
           ]
         }
       ],
-      "_note": "機神の番鬼 C・イブキ。①【コールコスト】ゲージ１を払う=costs.call:[payGauge{amount:1}]。②『このカードが登場した時、相手の場のモンスター１枚を破壊する。このカードがカードの効果で登場していたなら、かわりに、相手の場のカード１枚を破壊する。』＝通常コール時とカード効果コール時で対象filterの範囲（モンスター限定／モンスター＋アイテム）が排他的に切り替わる『かわりに』構文。target.filterをconditionsで動的に切り替える汎用op（targetの条件分岐）はDB内に無いため、event:enterを共有する2つのtriggered abilityに分割し、enteredByEffect条件opの真偽（not/そのまま）で相互排他的に発火させた＝bf-x-ss04-0026等と同じenteredByEffect(H-PP01/0044確立)を『not』ラッパー(bf-d-bt04-0094等の確立形{op:not,condition:{...}})で反転し通常コール側に適用。target:{type:fieldCard,controller:opponent,allowMissingTarget:true,filter:{...}}+effects:[destroy{target:$target}]はbf-x-ub01-0022鬼神魔王イブキの対象破壊部と同型（allowMissingTargetは相手の場に候補が無い場合でも登場処理自体は成立させるための確立踏襲）。1枚も破壊対象が無い場合は$targetがnullのままdestroyが不発（既存destroy op挙動）。③『奇襲』=keywords:[ambush]。grep自己検査: payGauge/event:enter/enteredByEffect(src/13-abilities-core.js:890)/not条件ラッパー(src/13-abilities-core.js:773、bf-d-bt04-0094実例)/target.type:fieldCard+allowMissingTarget(src/17-targeting.js、bf-x-ub01-0022実例)/destroy target(src/15-ability-effects.js:1365)/ambushエイリアス(src/18-tooltip-format.js) 全実在確認。VM検証(x72-b4-verify.js): (a)通常コール(callMonster)で登場すると相手の場のモンスター1枚のみを対象に選んで破壊できアイテムは選べない、(b)効果コール(callSelected+resolveOnEnter)で登場すると相手の場のモンスターかアイテムいずれも対象に選べて破壊する、(c)相手の場が空でもコール自体はエラーにならない(allowMissingTarget)、を実測。"
+      "_note": "機神の番鬼 C・イブキ。①【コールコスト】ゲージ１を払う=costs.call:[payGauge{amount:1}]。②『このカードが登場した時、相手の場のモンスター１枚を破壊する。このカードがカードの効果で登場していたなら、かわりに、相手の場のカード１枚を破壊する。』＝通常コール時とカード効果コール時で対象filterの範囲（モンスター限定／モンスター＋アイテム）が排他的に切り替わる『かわりに』構文。target.filterをconditionsで動的に切り替える汎用op（targetの条件分岐）はDB内に無いため、event:enterを共有する2つのtriggered abilityに分割し、enteredByEffect条件opの真偽（not/そのまま）で相互排他的に発火させた＝bf-x-ss04-0026等と同じenteredByEffect(H-PP01/0044確立)を『not』ラッパー(bf-d-bt04-0094等の確立形{op:not,condition:{...}})で反転し通常コール側に適用。target:{type:fieldCard,controller:opponent,allowMissingTarget:true,filter:{...}}+effects:[destroy{target:$target}]はbf-x-ub01-0022鬼神魔王イブキの対象破壊部と同型（allowMissingTargetは相手の場に候補が無い場合でも登場処理自体は成立させるための確立踏襲）。1枚も破壊対象が無い場合は$targetがnullのままdestroyが不発（既存destroy op挙動）。③『奇襲』=keywords:[ambush]。grep自己検査: payGauge/event:enter/enteredByEffect(src/13-abilities-core.js:890)/not条件ラッパー(src/13-abilities-core.js:773、bf-d-bt04-0094実例)/target.type:fieldCard+allowMissingTarget(src/17-targeting.js、bf-x-ub01-0022実例)/destroy target(src/15-ability-effects.js:1365)/ambushエイリアス(src/18-tooltip-format.js) 全実在確認。VM検証(x72-b4-verify.js): (a)通常コール(callMonster)で登場すると相手の場のモンスター1枚のみを対象に選んで破壊できアイテムは選べない、(b)効果コール(callSelected+resolveOnEnter)で登場すると相手の場のモンスターかアイテムいずれも対象に選べて破壊する、(c)相手の場が空でもコール自体はエラーにならない(allowMissingTarget)、を実測。 ／【監査修正 b060-3】『かわりに、相手の場のカード１枚を破壊』は種別無指定＝モンスター/アイテム/設置魔法のどれでも。enter-by-effect-destroy-any の target.filter を {} に変更（旧 cardTypeIn[monster,item] はテキストの読み違い）。"
     },
     {
       "id": "bf-x-ss04-0030",
@@ -2059,7 +2074,7 @@
         ],
         "optional": true
       },
-      "_note": "C・デスタリカ。①【コールコスト】ゲージ３を払う=costs.call:[payGauge{amount:3}]。②『このカードが場から離れる場合、君のドロップゾーンのモンスターか《深淵》合計３枚をデッキの下に好きな順番で置いてよい。置いたら、このカードを場に残す。』=leaveFieldReplacement:{cost:[putDropToDeckBottom{amount:3,filter:{anyOf:[{cardType:monster},{attribute:深淵}]}}],optional:true}（『モンスターか《深淵》合計』＝filter.anyOfでcardType:monster OR attribute:深淵の和集合、X-SS01/0031型のdiscardHand filter.anyOf前例と同一構文）。putDropToDeckBottomはX3(D-BT01)群で確立済みのコストop（filter一致がamount未満なら支払い不可＝canPayStructuredCostがcanPay側で判定、src/04-cost-resource.js:1158近傍）。『好きな順番で』は本エンジンのデッキ下配置に順序選択ダイアログが無く、既存前例（D-BT01系のputDropToDeckBottom採用カード群）でも同様の近似のため、置く順序は内部の既定順（ドロップ末尾側から走査）のまま扱う（近似・確立踏襲）。leaveFieldReplacementのoptional:trueは『してよい』（辞退可能）を表し、かつドロップにfilter一致3枚が無ければ自動的に支払い不可＝通常どおり破壊される（X-BT02/0116 Cの支配者ギアゴッドⅦ・X-BT03/0111 PCM ギアゴッドVIIIの『破壊してよい。破壊したら、このカードを場に残す』と同型のleaveFieldReplacement機構、対象amountのみ1→3、costOpのみdestroyOwnMonster→putDropToDeckBottomに差し替え)。③『２回攻撃』=keywords:[doubleAttack]。grep自己検査: payGauge/leaveFieldReplacement配線(src/11-destroy-turn.js:247-277,637-640,698-701、X-BT02/0116・X-BT03/0111前例)/putDropToDeckBottom(src/04-cost-resource.js:730,1158,1881)/filter.anyOf(src/17-targeting.js、bf-x-ss01-0031実例)/doubleAttackエイリアス(src/18-tooltip-format.js) 全実在確認。VM検証(x72-b4-verify.js): (a)ドロップにモンスターか《深淵》合計3枚以上ある状態でdestroyFieldCardを呼ぶとコストを払って場に残り(destroyFieldCardがnullを返す)、該当3枚がデッキの下へ移動する、(b)ドロップの該当カードが2枚以下(3枚未満)なら支払い不可のため通常どおり破壊される、を実測。"
+      "_note": "C・デスタリカ。①【コールコスト】ゲージ３を払う=costs.call:[payGauge{amount:3}]。②『このカードが場から離れる場合、君のドロップゾーンのモンスターか《深淵》合計３枚をデッキの下に好きな順番で置いてよい。置いたら、このカードを場に残す。』=leaveFieldReplacement:{cost:[putDropToDeckBottom{amount:3,filter:{anyOf:[{cardType:monster},{attribute:深淵}]}}],optional:true}（『モンスターか《深淵》合計』＝filter.anyOfでcardType:monster OR attribute:深淵の和集合、X-SS01/0031型のdiscardHand filter.anyOf前例と同一構文）。putDropToDeckBottomはX3(D-BT01)群で確立済みのコストop（filter一致がamount未満なら支払い不可＝canPayStructuredCostがcanPay側で判定、src/04-cost-resource.js:1158近傍）。『好きな順番で』は本エンジンのデッキ下配置に順序選択ダイアログが無く、既存前例（D-BT01系のputDropToDeckBottom採用カード群）でも同様の近似のため、置く順序は内部の既定順（ドロップ末尾側から走査）のまま扱う（近似・確立踏襲）。leaveFieldReplacementのoptional:trueは『してよい』（辞退可能）を表し、かつドロップにfilter一致3枚が無ければ自動的に支払い不可＝通常どおり破壊される（X-BT02/0116 Cの支配者ギアゴッドⅦ・X-BT03/0111 PCM ギアゴッドVIIIの『破壊してよい。破壊したら、このカードを場に残す』と同型のleaveFieldReplacement機構、対象amountのみ1→3、costOpのみdestroyOwnMonster→putDropToDeckBottomに差し替え)。③『２回攻撃』=keywords:[doubleAttack]。grep自己検査: payGauge/leaveFieldReplacement配線(src/11-destroy-turn.js:247-277,637-640,698-701、X-BT02/0116・X-BT03/0111前例)/putDropToDeckBottom(src/04-cost-resource.js:730,1158,1881)/filter.anyOf(src/17-targeting.js、bf-x-ss01-0031実例)/doubleAttackエイリアス(src/18-tooltip-format.js) 全実在確認。VM検証(x72-b4-verify.js): (a)ドロップにモンスターか《深淵》合計3枚以上ある状態でdestroyFieldCardを呼ぶとコストを払って場に残り(当時の destroyFieldCard は null を返した。2026-10-09 オーナー裁定以降は「場に残っても破壊は成功」としてそのカードを返す)、該当3枚がデッキの下へ移動する、(b)ドロップの該当カードが2枚以下(3枚未満)なら支払い不可のため通常どおり破壊される、を実測。"
     },
     {
       "id": "bf-x-ss04-0031",
@@ -2234,7 +2249,8 @@
             {
               "op": "dealDamage",
               "player": "opponent",
-              "amount": 2
+              "amount": 2,
+              "spiritStrike": true
             }
           ]
         },
@@ -2385,7 +2401,8 @@
                           "op": "selectZone",
                           "var": "z",
                           "cardVar": "call",
-                          "emptyOnly": true
+                          "emptyOnly": true,
+                          "overwriteWhenFull": true
                         },
                         {
                           "op": "callSelected",
@@ -2441,7 +2458,8 @@
                           "op": "selectZone",
                           "var": "z",
                           "cardVar": "call",
-                          "emptyOnly": true
+                          "emptyOnly": true,
+                          "overwriteWhenFull": true
                         },
                         {
                           "op": "payCardCostForSelection",
@@ -2510,8 +2528,17 @@
               "op": "pendingActionIsOpponent"
             },
             {
-              "op": "pendingActionCardType",
-              "cardType": "spell"
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "pendingActionKind",
+                  "kind": "spell"
+                },
+                {
+                  "op": "pendingActionKind",
+                  "kind": "setSpell"
+                }
+              ]
             }
           ],
           "cost": [
@@ -2859,7 +2886,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",

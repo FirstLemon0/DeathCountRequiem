@@ -140,7 +140,7 @@
               "target": "$target",
               "options": {
                 "ignoreSoulguard": true,
-                "ignoreDestroyImmunity": true,
+                "ignoreOwnDestroyImmunity": true,
                 "ignoreDestroyReplacement": true,
                 "suppressDestroyedTriggers": true,
                 "suppressLifeLink": true
@@ -248,6 +248,7 @@
           "id": "bf-x-ss03-0004-attack-buff-both",
           "kind": "triggered",
           "event": "attack",
+          "allowMissingTarget": true,
           "target": {
             "type": "fieldCard",
             "controller": "self",
@@ -352,7 +353,8 @@
           ],
           "target": {
             "type": "battleCard",
-            "role": "attacker"
+            "role": "attacker",
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -363,10 +365,11 @@
               "target": "$target",
               "amount": 1
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
       ],
-      "_note": "rulesに【使用コスト】行が無い=無償使用（costsキー省略）。『君が攻撃されている攻撃中に使える』=conditions:[pendingAttackDefenderIsSelf, pendingAttackTargetIs{targetType:fighter}]（bf-x-cp02-0064アースバリアと完全同型・ファイター本体が攻撃対象の攻撃中限定）。『【対抗】その攻撃を無効化し、攻撃してきたカード1枚のソウル1枚をドロップゾーンに置く』=target(battleCard,role:attacker)（filter無し=種別問わず『攻撃してきたカード』。攻撃者は常にモンスターのため実質等価。src/17-targeting.js:185-206でpending.attackersから解決）+effects:[nullifyAttack, dropTargetSoul{target:$target,amount:1}]（eb01-0034忍法半殺しの『ソウル全て』版(amount未指定)に対し、本カードは『ソウル1枚』が明示のためamount:1を指定。dropTargetSoulはamount未指定時=全ソウルのため区別が必須）。grep自己検査: pendingAttackDefenderIsSelf(src/13-abilities-core.js:1531)/pendingAttackTargetIs(src/13:1505)/battleCard role:attacker解決(src/17-targeting.js:185-206)/nullifyAttack(src/15-ability-effects.js:2116)/dropTargetSoul(src/15:1720) 全実在確認。VM: 相手のファイター攻撃を宣言→対抗ウィンドウで本スペルを実use経路(useCardAction)で使用→その攻撃が無効化され、攻撃してきたモンスターのソウルが1枚(2枚以上あっても1枚のみ)ドロップゾーンへ移動することを確認。"
+      "_note": "rulesに【使用コスト】行が無い=無償使用（costsキー省略）。『君が攻撃されている攻撃中に使える』=conditions:[pendingAttackDefenderIsSelf, pendingAttackTargetIs{targetType:fighter}]（bf-x-cp02-0064アースバリアと完全同型・ファイター本体が攻撃対象の攻撃中限定）。『【対抗】その攻撃を無効化し、攻撃してきたカード1枚のソウル1枚をドロップゾーンに置く』=target(battleCard,role:attacker)（filter無し=種別問わず『攻撃してきたカード』。攻撃者は常にモンスターのため実質等価。src/17-targeting.js:185-206でpending.attackersから解決）+effects:[nullifyAttack, dropTargetSoul{target:$target,amount:1}]（eb01-0034忍法半殺しの『ソウル全て』版(amount未指定)に対し、本カードは『ソウル1枚』が明示のためamount:1を指定。dropTargetSoulはamount未指定時=全ソウルのため区別が必須）。grep自己検査: pendingAttackDefenderIsSelf(src/13-abilities-core.js:1531)/pendingAttackTargetIs(src/13:1505)/battleCard role:attacker解決(src/17-targeting.js:185-206)/nullifyAttack(src/15-ability-effects.js:2116)/dropTargetSoul(src/15:1720) 全実在確認。VM: 相手のファイター攻撃を宣言→対抗ウィンドウで本スペルを実use経路(useCardAction)で使用→その攻撃が無効化され、攻撃してきたモンスターのソウルが1枚(2枚以上あっても1枚のみ)ドロップゾーンへ移動することを確認。 【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-x-ss03-0007",
@@ -668,7 +671,7 @@
       "rules": [
         "■“カリスマジック！”このカードが登場した時、君のドロップゾーンのカード名が違うモンスター２枚を裏向きにして、その２枚をシャッフルし、相手はその中から１枚を選ぶ。君は相手が選んだカードを【コールコスト】を払ってコールする。「カリスマジック！」は１ターンに１回だけ発動する。（選ばれなかったカードはドロップゾーンに戻す）"
       ],
-      "_note": "R2(統括裁定rulings.md)＝『相手はその中から１枚を選ぶ』は selectCards の chooser:\"opponent\" オプション(E-XB6)を要する。grep実測: selectCardsForScript(src/14-ability-script.js:527-599)の chooseCardEntries 呼び出しは promptSeat: context.owner に固定(585行)で、相手席(1-context.owner)へ選択を振る経路が存在しない。近縁のE-XV4 opponentMayCallFromHandForScript(src/14-ability-script.js:2631-2709)は『相手がコールするか/何を』を相手席プロンプトで往復させる同型機構だが、これは『相手自身の手札から相手が選ぶ』専用で、本カードの『君のドロップの2枚から相手が1枚選ぶ』（選択対象は君のカード）には転用できない(候補集合が player.hand決め打ち)。R2指示どおり、E-XB6が統括側で新設されるまで abilities は実装せず rules のみ収録する。反映後の想定配線: enter誘発→selectCards{from:drop,controller:self,filter:{cardType:monster},amount:2,distinctName必要}で君が2枚選定→裏向き化・シャッフル→selectCards{chooser:\"opponent\",promptSeat:1-context.owner}で相手が1枚選択→選ばれた1枚をcallSelected(payCost:call)、選ばれなかった1枚はドロップへ戻す(moveSelectedToDrop等)、limit{scope:turn,shared:true,key:\"karisumajikku\"}(named-once・モンスター/アイテムはshared:trueの house 規約)。VM: 未実装のため対象外(rules表示のみ確認)。 ／【E-XB6/R2 で忠実実装（統括反映 2026-07-17）】異名2枚選択（differentNameFromVar=既存E3キー）→相手席ブラインド選択（chooser:opponent＋faceDown＋shuffle=E-XB6 新設・choiceIndex 逆写像でT13安全・決定的シャッフル）→選ばれた1枚を【コールコスト】払ってコール。選ばれなかった1枚はドロップに残置（原文の括弧書きどおり）。named-once monster 規約で limit.shared:true。赤ピン=E-XB6 系（effects-regression）。旧未実装は解消。",
+      "_note": "R2(統括裁定rulings.md)＝『相手はその中から１枚を選ぶ』は selectCards の chooser:\"opponent\" オプション(E-XB6)を要する。grep実測: selectCardsForScript(src/14-ability-script.js:527-599)の chooseCardEntries 呼び出しは promptSeat: context.owner に固定(585行)で、相手席(1-context.owner)へ選択を振る経路が存在しない。近縁のE-XV4 opponentMayCallFromHandForScript(src/14-ability-script.js:2631-2709)は『相手がコールするか/何を』を相手席プロンプトで往復させる同型機構だが、これは『相手自身の手札から相手が選ぶ』専用で、本カードの『君のドロップの2枚から相手が1枚選ぶ』（選択対象は君のカード）には転用できない(候補集合が player.hand決め打ち)。R2指示どおり、E-XB6が統括側で新設されるまで abilities は実装せず rules のみ収録する。反映後の想定配線: enter誘発→selectCards{from:drop,controller:self,filter:{cardType:monster},amount:2,distinctName必要}で君が2枚選定→裏向き化・シャッフル→selectCards{chooser:\"opponent\",promptSeat:1-context.owner}で相手が1枚選択→選ばれた1枚をcallSelected(payCost:call)、選ばれなかった1枚はドロップへ戻す(moveSelectedToDrop等)、limit{scope:turn,shared:true,key:\"karisumajikku\"}(named-once・モンスター/アイテムはshared:trueの house 規約)。VM: 未実装のため対象外(rules表示のみ確認)。 ／【E-XB6/R2 で忠実実装（統括反映 2026-07-17）】異名2枚選択（differentNameFromVar=既存E3キー）→相手席ブラインド選択（chooser:opponent＋faceDown＋shuffle=E-XB6 新設・choiceIndex 逆写像でT13安全・決定的シャッフル）→選ばれた1枚を【コールコスト】払ってコール。選ばれなかった1枚はドロップに残置（原文の括弧書きどおり）。named-once monster 規約で limit.shared:true。赤ピン=E-XB6 系（effects-regression）。旧未実装は解消。 ／【監査修正 b058-1】原文は強制効果（カード名が違うモンスター２枚を裏向き→相手が１枚を選ぶ→君はコール）。3つの selectCards の require:false を外し min:1 の必須選択に変更＝異名モンスター2枚が揃わなければ不成立（候補不足で not_enough_candidates）、相手は必ず1枚を選ぶ。",
       "abilities": [
         {
           "id": "bf-x-ss03-0012-charisma-magic",
@@ -691,9 +694,9 @@
               "callable": true,
               "amount": 1,
               "var": "$first",
-              "require": false,
               "title": "カリスマジック！",
-              "lead": "裏向きにする1枚目のモンスターを選んでください。"
+              "lead": "裏向きにする1枚目のモンスターを選んでください。",
+              "min": 1
             },
             {
               "op": "selectCards",
@@ -706,9 +709,9 @@
               "callable": true,
               "amount": 1,
               "var": "$second",
-              "require": false,
               "title": "カリスマジック！",
-              "lead": "裏向きにする2枚目（1枚目と名前が違う）のモンスターを選んでください。"
+              "lead": "裏向きにする2枚目（1枚目と名前が違う）のモンスターを選んでください。",
+              "min": 1
             },
             {
               "op": "selectCards",
@@ -722,15 +725,16 @@
               "shuffle": true,
               "amount": 1,
               "var": "$chosen",
-              "require": false,
               "title": "カリスマジック！",
-              "lead": "裏向きの2枚から1枚を選んでください。"
+              "lead": "裏向きの2枚から1枚を選んでください。",
+              "min": 1
             },
             {
               "op": "callSelectedToEmptyZones",
               "var": "$chosen",
               "payCost": "call",
-              "chooseZones": true
+              "chooseZones": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -989,7 +993,8 @@
               "op": "lookTopSelectToHandRestToBottom",
               "count": 2,
               "max": 1,
-              "altTo": "gauge"
+              "altTo": "gauge",
+              "min": 1
             }
           ],
           "limit": {
@@ -1381,6 +1386,7 @@
           "effects": [
             {
               "op": "preventOpponentCounterThisTurn",
+              "sourceMustAttack": true,
               "conditions": [
                 {
                   "op": "attackingAlone"
@@ -1610,7 +1616,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "call",
               "payCost": "call",
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -1816,7 +1823,8 @@
             "filter": {
               "cardType": "monster",
               "keyword": "soulguard"
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -1826,10 +1834,12 @@
               "op": "dropTargetSoul",
               "target": "$target"
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
       ],
-      "ruby": "にんぽう はんごろし"
+      "ruby": "にんぽう はんごろし",
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-x-ss03-0032",
@@ -2056,7 +2066,8 @@
           "script": [
             {
               "op": "reorderTopOrdered",
-              "count": 5
+              "count": 5,
+              "upTo": true
             },
             {
               "op": "draw",
@@ -2087,7 +2098,8 @@
                   "op": "selectZone",
                   "var": "z",
                   "cardVar": "call",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "payCardCostForSelection",
@@ -2110,7 +2122,7 @@
           }
         }
       ],
-      "_note": "①【コールコスト】ゲージ5を払う=costs.call:[payGauge(5)]。②“ビジブルインビジブル”このカードが登場した時、デッキ上5枚までを見て好きな順番で上に置き1枚引く。その後、手札のモンスター1枚を【コールコスト】を払ってコールしてよい。1ターンに1回=kind:triggered,event:enter,script:[reorderTopOrdered{count:5}(G4 D-EB01前例・bf-x-cp02-0017フィフス・フォーカスと同型『デッキの上から5枚を見て、好きな順番でデッキの上に置く』),draw{amount:1},selectCards{from:hand,controller:self,filter:{cardType:monster},min:0,max:1,require:false,callable:true,canPayCost:call}(bf-h-bt01-0013デックアールヴの魔剣士ヘイム/bf-x-ss01-0043進化の胎動ヤミゲドウと同型『してよい』任意コール選択),ifSelection→selectZone{emptyOnly:true}+payCardCostForSelection{purpose:call}+callSelected{resolveOnEnter:true}]。原文の引用名「ビジブルインビジブル」はカード名と不一致のサブ能力固有名のため named-once bare slug（HANDOFF F2『同名カード合算＝shared:true』・xbt02-guren-tamashii等の前例形式）で limit:{scope:turn,shared:true,key:\"xss03-ビジブルインビジブル\"}（bare=ability.idを介さずキー直指定、instanceId分離なし=同名カード間で共有）。grep自己検査: payGauge/reorderTopOrdered(src/14-ability-script.js:352,1473)/draw(isScriptEffectStep許可リスト src/14:3241)/selectCards+callable+canPayCost(src/14-ability-script.js:527,752,761)/ifSelection/selectZone/payCardCostForSelection/callSelected 全実在確認・limit.shared(src/15-ability-effects.js:3171)実在確認。VM実証: x67-b5-verify.js test0035（reorder no-op確認済み手法でdraw対象カードを固定検証・任意コールの選択/非選択両分岐・sharedキーの記帳を実測）。"
+      "_note": "①【コールコスト】ゲージ5を払う=costs.call:[payGauge(5)]。②“ビジブルインビジブル”このカードが登場した時、デッキ上5枚までを見て好きな順番で上に置き1枚引く。その後、手札のモンスター1枚を【コールコスト】を払ってコールしてよい。1ターンに1回=kind:triggered,event:enter,script:[reorderTopOrdered{count:5}(G4 D-EB01前例・bf-x-cp02-0017フィフス・フォーカスと同型『デッキの上から5枚を見て、好きな順番でデッキの上に置く』),draw{amount:1},selectCards{from:hand,controller:self,filter:{cardType:monster},min:0,max:1,require:false,callable:true,canPayCost:call}(bf-h-bt01-0013デックアールヴの魔剣士ヘイム/bf-x-ss01-0043進化の胎動ヤミゲドウと同型『してよい』任意コール選択),ifSelection→selectZone{emptyOnly:true}+payCardCostForSelection{purpose:call}+callSelected{resolveOnEnter:true}]。原文の引用名「ビジブルインビジブル」はカード名と不一致のサブ能力固有名のため named-once bare slug（HANDOFF F2『同名カード合算＝shared:true』・xbt02-guren-tamashii等の前例形式）で limit:{scope:turn,shared:true,key:\"xss03-ビジブルインビジブル\"}（bare=ability.idを介さずキー直指定、instanceId分離なし=同名カード間で共有）。grep自己検査: payGauge/reorderTopOrdered(src/14-ability-script.js:352,1473)/draw(isScriptEffectStep許可リスト src/14:3241)/selectCards+callable+canPayCost(src/14-ability-script.js:527,752,761)/ifSelection/selectZone/payCardCostForSelection/callSelected 全実在確認・limit.shared(src/15-ability-effects.js:3171)実在確認。VM実証: x67-b5-verify.js test0035（reorder no-op確認済み手法でdraw対象カードを固定検証・任意コールの選択/非選択両分岐・sharedキーの記帳を実測）。 【R1 2026-10-09 オーナー裁定】「デッキの上から５枚までを見て」＝見る枚数0〜5を選ぶ（reorderTopOrdered upTo:true。CPU既定=5）。"
     },
     {
       "id": "bf-x-ss03-0036",
@@ -2628,7 +2640,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "self",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelected",
@@ -2865,7 +2878,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "self",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelected",
@@ -2964,10 +2978,10 @@
                         "keyword": "set"
                       },
                       "amount": 1,
-                      "min": 0,
+                      "min": 1,
                       "require": false,
                       "title": "大魔法 天壌のビフレスト",
-                      "lead": "ソウルをドロップゾーンに置く『設置』を持つ魔法１枚を選んでください（無ければそのまま）。"
+                      "lead": "ソウルをドロップゾーンに置く『設置』を持つ魔法１枚を選んでください。"
                     },
                     {
                       "op": "ifSelection",
@@ -2989,7 +3003,7 @@
           }
         }
       ],
-      "_note": "①【使用コスト】ゲージ1=costs.cast:[payGauge(1)]+ability.cost:[payGauge(1)]（FIX7: castの二重記載規約）。②『次の２つから１つを選んで使う。「大魔法 天壌のビフレスト」は１ターンに１回だけ使える』はbt04-roaring-slash.json BT04/0088「パワー・オブ・ミソロジー」のscript:[chooseBranch{options:[...]}]構造を踏襲（bf-x-sup01-0006魔王の牙ロウガのシンプル版chooseBranch形にも整合）。timing:[\"main\"]（原文に【対抗】マーカーが無いため）。named-once『「大魔法 天壌のビフレスト」は1ターンに1回』はkind:spellのためisHandCastLimitAbilityでbaseキー自動共有(shared不要)、limit:{scope:\"turn\"}（key省略時はability.idを既定キー化）。③選択肢1『君のドロップゾーンの《アースガルド》か《Dエネミー》のモンスター１枚を手札に加え、君のライフを＋１！』=script:[moveMatchingDropToHand{filter:{cardType:\"monster\",attributeIn:[\"アースガルド\",\"Dエネミー\"]},amount:1}(候補0枚でもchooseAndTakeMatchingCardsのmin自動丸めで安全に空振り。bf-hd-pr.json PR/0473の_note記載の既定挙動を踏襲、『まで』表記不要), gainLife{amount:1}]。④選択肢2『カード１枚を引き、場の『設置』を持つ魔法１枚のソウル全てをドロップゾーンに置く』=script:[draw{amount:1}, selectCards{var:\"host\",from:\"field\",controller:\"any\"（『場の』＝両陣営対象。src/14-ability-script.js:776-791既定はself限定のため明示必須）,filter:{cardType:\"spell\",keyword:\"set\"}（bf-hd-pr.json PR/0108煉獄騎士団カースファルクス・ドラゴンの target.filter:{cardType:spell,keyword:set}と同一語彙）,amount:1,min:0,require:false（『1枚を選び』だが該当が無い場合の空振りを許容）}, ifSelection{then:[dropSelectedSoul{var:\"host\"}]}（amount省略＝『ソウル全て』。dropSelectedSoulForScriptの既定`step.amount ?? entry.card.soul.length`=全枚数。bf-d-cbt-dragon-fighters.json D-CBT/0049「魔砲士カノーネ」・bf-h-bt04-mikado-evolution.json H-BT04/0103「ソウルアームズ」の同一パターンから、amount指定無し版で『全て』を表現）]。grep自己検査: payGauge(src/04-cost-resource.js)/chooseBranch(src/14-ability-script.js:348)/moveMatchingDropToHand(src/15-ability-effects.js:1006、isScriptEffectStep許可リスト在)/gainLife(src/15-ability-effects.js:602)/draw script step(isScriptEffectStep許可リスト,src/15-ability-effects.js:254)/selectCards controller:any(src/14-ability-script.js:663-668,786-791、bt01-dragon-bancho.json実例)/filter.keyword:set(src/17-targeting.js、PR/0108実例)/ifSelection(src/14-ability-script.js:339-341)/dropSelectedSoul(src/14-ability-script.js:419-420,1759-1772、D-CBT/0049・H-BT04/0103実例) 全実在確認。VM検証: x67-b6-verify.js test0049参照（A:選択肢1でドロップの《アースガルド》/《Dエネミー》モンスターが手札へ+ライフ+1、B:選択肢2で1枚ドロー+場の設置魔法のソウルが全てドロップへ、C:設置魔法が場に無ければソウル処理は空振り（ドローのみ成立）、D:同一ターン2回目は不発）。"
+      "_note": "①【使用コスト】ゲージ1=costs.cast:[payGauge(1)]+ability.cost:[payGauge(1)]（FIX7: castの二重記載規約）。②『次の２つから１つを選んで使う。「大魔法 天壌のビフレスト」は１ターンに１回だけ使える』はbt04-roaring-slash.json BT04/0088「パワー・オブ・ミソロジー」のscript:[chooseBranch{options:[...]}]構造を踏襲（bf-x-sup01-0006魔王の牙ロウガのシンプル版chooseBranch形にも整合）。timing:[\"main\"]（原文に【対抗】マーカーが無いため）。named-once『「大魔法 天壌のビフレスト」は1ターンに1回』はkind:spellのためisHandCastLimitAbilityでbaseキー自動共有(shared不要)、limit:{scope:\"turn\"}（key省略時はability.idを既定キー化）。③選択肢1『君のドロップゾーンの《アースガルド》か《Dエネミー》のモンスター１枚を手札に加え、君のライフを＋１！』=script:[moveMatchingDropToHand{filter:{cardType:\"monster\",attributeIn:[\"アースガルド\",\"Dエネミー\"]},amount:1}(候補0枚でもchooseAndTakeMatchingCardsのmin自動丸めで安全に空振り。bf-hd-pr.json PR/0473の_note記載の既定挙動を踏襲、『まで』表記不要), gainLife{amount:1}]。④選択肢2『カード１枚を引き、場の『設置』を持つ魔法１枚のソウル全てをドロップゾーンに置く』=script:[draw{amount:1}, selectCards{var:\"host\",from:\"field\",controller:\"any\"（『場の』＝両陣営対象。src/14-ability-script.js:776-791既定はself限定のため明示必須）,filter:{cardType:\"spell\",keyword:\"set\"}（bf-hd-pr.json PR/0108煉獄騎士団カースファルクス・ドラゴンの target.filter:{cardType:spell,keyword:set}と同一語彙）,amount:1,min:0,require:false（『1枚を選び』だが該当が無い場合の空振りを許容）}, ifSelection{then:[dropSelectedSoul{var:\"host\"}]}（amount省略＝『ソウル全て』。dropSelectedSoulForScriptの既定`step.amount ?? entry.card.soul.length`=全枚数。bf-d-cbt-dragon-fighters.json D-CBT/0049「魔砲士カノーネ」・bf-h-bt04-mikado-evolution.json H-BT04/0103「ソウルアームズ」の同一パターンから、amount指定無し版で『全て』を表現）]。grep自己検査: payGauge(src/04-cost-resource.js)/chooseBranch(src/14-ability-script.js:348)/moveMatchingDropToHand(src/15-ability-effects.js:1006、isScriptEffectStep許可リスト在)/gainLife(src/15-ability-effects.js:602)/draw script step(isScriptEffectStep許可リスト,src/15-ability-effects.js:254)/selectCards controller:any(src/14-ability-script.js:663-668,786-791、bt01-dragon-bancho.json実例)/filter.keyword:set(src/17-targeting.js、PR/0108実例)/ifSelection(src/14-ability-script.js:339-341)/dropSelectedSoul(src/14-ability-script.js:419-420,1759-1772、D-CBT/0049・H-BT04/0103実例) 全実在確認。VM検証: x67-b6-verify.js test0049参照（A:選択肢1でドロップの《アースガルド》/《Dエネミー》モンスターが手札へ+ライフ+1、B:選択肢2で1枚ドロー+場の設置魔法のソウルが全てドロップへ、C:設置魔法が場に無ければソウル処理は空振り（ドローのみ成立）、D:同一ターン2回目は不発）。 ／【監査修正 b059-2】選択肢2の『場の『設置』を持つ魔法１枚のソウル全てをドロップゾーンに置く』は強制（『てよい』無し）。selectCards を min:1 に変更（require:false は残し、場に該当が無い時だけ不発）。"
     },
     {
       "id": "bf-x-ss03-0050",
@@ -3044,6 +3058,7 @@
               "then": [
                 {
                   "op": "moveSelected",
+                  "discard": true,
                   "var": "d",
                   "to": "drop"
                 },
@@ -3281,8 +3296,17 @@
                         "op": "pendingActionIsOpponent"
                       },
                       {
-                        "op": "pendingActionCardType",
-                        "cardType": "spell"
+                        "op": "any",
+                        "conditions": [
+                          {
+                            "op": "pendingActionKind",
+                            "kind": "spell"
+                          },
+                          {
+                            "op": "pendingActionKind",
+                            "kind": "setSpell"
+                          }
+                        ]
                       }
                     ]
                   },
@@ -3300,6 +3324,7 @@
                       "op": "selectCards",
                       "var": "spell",
                       "from": "field",
+                      "controller": "any",
                       "filter": {
                         "cardType": "spell"
                       },
@@ -3496,6 +3521,7 @@
           "id": "bf-x-ss03-0058-hand-mill-debuff-destroy",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "counter",
             "main"
@@ -3781,6 +3807,7 @@
             {
               "op": "eventCardMatches",
               "filter": {
+                "cardType": "monster",
                 "buddy": true
               }
             }
@@ -3837,45 +3864,33 @@
           ],
           "script": [
             {
-              "op": "chooseBranch",
-              "title": "ダメージ・コントロール",
-              "lead": "捨てる手札を選んでください。",
-              "options": [
+              "op": "discardHand",
+              "amount": 1,
+              "var": "discarded"
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "selectionMatches",
+                "var": "discarded",
+                "filter": {
+                  "attribute": "戦神機"
+                }
+              },
+              "then": [
                 {
-                  "key": "sengineki",
-                  "label": "《戦神機》を捨てる（次に受けるダメージ−4）",
+                  "op": "reduceNextDamage",
+                  "amount": 4
+                }
+              ],
+              "else": [
+                {
+                  "op": "ifCondition",
                   "condition": {
-                    "op": "cardCount",
-                    "controller": "self",
-                    "pile": "hand",
-                    "filter": {
-                      "attribute": "戦神機"
-                    },
-                    "cmp": "gte",
-                    "amount": 1
+                    "op": "selectionMatches",
+                    "var": "discarded"
                   },
-                  "script": [
-                    {
-                      "op": "discardHand",
-                      "amount": 1,
-                      "filter": {
-                        "attribute": "戦神機"
-                      }
-                    },
-                    {
-                      "op": "reduceNextDamage",
-                      "amount": 4
-                    }
-                  ]
-                },
-                {
-                  "key": "other",
-                  "label": "手札１枚を捨てる（次に受けるダメージ−2）",
-                  "script": [
-                    {
-                      "op": "discardHand",
-                      "amount": 1
-                    },
+                  "then": [
                     {
                       "op": "reduceNextDamage",
                       "amount": 2

@@ -158,7 +158,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -231,7 +232,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -367,7 +369,7 @@
       "castCost": {
         "gauge": 1
       },
-      "nullifyImmune": true,
+      "cannotBeNullified": true,
       "abilities": [
         {
           "id": "bf-h-eb03-0005-nullify",
@@ -609,7 +611,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-h-eb03-0008-shoki"
+            "key": "bf-h-eb03-0008-shoki",
+            "shared": true
           }
         }
       ]
@@ -691,7 +694,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelected",
@@ -773,7 +777,8 @@
               ],
               "payCost": "call",
               "chooseZones": true,
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ],
           "limit": {
@@ -784,7 +789,10 @@
         {
           "id": "bf-h-eb03-0010-leave-damage",
           "kind": "triggered",
-          "event": "destroyed",
+          "event": "movedToDrop",
+          "fromZones": [
+            "field"
+          ],
           "effects": [
             {
               "op": "dealDamage",
@@ -1220,6 +1228,7 @@
           "id": "bf-h-eb03-0019-recover",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "counter",
             "main"
@@ -1336,7 +1345,8 @@
             "controller": "self",
             "filter": {
               "cardType": "monster"
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -1351,9 +1361,11 @@
           "limit": {
             "scope": "turn",
             "key": "bf-h-eb03-0021-cast"
-          }
+          },
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-h-eb03-0022",
@@ -1533,7 +1545,8 @@
           "effects": [
             {
               "op": "putTopDeckToSoul",
-              "amount": 1
+              "amount": 1,
+              "faceDown": true
             }
           ]
         },
@@ -1729,7 +1742,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -1963,7 +1977,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -2031,7 +2046,10 @@
         {
           "id": "bf-h-eb03-0033-leave-gauge",
           "kind": "triggered",
-          "event": "destroyed",
+          "event": "movedToDrop",
+          "fromZones": [
+            "field"
+          ],
           "effects": [
             {
               "op": "putTopDeckToGauge",
@@ -2108,7 +2126,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -2219,16 +2238,10 @@
           "id": "bf-h-eb03-0037-enter-janken",
           "kind": "triggered",
           "event": "enter",
-          "target": {
-            "type": "fieldCard",
-            "controller": "any",
-            "filter": {}
-          },
           "effects": [
             {
-              "op": "destroy",
-              "target": "$target",
-              "rockPaperScissors": true
+              "op": "destroyChosenByRpsWinner",
+              "filter": {}
             }
           ]
         }
@@ -2566,7 +2579,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-h-eb03-0045-flame-breath"
+            "key": "bf-h-eb03-0045-flame-breath",
+            "shared": true
           }
         }
       ]
@@ -2658,7 +2672,10 @@
         {
           "id": "bf-h-eb03-0047-drop-search",
           "kind": "triggered",
-          "event": "destroyed",
+          "event": "movedToDrop",
+          "fromZones": [
+            "field"
+          ],
           "script": [
             {
               "op": "selectCards",
@@ -2800,51 +2817,43 @@
                   "op": "dropSelf"
                 },
                 {
-                  "op": "ifCondition",
-                  "condition": {
-                    "op": "ownCenterEmpty"
+                  "op": "selectCards",
+                  "var": "call",
+                  "from": "drop",
+                  "controller": "self",
+                  "filter": {
+                    "cardType": "monster",
+                    "sizeIn": [
+                      3
+                    ],
+                    "attributeIn": [
+                      "魔王",
+                      "百鬼"
+                    ]
                   },
+                  "min": 0,
+                  "max": 1,
+                  "amount": 1,
+                  "require": false,
+                  "callable": true,
+                  "canPayCost": "call",
+                  "title": "邪神の祭壇",
+                  "lead": "君のセンターに【コールコスト】を払ってコールするドロップゾーンのサイズ３の《魔王》か《百鬼》１枚を選んでください（コールしなくてもよい）。"
+                },
+                {
+                  "op": "ifSelection",
+                  "var": "call",
                   "then": [
                     {
-                      "op": "selectCards",
+                      "op": "payCardCostForSelection",
                       "var": "call",
-                      "from": "drop",
-                      "controller": "self",
-                      "filter": {
-                        "cardType": "monster",
-                        "sizeIn": [
-                          3
-                        ],
-                        "attributeIn": [
-                          "魔王",
-                          "百鬼"
-                        ]
-                      },
-                      "min": 0,
-                      "max": 1,
-                      "amount": 1,
-                      "require": false,
-                      "callable": true,
-                      "canPayCost": "call",
-                      "title": "邪神の祭壇",
-                      "lead": "君のセンターに【コールコスト】を払ってコールするドロップゾーンのサイズ３の《魔王》か《百鬼》１枚を選んでください（コールしなくてもよい）。"
+                      "purpose": "call"
                     },
                     {
-                      "op": "ifSelection",
+                      "op": "callSelected",
                       "var": "call",
-                      "then": [
-                        {
-                          "op": "payCardCostForSelection",
-                          "var": "call",
-                          "purpose": "call"
-                        },
-                        {
-                          "op": "callSelected",
-                          "var": "call",
-                          "zone": "center",
-                          "resolveOnEnter": true
-                        }
-                      ]
+                      "zone": "center",
+                      "resolveOnEnter": true
                     }
                   ]
                 }
@@ -3328,7 +3337,8 @@
                     },
                     {
                       "op": "destroySelected",
-                      "var": "kill"
+                      "var": "kill",
+                      "asCost": true
                     },
                     {
                       "op": "draw",
@@ -3362,7 +3372,8 @@
                     },
                     {
                       "op": "destroySelected",
-                      "var": "kill"
+                      "var": "kill",
+                      "asCost": true
                     },
                     {
                       "op": "draw",
@@ -3396,7 +3407,8 @@
                     },
                     {
                       "op": "destroySelected",
-                      "var": "kill"
+                      "var": "kill",
+                      "asCost": true
                     },
                     {
                       "op": "draw",
@@ -3828,7 +3840,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -3904,7 +3917,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",

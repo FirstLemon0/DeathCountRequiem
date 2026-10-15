@@ -344,18 +344,27 @@
           "kind": "triggered",
           "event": "attacked",
           "optional": true,
+          "allowMissingTarget": true,
+          "target": {
+            "type": "battleCard",
+            "role": "attacker",
+            "allowMissingTarget": true,
+            "filter": {
+              "cardType": "monster"
+            }
+          },
           "effects": [
             {
               "op": "returnSelfToHand"
             },
             {
               "op": "returnToHand",
-              "target": "$attacker"
+              "target": "$target"
             }
           ]
         }
       ],
-      "_note": "『場のこのカードと、攻撃しているモンスター1枚を持ち主の手札に戻してよい』=1つのoptionalアビリティでreturnSelfToHand(自分)+returnToHand target:$attacker(攻撃者)の2effectsを解決(bf-d-eb03-0007永遠の御使いエーティルは自分のみ返す近縁カード=attacked+optionalの型は同一、$attacker解決はresolveEffectReference実在・使用前例0件のためVM実測必須)。"
+      "_note": "『場のこのカードと、攻撃しているモンスター1枚を持ち主の手札に戻してよい』=optionalのattacked誘発。『攻撃しているモンスター1枚』は target{type:battleCard, role:attacker, filter:{cardType:monster}}で攻撃者のうちモンスターから選ぶ（連携攻撃のアイテム/ファイターは対象外・監査 b053-5。bf-pr-0015 と同型）。effects=[returnSelfToHand, returnToHand($target)]。攻撃者にモンスターがいない場合も 能力直下＋target の allowMissingTarget で自身は戻せる（D1 方式）。"
     },
     {
       "id": "bf-x-cp02-0006",
@@ -462,7 +471,8 @@
           "event": "enter",
           "limit": {
             "scope": "turn",
-            "key": "xcp02-luna-gate"
+            "key": "xcp02-luna-gate",
+            "shared": true
           },
           "script": [
             {
@@ -556,9 +566,7 @@
           ]
         },
         {
-          "from": {
-            "byEffect": true
-          },
+          "from": {},
           "conditions": [
             {
               "op": "cardCount",
@@ -644,7 +652,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "xcp02-ruikoseki"
+            "key": "xcp02-ruikoseki",
+            "shared": true
           }
         }
       ],
@@ -726,7 +735,8 @@
               "grantConditionalSize": {
                 "size": 0,
                 "unconditional": true
-              }
+              },
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -1283,7 +1293,8 @@
           ],
           "target": {
             "type": "fieldCard",
-            "controller": "self"
+            "controller": "self",
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -1326,10 +1337,11 @@
                 }
               ]
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
       ],
-      "_note": "『君の場のカード1枚を選び』はtarget:{type:fieldCard,controller:self}（filter無し=モンスター/アイテム両対応、eb02-0027型で無filter前例あり）。『そのターン中、攻撃力+2000、貫通』はmodifyStats+grantKeyword（duration:turn明示、cp01-0036/d-eb03-0040型)。『君の場のカードのソウルが3枚以上ならドロー、5枚以上なら2回攻撃』は『君の場のカードのソウル』=自陣フィールド全体のソウル合算という定型句（bf-d-bt01-0101/bf-h-pp01-0011/bf-h-ss01-0059で同一文言=cardCount{pile:soul}集計と確認済・選んだ対象個別のソウルではない）。汎用effect.conditionsゲート（src/15:216-220、全op対象）をdraw/grantKeyword(2回攻撃)にそれぞれ付けて2閾値を表現。grep自己検査: modifyStats/grantKeyword/draw/cardCount 全実在確認。"
+      "_note": "『君の場のカード1枚を選び』はtarget:{type:fieldCard,controller:self}（filter無し=モンスター/アイテム両対応、eb02-0027型で無filter前例あり）。『そのターン中、攻撃力+2000、貫通』はmodifyStats+grantKeyword（duration:turn明示、cp01-0036/d-eb03-0040型)。『君の場のカードのソウルが3枚以上ならドロー、5枚以上なら2回攻撃』は『君の場のカードのソウル』=自陣フィールド全体のソウル合算という定型句（bf-d-bt01-0101/bf-h-pp01-0011/bf-h-ss01-0059で同一文言=cardCount{pile:soul}集計と確認済・選んだ対象個別のソウルではない）。汎用effect.conditionsゲート（src/15:216-220、全op対象）をdraw/grantKeyword(2回攻撃)にそれぞれ付けて2閾値を表現。grep自己検査: modifyStats/grantKeyword/draw/cardCount 全実在確認。 【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-x-cp02-0020",
@@ -1557,7 +1569,6 @@
           }
         ]
       },
-      "nullifyImmune": true,
       "continuous": [
         {
           "op": "grantNullifyImmunity",
@@ -1565,7 +1576,8 @@
           "filter": {
             "cardType": "monster",
             "attribute": "プリズムドラゴン"
-          }
+          },
+          "cannotBeNullified": true
         },
         {
           "op": "modifyStats",
@@ -1575,7 +1587,8 @@
             "attribute": "プリズムドラゴン"
           },
           "power": 1000,
-          "defense": 1000
+          "defense": 1000,
+          "cannotBeNullified": true
         }
       ],
       "abilities": [
@@ -2044,7 +2057,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "xcp02-double-arm-bit"
+            "key": "xcp02-double-arm-bit",
+            "shared": true
           }
         },
         {
@@ -2111,6 +2125,7 @@
           "kind": "triggered",
           "event": "battleEnd",
           "optional": true,
+          "includeDefender": true,
           "effects": [
             {
               "op": "returnSelfToDeckBottom"
@@ -2121,7 +2136,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "『このカードのバトル終了時』は場面を限定しないため、攻撃したバトル・攻撃されたバトルの両方で誘発するよう includeDefender:true（CP01 F3 の 0035/0043 と同形）。"
     },
     {
       "id": "bf-x-cp02-0031",
@@ -2265,7 +2281,8 @@
             "controller": "opponent",
             "filter": {
               "cardType": "monster"
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -2280,7 +2297,7 @@
           ]
         }
       ],
-      "_note": "『君の場の《ネオドラゴン》が破壊された時に使える』は反応的タイミング条件ability.conditions:[lastDestroyedCardMatches{controller:self,filter:{cardType:monster,attribute:ネオドラゴン}}]（bf-d-bt04-0049『裁きの…』/bf-x-bt01-0111『デッドコピー』と同型の既存precedent＝card-levelのuseConditionsではなくability.conditions）。【使用コスト】ライフ1はcosts.cast+ability.cost。【対抗】『相手の場のモンスター1枚を破壊し、相手にダメージ1』はability.target(fieldCard,controller:opponent,filter:{cardType:monster})+effects:[destroy($target),dealDamage(player:opponent,amount:1)]（bf-d-eb01-0033型のtarget+effects直結パターン）。grep自己検査: lastDestroyedCardMatches(src/13:1526)/payLife(src/04:563)/destroy(src/02:144,246)/dealDamage(src/15:749) 全実在確認。"
+      "_note": "『君の場の《ネオドラゴン》が破壊された時に使える』は反応的タイミング条件ability.conditions:[lastDestroyedCardMatches{controller:self,filter:{cardType:monster,attribute:ネオドラゴン}}]（bf-d-bt04-0049『裁きの…』/bf-x-bt01-0111『デッドコピー』と同型の既存precedent＝card-levelのuseConditionsではなくability.conditions）。【使用コスト】ライフ1はcosts.cast+ability.cost。【対抗】『相手の場のモンスター1枚を破壊し、相手にダメージ1』はability.target(fieldCard,controller:opponent,filter:{cardType:monster})+effects:[destroy($target),dealDamage(player:opponent,amount:1)]（bf-d-eb01-0033型のtarget+effects直結パターン）。grep自己検査: lastDestroyedCardMatches(src/13:1526)/payLife(src/04:563)/destroy(src/02:144,246)/dealDamage(src/15:749) 全実在確認。 『選び』の無い単体効果なので target.allowMissingTarget:true＝相手の場に対象が無くても使用でき、後続効果（ダメージ1/ライフ+1）を解決（D-EB02 FIX3 エネルギー吸収機と同型・監査 b054-3）。"
     },
     {
       "id": "bf-x-cp02-0034",
@@ -2526,9 +2543,16 @@
               "amount": 4
             },
             {
-              "op": "ownFieldMonsterAttributeSizeGte",
-              "attribute": "コスモドラグーン",
-              "size": 2
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "コスモドラグーン",
+                "sizeGte": 2
+              },
+              "cmp": "gte",
+              "amount": 1
             }
           ],
           "cost": [
@@ -2859,7 +2883,6 @@
           {
             "op": "putOwnFieldCardsToSoul",
             "filter": {
-              "cardType": "monster",
               "attribute": "プリズムドラゴン"
             }
           },
@@ -2893,7 +2916,7 @@
           ]
         }
       ],
-      "_note": "『君の場の《プリズムドラゴン》１枚以上全てをこのカードのソウルに入れ』はputOwnFieldCardsToSoul{filter:{cardType:monster, attribute:プリズムドラゴン}}（bf-h-bt01-0016 無限ロボマセマティック『君の場の《カルテットファイブ》のモンスター全てをこのカードのソウルに入れる』と同型op）。putOwnFieldCardsToSoulのcanPayは候補数を検査しない（0枚でも支払い成立＝空振り）ため『1枚以上』の必須要件は同カード前例通りcallConditions:[cardCount(pile:field, filter:{attribute:プリズムドラゴン}, gte1)]で別途ゲート。コスト順は原文どおりsoul→gauge。『このカードが攻撃された時、このカードのソウルが２枚以上あるなら、相手にダメージ１！』はevent:attacked（接頭辞なし）+conditions:[sourceSoulCountGte(amount:2)]（src/13:952）+dealDamage(1,opponent)。原文に『1ターンに1回』表記が無いためlimit無し。grep自己検査: cardCount/putOwnFieldCardsToSoul(src/04:989,1737)/payGauge/sourceSoulCountGte(src/13:952)/dealDamage 全実在確認。"
+      "_note": "『君の場の《プリズムドラゴン》１枚以上全てをこのカードのソウルに入れ』はputOwnFieldCardsToSoul{filter:{attribute:プリズムドラゴン}}（原文は『《プリズムドラゴン》』で『のモンスター』と限定しない＝装備中の《プリズムドラゴン》アイテムもソウルに入る。callConditions と同一集合・監査 b054-2）（bf-h-bt01-0016 無限ロボマセマティック『君の場の《カルテットファイブ》のモンスター全てをこのカードのソウルに入れる』と同型op）。putOwnFieldCardsToSoulのcanPayは候補数を検査しない（0枚でも支払い成立＝空振り）ため『1枚以上』の必須要件は同カード前例通りcallConditions:[cardCount(pile:field, filter:{attribute:プリズムドラゴン}, gte1)]で別途ゲート。コスト順は原文どおりsoul→gauge。『このカードが攻撃された時、このカードのソウルが２枚以上あるなら、相手にダメージ１！』はevent:attacked（接頭辞なし）+conditions:[sourceSoulCountGte(amount:2)]（src/13:952）+dealDamage(1,opponent)。原文に『1ターンに1回』表記が無いためlimit無し。grep自己検査: cardCount/putOwnFieldCardsToSoul(src/04:989,1737)/payGauge/sourceSoulCountGte(src/13:952)/dealDamage 全実在確認。"
     },
     {
       "id": "bf-x-cp02-0042",
@@ -3091,6 +3114,7 @@
           "id": "bf-x-cp02-0044-discard-life",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "main"
           ],
@@ -3694,13 +3718,15 @@
           ],
           "target": {
             "type": "fieldCard",
-            "controller": "opponent"
+            "controller": "opponent",
+            "allowMissingTarget": true
           },
           "effects": [
             {
               "op": "dropTargetSoul",
               "target": "$target",
-              "amount": 1
+              "amount": 1,
+              "upTo": true
             },
             {
               "op": "gainLife",
@@ -3709,7 +3735,7 @@
           ]
         }
       ],
-      "_note": "raw原文に【使用コスト】行なし＝無償の対抗スペル。『相手の場のカード1枚のソウル1枚までをドロップゾーンに置き、君のライフ+1』はability.target(fieldCard,controller:opponent,filter無し=モンスター/アイテム両対応)+effects:[dropTargetSoul{target:$target,amount:1}(『1枚まで』=amount指定で上限クランプ・0枚でもno-op安全、bf-d-bt04-0049型precedent),gainLife{1}]。grep自己検査: dropTargetSoul(src/14:2829許可リスト/src/15:1481本体)/gainLife(src/15:529) 全実在確認。"
+      "_note": "raw原文に【使用コスト】行なし＝無償の対抗スペル。『相手の場のカード1枚のソウル1枚までをドロップゾーンに置き、君のライフ+1』はability.target(fieldCard,controller:opponent,filter無し=モンスター/アイテム両対応)+effects:[dropTargetSoul{target:$target,amount:1,upTo:true}(『1枚まで』=0〜1枚を選ぶ［R1・2026-10-09 オーナー裁定］・ソウル0枚でもno-op安全、bf-d-bt04-0049型precedent),gainLife{1}]。grep自己検査: dropTargetSoul(src/14:2829許可リスト/src/15:1481本体)/gainLife(src/15:529) 全実在確認。 『選び』の無い単体効果なので target.allowMissingTarget:true＝相手の場に対象が無くても使用でき、後続効果（ダメージ1/ライフ+1）を解決（D-EB02 FIX3 エネルギー吸収機と同型・監査 b054-3）。 【R1 2026-10-09 オーナー裁定】「ソウルN枚までを置く／捨てる」＝0〜N枚を選ぶ（dropTargetSoul upTo:true）。"
     },
     {
       "id": "bf-x-cp02-0057",
@@ -4352,7 +4378,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -4867,7 +4894,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "xcp02-chougingayoku"
+            "key": "xcp02-chougingayoku",
+            "shared": true
           }
         }
       ],
@@ -4986,7 +5014,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "xcp02-double-arm-bit"
+            "key": "xcp02-double-arm-bit",
+            "shared": true
           }
         },
         {
@@ -5515,7 +5544,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "xcp02-chougingayoku"
+            "key": "xcp02-chougingayoku",
+            "shared": true
           }
         }
       ],

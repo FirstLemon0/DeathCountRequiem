@@ -172,17 +172,21 @@
               "amount": 1,
               "require": true,
               "title": "オレ分身の術！",
-              "lead": "コールする、ドロップゾーンのカード名に「アスモダイ」を含むモンスターを選んでください。"
+              "lead": "コールする、ドロップゾーンのカード名に「アスモダイ」を含むモンスターを選んでください。",
+              "canPayCost": "call"
             },
             {
               "op": "callSelectedToEmptyZones",
               "var": "call",
               "payCost": "call",
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ],
           "limit": {
-            "scope": "turn"
+            "scope": "turn",
+            "shared": true,
+            "key": "bf-h-eb04-0002-bunshin"
           }
         }
       ]
@@ -346,7 +350,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-h-eb04-0005-ashita-ni-mukatte-go"
+            "key": "bf-h-eb04-0005-ashita-ni-mukatte-go",
+            "shared": true
           },
           "script": [
             {
@@ -371,7 +376,8 @@
                     {
                       "op": "selectZone",
                       "var": "z",
-                      "emptyOnly": true
+                      "emptyOnly": true,
+                      "overwriteWhenFull": true
                     },
                     {
                       "op": "callSelfFromHand",
@@ -541,7 +547,8 @@
               "var": "m",
               "payCost": "call",
               "chooseZones": true,
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -574,6 +581,7 @@
           "id": "bf-h-eb04-0008-battle-end-return",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "optional": true,
           "effects": [
             {
@@ -828,6 +836,7 @@
           "id": "bf-h-eb04-0011-battle-end-return",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "returnSelfToHand"
@@ -901,7 +910,8 @@
                   "op": "selectZone",
                   "var": "z",
                   "cardVar": "call",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "payCardCostForSelection",
@@ -1031,7 +1041,8 @@
           "event": "enter",
           "limit": {
             "scope": "turn",
-            "key": "bf-h-eb04-0014-search"
+            "key": "bf-h-eb04-0014-search",
+            "shared": true
           },
           "script": [
             {
@@ -1255,7 +1266,9 @@
             }
           ],
           "limit": {
-            "scope": "turn"
+            "scope": "turn",
+            "shared": true,
+            "key": "bf-h-eb04-0017-enter-bounce"
           }
         }
       ]
@@ -1431,7 +1444,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-h-eb04-0020-kankaku-doucho"
+            "key": "bf-h-eb04-0020-kankaku-doucho",
+            "shared": true
           }
         },
         {
@@ -1464,7 +1478,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-h-eb04-0020-kankaku-doucho"
+            "key": "bf-h-eb04-0020-kankaku-doucho",
+            "shared": true
           }
         }
       ]
@@ -1565,6 +1580,7 @@
             "main"
           ],
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "cost": [
             {
               "op": "payGauge",
@@ -2019,7 +2035,8 @@
                       ],
                       "payCost": "call",
                       "chooseZones": true,
-                      "resolveOnEnter": true
+                      "resolveOnEnter": true,
+                      "overwriteWhenFull": true
                     }
                   ]
                 }
@@ -2370,7 +2387,8 @@
                   "op": "selectZone",
                   "var": "z",
                   "cardVar": "call",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "payCardCostForSelection",
@@ -2988,13 +3006,19 @@
               "lead": "デッキに戻すドロップゾーンの《秘剣》か、カード名に「絶命陣」を含むカード１枚を選んでください（戻さなくてもよい）。"
             },
             {
-              "op": "moveSelected",
+              "op": "ifSelection",
               "var": "r",
-              "to": "deck",
-              "require": false
-            },
-            {
-              "op": "shuffleDeck"
+              "then": [
+                {
+                  "op": "moveSelected",
+                  "var": "r",
+                  "to": "deck",
+                  "require": false
+                },
+                {
+                  "op": "shuffleDeck"
+                }
+              ]
             }
           ]
         }
@@ -3113,7 +3137,8 @@
                 "cardType": "monster",
                 "sizeIn": [
                   3
-                ]
+                ],
+                "world": "エンシェントW"
               }
             }
           ],
@@ -3150,7 +3175,8 @@
                       "op": "callSelectedToEmptyZones",
                       "var": "m",
                       "resolveOnEnter": true,
-                      "require": false
+                      "require": false,
+                      "overwriteWhenFull": true
                     },
                     {
                       "op": "shuffleDeck"
@@ -3850,6 +3876,7 @@
           "id": "bf-h-eb04-0059-battle-end-return",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "returnSelfToHand"
@@ -4399,7 +4426,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-h-eb04-0005-ashita-ni-mukatte-go"
+            "key": "bf-h-eb04-0005-ashita-ni-mukatte-go",
+            "shared": true
           },
           "script": [
             {
@@ -4424,7 +4452,8 @@
                     {
                       "op": "selectZone",
                       "var": "z",
-                      "emptyOnly": true
+                      "emptyOnly": true,
+                      "overwriteWhenFull": true
                     },
                     {
                       "op": "callSelfFromHand",
@@ -4491,17 +4520,21 @@
               "amount": 1,
               "require": true,
               "title": "オレ分身の術！",
-              "lead": "コールする、ドロップゾーンのカード名に「アスモダイ」を含むモンスターを選んでください。"
+              "lead": "コールする、ドロップゾーンのカード名に「アスモダイ」を含むモンスターを選んでください。",
+              "canPayCost": "call"
             },
             {
               "op": "callSelectedToEmptyZones",
               "var": "call",
               "payCost": "call",
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ],
           "limit": {
-            "scope": "turn"
+            "scope": "turn",
+            "shared": true,
+            "key": "bf-h-eb04-0002-bunshin"
           }
         }
       ]
@@ -4574,7 +4607,8 @@
                   "op": "selectZone",
                   "var": "z",
                   "cardVar": "call",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "payCardCostForSelection",

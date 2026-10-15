@@ -77,7 +77,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "call",
               "payCost": "call",
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -384,13 +385,27 @@
                 "attribute": "カオス",
                 "nameNot": "C・ゴーガス"
               },
-              "amount": 1,
-              "optional": true
+              "amount": 1
             }
-          ]
+          ],
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "カオス",
+                "nameNot": "C・ゴーガス"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
+          "selectBeforeCost": true
         }
       ],
-      "_note": "使用（コール）コスト印字なし=costsキー省略。『【起動】「C・ゴーガス」以外の君のドロップゾーンの《カオス》のモンスター１枚を選び、ゲージ１を払い、このカードをレストしてよい。そうしたら、選んだカードを手札に加える。』はbf-x-cp01-0023超武装騎竜ガルバニックホーン・ドラゴンの『【起動】君のドロップゾーンの＜ドラゴンＷ＞のサイズ３のモンスター１枚を選び、ゲージ１を払ってよい。払ったら、選んだカードを手札に加える。』と同型の『選び…払ってよい／そうしたら選んだカードを手札に加える』構文のため、cost:[payGauge,restSource]+effects:[moveMatchingDropToHand{filter,amount:1,optional:true}]の合成で表現（『選び』のドロップ選択自体はcost側で先取りせずeffect側のmoveMatchingDropToHandが担う。このカードは追加コストとしてrestSource（『このカードをレストしてよい』＝発生源を自らレストする、bf-d-bt04-0096冷王の杖ロッド・オブ・ミセリアの同型定型cost:[payGauge,restSource]を流用）を持つ点がbf-x-cp01-0023との差分。filter.nameNot:'C・ゴーガス'で『「C・ゴーガス」以外』を実装（S-UB-C03/0064等のnameNot前例と同型、bf-x-bt01-0064赤の鬼女紅葉が同じmoveMatchingDropToHand{filter:{...,nameNot:...}}構成の直接前例）。restSourceは発生源が既にused（レスト済）なら支払い不能=canPayStructuredCostで弾かれるため、原文に印字の無い『1ターンに1回』制限が無くても、レスト状態が自然な連続使用不可ガードとして働く（Buddyfight一般規則と一致）。grep自己検査: payGauge(src/04-cost-resource.js:544)/restSource(canPay:src/04-cost-resource.js:696、対話pay:1831)/moveMatchingDropToHand(src/15-ability-effects.js:1006-1023)/filter.nameNot(src/17-targeting.js:454)/直接前例bf-x-cp01-0023・bf-x-bt01-0064 全実在確認。VM自己検証: xtd02-b14-verify.js testXTD020008でドロップに同名『C・ゴーガス』1枚＋別名《カオス》モンスター1枚を置いた状態でuseCardAction実経路により、別名カードのみが手札に加わり同名カードはドロップに残ること、ゲージ1課金・自身がレスト状態(used:true)になることを確認。"
+      "_note": "使用（コール）コスト印字なし=costsキー省略。『【起動】「C・ゴーガス」以外の君のドロップゾーンの《カオス》のモンスター１枚を選び、ゲージ１を払い、このカードをレストしてよい。そうしたら、選んだカードを手札に加える。』はbf-x-cp01-0023超武装騎竜ガルバニックホーン・ドラゴンの『【起動】君のドロップゾーンの＜ドラゴンＷ＞のサイズ３のモンスター１枚を選び、ゲージ１を払ってよい。払ったら、選んだカードを手札に加える。』と同型の『選び…払ってよい／そうしたら選んだカードを手札に加える』構文のため、cost:[payGauge,restSource]+effects:[moveMatchingDropToHand{filter,amount:1,optional:true}]の合成で表現（『選び』のドロップ選択自体はcost側で先取りせずeffect側のmoveMatchingDropToHandが担う。このカードは追加コストとしてrestSource（『このカードをレストしてよい』＝発生源を自らレストする、bf-d-bt04-0096冷王の杖ロッド・オブ・ミセリアの同型定型cost:[payGauge,restSource]を流用）を持つ点がbf-x-cp01-0023との差分。filter.nameNot:'C・ゴーガス'で『「C・ゴーガス」以外』を実装（S-UB-C03/0064等のnameNot前例と同型、bf-x-bt01-0064赤の鬼女紅葉が同じmoveMatchingDropToHand{filter:{...,nameNot:...}}構成の直接前例）。restSourceは発生源が既にused（レスト済）なら支払い不能=canPayStructuredCostで弾かれるため、原文に印字の無い『1ターンに1回』制限が無くても、レスト状態が自然な連続使用不可ガードとして働く（Buddyfight一般規則と一致）。grep自己検査: payGauge(src/04-cost-resource.js:544)/restSource(canPay:src/04-cost-resource.js:696、対話pay:1831)/moveMatchingDropToHand(src/15-ability-effects.js:1006-1023)/filter.nameNot(src/17-targeting.js:454)/直接前例bf-x-cp01-0023・bf-x-bt01-0064 全実在確認。VM自己検証: xtd02-b14-verify.js testXTD020008でドロップに同名『C・ゴーガス』1枚＋別名《カオス》モンスター1枚を置いた状態でuseCardAction実経路により、別名カードのみが手札に加わり同名カードはドロップに残ること、ゲージ1課金・自身がレスト状態(used:true)になることを確認。 ／【監査修正 b062-3】『〜を選び、ゲージ１を払い、このカードをレストしてよい。そうしたら、選んだカードを手札に加える』＝対象を選べる時だけ起動でき、払ったら必ず加える。conditions に cardCount{pile:drop, filter:同上, gte 1} を追加し、moveMatchingDropToHand の optional:true を削除（払った後の0枚選択を不可に）。 【R5 2026-10-09 オーナー裁定】「〜を選び、…を払ってよい。払ったら」は選べるカードが無いなら支払えない（何も起きない）＝能力に selectBeforeCost:true（先頭の選択に候補が無ければコストを提示しない）。旧 _note の「optional 承諾＝コスト先払い→script 内で選択」の近似は、候補0でもコストだけ払えてしまう点が誤りだった。"
     },
     {
       "id": "bf-x-td02-0009",

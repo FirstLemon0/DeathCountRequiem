@@ -133,26 +133,32 @@
                   "to": "deckBottom"
                 },
                 {
-                  "op": "selectCards",
-                  "var": "kill",
-                  "from": "field",
-                  "controller": "opponent",
-                  "filter": {},
-                  "min": 0,
-                  "maxFrom": {
+                  "op": "repeat",
+                  "timesFrom": {
                     "source": "selectedCount",
                     "var": "m"
                   },
-                  "require": false,
-                  "allowEmpty": true,
-                  "emptyMessage": "破壊できる相手の場のカードがありません。",
-                  "title": "バルドラゴン “グレイトフル・バルラリアット！！”",
-                  "lead": "相手の場のカードを、置いた枚数分まで選んでください。"
-                },
-                {
-                  "op": "destroySelected",
-                  "var": "kill",
-                  "require": false
+                  "stopWhenNoCandidates": true,
+                  "steps": [
+                    {
+                      "op": "selectCards",
+                      "var": "kill",
+                      "from": "field",
+                      "controller": "opponent",
+                      "filter": {},
+                      "amount": 1,
+                      "min": 1,
+                      "max": 1,
+                      "require": true,
+                      "title": "バルドラゴン “グレイトフル・バルラリアット！！”",
+                      "lead": "破壊する相手の場のカードを1枚選んでください（置いた枚数分くり返す・同じカードを選べる）。"
+                    },
+                    {
+                      "op": "destroySelected",
+                      "var": "kill",
+                      "require": false
+                    }
+                  ]
                 }
               ]
             }
@@ -346,8 +352,17 @@
               "op": "pendingActionIsOpponent"
             },
             {
-              "op": "pendingActionKind",
-              "kind": "spell"
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "pendingActionKind",
+                  "kind": "spell"
+                },
+                {
+                  "op": "pendingActionKind",
+                  "kind": "setSpell"
+                }
+              ]
             }
           ],
           "cost": [
@@ -473,6 +488,7 @@
             "counter"
           ],
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "conditions": [
             {
               "op": "cardCountGte",
@@ -572,7 +588,8 @@
             {
               "op": "moveTopDeckToDrop",
               "player": "opponent",
-              "amount": 10
+              "amount": 10,
+              "upTo": true
             }
           ]
         },
@@ -639,11 +656,6 @@
           "id": "bf-d-bt02-0008-attack-start-charge",
           "kind": "triggered",
           "event": "attackStart",
-          "conditions": [
-            {
-              "op": "turnOwnerIsSelf"
-            }
-          ],
           "script": [
             {
               "op": "selectCards",
@@ -668,9 +680,6 @@
           "event": "turnEnd",
           "conditions": [
             {
-              "op": "turnOwnerIsSelf"
-            },
-            {
               "op": "not",
               "condition": {
                 "op": "sourceSoulCountGte",
@@ -694,7 +703,7 @@
           ]
         }
       ],
-      "_note": "アタックフェイズ開始時/ターン終了時とも原文に「君の」の明示は無いが、同パック0031の同型表現(『君のアタックフェイズ開始時』)およびエンジン既存慣例(bt04-0074/bt03-0093等)に合わせturnOwnerIsSelfを付与(君のターンのみ発火)。「ソウル1枚をゲージに置く」は既存opに厳密な受け皿(amount指定soul→gauge)が無いため、selectCards{from:soul}(既定でcontext.card自身のソウルを見る)+moveSelected{to:gauge}(moveScriptCardToDestinationがgauge宛先を既にサポート)の組み合わせで表現(新op追加なし)。"
+      "_note": "アタックフェイズ開始時/ターン終了時とも原文に「君の」の明示は無い＝両者のターンで誘発する(turnOwnerIsSelf は付けない。2026-10-08 ユーザー裁定・ver2.05 5.1)。「ソウル1枚をゲージに置く」は既存opに厳密な受け皿(amount指定soul→gauge)が無いため、selectCards{from:soul}(既定でcontext.card自身のソウルを見る)+moveSelected{to:gauge}(moveScriptCardToDestinationがgauge宛先を既にサポート)の組み合わせで表現(新op追加なし)。 【裁定2026-10-08】カードテキストに誰のターンか明記の無いフェイズ/ターン指定は両者のターンを指す（ユーザー裁定・ver2.05 5.1）。『アタックフェイズ開始時』『ターン終了時』は君の限定が無いため turnOwnerIsSelf を外し、両者のターンで誘発する。"
     },
     {
       "id": "bf-d-bt02-0009",
@@ -809,7 +818,8 @@
             "controller": "self",
             "filter": {
               "attribute": "武装騎竜"
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -833,9 +843,11 @@
           ],
           "limit": {
             "scope": "turn"
-          }
+          },
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-d-bt02-0011",
@@ -906,6 +918,7 @@
           "effects": [
             {
               "op": "setPreventNextDestroy",
+              "optional": true,
               "target": "$target"
             }
           ]
@@ -952,6 +965,7 @@
           "effects": [
             {
               "op": "setPreventNextDestroy",
+              "optional": true,
               "target": "$target"
             }
           ],
@@ -1660,7 +1674,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -2158,7 +2173,7 @@
           "label": "集団訓練",
           "kind": "triggered",
           "event": "enter",
-          "conditions": [
+          "ifConditions": [
             {
               "op": "ownOtherFieldCardExists",
               "filter": {
@@ -2182,7 +2197,8 @@
             "key": "dbt02-shudan-kunren"
           }
         }
-      ]
+      ],
+      "_note": "監査 rule-continuous-5: 「〜時、XならY」の X は ifConditions（解決時の状態条件・不成立でも1ターン1回を消費＝ver2.05 ④「１ターンに１回」Q2/A2）。"
     },
     {
       "id": "bf-d-bt02-0029",
@@ -2240,7 +2256,8 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             }
           ]
         },
@@ -2248,11 +2265,6 @@
           "id": "bf-d-bt02-0029-turnend-destroy",
           "kind": "triggered",
           "event": "turnEnd",
-          "conditions": [
-            {
-              "op": "turnOwnerIsSelf"
-            }
-          ],
           "effects": [
             {
               "op": "destroySelf"
@@ -2469,6 +2481,7 @@
             "counter"
           ],
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "conditions": [
             {
               "op": "pendingAttackDefenderIsSelf"
@@ -2534,6 +2547,7 @@
             "main"
           ],
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "conditions": [
             {
               "op": "ownFieldCardExists",
@@ -2610,6 +2624,7 @@
             "main"
           ],
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "conditions": [
             {
               "op": "ownFieldCardExists",
@@ -2878,20 +2893,28 @@
               "op": "turnOwnerIsSelf"
             }
           ],
-          "cost": [
-            {
-              "op": "destroyOwnMonster",
-              "amount": 1,
-              "excludeSource": true,
-              "filter": {
-                "nameIncludes": "煉獄騎士団"
-              }
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "excludeSource": true,
+            "filter": {
+              "cardType": "monster",
+              "nameIncludes": "煉獄騎士団"
             }
-          ],
+          },
           "effects": [
             {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
               "op": "standTarget",
-              "target": "$self"
+              "target": "$self",
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
             }
           ]
         }
@@ -3722,7 +3745,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -3734,11 +3758,6 @@
           "id": "bf-d-bt02-0052-turnend-destroy",
           "kind": "triggered",
           "event": "turnEnd",
-          "conditions": [
-            {
-              "op": "turnOwnerIsSelf"
-            }
-          ],
           "effects": [
             {
               "op": "destroySelf"
@@ -3776,7 +3795,9 @@
               "zones": [
                 "drop"
               ]
-            },
+            }
+          ],
+          "ifConditions": [
             {
               "op": "ownOtherFieldCardExists",
               "filter": {
@@ -3800,18 +3821,14 @@
           "id": "bf-d-bt02-0053-turnend-destroy",
           "kind": "triggered",
           "event": "turnEnd",
-          "conditions": [
-            {
-              "op": "turnOwnerIsSelf"
-            }
-          ],
           "effects": [
             {
               "op": "destroySelf"
             }
           ]
         }
-      ]
+      ],
+      "_note": "監査 rule-continuous-5: 「〜時、XならY」の X は ifConditions（解決時の状態条件・不成立でも1ターン1回を消費＝ver2.05 ④「１ターンに１回」Q2/A2）。"
     },
     {
       "id": "bf-d-bt02-0054",
@@ -5306,11 +5323,6 @@
           "id": "bf-d-bt02-0081-turnend-destroy",
           "kind": "triggered",
           "event": "turnEnd",
-          "conditions": [
-            {
-              "op": "turnOwnerIsSelf"
-            }
-          ],
           "effects": [
             {
               "op": "destroySelf"
@@ -5355,11 +5367,6 @@
           "id": "bf-d-bt02-0082-turnend-destroy",
           "kind": "triggered",
           "event": "turnEnd",
-          "conditions": [
-            {
-              "op": "turnOwnerIsSelf"
-            }
-          ],
           "effects": [
             {
               "op": "destroySelf"
@@ -5495,14 +5502,20 @@
           "conditions": [
             {
               "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "monster"
             }
           ],
           "target": {
             "type": "battleCard",
             "role": "defender",
             "filter": {
-              "cardType": "monster"
-            }
+              "cardType": "monster",
+              "world": "カタナW"
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -5516,9 +5529,11 @@
               "player": "opponent",
               "amount": 1
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-d-bt02-0086",
@@ -5635,11 +5650,8 @@
           ],
           "effects": [
             {
-              "op": "preventNextDamage"
-            },
-            {
-              "op": "gainLife",
-              "amount": 1
+              "op": "preventNextDamage",
+              "gainLife": 1
             }
           ]
         }
@@ -5792,6 +5804,7 @@
             "counter"
           ],
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "conditions": [
             {
               "op": "cardCountGte",
@@ -5916,6 +5929,7 @@
           "id": "bf-d-bt02-0094-search",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "main"
           ],
@@ -6472,6 +6486,7 @@
           "effects": [
             {
               "op": "setPreventNextDestroy",
+              "optional": true,
               "target": "$target",
               "amount": 1,
               "gainLife": 1
@@ -6829,6 +6844,7 @@
           "effects": [
             {
               "op": "setPreventNextDestroy",
+              "optional": true,
               "target": "$target"
             }
           ]
@@ -7067,7 +7083,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -7205,7 +7222,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -7288,26 +7306,32 @@
                   "to": "deckBottom"
                 },
                 {
-                  "op": "selectCards",
-                  "var": "kill",
-                  "from": "field",
-                  "controller": "opponent",
-                  "filter": {},
-                  "min": 0,
-                  "maxFrom": {
+                  "op": "repeat",
+                  "timesFrom": {
                     "source": "selectedCount",
                     "var": "m"
                   },
-                  "require": false,
-                  "allowEmpty": true,
-                  "emptyMessage": "破壊できる相手の場のカードがありません。",
-                  "title": "バルドラゴン “グレイトフル・バルラリアット！！”",
-                  "lead": "相手の場のカードを、置いた枚数分まで選んでください。"
-                },
-                {
-                  "op": "destroySelected",
-                  "var": "kill",
-                  "require": false
+                  "stopWhenNoCandidates": true,
+                  "steps": [
+                    {
+                      "op": "selectCards",
+                      "var": "kill",
+                      "from": "field",
+                      "controller": "opponent",
+                      "filter": {},
+                      "amount": 1,
+                      "min": 1,
+                      "max": 1,
+                      "require": true,
+                      "title": "バルドラゴン “グレイトフル・バルラリアット！！”",
+                      "lead": "破壊する相手の場のカードを1枚選んでください（置いた枚数分くり返す・同じカードを選べる）。"
+                    },
+                    {
+                      "op": "destroySelected",
+                      "var": "kill",
+                      "require": false
+                    }
+                  ]
                 }
               ]
             }
@@ -7355,6 +7379,7 @@
           "effects": [
             {
               "op": "setPreventNextDestroy",
+              "optional": true,
               "target": "$target"
             }
           ],

@@ -1084,11 +1084,6 @@
               "amount": 1
             }
           ],
-          "conditions": [
-            {
-              "op": "pendingAttackDefenderIsSelf"
-            }
-          ],
           "script": [
             {
               "op": "chooseBranch",
@@ -1098,6 +1093,17 @@
                 {
                   "key": "nullify",
                   "label": "相手の攻撃を無効化する",
+                  "condition": {
+                    "op": "all",
+                    "conditions": [
+                      {
+                        "op": "turnOwnerIsOpponent"
+                      },
+                      {
+                        "op": "pendingAttackExists"
+                      }
+                    ]
+                  },
                   "script": [
                     {
                       "op": "nullifyAttack"
@@ -1246,7 +1252,7 @@
           "label": "スターダスト・ブレイブ",
           "kind": "triggered",
           "event": "enter",
-          "conditions": [
+          "ifConditions": [
             {
               "op": "cardCount",
               "controller": "self",
@@ -1275,7 +1281,8 @@
             "shared": true
           }
         }
-      ]
+      ],
+      "_note": "監査 rule-continuous-5: 「〜時、XならY」の X は ifConditions（解決時の状態条件・不成立でも1ターン1回を消費＝ver2.05 ④「１ターンに１回」Q2/A2）。"
     },
     {
       "id": "bf-h-bt04-0020",
@@ -1877,7 +1884,8 @@
                   "op": "selectZone",
                   "var": "z",
                   "cardVar": "c",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "callSelected",
@@ -2335,7 +2343,8 @@
                   "op": "selectZone",
                   "var": "z1",
                   "cardVar": "c1",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "payCardCostForSelection",
@@ -2391,7 +2400,8 @@
                   "op": "selectZone",
                   "var": "z2",
                   "cardVar": "c2",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "payCardCostForSelection",
@@ -3653,11 +3663,8 @@
           ],
           "effects": [
             {
-              "op": "preventNextDamage"
-            },
-            {
-              "op": "gainLife",
-              "amount": 1
+              "op": "preventNextDamage",
+              "gainLife": 1
             }
           ]
         }
@@ -4433,7 +4440,9 @@
             }
           ],
           "limit": {
-            "scope": "turn"
+            "scope": "turn",
+            "shared": true,
+            "key": "bf-h-bt04-0076-leon-howl"
           }
         }
       ]
@@ -4618,7 +4627,8 @@
                   "nameIncludes": "拳"
                 }
               ]
-            }
+            },
+            "excludeSource": true
           },
           "effects": [
             {
@@ -5057,7 +5067,8 @@
           ],
           "conditions": [
             {
-              "op": "pendingAttackDefenderIsSelf"
+              "op": "incomingDamagePending",
+              "lethal": true
             }
           ],
           "cost": [
@@ -5470,6 +5481,15 @@
           "id": "bf-h-bt04-0100-soul-damage",
           "kind": "triggered",
           "event": "dealDamage",
+          "conditions": [
+            {
+              "op": "targetMatches",
+              "ref": "$self",
+              "filter": {
+                "attribute": "ネオドラゴン"
+              }
+            }
+          ],
           "script": [
             {
               "op": "chooseBranch",
@@ -5617,6 +5637,13 @@
           {
             "op": "payGauge",
             "amount": 1
+          },
+          {
+            "op": "dropOwnFieldCardSoul",
+            "filter": {
+              "cardType": "monster"
+            },
+            "amount": 1
           }
         ]
       },
@@ -5647,28 +5674,16 @@
             {
               "op": "payGauge",
               "amount": 1
+            },
+            {
+              "op": "dropOwnFieldCardSoul",
+              "filter": {
+                "cardType": "monster"
+              },
+              "amount": 1
             }
           ],
           "script": [
-            {
-              "op": "selectCards",
-              "var": "host",
-              "from": "field",
-              "controller": "self",
-              "filter": {
-                "cardType": "monster",
-                "soulCountGte": 1
-              },
-              "amount": 1,
-              "require": true,
-              "title": "ソウルアームズ",
-              "lead": "ソウルをドロップゾーンに置く君の場のモンスターを選んでください。"
-            },
-            {
-              "op": "dropSelectedSoul",
-              "var": "host",
-              "amount": 1
-            },
             {
               "op": "selectCards",
               "var": "tgt",
@@ -5840,6 +5855,10 @@
           "conditions": [
             {
               "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
             }
           ],
           "cost": [
@@ -5891,7 +5910,8 @@
                 "condition": {
                   "op": "ownFieldCardExists",
                   "filter": {
-                    "cardType": "monster"
+                    "cardType": "monster",
+                    "world": "ジェネリック"
                   }
                 }
               }
@@ -6155,7 +6175,7 @@
           "label": "スターダスト・ブレイブ",
           "kind": "triggered",
           "event": "enter",
-          "conditions": [
+          "ifConditions": [
             {
               "op": "cardCount",
               "controller": "self",
@@ -6184,7 +6204,8 @@
             "shared": true
           }
         }
-      ]
+      ],
+      "_note": "監査 rule-continuous-5: 「〜時、XならY」の X は ifConditions（解決時の状態条件・不成立でも1ターン1回を消費＝ver2.05 ④「１ターンに１回」Q2/A2）。"
     },
     {
       "id": "bf-h-bt04-0112",
@@ -6260,6 +6281,9 @@
               "op": "turnOwnerIsOpponent"
             },
             {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
               "op": "hostMatches",
               "filter": {
                 "cardType": "monster",
@@ -6302,6 +6326,9 @@
           "conditions": [
             {
               "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
             },
             {
               "op": "hostMatches",

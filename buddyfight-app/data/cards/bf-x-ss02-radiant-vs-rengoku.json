@@ -581,7 +581,9 @@
             }
           ],
           "limit": {
-            "scope": "turn"
+            "scope": "turn",
+            "shared": true,
+            "key": "bf-h-pp01-0018-force-liberate"
           }
         }
       ]
@@ -800,7 +802,7 @@
           "label": "スターダスト・ブレイブ",
           "kind": "triggered",
           "event": "enter",
-          "conditions": [
+          "ifConditions": [
             {
               "op": "cardCount",
               "controller": "self",
@@ -829,7 +831,8 @@
             "shared": true
           }
         }
-      ]
+      ],
+      "_note": "監査 rule-continuous-5: 「〜時、XならY」の X は ifConditions（解決時の状態条件・不成立でも1ターン1回を消費＝ver2.05 ④「１ターンに１回」Q2/A2）。"
     },
     {
       "id": "bf-x-ss02-0013",
@@ -905,6 +908,9 @@
               "op": "turnOwnerIsOpponent"
             },
             {
+              "op": "pendingAttackDefenderIsSelf"
+            },
+            {
               "op": "hostMatches",
               "filter": {
                 "cardType": "monster",
@@ -947,6 +953,9 @@
           "conditions": [
             {
               "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "pendingAttackDefenderIsSelf"
             },
             {
               "op": "hostMatches",
@@ -1049,7 +1058,9 @@
             }
           ],
           "limit": {
-            "scope": "turn"
+            "scope": "turn",
+            "shared": true,
+            "key": "bf-h-ss01-0050-bari-bari-charge"
           },
           "conditions": [
             {
@@ -1319,8 +1330,17 @@
               "op": "pendingActionIsOpponent"
             },
             {
-              "op": "pendingActionCardType",
-              "cardType": "spell"
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "pendingActionKind",
+                  "kind": "spell"
+                },
+                {
+                  "op": "pendingActionKind",
+                  "kind": "setSpell"
+                }
+              ]
             }
           ],
           "cost": [
@@ -1387,7 +1407,7 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-x-ss02-0018-boost"
+            "key": "bf-h-eb04-0033-boost"
           }
         }
       ]
@@ -1406,7 +1426,7 @@
         "■君の場にカード名に「ジャックナイフ」を含むカードがあるなら使える。",
         "■君のデッキの上から１枚をゲージに置き、君のドロップゾーンのカード１枚を君の場の《ネオドラゴン》１枚のソウルに入れる。「スタージャック・リペア」は１ターンに１回だけ使える。"
       ],
-      "_note": "使用条件はownFieldCardExists(nameIncludes ジャックナイフ)。効果は必須（『してよい』なし）。「1ターンに1回」はカード名限定の名前slug key(star-jack-repair)。",
+      "_note": "使用条件はownFieldCardExists(nameIncludes ジャックナイフ)。効果は必須（『してよい』なし）だが、ver2.05『できる限り解決』に従い、ドロップ空/《ネオドラゴン》不在でも使用でき、ゲージ+1までは解決する（allowEmpty＋ifSelection）。「1ターンに1回」はカード名限定の名前slug key(star-jack-repair)。",
       "abilities": [
         {
           "id": "bf-x-ss02-0019-repair",
@@ -1421,15 +1441,6 @@
             },
             {
               "op": "selectCards",
-              "var": "d",
-              "from": "drop",
-              "controller": "self",
-              "amount": 1,
-              "title": "スタージャック・リペア",
-              "lead": "君の場の《ネオドラゴン》のソウルに入れる、ドロップゾーンのカードを選んでください。"
-            },
-            {
-              "op": "selectCards",
               "var": "h",
               "from": "field",
               "controller": "self",
@@ -1439,12 +1450,29 @@
               },
               "amount": 1,
               "title": "スタージャック・リペア",
-              "lead": "ソウルに入れる先の《ネオドラゴン》を選んでください。"
+              "lead": "ドロップゾーンのカードを入れる先の、君の場の《ネオドラゴン》を選んでください。",
+              "allowEmpty": true
             },
             {
-              "op": "moveSelectedToSelectedSoul",
-              "var": "d",
-              "soulOfVar": "h"
+              "op": "ifSelection",
+              "var": "h",
+              "then": [
+                {
+                  "op": "selectCards",
+                  "var": "d",
+                  "from": "drop",
+                  "controller": "self",
+                  "amount": 1,
+                  "title": "スタージャック・リペア",
+                  "lead": "君の場の《ネオドラゴン》のソウルに入れる、ドロップゾーンのカードを選んでください。",
+                  "allowEmpty": true
+                },
+                {
+                  "op": "moveSelectedToSelectedSoul",
+                  "var": "d",
+                  "soulOfVar": "h"
+                }
+              ]
             }
           ],
           "limit": {
@@ -1697,9 +1725,16 @@
               "op": "bothCentersEmpty"
             },
             {
-              "op": "ownFieldMonsterAttributeSizeGte",
-              "attribute": "ネオドラゴン",
-              "size": 2
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン",
+                "sizeGte": 2
+              },
+              "cmp": "gte",
+              "amount": 1
             }
           ],
           "cost": [
@@ -1792,19 +1827,36 @@
               "op": "turnOwnerIsSelf"
             }
           ],
-          "cost": [
+          "script": [
             {
-              "op": "destroyOwnMonster",
-              "amount": 1,
+              "op": "selectCards",
+              "var": "sac",
+              "from": "field",
+              "controller": "self",
               "filter": {
+                "cardType": "monster",
                 "nameIncludes": "煉獄騎士団"
-              }
-            }
-          ],
-          "effects": [
+              },
+              "amount": 1,
+              "title": "煉獄騎士団を束ねし者 ロード・ディミオス",
+              "lead": "破壊する君の場のカード名に「煉獄騎士団」を含むモンスターを１枚選んでください。"
+            },
             {
-              "op": "standTarget",
-              "target": "$self"
+              "op": "destroySelected",
+              "var": "sac",
+              "require": false
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "standTarget",
+                  "target": "$self"
+                }
+              ]
             }
           ]
         }
@@ -2383,22 +2435,39 @@
               "op": "turnOwnerIsSelf"
             }
           ],
-          "cost": [
+          "script": [
             {
-              "op": "destroyOwnMonster",
+              "op": "selectCards",
+              "var": "sac",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "煉獄騎士団"
+              },
               "amount": 1,
               "excludeSource": true,
-              "filter": {
-                "nameIncludes": "煉獄騎士団"
-              }
-            }
-          ],
-          "effects": [
+              "title": "煉獄騎士団 ガイラムランス・ドラゴン",
+              "lead": "破壊する君の場のカード名に「煉獄騎士団」を含むモンスターを１枚選んでください。"
+            },
             {
-              "op": "modifyStats",
-              "target": "$self",
-              "critical": 1,
-              "duration": "turn"
+              "op": "destroySelected",
+              "var": "sac",
+              "require": false
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "modifyStats",
+                  "target": "$self",
+                  "critical": 1,
+                  "duration": "turn"
+                }
+              ]
             }
           ],
           "limit": {
@@ -2457,20 +2526,28 @@
               "op": "turnOwnerIsSelf"
             }
           ],
-          "cost": [
-            {
-              "op": "destroyOwnMonster",
-              "amount": 1,
-              "excludeSource": true,
-              "filter": {
-                "nameIncludes": "煉獄騎士団"
-              }
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "excludeSource": true,
+            "filter": {
+              "cardType": "monster",
+              "nameIncludes": "煉獄騎士団"
             }
-          ],
+          },
           "effects": [
             {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
               "op": "standTarget",
-              "target": "$self"
+              "target": "$self",
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
             }
           ]
         }
@@ -2792,24 +2869,13 @@
               "op": "ownCenterEmpty"
             },
             {
-              "op": "any",
-              "conditions": [
-                {
-                  "op": "pendingAttackDefenderIsSelf"
-                },
-                {
-                  "op": "pendingActionResponderIsSelf"
-                }
-              ]
+              "op": "incomingDamagePending"
             }
           ],
           "effects": [
             {
-              "op": "preventNextDamage"
-            },
-            {
-              "op": "gainLife",
-              "amount": 1
+              "op": "preventNextDamage",
+              "gainLife": 1
             }
           ]
         }
@@ -2844,6 +2910,9 @@
           "conditions": [
             {
               "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "selfReceivedDamage"
             }
           ],
           "effects": [
@@ -3117,6 +3186,7 @@
           }
         ]
       },
+      "usableInAnyFlag": true,
       "abilities": [
         {
           "id": "bf-x-ss02-0046-destroy-by-attack-stand",
@@ -3167,7 +3237,7 @@
           ]
         }
       ],
-      "_note": "コールコストは returnOwnFieldCardToHand(filter: cardType monster + nameIncludes 煉獄騎士団 + baseSizeGte:2) ＋ payGauge2（H-EB04/0010のcallStack filterと同じキー構成）。callStackは無し（本カードは『重ねる』記述が無く空きゾーンへの通常コール）。対抗起動の破壊は、H-EB04/0010（同名キャラの再録先例）がdestroySelected+ifCondition(lastDestroySucceeded)を使っているが、destroySelectedはcontext.lastDestroyedを設定しないため、その組み合わせは事実上lastDestroySucceededが常にfalseになる（既存カードの潜在バグ・本パックでは踏襲しない）。かわりにability.target(type:fieldCard, excludeSource:true, filter)＋destroy{target:\"$target\"}を使い、destroy効果が正しくcontext.lastDestroyedを立てるようにした。対象がいない時はfieldAbilityUsableのtarget事前チェックでこの起動能力自体が選択肢に出ない（cardCount条件の重複指定は不要）。destroyByAttackトリガーのスタンドは対象カードを特定不要のため target:\"$self\" 直書き。"
+      "_note": "コールコストは returnOwnFieldCardToHand(filter: cardType monster + nameIncludes 煉獄騎士団 + baseSizeGte:2) ＋ payGauge2（H-EB04/0010のcallStack filterと同じキー構成）。callStackは無し（本カードは『重ねる』記述が無く空きゾーンへの通常コール）。対抗起動の破壊は、H-EB04/0010（同名キャラの再録先例）がdestroySelected+ifCondition(lastDestroySucceeded)を使っているが、destroySelectedはcontext.lastDestroyedを設定しないため、その組み合わせは事実上lastDestroySucceededが常にfalseになる（既存カードの潜在バグ・本パックでは踏襲しない）。かわりにability.target(type:fieldCard, excludeSource:true, filter)＋destroy{target:\"$target\"}を使い、destroy効果が正しくcontext.lastDestroyedを立てるようにした。対象がいない時はfieldAbilityUsableのtarget事前チェックでこの起動能力自体が選択肢に出ない（cardCount条件の重複指定は不要）。destroyByAttackトリガーのスタンドは対象カードを特定不要のため target:\"$self\" 直書き。 D2/D7(2026-10): 同名同テキストの D-EB01/0012 と同じくジェムクローン構築緩和 soft rule 近似＝usableInAnyFlag:true（版間の構築規則ドリフト是正）。"
     },
     {
       "id": "bf-x-ss02-0047",

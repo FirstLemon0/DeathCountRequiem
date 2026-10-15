@@ -1006,6 +1006,7 @@
             "main"
           ],
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "conditions": [
             {
               "op": "ownFieldCardExists",
@@ -1077,6 +1078,7 @@
             "main"
           ],
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "conditions": [
             {
               "op": "ownFieldCardExists",
@@ -1252,6 +1254,10 @@
           "conditions": [
             {
               "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "incomingDamagePending",
+              "amountGte": 2
             }
           ],
           "effects": [
@@ -1636,6 +1642,7 @@
       "abilities": [
         {
           "id": "pp01-0034-spirit-strike",
+          "label": "霊撃",
           "kind": "triggered",
           "event": "destroyByAttack",
           "effects": [
@@ -2193,6 +2200,7 @@
             },
             {
               "op": "moveSelected",
+              "discard": true,
               "var": "discard",
               "to": "drop",
               "log": "discard"
@@ -2527,11 +2535,6 @@
           "id": "pp01-0053-turn-end-drop",
           "kind": "triggered",
           "event": "turnEnd",
-          "conditions": [
-            {
-              "op": "turnOwnerIsSelf"
-            }
-          ],
           "effects": [
             {
               "op": "dropSelf"
@@ -2559,9 +2562,6 @@
               "var": "ally",
               "from": "pendingAttackers",
               "controller": "self",
-              "filter": {
-                "attribute": "冒険者"
-              },
               "excludeSource": true,
               "amount": 1,
               "require": true
@@ -2580,7 +2580,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "【裁定2026-10-08】カードテキストに誰のターンか明記の無いフェイズ/ターン指定は両者のターンを指す（ユーザー裁定・ver2.05 5.1）。『ターン終了時、このカードをドロップゾーンに置く。』は両者のターン終了時に誘発する。"
     },
     {
       "id": "pp01-0054",

@@ -182,9 +182,10 @@
         ]
       },
       "keywords": [
-        "penetrate"
+        "penetrate",
+        "releaseCondition"
       ],
-      "cannotBeNullified": true,
+      "nullifyImmune": true,
       "cannotReturnToHand": true,
       "destroyImmunity": [
         {
@@ -193,9 +194,7 @@
           }
         },
         {
-          "from": {
-            "byEffect": true
-          }
+          "from": {}
         }
       ],
       "abilities": [
@@ -237,7 +236,7 @@
           ]
         }
       ],
-      "_note": "解放条件アイテム＝bf-d-bt03-0001「ドラゴンフォース(ドラゴンワールド)」を直接複製した型（equipConditions=lifeLte6+ownFieldCardExists nameIncludes、装備コストpayGauge2、cannotBeNullified/cannotReturnToHand/destroyImmunity[byBattle,byEffect]の耐性群はbt03-0001と同一パターン。cannotBeNullifiedを採用しnullifyImmuneは不採用＝同一カードファミリー(ドラゴンフォース系列)の既存実装に厳密に倣った。武器アイテムは『装備者が武器で直接攻撃する』ケースがあり、attacker.card自体がこのアイテムのインスタンスになるため event:\"attack\" は pendingAttackBySource 等の追加条件無しで自己限定される（bt03-0001/0025と同型・09-attack.js:430 runTriggeredAbilities(attacker.card,\"attack\")の経路をitem自身が直接受ける。src/08-card-use.js equipCardDirect/getAttackDeclarationAttackers(src/10-battle-resolve.js:852)で武器アイテム単独攻撃が確認できる）。『攻撃した時か、攻撃が無効化された時』の2文言は同一effectsを持つ2アビリティに分解（event:attack плюс event:allyAttackNullified+conditions:[selfIsNullifiedAttacker]、後者はbf-d-ss03-0022の第3能力型を援用）。『貫通』はkeywords:[\"penetrate\"]。"
+      "_note": "解放条件アイテム＝bf-d-bt03-0001「ドラゴンフォース(ドラゴンワールド)」を直接複製した型（equipConditions=lifeLte6+ownFieldCardExists nameIncludes、装備コストpayGauge2、cannotBeNullified/cannotReturnToHand/destroyImmunity[byBattle,byEffect]の耐性群はbt03-0001と同一パターン。cannotBeNullifiedを採用しnullifyImmuneは不採用＝同一カードファミリー(ドラゴンフォース系列)の既存実装に厳密に倣った。武器アイテムは『装備者が武器で直接攻撃する』ケースがあり、attacker.card自体がこのアイテムのインスタンスになるため event:\"attack\" は pendingAttackBySource 等の追加条件無しで自己限定される（bt03-0001/0025と同型・09-attack.js:430 runTriggeredAbilities(attacker.card,\"attack\")の経路をitem自身が直接受ける。src/08-card-use.js equipCardDirect/getAttackDeclarationAttackers(src/10-battle-resolve.js:852)で武器アイテム単独攻撃が確認できる）。『攻撃した時か、攻撃が無効化された時』の2文言は同一effectsを持つ2アビリティに分解（event:attack плюс event:allyAttackNullified+conditions:[selfIsNullifiedAttacker]、後者はbf-d-ss03-0022の第3能力型を援用）。『貫通』はkeywords:[\"penetrate\"]。 【audit-cards-28 b074-1 同系是正】『場のこのカードは…能力は無効化されない』は場の能力無効化耐性＝nullifyImmune:true（X2-SS01/0003 と同形）。旧 cannotBeNullified は使用宣言(pendingAction)の打ち消し耐性で、能力無効化から守らず装備宣言の打ち消しを防いでいた。"
     },
     {
       "id": "bf-d-bt04-0004",
@@ -1015,7 +1014,8 @@
             {
               "op": "moveTopDeckToDrop",
               "player": "opponent",
-              "amount": 5
+              "amount": 5,
+              "upTo": true
             }
           ],
           "limit": {
@@ -1087,7 +1087,8 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": true
+              "require": true,
+              "overwriteWhenFull": true
             }
           ],
           "limit": {
@@ -1289,7 +1290,8 @@
                       "op": "callSelectedToEmptyZones",
                       "var": "rc",
                       "payCost": "call",
-                      "resolveOnEnter": true
+                      "resolveOnEnter": true,
+                      "overwriteWhenFull": true
                     }
                   ]
                 },
@@ -1852,7 +1854,8 @@
             {
               "op": "callSelectedToEmptyZones",
               "var": "self",
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -2076,7 +2079,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -2085,7 +2089,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-d-bt04-0030-fukkatsu-shitai"
+            "key": "bf-d-bt04-0030-fukkatsu-shitai",
+            "shared": true
           }
         }
       ],
@@ -2207,6 +2212,7 @@
               "amount": 7
             }
           ],
+          "allowMissingTarget": true,
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
@@ -2361,26 +2367,49 @@
           "id": "bf-d-bt04-0034-enter-ankutsu-honoo",
           "kind": "triggered",
           "event": "enter",
-          "optional": true,
-          "cost": [
+          "conditions": [
             {
-              "op": "destroyOwnMonster",
-              "amount": 1,
+              "op": "ownOtherFieldCardExists",
+              "filter": {
+                "attribute": "黒竜"
+              }
+            }
+          ],
+          "optional": true,
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "sac",
+              "from": "field",
+              "controller": "self",
+              "excludeSource": true,
               "filter": {
                 "attribute": "黒竜"
               },
-              "includeAllTypes": true,
-              "excludeSource": true
-            }
-          ],
-          "effects": [
-            {
-              "op": "putTopDeckToGauge",
-              "amount": 1
+              "amount": 1,
+              "title": "沈鬱の蛇黒竜 バルザム",
+              "lead": "破壊する、このカード以外の君の場の《黒竜》１枚を選んでください。"
             },
             {
-              "op": "draw",
-              "amount": 1
+              "op": "destroySelected",
+              "var": "sac",
+              "require": false
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "putTopDeckToGauge",
+                  "amount": 1
+                },
+                {
+                  "op": "draw",
+                  "amount": 1
+                }
+              ]
             }
           ],
           "limit": {
@@ -2390,7 +2419,7 @@
           }
         }
       ],
-      "_note": "『このカード以外の君の場の《黒竜》1枚を破壊してよい。破壊したら〜』は『破壊』を任意コスト化（kind:triggered, event:enter, optional:true, cost:[destroyOwnMonster{filter:{attribute:黒竜}, includeAllTypes:true, excludeSource:true}]効果はcost成立後にのみ実行＝bf-d-eb01-0016『破壊された時ライフ1を払ってよい』と同型パターンをdestroyOwnMonsterコストへ適用）。excludeSource:trueで自分自身を破壊対象から除外（src/04-cost-resource.js destroyOwnMonster実装のexcludeSource分岐）。『デッキの上から1枚をゲージに置き、カード1枚を引く』はputTopDeckToGauge+draw。「暗鬱の焔」は名前付き1ターン1回＝shared:true,key:\"dbt04-暗鬱の焔\"。"
+      "_note": "『このカード以外の君の場の《黒竜》1枚を破壊してよい。破壊したら〜』は『破壊』を任意コスト化（kind:triggered, event:enter, optional:true, cost:[destroyOwnMonster{filter:{attribute:黒竜}, includeAllTypes:true, excludeSource:true}]効果はcost成立後にのみ実行＝bf-d-eb01-0016『破壊された時ライフ1を払ってよい』と同型パターンをdestroyOwnMonsterコストへ適用）。excludeSource:trueで自分自身を破壊対象から除外（src/04-cost-resource.js destroyOwnMonster実装のexcludeSource分岐）。『デッキの上から1枚をゲージに置き、カード1枚を引く』はputTopDeckToGauge+draw。「暗鬱の焔」は名前付き1ターン1回＝shared:true,key:\"dbt04-暗鬱の焔\"。 ／【2026-10-09 オーナー裁定R8】『〜を破壊してよい。破壊したら』はコストではなく効果。旧 cost:destroyOwnMonster（支払い時に置換無視で破壊）を script（selectCards→destroySelected{require:false}→ifCondition(lastDestroySucceeded)）へ移した。破壊される側はソウルガード等の置換を通常どおり使える。ソウルガード等で場に残っても破壊は成功している（2026-10-09 オーナー裁定）ので後半を行う（lastDestroySucceeded は真）。候補の無い時に誘発確認を出さない旧 canPay 相当は conditions の ownOtherFieldCardExists/ownFieldCardExists で保持（発動回数も従来どおり未消費）。"
     },
     {
       "id": "bf-d-bt04-0035",
@@ -2588,34 +2617,44 @@
             },
             {
               "op": "destroySelected",
-              "var": "ally"
+              "var": "ally",
+              "require": false
             },
             {
-              "op": "selectCards",
-              "var": "foe",
-              "from": "field",
-              "controller": "opponent",
-              "filter": {
-                "cardType": "monster"
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
               },
-              "amount": 1,
-              "require": true,
-              "title": "ブラック・バッド・バラッド",
-              "lead": "破壊する相手の場のモンスターを選んでください。"
-            },
-            {
-              "op": "destroySelected",
-              "var": "foe"
-            },
-            {
-              "op": "moveTopDeckToDrop",
-              "player": "opponent",
-              "amount": 3
+              "then": [
+                {
+                  "op": "selectCards",
+                  "var": "foe",
+                  "from": "field",
+                  "controller": "opponent",
+                  "filter": {
+                    "cardType": "monster"
+                  },
+                  "amount": 1,
+                  "require": false,
+                  "title": "ブラック・バッド・バラッド",
+                  "lead": "破壊する相手の場のモンスターを選んでください。"
+                },
+                {
+                  "op": "destroySelected",
+                  "var": "foe",
+                  "require": false
+                },
+                {
+                  "op": "moveTopDeckToDrop",
+                  "player": "opponent",
+                  "amount": 3
+                }
+              ]
             }
           ]
         }
       ],
-      "_note": "『君の場のモンスター1枚を破壊する。破壊したら、相手の場のモンスター1枚を破壊し、相手のデッキの上から3枚を相手のドロップゾーンに置く』は二重target（自分1体+相手1体）のためtop-level target(単一$target)では表現不可＝bt05-0074型のscript(selectCards→destroySelected)を2連結。destroySelectedはrequire:trueが既定でdestroyedCount===0なら{ok:false}を返し以降のscriptを中断する（src/14 destroySelectedForScript）ため、1つ目のdestroySelectedが不成立（破壊耐性等）なら2つ目のdestroy/ミルも自動的に発火せず＝『破壊したら』の条件分岐を素通しで再現。costはability.cost配列（FIX7）+top-level costs.cast（bf-d-eb01-0033型の二重宣言慣例）。"
+      "_note": "『君の場のモンスター1枚を破壊する。破壊したら、相手の場のモンスター1枚を破壊し、相手のデッキの上から3枚を相手のドロップゾーンに置く』は二重target（自分1体+相手1体）のためtop-level target(単一$target)では表現不可＝bt05-0074型のscript(selectCards→destroySelected)を2連結。destroySelectedはrequire:trueが既定でdestroyedCount===0なら{ok:false}を返し以降のscriptを中断する（src/14 destroySelectedForScript）ため、1つ目のdestroySelectedが不成立（破壊耐性等）なら2つ目のdestroy/ミルも自動的に発火せず＝『破壊したら』の条件分岐を素通しで再現。costはability.cost配列（FIX7）+top-level costs.cast（bf-d-eb01-0033型の二重宣言慣例）。 ／【2026-10-09 オーナー裁定R8】『君の場の〜を破壊する。破壊したら』: 自分のモンスターの destroySelected を require:false にし後半を ifCondition(lastDestroySucceeded) で包んだ。旧形はソウルガードで場に残ると script が『盤面未変更の中断』扱いになり、ソウルを使わせたうえ使用回数/1ターン1回を消費しない穴があった。後半の相手側選択は require:false（相手の場に対象が無くても続く効果は解決する）。"
     },
     {
       "id": "bf-d-bt04-0038",
@@ -3207,9 +3246,7 @@
           ]
         },
         {
-          "from": {
-            "byEffect": true
-          },
+          "from": {},
           "conditions": [
             {
               "op": "sourceZoneIn",
@@ -3817,7 +3854,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "call",
               "payCost": "call",
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -4157,6 +4195,17 @@
           "conditions": [
             {
               "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "monster"
+            },
+            {
+              "op": "pendingAttackTargetMatches",
+              "filter": {
+                "cardType": "monster",
+                "sizeLte": 2
+              }
             }
           ],
           "target": {
@@ -4165,7 +4214,8 @@
             "filter": {
               "cardType": "monster",
               "sizeLte": 2
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -4176,9 +4226,11 @@
               "op": "putTopDeckToGauge",
               "amount": 1
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-d-bt04-0056",
@@ -4687,7 +4739,8 @@
             "amount": 1,
             "filter": {
               "attribute": "黒竜"
-            }
+            },
+            "includeAllTypes": true
           }
         ]
       },
@@ -4705,6 +4758,7 @@
               "amount": 15
             }
           ],
+          "allowMissingTarget": true,
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
@@ -4713,7 +4767,8 @@
                 "monster",
                 "item"
               ]
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -4728,7 +4783,7 @@
           ]
         }
       ],
-      "_note": "コールコストは『黒竜1枚を破壊する』（固定1枚・可変下限なし）なのでdestroyOwnMonster{amount:1, filter:{attribute:黒竜}}で忠実。『このカードが破壊された時』は自己参照のdestroyedイベント（ドロップに移った後でも発火する既存挙動＝多数の先行実装と同型）。対象はcardTypeIn:[monster,item]（相手の場のモンスターかアイテム）。対象0枚（相手の場にモンスターもアイテムも無い）なら効果は自然に不発（silent no-op対策として選択肢そのものが無い場合の通常スキップ＝新規op不要）。"
+      "_note": "コールコスト『君の場の《黒竜》１枚を破壊する』はモンスター限定の表記が無いため destroyOwnMonster に includeAllTypes:true（0032と同型。《黒竜》アイテムも可）。『このカードが破壊された時』は自己参照のdestroyedイベント。「相手の場のモンスターかアイテム１枚を破壊し、相手にダメージ２！」は同時効果のため allowMissingTarget:true（対象0なら破壊だけ不発・ダメージ2は解決＝0032と同型）。（監査修正 cards-02/b005-4・b005-6）"
     },
     {
       "id": "bf-d-bt04-0066",
@@ -4755,19 +4810,6 @@
         "ride"
       ],
       "abilities": [
-        {
-          "id": "bf-d-bt04-0066-ride-hand",
-          "kind": "activated",
-          "fromHandOnly": true,
-          "timing": [
-            "main"
-          ],
-          "effects": [
-            {
-              "op": "equipSelf"
-            }
-          ]
-        },
         {
           "id": "bf-d-bt04-0066-ride-field",
           "kind": "activated",
@@ -4824,7 +4866,10 @@
           ]
         }
       ],
-      "_note": "『搭乗』は cannotCallNormally:true + ride-hand/ride-field(equipSelf, 無償)。RC ブラストの【起動】が本カードを通常コールorライドどちらでも場に出せる想定のため（RC側 raw: 「コールするか、『搭乗』する」）、cannotCallNormallyは手札からのUI直接コールのみを塞ぐ（callSelectedToEmptyZones等スクリプト経由はブロックしない・src/07:261のみ参照を確認）。参照実例=bf-d-eb02-0002/0013/0034(ウイニング・マキシマム/シルバービーク/スパイカー “ソルジャーフォーム”)。「捨ててよい。捨てたら破壊」はcost化(discardHand)＋targetで表現（bf-d-eb02-0035 戦闘詩人スピーキングと同型、原文に『1ターンに1回』無し=limit無し）。"
+      "_note": "『搭乗』は cannotCallNormally:true + ride-hand/ride-field(equipSelf, 無償)。RC ブラストの【起動】が本カードを通常コールorライドどちらでも場に出せる想定のため（RC側 raw: 「コールするか、『搭乗』する」）、cannotCallNormallyは手札からのUI直接コールのみを塞ぐ（callSelectedToEmptyZones等スクリプト経由はブロックしない・src/07:261のみ参照を確認）。参照実例=bf-d-eb02-0002/0013/0034(ウイニング・マキシマム/シルバービーク/スパイカー “ソルジャーフォーム”)。「捨ててよい。捨てたら破壊」はcost化(discardHand)＋targetで表現（bf-d-eb02-0035 戦闘詩人スピーキングと同型、原文に『1ターンに1回』無し=limit無し）。 【監査修正 cards-02/b005-1】原文「RC ～の【起動】以外で場に出せない」に反して手札から無償で自力『搭乗』できた ride-hand を削除。場に出る正規経路は RC 側の equipSelectedAsItem/callSelectedToEmptyZones のみ。RCでコール後に場(モンスタースペース)から搭乗する ride-field は既に場にあるため残す。",
+      "equipOnlyViaSource": [
+        "RC ブラスト"
+      ]
     },
     {
       "id": "bf-d-bt04-0067",
@@ -4868,19 +4913,6 @@
       ],
       "abilities": [
         {
-          "id": "bf-d-bt04-0067-ride-hand",
-          "kind": "activated",
-          "fromHandOnly": true,
-          "timing": [
-            "main"
-          ],
-          "effects": [
-            {
-              "op": "equipSelf"
-            }
-          ]
-        },
-        {
           "id": "bf-d-bt04-0067-ride-field",
           "kind": "activated",
           "timing": [
@@ -4903,7 +4935,10 @@
           ]
         }
       ],
-      "_note": "design.md §4記載の『君が受けるダメージを1減らす』継続の『ラペルエッジ型』本体（damageReceivedReduction、条件無し=常時）。《ブレイブマシン》全体強化はmodifyStatsAll（bf-h-ss01-0017型）。"
+      "_note": "design.md §4記載の『君が受けるダメージを1減らす』継続の『ラペルエッジ型』本体（damageReceivedReduction、条件無し=常時）。《ブレイブマシン》全体強化はmodifyStatsAll（bf-h-ss01-0017型）。 【監査修正 cards-02/b005-1】原文「RC ～の【起動】以外で場に出せない」に反して手札から無償で自力『搭乗』できた ride-hand を削除。場に出る正規経路は RC 側の equipSelectedAsItem/callSelectedToEmptyZones のみ。RCでコール後に場(モンスタースペース)から搭乗する ride-field は既に場にあるため残す。",
+      "equipOnlyViaSource": [
+        "RC ラペルエッジ"
+      ]
     },
     {
       "id": "bf-d-bt04-0068",
@@ -4928,7 +4963,7 @@
           "label": "３人目の男",
           "kind": "triggered",
           "event": "enter",
-          "conditions": [
+          "ifConditions": [
             {
               "op": "ownFieldCardExists",
               "zones": [
@@ -4956,7 +4991,7 @@
           }
         }
       ],
-      "_note": "「君がカード名に「ガイグレンダー」を含むカードに『変身』しているなら」はownFieldCardExists{zones:item系4枠, filter:{cardType:item, nameIncludes:ガイグレンダー}}（変身/搭乗中カードのcurrentType=item化・bf-d-eb02-0045型のcardType:item判定＋D-SS03/0020型の4枠列挙）。limitキーはラベルの英字化（dbt03-tyrant-heal/deb03-blessing-pierce等の既存慣例）。"
+      "_note": "「君がカード名に「ガイグレンダー」を含むカードに『変身』しているなら」はownFieldCardExists{zones:item系4枠, filter:{cardType:item, nameIncludes:ガイグレンダー}}（変身/搭乗中カードのcurrentType=item化・bf-d-eb02-0045型のcardType:item判定＋D-SS03/0020型の4枠列挙）。limitキーはラベルの英字化（dbt03-tyrant-heal/deb03-blessing-pierce等の既存慣例）。 監査 rule-continuous-5: 「〜時、XならY」の X は ifConditions（解決時の状態条件・不成立でも1ターン1回を消費＝ver2.05 ④「１ターンに１回」Q2/A2）。"
     },
     {
       "id": "bf-d-bt04-0069",
@@ -5077,7 +5112,8 @@
                     {
                       "op": "callSelectedToEmptyZones",
                       "var": "form",
-                      "resolveOnEnter": true
+                      "resolveOnEnter": true,
+                      "overwriteWhenFull": true
                     }
                   ]
                 },
@@ -5265,6 +5301,7 @@
           "id": "bf-d-bt04-0073-hand-discard-soul",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "main"
           ],
@@ -5549,7 +5586,8 @@
                 "center"
               ],
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             },
             {
               "op": "shuffleDeck"
@@ -5961,7 +5999,6 @@
               "op": "modifyStats",
               "scope": "self",
               "filter": {
-                "cardType": "monster",
                 "attribute": "太陽竜"
               },
               "power": 3000,
@@ -5975,7 +6012,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "「君の場の《太陽竜》全て」はモンスター限定ではないため filter は attribute のみ（《太陽竜》アイテム 0056/0057 等も+3000。監査修正 cards-02/b005-5）。"
     },
     {
       "id": "bf-d-bt04-0085",
@@ -6061,13 +6099,15 @@
             "counter",
             "main"
           ],
+          "allowMissingTarget": true,
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
             "filter": {
               "cardType": "monster",
               "sizeLte": 1
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -6080,7 +6120,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "主効果は『場のこのカードを手札に戻す』（対象を取らない）。破壊は『戻したら』の後続なので allowMissingTarget:true で相手の場にサイズ1以下が居なくても起動可（対象0なら破壊だけ不発）。（監査修正 cards-02/b005-7）既知の近似: 『戻したら』を自己戻し成否で厳密にゲートする条件プリミティブが無く、cannotReturnToHand/離場置換で戻せなかった場合も破壊は解決される。"
     },
     {
       "id": "bf-d-bt04-0087",
@@ -6154,7 +6195,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -6202,7 +6244,16 @@
           }
         }
       ],
-      "_note": "「君のゲージ１枚以上全てを」は『ゲージがあるなら全部』の意で、moveGaugeToDeckAndShuffleはゲージ0枚でも無害な無動作（既存opに1枚以上の下限ゲートなし）。使用可否を縛るハードゲートではないため近似のまま実装（実害なし）。"
+      "_note": "「君のゲージ１枚以上全てをデッキに戻す。戻したら、…上から４枚をゲージに置く」。ゲージ0枚では『１枚以上』を満たせず『戻したら』も成立しない（旧実装はゲージ0から4枚を得られた）。カードレベル useConditions で cardCount{pile:gauge,gte:1} を要求し、ゲージ0では使用不可にする（監査修正 cards-02/b005-3）。",
+      "useConditions": [
+        {
+          "op": "cardCount",
+          "controller": "self",
+          "pile": "gauge",
+          "cmp": "gte",
+          "amount": 1
+        }
+      ]
     },
     {
       "id": "bf-d-bt04-0089",
@@ -6572,6 +6623,10 @@
           ],
           "conditions": [
             {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
+            },
+            {
               "op": "pendingAttackDefenderIsSelf"
             }
           ],
@@ -6611,7 +6666,7 @@
           ]
         }
       ],
-      "_note": "『この能力はバトル中に１回だけ使える』は明示limitを付けない。エンジンは対抗アクションを1pendingAttackにつき1回に既定制限(canUseCounterEffect/markCounterUsed, src/18-tooltip-format.js)しており、dragoenergy等の例外kind以外は同一防御側の再使用が不可＝忠実（新規limitスコープ不要・エンジン非依存バッチにつき新op追加なし）。"
+      "_note": "『この能力はバトル中に１回だけ使える』は明示limitを付けない。エンジンは対抗アクションを1pendingAttackにつき1回に既定制限(canUseCounterEffect/markCounterUsed, src/18-tooltip-format.js)しており、dragoenergy等の例外kind以外は同一防御側の再使用が不可＝忠実（新規limitスコープ不要・エンジン非依存バッチにつき新op追加なし）。 「君が攻撃されている攻撃中」はファイター本人が攻撃対象の時だけ＝pendingAttackTargetIs{fighter}＋pendingAttackDefenderIsSelf（同文言の多数派と同型。監査修正 cards-02/b006-2）。"
     },
     {
       "id": "bf-d-bt04-0096",
@@ -6684,31 +6739,62 @@
           "id": "bf-d-bt04-0097-enter-self-destroy-chain",
           "kind": "triggered",
           "event": "enter",
-          "optional": true,
-          "cost": [
+          "conditions": [
             {
-              "op": "destroyOwnMonster",
+              "op": "ownOtherFieldCardExists",
+              "filter": {
+                "attribute": "黒竜"
+              }
+            }
+          ],
+          "optional": true,
+          "script": [
+            {
+              "op": "selectCards",
+              "var": "sac",
+              "from": "field",
+              "controller": "self",
+              "excludeSource": true,
               "filter": {
                 "attribute": "黒竜"
               },
-              "includeAllTypes": true,
-              "excludeSource": true
-            }
-          ],
-          "target": {
-            "type": "fieldCard",
-            "controller": "opponent",
-            "filter": {}
-          },
-          "effects": [
+              "amount": 1,
+              "title": "黒き竜詩人 デストレイジ",
+              "lead": "破壊する、このカード以外の君の場の《黒竜》１枚を選んでください。"
+            },
             {
-              "op": "destroy",
-              "target": "$target"
+              "op": "destroySelected",
+              "var": "sac",
+              "require": false
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "selectCards",
+                  "var": "foe",
+                  "from": "field",
+                  "controller": "opponent",
+                  "filter": {},
+                  "amount": 1,
+                  "require": false,
+                  "title": "黒き竜詩人 デストレイジ",
+                  "lead": "破壊する相手の場のカード１枚を選んでください。"
+                },
+                {
+                  "op": "destroySelected",
+                  "var": "foe",
+                  "require": false
+                }
+              ]
             }
           ]
         }
       ],
-      "_note": "『このカード以外の君の場の《黒竜》1枚を破壊してよい。破壊したら、相手の場のカード1枚を破壊する』はbf-d-bt04-0034(B5)と同型パターン: optional:trueのtriggered enterで『破壊してよい』をdestroyOwnMonsterコストに変換（cost成立=破壊成立が前提のため以降のeffectsは無条件で実行=『破壊したら』を素通しで表現）。filter{attribute:黒竜, includeAllTypes:true, excludeSource:true}は『のモンスター』表記が無いため0032/0034型に倣いモンスター限定なし+自分自身除外。第2効果の対象『相手の場のカード1枚』は種別不問=target{filter:{}}（bf-d-bt01-0085/0062型）。"
+      "_note": "『このカード以外の君の場の《黒竜》1枚を破壊してよい。破壊したら、相手の場のカード1枚を破壊する』はbf-d-bt04-0034(B5)と同型パターン: optional:trueのtriggered enterで『破壊してよい』をdestroyOwnMonsterコストに変換（cost成立=破壊成立が前提のため以降のeffectsは無条件で実行=『破壊したら』を素通しで表現）。filter{attribute:黒竜, includeAllTypes:true, excludeSource:true}は『のモンスター』表記が無いため0032/0034型に倣いモンスター限定なし+自分自身除外。第2効果の対象『相手の場のカード1枚』は種別不問=target{filter:{}}（bf-d-bt01-0085/0062型）。 ／【2026-10-09 オーナー裁定R8】『〜を破壊してよい。破壊したら』はコストではなく効果。旧 cost:destroyOwnMonster（支払い時に置換無視で破壊）を script（selectCards→destroySelected{require:false}→ifCondition(lastDestroySucceeded)）へ移した。破壊される側はソウルガード等の置換を通常どおり使える。ソウルガード等で場に残っても破壊は成功している（2026-10-09 オーナー裁定）ので後半を行う（lastDestroySucceeded は真）。候補の無い時に誘発確認を出さない旧 canPay 相当は conditions の ownOtherFieldCardExists/ownFieldCardExists で保持（発動回数も従来どおり未消費）。"
     },
     {
       "id": "bf-d-bt04-0098",
@@ -7098,7 +7184,8 @@
                     {
                       "op": "callSelectedToEmptyZones",
                       "var": "form",
-                      "resolveOnEnter": true
+                      "resolveOnEnter": true,
+                      "overwriteWhenFull": true
                     }
                   ]
                 },
@@ -7400,6 +7487,7 @@
           "id": "bf-d-bt04-0108-battleend-drop",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "optional": true,
           "effects": [
             {
@@ -7437,6 +7525,7 @@
           "id": "bf-d-bt04-0109-battleend-drop",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "optional": true,
           "effects": [
             {
@@ -7496,7 +7585,8 @@
             "controller": "opponent",
             "filter": {
               "cardType": "monster"
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -7507,9 +7597,11 @@
               "op": "gainLife",
               "amount": 2
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-d-bt04-0111",
@@ -7990,9 +8082,7 @@
           ]
         },
         {
-          "from": {
-            "byEffect": true
-          },
+          "from": {},
           "conditions": [
             {
               "op": "sourceZoneIn",
@@ -8519,9 +8609,10 @@
         ]
       },
       "keywords": [
-        "penetrate"
+        "penetrate",
+        "releaseCondition"
       ],
-      "cannotBeNullified": true,
+      "nullifyImmune": true,
       "cannotReturnToHand": true,
       "destroyImmunity": [
         {
@@ -8530,9 +8621,7 @@
           }
         },
         {
-          "from": {
-            "byEffect": true
-          }
+          "from": {}
         }
       ],
       "abilities": [
@@ -8574,7 +8663,7 @@
           ]
         }
       ],
-      "_note": "究極レア別絵再録（基カード=bf-d-bt04-0003・能力同一）",
+      "_note": "究極レア別絵再録（基カード=bf-d-bt04-0003・能力同一） 【audit-cards-28 b074-1 同系是正】『場のこのカードは…能力は無効化されない』は場の能力無効化耐性＝nullifyImmune:true（X2-SS01/0003 と同形）。旧 cannotBeNullified は使用宣言(pendingAction)の打ち消し耐性で、能力無効化から守らず装備宣言の打ち消しを防いでいた。",
       "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/dbt_04_s004.png",
       "altArtOf": "bf-d-bt04-0003"
     }

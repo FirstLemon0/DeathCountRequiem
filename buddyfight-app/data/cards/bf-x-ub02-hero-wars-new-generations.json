@@ -54,11 +54,6 @@
           "kind": "triggered",
           "event": "turnEnd",
           "optional": true,
-          "conditions": [
-            {
-              "op": "turnOwnerIsSelf"
-            }
-          ],
           "script": [
             {
               "op": "selectCards",
@@ -91,6 +86,21 @@
           "timing": [
             "attack",
             "counter"
+          ],
+          "conditions": [
+            {
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "phaseIs",
+                  "phase": "main"
+                },
+                {
+                  "op": "phaseIs",
+                  "phase": "attack"
+                }
+              ]
+            }
           ],
           "cost": [
             {
@@ -126,7 +136,8 @@
                 "center",
                 "right"
               ],
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -144,7 +155,8 @@
             "scope": "turn"
           }
         }
-      ]
+      ],
+      "_note": "監査cards-25(2026-10): 【対抗】【起動】に原文『メインフェイズかアタックフェイズ中』の any(phaseIs main, phaseIs attack) 条件を追加（timing:counter だけではドロー/チャージ/ファイナルでも使えていた）。『■ターン終了時』は『君のターン終了時』ではないため turnOwnerIsSelf を除去（お互いのターン終了時に発動）。"
     },
     {
       "id": "bf-x-ub02-0002",
@@ -254,8 +266,10 @@
           },
           "effects": [
             {
-              "op": "moveSelfToTargetSoul",
-              "target": "$target"
+              "op": "equipSelf",
+              "stackOnItem": {
+                "target": "$target"
+              }
             }
           ]
         },
@@ -294,13 +308,15 @@
           },
           "effects": [
             {
-              "op": "moveSelfToTargetSoul",
-              "target": "$target"
+              "op": "equipSelf",
+              "stackOnItem": {
+                "target": "$target"
+              }
             }
           ]
         }
       ],
-      "_note": "C7搭乗: bullet1【コールコスト】=callStack{attribute:ブレイブマシン}+costs.call payGauge2（bf-d-eb01-0053大銃神ティガリオンと同型の重ねコール）。continuous grantRestImmunity(sourceSoulCountGte3ゲート・from:byOpponentのみ=bf-x-cp01-0031/bf-d-eb01-0044前例踏襲)+grantSoulDiscardImmunity(from:byEffect+byOpponent=bf-x-ss02-0002前例踏襲)。attackResistances[conditions:attackingAlone+sourceSoulCountGte3,effects:nullify]（context.card=攻撃者自身のsoul参照＝src/13:1550実測）。keywordブラケット4行目『ソウルガード』『搭乗』〔このカードを君が『搭乗』しているカード１枚の上に重ね、ゲージ２を払う〕は、標準ride-hand/ride-field(equipSelf直接装備)ではなく、既に『搭乗』中のアイテム(filter:{mounted:true,keyword:ride},zones:[item])のソウルへmoveSelfToTargetSoulする変種（bf-h-eb02-0022鳥神セイバード/0043獣神タイガトラスと同型＝h-eb02先行カイゼリオン(0001)の単純equipSelf型『搭乗』とは異なる新規パターンだが既存opの組合せのみ）。0002自体はequipSelf型の素の搭乗手段を持たない（既存の搭乗中カードへの重ね搭乗のみ）。"
+      "_note": "C7搭乗: bullet1【コールコスト】=callStack{attribute:ブレイブマシン}+costs.call payGauge2（bf-d-eb01-0053大銃神ティガリオンと同型の重ねコール）。continuous grantRestImmunity(sourceSoulCountGte3ゲート・from:byOpponentのみ=bf-x-cp01-0031/bf-d-eb01-0044前例踏襲)+grantSoulDiscardImmunity(from:byEffect+byOpponent=bf-x-ss02-0002前例踏襲)。attackResistances[conditions:attackingAlone+sourceSoulCountGte3,effects:nullify]（context.card=攻撃者自身のsoul参照＝src/13:1550実測）。keywordブラケット4行目『ソウルガード』『搭乗』〔このカードを君が『搭乗』しているカード１枚の上に重ね、ゲージ２を払う〕は、標準ride-hand/ride-field(equipSelf直接装備)ではなく、既に『搭乗』中のアイテム(filter:{mounted:true,keyword:ride},zones:[item])のソウルへmoveSelfToTargetSoulする変種（bf-h-eb02-0022鳥神セイバード/0043獣神タイガトラスと同型＝h-eb02先行カイゼリオン(0001)の単純equipSelf型『搭乗』とは異なる新規パターンだが既存opの組合せのみ）。0002自体はequipSelf型の素の搭乗手段を持たない（既存の搭乗中カードへの重ね搭乗のみ）。 【監査修正 2026-10-08 b064-1】『搭乗』〔君が『搭乗』しているカード１枚の上に重ね〕は重ね搭乗＝このカードが新しい搭乗アイテムになり、旧搭乗カードとそのソウルはこのカードのソウルへ入る。moveSelfToTargetSoul（旧アイテムのソウルへ入るだけ）を equipSelf{stackOnItem:{target:$target}} に差し替え。"
     },
     {
       "id": "bf-x-ub02-0003",
@@ -345,7 +361,7 @@
           "event": "battleEnd",
           "includeDefender": true,
           "optional": true,
-          "conditions": [
+          "ifConditions": [
             {
               "op": "not",
               "condition": {
@@ -383,7 +399,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelected",
@@ -395,7 +412,8 @@
           ],
           "limit": {
             "scope": "turn"
-          }
+          },
+          "selectBeforeCost": true
         },
         {
           "id": "bf-x-ub02-0003-henshin-hand",
@@ -453,7 +471,7 @@
           ]
         }
       ],
-      "_note": "R11角王: deckAnyFlag{homeWorld:ヒーローW,awayMaxCopies:1}(bf-x-ss01-0012前例)。別絵BR02/S002はmergeがbase 0003のmechをclone_mech(namespace_ids=False)で複製しdeckAnyFlagごと継承(scan⑥で0003+BR02+S002の3件検査)。第2能力(バトル終了時ドロップから選んでコール)は既存パターン(bf-h-eb03-0010型)を踏襲=ability-level optional:true+cost:[payGauge1]を「選び、ゲージ1を払ってよい」の代替表現とし、script側でselectCards→callSelected(payCost:call)。原文は「選び、払ってよい」の語順だが、declineした場合は選択も支払いも起きない点で等価(この構造は本DBの確立済み近似・0028/0029等と同型)。『貫通』『変身』はkeywords配列。変身コストはゲージ1+ライフ1=henshin-hand/henshin-field両起動(bf-x-ss01-0020と同型、手札版とフィールド版[sourceZoneIn left/center/right]の2本立て)。"
+      "_note": "R11角王: deckAnyFlag{homeWorld:ヒーローW,awayMaxCopies:1}(bf-x-ss01-0012前例)。別絵BR02/S002はmergeがbase 0003のmechをclone_mech(namespace_ids=False)で複製しdeckAnyFlagごと継承(scan⑥で0003+BR02+S002の3件検査)。第2能力(バトル終了時ドロップから選んでコール)は既存パターン(bf-h-eb03-0010型)を踏襲=ability-level optional:true+cost:[payGauge1]を「選び、ゲージ1を払ってよい」の代替表現とし、script側でselectCards→callSelected(payCost:call)。原文は「選び、払ってよい」の語順だが、declineした場合は選択も支払いも起きない点で等価(この構造は本DBの確立済み近似・0028/0029等と同型)。『貫通』『変身』はkeywords配列。変身コストはゲージ1+ライフ1=henshin-hand/henshin-field両起動(bf-x-ss01-0020と同型、手札版とフィールド版[sourceZoneIn left/center/right]の2本立て)。 【R5 2026-10-09 オーナー裁定】「〜を選び、…を払ってよい。払ったら」は選べるカードが無いなら支払えない（何も起きない）＝能力に selectBeforeCost:true（先頭の選択に候補が無ければコストを提示しない）。旧 _note の「optional 承諾＝コスト先払い→script 内で選択」の近似は、候補0でもコストだけ払えてしまう点が誤りだった。"
     },
     {
       "id": "bf-x-ub02-0004",
@@ -681,7 +699,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "xub02-kaseijin-ikemen-beam"
+            "key": "xub02-kaseijin-ikemen-beam",
+            "shared": true
           }
         },
         {
@@ -754,6 +773,9 @@
         "■君の場のカード名に「ジェムクローン」を含む必殺モンスター全ては相手のカードの効果で、破壊されず、手札に戻せない。",
         "『必殺変身』〔ゲージ２を払う〕"
       ],
+      "keywords": [
+        "henshin"
+      ],
       "costs": {
         "call": [
           {
@@ -780,9 +802,7 @@
           ]
         },
         {
-          "from": {
-            "byEffect": true
-          },
+          "from": {},
           "conditions": [
             {
               "op": "sourceZoneIn",
@@ -890,10 +910,14 @@
               "op": "equipSelf",
               "grantFinalPhaseAttack": true
             }
-          ]
+          ],
+          "limit": {
+            "scope": "turn",
+            "key": "xub02-復讐の戦鬼ゼータ"
+          }
         }
       ],
-      "_note": "R9必殺M: bf-d-ss03-0020(革命者ゼータ)テンプレそのまま流用(新op不要)。第2能力(自己防御+必殺M無制限コール)はdestroyImmunity(byBattle/byEffect)+preventReturnToHand(sameInstanceAsSource)+restrictOwnCall(allowFilter:impactMonster)+raiseImpactCallCap(unlimited:true、stackOnlyなし=通常/バディ/効果コール全て無制限)を全てconditions:[sourceZoneIn item系4枠]でゲート=『変身』中のみ有効。第3能力(場のジェムクローン必殺M全ての相手効果耐性)はgrantDestroyImmunity+preventReturnToHand(filter:{cardType:impactMonster,nameIncludes:ジェムクローン}, from:{byEffect,byOpponent})で無条件(自身の変身状態と無関係=常時)。既存bf-x-cp01-0017(太陽神の欠片バルフランム)と同型の確立済みパターン=preventReturnToHandはbyOpponent限定に対応せず自分の効果由来の戻しも一律ブロックする近似(先例踏襲・_note省略済みの確立済み挙動を踏襲して明記)。『必殺変身』は0006が名前付き引用符フレーバー名を持たないため限定キー省略(ability.id依拠の匿名limit=キー不要。turn scope省略時のbase=ability.id)。"
+      "_note": "R9必殺M: bf-d-ss03-0020(革命者ゼータ)テンプレそのまま流用(新op不要)。第2能力(自己防御+必殺M無制限コール)はdestroyImmunity(byBattle/byEffect)+preventReturnToHand(sameInstanceAsSource)+restrictOwnCall(allowFilter:impactMonster)+raiseImpactCallCap(unlimited:true、stackOnlyなし=通常/バディ/効果コール全て無制限)を全てconditions:[sourceZoneIn item系4枠]でゲート=『変身』中のみ有効。第3能力(場のジェムクローン必殺M全ての相手効果耐性)はgrantDestroyImmunity+preventReturnToHand(filter:{cardType:impactMonster,nameIncludes:ジェムクローン}, from:{byEffect,byOpponent})で無条件(自身の変身状態と無関係=常時)。既存bf-x-cp01-0017(太陽神の欠片バルフランム)と同型の確立済みパターン=preventReturnToHandはbyOpponent限定に対応せず自分の効果由来の戻しも一律ブロックする近似(先例踏襲・_note省略済みの確立済み挙動を踏襲して明記)。『必殺変身』は④「１ターンに１回だけ」によりlimit{scope:turn,key:xub02-復讐の戦鬼ゼータ}(0020と同型・旧版はlimit自体が欠落していた=総合レビュー2026-10-08 rule-call-8で是正)。keywordsにhenshinを付与(④「『必殺変身』しているカードは『変身』しているカードとしても扱います」・0020と同じ)。"
     },
     {
       "id": "bf-x-ub02-0007",
@@ -978,7 +1002,8 @@
                 "center",
                 "right"
               ],
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelected",
@@ -1076,7 +1101,8 @@
                 "center",
                 "right"
               ],
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelected",
@@ -1237,7 +1263,8 @@
                           "op": "callSelectedToEmptyZones",
                           "var": "wm",
                           "payCost": "call",
-                          "resolveOnEnter": true
+                          "resolveOnEnter": true,
+                          "overwriteWhenFull": true
                         }
                       ]
                     },
@@ -1984,13 +2011,15 @@
           "id": "bf-x-ub02-0015-destroyed-punish",
           "kind": "triggered",
           "event": "destroyed",
+          "allowMissingTarget": true,
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
             "filter": {
               "cardType": "monster",
               "sizeLte": 2
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -2010,13 +2039,15 @@
           "fromZones": [
             "field"
           ],
+          "allowMissingTarget": true,
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
             "filter": {
               "cardType": "monster",
               "sizeLte": 2
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -2030,7 +2061,7 @@
           ]
         }
       ],
-      "_note": "『このカードが破壊された時か手札に戻った時、相手の場のサイズ2以下のモンスター1枚を破壊し、君のライフを+1』=2本の triggered で表現。『破壊された時』半分=event:\"destroyed\"+target(fieldCard,opponent,filter:{cardType:monster,sizeLte:2})→destroy($target)+gainLife(1)（合法対象が無ければ発動自体しない＝targetCandidatesFromSpecForOwnerゲート, src/14:41-48）。『手札に戻った時』半分=event:\"returnedToHand\"+fromZones:[\"field\"]（E-XV6・本スライス新設の自己発火イベント。queueReturnedToHandTriggers, src/11 が movedToDrop/discardedFromHand と同型に戻ったカード自身の abilities へ発火。場→手札の全 funnel＝returnFieldTargetToHand(src/08・単体/コスト/破壊置換被覆)＋returnAllToHand(src/15・全戻し)に配線済み。fromZones:[field]指定によりドロップからの自己回収(returnSelfToHand drop枝=fromZone:drop)では発動しない=『(場から)手札に戻った時』の忠実表現）+同一 target/effects。『移動』=keywords配列。grep自己検査: destroyed(src/11)/returnedToHand(queueReturnedToHandTriggers src/11)/destroy(src/15)/gainLife(src/15)/target fieldCard→chooseAbilityTarget(src/14) 全実在確認。VM実測(b6-verify): 破壊された時、相手のサイズ2以下が破壊されライフ+1（サイズ3のみは不発）／場から手札に戻った時（returnFieldTargetToHand 実経路）も同効果が発動／ドロップからの回収では発動しない。"
+      "_note": "『このカードが破壊された時か手札に戻った時、相手の場のサイズ2以下のモンスター1枚を破壊し、君のライフを+1』=2本の triggered で表現。『破壊された時』半分=event:\"destroyed\"+target(fieldCard,opponent,filter:{cardType:monster,sizeLte:2})→destroy($target)+gainLife(1)（両能力に allowMissingTarget:true＝合法対象が無くても発動しライフ+1は行う。R7・2026-10-09 オーナー裁定「〜を破壊し、〜」は対象がなくても後半を解決）。『手札に戻った時』半分=event:\"returnedToHand\"+fromZones:[\"field\"]（E-XV6・本スライス新設の自己発火イベント。queueReturnedToHandTriggers, src/11 が movedToDrop/discardedFromHand と同型に戻ったカード自身の abilities へ発火。場→手札の全 funnel＝returnFieldTargetToHand(src/08・単体/コスト/破壊置換被覆)＋returnAllToHand(src/15・全戻し)に配線済み。fromZones:[field]指定によりドロップからの自己回収(returnSelfToHand drop枝=fromZone:drop)では発動しない=『(場から)手札に戻った時』の忠実表現）+同一 target/effects。『移動』=keywords配列。grep自己検査: destroyed(src/11)/returnedToHand(queueReturnedToHandTriggers src/11)/destroy(src/15)/gainLife(src/15)/target fieldCard→chooseAbilityTarget(src/14) 全実在確認。VM実測(b6-verify): 破壊された時、相手のサイズ2以下が破壊されライフ+1（サイズ3のみは当時不発。現在は破壊せずライフ+1だけ行う）／場から手札に戻った時（returnFieldTargetToHand 実経路）も同効果が発動／ドロップからの回収では発動しない。 監査cards-25(2026-10): 原文は『選ぶ』でなく『１枚を破壊し、君のライフを＋１』のため、両能力に allowMissingTarget:true を付与（相手の場に対象が無くてもライフ＋１は行う。X-UB02/0070 ゲーアネモス D1 と同型）。R7（2026-10-09 オーナー裁定）で確定。"
     },
     {
       "id": "bf-x-ub02-0016",
@@ -2057,7 +2088,7 @@
           "label": "プロトコル・スイート",
           "kind": "triggered",
           "event": "enter",
-          "conditions": [
+          "ifConditions": [
             {
               "op": "ownOtherFieldCardExists",
               "filter": {
@@ -2073,7 +2104,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "xub02-protocol-suite"
+            "key": "xub02-protocol-suite",
+            "shared": true
           }
         },
         {
@@ -2134,7 +2166,7 @@
           }
         }
       ],
-      "_note": "named-once bare slug=xub02-protocol-suite(design.md §5表)。『“プロトコル・スイート”このカードが登場した時、君の場に他の《電脳》があるなら、カード1枚を引く。「プロトコル・スイート」は1ターンに1回だけ発動する』=event:enter+conditions:[ownOtherFieldCardExists{filter:{attribute:電脳}}](src/13:1064・instanceId除外で「他の」を担保)+effects:[draw:1]+limit{scope:turn,key:xub02-protocol-suite}。『【起動】君の場の『変身』している《電脳》1枚のソウル1枚をドロップゾーンに置いてよい。置いたら、デッキ上2枚をゲージに置く。1ターンに1回』(無名limit)は『変身』している状態=filter{cardType:item,keyword:henshin}(bf-h-eb01/eb02実装済precedent=変身先は装備枠itemゾーンに常駐)+attribute:電脳+soulCountGte:1(空ソウルのカードを候補から除外=src/17:472)でホスト選択min:0/max:1/require:false(『てよい』)→ifSelection→selectCards{from:soul,hostVar:h}(事前選択した場カードのソウルを対話選択=X16 D-BT01/0020完全precedent・src/14:765)→moveSelected{to:drop}(soulピールから正しくsplice=takeScriptSelectionCards+scriptPileForSource(entry.sourceCard)経由)→putTopDeckToGauge(2)。grep自己検査: ownOtherFieldCardExists(src/13:1064)/draw(src/15:254)/filter.keyword,cardType,attribute,soulCountGte(src/17)/selectCards from:soul hostVar(src/14:765,650)/moveSelected(src/14:988)/putTopDeckToGauge/ifSelection(src/14:327) 全実在確認。VM実測: 場に電脳が自分のみ(他無し)ならプロトコル・スイート不発・他に電脳がいれば登場時ドロー・同ターン2回目登場では不発(named-once)／変身している電脳が場に無ければ起動選択で候補0のため何も起きず(min0)、変身電脳がありソウル1枚以上ならソウルをドロップへ移しゲージ+2、ソウル0枚のカードは候補外。"
+      "_note": "named-once bare slug=xub02-protocol-suite(design.md §5表)。『“プロトコル・スイート”このカードが登場した時、君の場に他の《電脳》があるなら、カード1枚を引く。「プロトコル・スイート」は1ターンに1回だけ発動する』=event:enter+conditions:[ownOtherFieldCardExists{filter:{attribute:電脳}}](src/13:1064・instanceId除外で「他の」を担保)+effects:[draw:1]+limit{scope:turn,key:xub02-protocol-suite}。『【起動】君の場の『変身』している《電脳》1枚のソウル1枚をドロップゾーンに置いてよい。置いたら、デッキ上2枚をゲージに置く。1ターンに1回』(無名limit)は『変身』している状態=filter{cardType:item,keyword:henshin}(bf-h-eb01/eb02実装済precedent=変身先は装備枠itemゾーンに常駐)+attribute:電脳+soulCountGte:1(空ソウルのカードを候補から除外=src/17:472)でホスト選択min:0/max:1/require:false(『てよい』)→ifSelection→selectCards{from:soul,hostVar:h}(事前選択した場カードのソウルを対話選択=X16 D-BT01/0020完全precedent・src/14:765)→moveSelected{to:drop}(soulピールから正しくsplice=takeScriptSelectionCards+scriptPileForSource(entry.sourceCard)経由)→putTopDeckToGauge(2)。grep自己検査: ownOtherFieldCardExists(src/13:1064)/draw(src/15:254)/filter.keyword,cardType,attribute,soulCountGte(src/17)/selectCards from:soul hostVar(src/14:765,650)/moveSelected(src/14:988)/putTopDeckToGauge/ifSelection(src/14:327) 全実在確認。VM実測: 場に電脳が自分のみ(他無し)ならプロトコル・スイート不発・他に電脳がいれば登場時ドロー・同ターン2回目登場では不発(named-once)／変身している電脳が場に無ければ起動選択で候補0のため何も起きず(min0)、変身電脳がありソウル1枚以上ならソウルをドロップへ移しゲージ+2、ソウル0枚のカードは候補外。 監査 rule-continuous-5: 「〜時、XならY」の X は ifConditions（解決時の状態条件・不成立でも1ターン1回を消費＝ver2.05 ④「１ターンに１回」Q2/A2）。"
     },
     {
       "id": "bf-x-ub02-0017",
@@ -2197,7 +2229,6 @@
                       "from": "field",
                       "controller": "self",
                       "filter": {
-                        "cardType": "monster",
                         "attribute": "戦艦"
                       },
                       "amount": 1,
@@ -2217,14 +2248,16 @@
                       "min": 0,
                       "require": false,
                       "title": "総員第一種戦闘配置！",
-                      "lead": "【コールコスト】を払って別々のエリアにコールする、選んだ《戦艦》のソウルの《艦載機》を３枚まで選んでください。"
+                      "lead": "【コールコスト】を払って別々のエリアにコールする、選んだ《戦艦》のソウルの《艦載機》を３枚まで選んでください。",
+                      "canPayCost": "call"
                     },
                     {
                       "op": "callSelectedToEmptyZones",
                       "var": "call",
                       "payCost": "call",
                       "resolveOnEnter": true,
-                      "require": false
+                      "require": false,
+                      "overwriteWhenFull": true
                     }
                   ]
                 }
@@ -2233,7 +2266,7 @@
           ]
         }
       ],
-      "_note": "costs.cast=payLife1。「次の２つから１つを選んで使う」=chooseBranch(必ず2択のどちらかを選ぶ・skip枝なし)。分岐1=searchDeckToHand{filter:{cardType:monster,attribute:戦艦},amount:1}(auto shuffle)。分岐2=選んだ《戦艦》1枚(host,require:true)→そのソウルからselectCards{from:soul,hostVar:host,filter:{attribute:艦載機},amount:3,min:0}(X16 D-BT01/0020前例のhostVar機構＝発生源自身のソウルでなく事前選択した場カードのソウルを読む)→callSelectedToEmptyZones{payCost:call,resolveOnEnter:true}で『別々のエリアに』コール(bf-d-bt04-0017と同型のマルチコールop)。個別selectCardsにcallable/canPayCostは付与せず（bt04-0017前例と同じくcallSelectedToEmptyZones内部のimpactMonsterCallAllowed/コスト支払い可否チェックに委ねる=候補選択に含めても不可なら黙ってスキップされるのみで非致命）。"
+      "_note": "costs.cast=payLife1。「次の２つから１つを選んで使う」=chooseBranch(必ず2択のどちらかを選ぶ・skip枝なし)。分岐1=searchDeckToHand{filter:{cardType:monster,attribute:戦艦},amount:1}(auto shuffle)。分岐2=選んだ《戦艦》1枚(host,require:true)→そのソウルからselectCards{from:soul,hostVar:host,filter:{attribute:艦載機},amount:3,min:0}(X16 D-BT01/0020前例のhostVar機構＝発生源自身のソウルでなく事前選択した場カードのソウルを読む)→callSelectedToEmptyZones{payCost:call,resolveOnEnter:true}で『別々のエリアに』コール(bf-d-bt04-0017と同型のマルチコールop)。個別selectCardsにcallable/canPayCostは付与せず（bt04-0017前例と同じくcallSelectedToEmptyZones内部のimpactMonsterCallAllowed/コスト支払い可否チェックに委ねる=候補選択に含めても不可なら黙ってスキップされるのみで非致命）。 監査cards-25(2026-10): 分岐2の《戦艦》選択 filter から cardType:monster を除去（原文『君の場の《戦艦》』はモンスター限定でなく、着任中のアイテム扱いの戦艦も選べる）。"
     },
     {
       "id": "bf-x-ub02-0018",
@@ -2366,11 +2399,13 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "xub02-final-trance"
-          }
+            "key": "xub02-final-trance",
+            "shared": true
+          },
+          "selectBeforeCost": true
         }
       ],
-      "_note": "R9必殺M: bf-d-ss03-0028/0029(ジェムクローン)テンプレのfrom:dropバリアント(design R9注記どおり)。0028/0029は手札(hand)から重ねコールするが、本カードは原文「君のドロップゾーンのカード名に『ジェムクローン』を含まない必殺モンスター１枚を選び」= from:\"drop\"。原文語順は「選び、ゲージ2を払い、ライフ1を払ってよい。そうしたら…コールする」だが、0003第2能力と同じ確立済み近似でability-level cost(payGauge2+payLife1)を「選び…払ってよい」の代替表現とし、script側でselectCards→stackCallSelected。「ファイナルトランス」は名前付きフレーバー名のため§5表どおりbare slugキー xub02-final-trance を明示。raiseImpactCallCap{unlimited:true,stackOnly:true}で重ねコールのみcap解放(通常必殺コールcapは1のまま=F1)。"
+      "_note": "R9必殺M: bf-d-ss03-0028/0029(ジェムクローン)テンプレのfrom:dropバリアント(design R9注記どおり)。0028/0029は手札(hand)から重ねコールするが、本カードは原文「君のドロップゾーンのカード名に『ジェムクローン』を含まない必殺モンスター１枚を選び」= from:\"drop\"。原文語順は「選び、ゲージ2を払い、ライフ1を払ってよい。そうしたら…コールする」だが、0003第2能力と同じ確立済み近似でability-level cost(payGauge2+payLife1)を「選び…払ってよい」の代替表現とし、script側でselectCards→stackCallSelected。「ファイナルトランス」は名前付きフレーバー名のため§5表どおりbare slugキー xub02-final-trance を明示。raiseImpactCallCap{unlimited:true,stackOnly:true}で重ねコールのみcap解放(通常必殺コールcapは1のまま=F1)。 【R5 2026-10-09 オーナー裁定】「〜を選び、…を払ってよい。払ったら」は選べるカードが無いなら支払えない（何も起きない）＝能力に selectBeforeCost:true（先頭の選択に候補が無ければコストを提示しない）。旧 _note の「optional 承諾＝コスト先払い→script 内で選択」の近似は、候補0でもコストだけ払えてしまう点が誤りだった。"
     },
     {
       "id": "bf-x-ub02-0020",
@@ -2524,11 +2559,6 @@
           "kind": "triggered",
           "event": "turnEnd",
           "optional": true,
-          "conditions": [
-            {
-              "op": "turnOwnerIsSelf"
-            }
-          ],
           "script": [
             {
               "op": "selectCards",
@@ -2595,7 +2625,8 @@
                 "center",
                 "right"
               ],
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -2613,7 +2644,8 @@
             "scope": "turn"
           }
         }
-      ]
+      ],
+      "_note": "監査cards-25(2026-10): 『■ターン終了時』は『君のターン終了時』ではないため turnOwnerIsSelf を除去（お互いのターン終了時に発動）。"
     },
     {
       "id": "bf-x-ub02-0022",
@@ -2665,7 +2697,6 @@
           "op": "grantDestroyImmunity",
           "controller": "self",
           "filter": {
-            "cardType": "monster",
             "attributeIn": [
               "艦載機",
               "戦艦"
@@ -2680,7 +2711,6 @@
           "op": "preventReturnToHand",
           "controller": "self",
           "filter": {
-            "cardType": "monster",
             "attributeIn": [
               "艦載機",
               "戦艦"
@@ -2717,7 +2747,8 @@
                 "center",
                 "right"
               ],
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelected",
@@ -2727,7 +2758,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "監査cards-25(2026-10): 破壊耐性/手札戻し不可の filter から cardType:monster を除去（原文『君の場の《艦載機》と《戦艦》全て』＝着任中のアイテム扱いの戦艦も保護対象）。"
     },
     {
       "id": "bf-x-ub02-0023",
@@ -2949,17 +2981,13 @@
               "lead": "場のこのカードを入れる、君の場の『搭乗』しているカード１枚を選んでください。"
             },
             {
-              "op": "moveSelfToSelectedSoul",
-              "var": "host"
-            },
-            {
               "op": "chooseBranch",
               "title": "獣神 エレファルシオン",
-              "lead": "ゲージ１を払いますか？",
+              "lead": "場のこのカードを選んだカードのソウルに入れ、ゲージ１を払いますか？",
               "options": [
                 {
                   "key": "pay",
-                  "label": "ゲージ１を払う",
+                  "label": "このカードをソウルに入れ、ゲージ１を払う",
                   "script": [
                     {
                       "op": "payCost",
@@ -2969,6 +2997,10 @@
                           "amount": 1
                         }
                       ]
+                    },
+                    {
+                      "op": "moveSelfToSelectedSoul",
+                      "var": "host"
                     },
                     {
                       "op": "selectCards",
@@ -2990,9 +3022,10 @@
                       "var": "kz",
                       "then": [
                         {
-                          "op": "moveSelectedToSelectedSoul",
+                          "op": "equipSelectedAsItem",
                           "var": "kz",
-                          "soulOfVar": "host"
+                          "payCost": false,
+                          "stackOnVar": "host"
                         }
                       ]
                     }
@@ -3008,7 +3041,7 @@
           ]
         }
       ],
-      "_note": "C7重ね搭乗: skeleton rulesに『XXX』keywordブラケット無し=このカード自身に固有keywordsは無い。第1能力(対抗/起動): 君の場の『搭乗』しているカード(filter:{mounted:true,keyword:ride},zones:[item])を必ず1枚選び(require:true。活性化能力＝使う選択自体がてよいの入口)、moveSelfToSelectedSoul(var:host)で場のこのカードを選んだカードのソウルへ移すのは活性化の本体効果として無条件実行。続く『ゲージ１を払ってよい。そうしたら…してよい』はchooseBranch(pay/skip)で表現(E-XV4 DSL例と同じpayCost+chooseBranch確立パターン)。pay分岐内でselectCards(hand,filter:{nameIncludes:カイゼリオン,keyword:ride},require:false)→ifSelection→moveSelectedToSelectedSoul(var:kz,soulOfVar:host)＝『搭乗』コストを払わず同じhostのソウルへ重ねて搭乗(bf-x-ub02-0002 4行目と同じ『既に搭乗中のカードのソウルへ移動』パターンだが、ここではコスト無し=payCost指定なし)。第2能力: soulContinuous grantKeyword{keyword:counterattack,hostOnly:true}(『反撃』keywordはhasKeywordのsoulContinuousEffects経路で自動的にhost=自身が入っているソウルの持ち主のみに適用される。D-EB02/0033リリックオーバーのhostOnly前例踏襲)。"
+      "_note": "C7重ね搭乗: skeleton rulesに『XXX』keywordブラケット無し=このカード自身に固有keywordsは無い。第1能力(対抗/起動): 君の場の『搭乗』しているカード(filter:{mounted:true,keyword:ride},zones:[item])を必ず1枚選び(require:true。活性化能力＝使う選択自体がてよいの入口)、moveSelfToSelectedSoul(var:host)で場のこのカードを選んだカードのソウルへ移すのは活性化の本体効果として無条件実行。続く『ゲージ１を払ってよい。そうしたら…してよい』はchooseBranch(pay/skip)で表現(E-XV4 DSL例と同じpayCost+chooseBranch確立パターン)。pay分岐内でselectCards(hand,filter:{nameIncludes:カイゼリオン,keyword:ride},require:false)→ifSelection→moveSelectedToSelectedSoul(var:kz,soulOfVar:host)＝『搭乗』コストを払わず同じhostのソウルへ重ねて搭乗(bf-x-ub02-0002 4行目と同じ『既に搭乗中のカードのソウルへ移動』パターンだが、ここではコスト無し=payCost指定なし)。第2能力: soulContinuous grantKeyword{keyword:counterattack,hostOnly:true}(『反撃』keywordはhasKeywordのsoulContinuousEffects経路で自動的にhost=自身が入っているソウルの持ち主のみに適用される。D-EB02/0033リリックオーバーのhostOnly前例踏襲)。 監査cards-25(2026-10): 『場のこのカードを選んだカードのソウルに入れ、ゲージ１を払ってよい』はソウル投入とゲージ支払いが一体の任意行為のため、moveSelfToSelectedSoul を pay 分岐の payCost の後へ移動（払わない分岐ではソウルに入れない＝『反撃』の無償付与を解消）。 【監査修正 2026-10-08 b064-2】手札のカイゼリオンは選んだカードに『重ねて搭乗』＝新しい搭乗アイテムとして装備し、選んだカード（とソウルのこのカード）はそのソウルへ。moveSelectedToSelectedSoul を equipSelectedAsItem{payCost:false,stackOnVar:host} に差し替え。"
     },
     {
       "id": "bf-x-ub02-0025",
@@ -3144,7 +3177,8 @@
               "var": "pick",
               "to": "hand"
             }
-          ]
+          ],
+          "selectBeforeCost": true
         },
         {
           "id": "bf-x-ub02-0026-henshin-hand",
@@ -3194,7 +3228,7 @@
           ]
         }
       ],
-      "_note": "コールコスト記載なし=無償。「登場か『変身』した時」= event:'enter'のみで両方をカバー(equipCardDirectがhenshin/rideの装備完了時もresolveOnEnterを呼ぶためenter誘発が変身時にも発火する既存挙動=bf-h-eb02-0001『大剣神カイゼリオン』の『登場か搭乗した時』と同型の確立済み前例、二重イベント登録不要)。「他の《カルテットファイブ》があるなら」=ownOtherFieldCardExists(自分自身を除外する既存op)。「選び、ゲージ1を払ってよい。払ったら手札に加える」はoptional:true+cost+script(selectCards from:drop→moveSelected to:hand)の確立済みパターン(target.typeはfieldCard/battleCardのみでdropCard型が無いためscript化)。『変身』はkeywords配列+henshin-hand/henshin-field(ゲージ1のみ)。"
+      "_note": "コールコスト記載なし=無償。「登場か『変身』した時」= event:'enter'のみで両方をカバー(equipCardDirectがhenshin/rideの装備完了時もresolveOnEnterを呼ぶためenter誘発が変身時にも発火する既存挙動=bf-h-eb02-0001『大剣神カイゼリオン』の『登場か搭乗した時』と同型の確立済み前例、二重イベント登録不要)。「他の《カルテットファイブ》があるなら」=ownOtherFieldCardExists(自分自身を除外する既存op)。「選び、ゲージ1を払ってよい。払ったら手札に加える」はoptional:true+cost+script(selectCards from:drop→moveSelected to:hand)の確立済みパターン(target.typeはfieldCard/battleCardのみでdropCard型が無いためscript化)。『変身』はkeywords配列+henshin-hand/henshin-field(ゲージ1のみ)。 【R5 2026-10-09 オーナー裁定】「〜を選び、…を払ってよい。払ったら」は選べるカードが無いなら支払えない（何も起きない）＝能力に selectBeforeCost:true（先頭の選択に候補が無ければコストを提示しない）。旧 _note の「optional 承諾＝コスト先払い→script 内で選択」の近似は、候補0でもコストだけ払えてしまう点が誤りだった。"
     },
     {
       "id": "bf-x-ub02-0027",
@@ -3571,7 +3605,6 @@
                   "from": "field",
                   "controller": "self",
                   "filter": {
-                    "cardType": "monster",
                     "attribute": "戦艦"
                   },
                   "amount": 1,
@@ -3597,7 +3630,7 @@
           ]
         }
       ],
-      "_note": "useConditions:[hasArrival]。使用コスト記載なし=costs.cast省略。ドロップの《艦載機》を0-1枚選び(require:false)、ifSelection(var:d)で選ばれていれば君の場の《戦艦》1枚(host,require:true)を選んでmoveSelectedToSelectedSoul(soulOfVar:host)。『その後』のputTopDeckToGauge(1)+draw(1)はifSelectionの外側=艦載機を選ばなかった場合でも常に実行（原文『その後』が独立した無条件の後続効果である点を反映）。"
+      "_note": "useConditions:[hasArrival]。使用コスト記載なし=costs.cast省略。ドロップの《艦載機》を0-1枚選び(require:false)、ifSelection(var:d)で選ばれていれば君の場の《戦艦》1枚(host,require:true)を選んでmoveSelectedToSelectedSoul(soulOfVar:host)。『その後』のputTopDeckToGauge(1)+draw(1)はifSelectionの外側=艦載機を選ばなかった場合でも常に実行（原文『その後』が独立した無条件の後続効果である点を反映）。 監査cards-25(2026-10): ソウル投入先《戦艦》の filter から cardType:monster を除去（『着任』中の戦艦はアイテム扱い=currentType:item のため候補から外れ、使用条件 hasArrival 成立盤面で呪文全体が止まっていた）。"
     },
     {
       "id": "bf-x-ub02-0033",
@@ -3666,7 +3699,7 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-x-ub02-0033-search"
+            "key": "bf-h-bt01-0019-search"
           }
         }
       ]
@@ -3701,7 +3734,7 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-x-ub02-0034-charge"
+            "key": "bf-h-bt01-0039-charge"
           }
         }
       ]
@@ -3955,6 +3988,10 @@
           "conditions": [
             {
               "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
             }
           ],
           "target": {
@@ -3978,7 +4015,7 @@
           ]
         }
       ],
-      "_note": "『君が攻撃されている攻撃中に使える』=conditions:[pendingAttackDefenderIsSelf]のみ（fighter限定のpendingAttackTargetIsは付けない。bf-h-bt04-0037インフェルノシールド/0106エマージェンシー・イベイドと同じ『君が攻撃されている〜』文言＝モンスター防御時も含む広い条件、fighter限定文言の前例(アースバリア等)とは書き分け）。使用コスト記載なし=costs.cast省略。target(item,allowMissingTarget:true)→nullifyAttack+modifyStats(defense:1000,duration:turn)。アイテム不在なら無効化のみ成立し打撃力バフは対象なしで不発（allowMissingTargetの標準挙動）。"
+      "_note": "『君が攻撃されている攻撃中に使える』=conditions:[pendingAttackDefenderIsSelf,pendingAttackTargetIs{targetType:fighter}]（『君』=ファイター。同一文言のドラゴンシールド 古竜の盾 bf-h-sd01-0011・アースバリア bf-x-ss02-0020 等の多数派と統一。自分のモンスターが攻撃されている攻撃中は使えない。2026-10 監査 b065-6 で旧『モンスター防御時も含む広い条件』解釈を是正）。使用コスト記載なし=costs.cast省略。target(item,allowMissingTarget:true)→nullifyAttack+modifyStats(defense:1000,duration:turn)。アイテム不在なら無効化のみ成立し打撃力バフは対象なしで不発（allowMissingTargetの標準挙動）。"
     },
     {
       "id": "bf-x-ub02-0039",
@@ -4008,7 +4045,6 @@
           {
             "op": "dropOwnFieldCardSoul",
             "filter": {
-              "cardType": "monster",
               "attribute": "戦艦"
             },
             "amount": 1
@@ -4052,7 +4088,7 @@
           ]
         }
       ],
-      "_note": "必殺技(impact)。useConditions:[hasArrival,ownCenterEmpty]（『君のセンターにモンスターがいない』=ownCenterEmpty＝!player.field.center。着任後は戦艦がアイテム化しセンターに残らないため実務上のガードとして機能）。使用コストは【使用コスト】欄=costs.cast: dropOwnFieldCardSoul{filter:{cardType:monster,attribute:戦艦},amount:1}(bf-x-bt01-0095外法闇討ちと同型)+payGauge3。効果: destroy{scope:opponent,zones:[center],filter:{cardType:monster}}(相手センターのモンスターのみ)+destroy{scope:opponent,filter:{cardType:item}}(相手の場のアイテム全て=item/item2/item3/item4いずれも対象)+dealDamage{player:opponent,amount:3}(『減らない』指定なし=通常ダメージ)。impact型は原文に【対抗】マーカー無し=timing:[final]（DB内105/126件が採用する必殺技の標準timing。エンジンノートDSL例のtiming:[main]はプレースホルダーにつき不採用）。"
+      "_note": "必殺技(impact)。useConditions:[hasArrival,ownCenterEmpty]（『君のセンターにモンスターがいない』=ownCenterEmpty＝!player.field.center。着任後は戦艦がアイテム化しセンターに残らないため実務上のガードとして機能）。使用コストは【使用コスト】欄=costs.cast: dropOwnFieldCardSoul{filter:{cardType:monster,attribute:戦艦},amount:1}(bf-x-bt01-0095外法闇討ちと同型)+payGauge3。効果: destroy{scope:opponent,zones:[center],filter:{cardType:monster}}(相手センターのモンスターのみ)+destroy{scope:opponent,filter:{cardType:item}}(相手の場のアイテム全て=item/item2/item3/item4いずれも対象)+dealDamage{player:opponent,amount:3}(『減らない』指定なし=通常ダメージ)。impact型は原文に【対抗】マーカー無し=timing:[final]（DB内105/126件が採用する必殺技の標準timing。エンジンノートDSL例のtiming:[main]はプレースホルダーにつき不採用）。 監査cards-25(2026-10): 使用コスト『君の場の《戦艦》のソウル』の filter から cardType:monster を除去（着任中の戦艦はアイテム扱いで、旧 filter では使用不能だった）。"
     },
     {
       "id": "bf-x-ub02-0040",
@@ -4849,7 +4885,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -4971,7 +5008,6 @@
             "controller": "self",
             "allowMissingTarget": true,
             "filter": {
-              "cardType": "monster",
               "attribute": "戦艦"
             }
           },
@@ -5002,7 +5038,7 @@
           ]
         }
       ],
-      "_note": "コールコスト記載なし=通常コール無コスト。登場時: target(self,戦艦,allowMissingTarget:true)→grantKeyword(penetrate,duration:turn)は無条件。さらに『このカードが手札以外から登場しているなら』のcritical+1は同じeffect配列内でconditions:[not(enteredFromZoneIn(hand))]を個別effectへ付与（bf-h-sd01-0011のdraw{conditions}と同型のeffect単位条件付与）。戦艦が存在しなければ両効果ともallowMissingTargetにより不発。"
+      "_note": "コールコスト記載なし=通常コール無コスト。登場時: target(self,戦艦,allowMissingTarget:true)→grantKeyword(penetrate,duration:turn)は無条件。さらに『このカードが手札以外から登場しているなら』のcritical+1は同じeffect配列内でconditions:[not(enteredFromZoneIn(hand))]を個別effectへ付与（bf-h-sd01-0011のdraw{conditions}と同型のeffect単位条件付与）。戦艦が存在しなければ両効果ともallowMissingTargetにより不発。 監査cards-25(2026-10): 登場時の対象『君の場の《戦艦》』の filter から cardType:monster を除去（着任中のアイテム扱いの戦艦を選べるように）。"
     },
     {
       "id": "bf-x-ub02-0052",
@@ -5602,7 +5638,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "c",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -6050,6 +6087,7 @@
           "effects": [
             {
               "op": "setPreventNextDestroy",
+              "optional": true,
               "target": "$target"
             }
           ]
@@ -6291,6 +6329,7 @@
               "amount": 1
             }
           ],
+          "allowMissingTarget": true,
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
@@ -6359,11 +6398,6 @@
           "kind": "triggered",
           "event": "turnEnd",
           "optional": true,
-          "conditions": [
-            {
-              "op": "turnOwnerIsSelf"
-            }
-          ],
           "script": [
             {
               "op": "selectCards",
@@ -6396,6 +6430,21 @@
           "timing": [
             "attack",
             "counter"
+          ],
+          "conditions": [
+            {
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "phaseIs",
+                  "phase": "main"
+                },
+                {
+                  "op": "phaseIs",
+                  "phase": "attack"
+                }
+              ]
+            }
           ],
           "cost": [
             {
@@ -6431,7 +6480,8 @@
                 "center",
                 "right"
               ],
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -6449,7 +6499,8 @@
             "scope": "turn"
           }
         }
-      ]
+      ],
+      "_note": "監査cards-25(2026-10): 【対抗】【起動】に原文『メインフェイズかアタックフェイズ中』の any(phaseIs main, phaseIs attack) 条件を追加（timing:counter だけではドロー/チャージ/ファイナルでも使えていた）。『■ターン終了時』は『君のターン終了時』ではないため turnOwnerIsSelf を除去（お互いのターン終了時に発動）。"
     },
     {
       "id": "bf-x-ub02-br02",
@@ -6496,7 +6547,7 @@
           "event": "battleEnd",
           "includeDefender": true,
           "optional": true,
-          "conditions": [
+          "ifConditions": [
             {
               "op": "not",
               "condition": {
@@ -6534,7 +6585,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelected",
@@ -6546,7 +6598,8 @@
           ],
           "limit": {
             "scope": "turn"
-          }
+          },
+          "selectBeforeCost": true
         },
         {
           "id": "bf-x-ub02-0003-henshin-hand",
@@ -6604,7 +6657,7 @@
           ]
         }
       ],
-      "_note": "R11角王: deckAnyFlag{homeWorld:ヒーローW,awayMaxCopies:1}(bf-x-ss01-0012前例)。別絵BR02/S002はmergeがbase 0003のmechをclone_mech(namespace_ids=False)で複製しdeckAnyFlagごと継承(scan⑥で0003+BR02+S002の3件検査)。第2能力(バトル終了時ドロップから選んでコール)は既存パターン(bf-h-eb03-0010型)を踏襲=ability-level optional:true+cost:[payGauge1]を「選び、ゲージ1を払ってよい」の代替表現とし、script側でselectCards→callSelected(payCost:call)。原文は「選び、払ってよい」の語順だが、declineした場合は選択も支払いも起きない点で等価(この構造は本DBの確立済み近似・0028/0029等と同型)。『貫通』『変身』はkeywords配列。変身コストはゲージ1+ライフ1=henshin-hand/henshin-field両起動(bf-x-ss01-0020と同型、手札版とフィールド版[sourceZoneIn left/center/right]の2本立て)。"
+      "_note": "R11角王: deckAnyFlag{homeWorld:ヒーローW,awayMaxCopies:1}(bf-x-ss01-0012前例)。別絵BR02/S002はmergeがbase 0003のmechをclone_mech(namespace_ids=False)で複製しdeckAnyFlagごと継承(scan⑥で0003+BR02+S002の3件検査)。第2能力(バトル終了時ドロップから選んでコール)は既存パターン(bf-h-eb03-0010型)を踏襲=ability-level optional:true+cost:[payGauge1]を「選び、ゲージ1を払ってよい」の代替表現とし、script側でselectCards→callSelected(payCost:call)。原文は「選び、払ってよい」の語順だが、declineした場合は選択も支払いも起きない点で等価(この構造は本DBの確立済み近似・0028/0029等と同型)。『貫通』『変身』はkeywords配列。変身コストはゲージ1+ライフ1=henshin-hand/henshin-field両起動(bf-x-ss01-0020と同型、手札版とフィールド版[sourceZoneIn left/center/right]の2本立て)。 【R5 2026-10-09 オーナー裁定】「〜を選び、…を払ってよい。払ったら」は選べるカードが無いなら支払えない（何も起きない）＝能力に selectBeforeCost:true（先頭の選択に候補が無ければコストを提示しない）。旧 _note の「optional 承諾＝コスト先払い→script 内で選択」の近似は、候補0でもコストだけ払えてしまう点が誤りだった。"
     },
     {
       "id": "bf-x-ub02-s001",
@@ -6654,11 +6707,6 @@
           "kind": "triggered",
           "event": "turnEnd",
           "optional": true,
-          "conditions": [
-            {
-              "op": "turnOwnerIsSelf"
-            }
-          ],
           "script": [
             {
               "op": "selectCards",
@@ -6691,6 +6739,21 @@
           "timing": [
             "attack",
             "counter"
+          ],
+          "conditions": [
+            {
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "phaseIs",
+                  "phase": "main"
+                },
+                {
+                  "op": "phaseIs",
+                  "phase": "attack"
+                }
+              ]
+            }
           ],
           "cost": [
             {
@@ -6726,7 +6789,8 @@
                 "center",
                 "right"
               ],
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -6744,7 +6808,8 @@
             "scope": "turn"
           }
         }
-      ]
+      ],
+      "_note": "監査cards-25(2026-10): 【対抗】【起動】に原文『メインフェイズかアタックフェイズ中』の any(phaseIs main, phaseIs attack) 条件を追加（timing:counter だけではドロー/チャージ/ファイナルでも使えていた）。『■ターン終了時』は『君のターン終了時』ではないため turnOwnerIsSelf を除去（お互いのターン終了時に発動）。"
     },
     {
       "id": "bf-x-ub02-s002",
@@ -6791,7 +6856,7 @@
           "event": "battleEnd",
           "includeDefender": true,
           "optional": true,
-          "conditions": [
+          "ifConditions": [
             {
               "op": "not",
               "condition": {
@@ -6829,7 +6894,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelected",
@@ -6841,7 +6907,8 @@
           ],
           "limit": {
             "scope": "turn"
-          }
+          },
+          "selectBeforeCost": true
         },
         {
           "id": "bf-x-ub02-0003-henshin-hand",
@@ -6899,7 +6966,7 @@
           ]
         }
       ],
-      "_note": "R11角王: deckAnyFlag{homeWorld:ヒーローW,awayMaxCopies:1}(bf-x-ss01-0012前例)。別絵BR02/S002はmergeがbase 0003のmechをclone_mech(namespace_ids=False)で複製しdeckAnyFlagごと継承(scan⑥で0003+BR02+S002の3件検査)。第2能力(バトル終了時ドロップから選んでコール)は既存パターン(bf-h-eb03-0010型)を踏襲=ability-level optional:true+cost:[payGauge1]を「選び、ゲージ1を払ってよい」の代替表現とし、script側でselectCards→callSelected(payCost:call)。原文は「選び、払ってよい」の語順だが、declineした場合は選択も支払いも起きない点で等価(この構造は本DBの確立済み近似・0028/0029等と同型)。『貫通』『変身』はkeywords配列。変身コストはゲージ1+ライフ1=henshin-hand/henshin-field両起動(bf-x-ss01-0020と同型、手札版とフィールド版[sourceZoneIn left/center/right]の2本立て)。"
+      "_note": "R11角王: deckAnyFlag{homeWorld:ヒーローW,awayMaxCopies:1}(bf-x-ss01-0012前例)。別絵BR02/S002はmergeがbase 0003のmechをclone_mech(namespace_ids=False)で複製しdeckAnyFlagごと継承(scan⑥で0003+BR02+S002の3件検査)。第2能力(バトル終了時ドロップから選んでコール)は既存パターン(bf-h-eb03-0010型)を踏襲=ability-level optional:true+cost:[payGauge1]を「選び、ゲージ1を払ってよい」の代替表現とし、script側でselectCards→callSelected(payCost:call)。原文は「選び、払ってよい」の語順だが、declineした場合は選択も支払いも起きない点で等価(この構造は本DBの確立済み近似・0028/0029等と同型)。『貫通』『変身』はkeywords配列。変身コストはゲージ1+ライフ1=henshin-hand/henshin-field両起動(bf-x-ss01-0020と同型、手札版とフィールド版[sourceZoneIn left/center/right]の2本立て)。 【R5 2026-10-09 オーナー裁定】「〜を選び、…を払ってよい。払ったら」は選べるカードが無いなら支払えない（何も起きない）＝能力に selectBeforeCost:true（先頭の選択に候補が無ければコストを提示しない）。旧 _note の「optional 承諾＝コスト先払い→script 内で選択」の近似は、候補0でもコストだけ払えてしまう点が誤りだった。"
     },
     {
       "id": "bf-x-ub02-s003",

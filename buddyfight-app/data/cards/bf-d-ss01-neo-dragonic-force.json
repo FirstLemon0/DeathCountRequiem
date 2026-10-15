@@ -278,6 +278,7 @@
             "main"
           ],
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "cost": [
             {
               "op": "payGauge",
@@ -1180,7 +1181,7 @@
       ],
       "cannotReturnToHand": true,
       "destroyImmunity": {
-        "fromEffect": true
+        "from": {}
       }
     },
     {
@@ -1297,9 +1298,16 @@
               "amount": 4
             },
             {
-              "op": "ownFieldMonsterAttributeSizeGte",
-              "attribute": "武装騎竜",
-              "size": 2
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "武装騎竜",
+                "sizeGte": 2
+              },
+              "cmp": "gte",
+              "amount": 1
             }
           ],
           "effects": [
@@ -1353,7 +1361,7 @@
       "costs": {
         "call": [
           {
-            "op": "dropOwnMonster",
+            "op": "dropOwnFieldCard",
             "amount": 1,
             "filter": {}
           },
@@ -1457,7 +1465,7 @@
           ]
         }
       ],
-      "_note": "コールコスト「君の場のカード１枚をドロップゾーンに置き」は、再録元0033(bf-h-bt01-0101)がdropOwnMonster(monster限定)採用のため一貫性優先で同じくdropOwnMonsterを採用（設計R5/C4の軽微近似を継承。忠実にするなら任意ゾーンのdropOwnFieldCardだが0033側も是正が要り越権のため据え置き）。destroyed→装備filterはname完全一致のまま(E1 alsoNames採用済のため0044も別名で装備候補に入る)。"
+      "_note": "コールコスト「君の場のカード１枚をドロップゾーンに置き」は、再録元0033(bf-h-bt01-0101)がdropOwnMonster(monster限定)採用のため一貫性優先で同じくdropOwnMonsterを採用（設計R5/C4の軽微近似を継承。忠実にするなら任意ゾーンのdropOwnFieldCardだが0033側も是正が要り越権のため据え置き）。destroyed→装備filterはname完全一致のまま(E1 alsoNames採用済のため0044も別名で装備候補に入る)。 ／ 【R-BR23(ブラウザレビュー横断) 出荷済み是正】コールコスト「君の場のカード１枚をドロップに置き」を dropOwnMonster(モンスター限定)で実装しており原文「カード」(任意カード)より狭かった→dropOwnFieldCard へ。"
     },
     {
       "id": "bf-d-ss01-0025",
@@ -1482,7 +1490,7 @@
           "label": "アインス・アルケミー",
           "kind": "triggered",
           "event": "enter",
-          "conditions": [
+          "ifConditions": [
             {
               "op": "flagNameIs",
               "name": "ドラゴン・アイン"
@@ -1500,7 +1508,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "監査 rule-continuous-5: 「〜時、XならY」の X は ifConditions（解決時の状態条件・不成立でも1ターン1回を消費＝ver2.05 ④「１ターンに１回」Q2/A2）。"
     },
     {
       "id": "bf-d-ss01-0026",
@@ -1968,7 +1977,7 @@
       "costs": {
         "call": [
           {
-            "op": "dropOwnMonster",
+            "op": "dropOwnFieldCard",
             "amount": 1,
             "filter": {}
           },
@@ -2087,7 +2096,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "【R-BR23(ブラウザレビュー bf-h-bt01-B6) 出荷済み是正】コールコスト「君の場のカード１枚をドロップに置き」を dropOwnMonster(モンスター限定)で実装しており原文「カード」(任意カード)より狭かった→dropOwnFieldCard へ（別プリント pp01-0056 は正）。"
     },
     {
       "id": "bf-d-ss01-0034",
@@ -2282,6 +2292,7 @@
               "controller": "self",
               "onlyBattling": true,
               "filter": {
+                "cardType": "monster",
                 "attributeIncludesAny": [
                   "竜",
                   "ドラゴン"
@@ -2560,24 +2571,13 @@
               "op": "ownCenterEmpty"
             },
             {
-              "op": "any",
-              "conditions": [
-                {
-                  "op": "pendingAttackDefenderIsSelf"
-                },
-                {
-                  "op": "pendingActionResponderIsSelf"
-                }
-              ]
+              "op": "incomingDamagePending"
             }
           ],
           "effects": [
             {
-              "op": "preventNextDamage"
-            },
-            {
-              "op": "gainLife",
-              "amount": 1
+              "op": "preventNextDamage",
+              "gainLife": 1
             }
           ]
         }
@@ -2609,11 +2609,10 @@
       "keywords": [
         "set"
       ],
-      "uniqueSet": true,
       "cannotReturnToHand": true,
       "nullifyImmune": true,
       "destroyImmunity": {
-        "fromEffect": true
+        "from": {}
       },
       "continuous": [
         {
@@ -2732,8 +2731,8 @@
         "フラッグ"
       ],
       "rules": [
-        "君は属性に「竜」か「ドラゴン」を含むカードと〈ドラゴンW〉のカードを使える。",
-        "君の最初の手札は４枚、ゲージは２枚、ライフは12になる！"
+        "■君は属性に「竜」か「ドラゴン」を含むカードとジェネリックのカードを使える。",
+        "■君の最初の手札は４枚、ゲージは２枚、ライフは12になる！"
       ]
     }
   ]

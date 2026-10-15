@@ -60,13 +60,17 @@
               "max": 1,
               "require": false,
               "title": "神火の騎竜 ローメディウス",
-              "lead": "手札に加えるドロップゾーンのモンスターを選んでください。"
+              "lead": "手札に加えるドロップゾーンのモンスターを選んでください。",
+              "min": 1,
+              "clampMinToCandidates": true,
+              "allowEmpty": true
             },
             {
               "op": "moveSelected",
               "var": "s",
               "to": "hand",
-              "log": "{cards}を手札に加えました。"
+              "log": "{cards}を手札に加えました。",
+              "require": false
             }
           ],
           "limit": {
@@ -453,6 +457,7 @@
           "id": "bf-d-cbt-0005-drop-search-hissatsu",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "main"
           ],
@@ -521,7 +526,7 @@
           "kind": "triggered",
           "event": "battleEnd",
           "optional": true,
-          "conditions": [
+          "ifConditions": [
             {
               "op": "any",
               "conditions": [
@@ -547,6 +552,7 @@
               "amount": 1
             }
           ],
+          "allowMissingTarget": true,
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
@@ -747,12 +753,15 @@
           }
         ]
       },
-      "nullifyImmune": true,
       "continuous": [
         {
           "op": "nullifyAbilities",
           "controller": "opponent",
-          "battleOpponentOnly": true
+          "battleOpponentOnly": true,
+          "cannotBeNullified": true,
+          "filter": {
+            "cardType": "monster"
+          }
         }
       ],
       "abilities": [
@@ -779,6 +788,7 @@
               "then": [
                 {
                   "op": "moveSelected",
+                  "discard": true,
                   "var": "d",
                   "to": "drop"
                 },
@@ -1438,6 +1448,7 @@
           "id": "bf-d-cbt-0016-battleend-return",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "returnToHand",
@@ -1529,40 +1540,112 @@
           ],
           "script": [
             {
-              "op": "selectCards",
-              "var": "t",
-              "from": "field",
-              "controller": "any",
-              "filter": {
-                "soulCountGte": 1
-              },
-              "amount": 1,
-              "require": true,
+              "op": "chooseBranch",
               "title": "大海賊 キャプテン・カイドウ",
-              "lead": "ソウルを持ち主の手札に戻す場のカードを選んでください。"
-            },
-            {
-              "op": "selectCards",
-              "var": "s",
-              "from": "soul",
-              "hostVar": "t",
-              "controller": "self",
-              "amount": 1,
-              "require": true,
-              "title": "大海賊 キャプテン・カイドウ",
-              "lead": "持ち主の手札に戻すソウルのカードを選んでください。"
-            },
-            {
-              "op": "moveSelected",
-              "var": "s",
-              "to": "hand"
+              "lead": "ソウルを戻す場のカードはどちらの場のカードですか。",
+              "options": [
+                {
+                  "key": "self",
+                  "label": "君の場のカード",
+                  "condition": {
+                    "op": "cardCount",
+                    "controller": "self",
+                    "pile": "soul",
+                    "cmp": "gte",
+                    "amount": 1
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "t",
+                      "from": "field",
+                      "controller": "self",
+                      "filter": {
+                        "soulCountGte": 1
+                      },
+                      "amount": 1,
+                      "require": true,
+                      "title": "大海賊 キャプテン・カイドウ",
+                      "lead": "ソウルを持ち主の手札に戻す場のカードを選んでください。"
+                    },
+                    {
+                      "op": "selectCards",
+                      "var": "s",
+                      "from": "soul",
+                      "hostVar": "t",
+                      "controller": "self",
+                      "amount": 1,
+                      "require": true,
+                      "title": "大海賊 キャプテン・カイドウ",
+                      "lead": "持ち主の手札に戻すソウルのカードを選んでください。"
+                    },
+                    {
+                      "op": "moveSelected",
+                      "var": "s",
+                      "to": "hand"
+                    }
+                  ]
+                },
+                {
+                  "key": "opponent",
+                  "label": "相手の場のカード",
+                  "condition": {
+                    "op": "cardCount",
+                    "controller": "opponent",
+                    "pile": "soul",
+                    "cmp": "gte",
+                    "amount": 1
+                  },
+                  "script": [
+                    {
+                      "op": "selectCards",
+                      "var": "t",
+                      "from": "field",
+                      "controller": "opponent",
+                      "filter": {
+                        "soulCountGte": 1
+                      },
+                      "amount": 1,
+                      "require": true,
+                      "title": "大海賊 キャプテン・カイドウ",
+                      "lead": "ソウルを持ち主の手札に戻す場のカードを選んでください。"
+                    },
+                    {
+                      "op": "selectCards",
+                      "var": "s",
+                      "from": "soul",
+                      "hostVar": "t",
+                      "controller": "opponent",
+                      "amount": 1,
+                      "require": true,
+                      "title": "大海賊 キャプテン・カイドウ",
+                      "lead": "持ち主の手札に戻すソウルのカードを選んでください。"
+                    },
+                    {
+                      "op": "moveSelected",
+                      "var": "s",
+                      "to": "hand"
+                    }
+                  ]
+                }
+              ]
             }
           ],
           "limit": {
             "scope": "turn"
-          }
+          },
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "either",
+              "pile": "soul",
+              "cmp": "gte",
+              "amount": 1
+            }
+          ]
         }
-      ]
+      ],
+      "_note": "【起動】『場のカード１枚のソウル１枚を持ち主の手札に戻す』は敵味方を問わない。ソウル選択(selectCards from:soul hostVar)の controller が選択エントリの owner＝moveSelected の宛先(持ち主)になるため、chooseBranch で『君の場/相手の場』を分け、各分岐で場カード→ソウルを同じ controller で選ぶ（相手の場のカードのソウルは相手＝持ち主の手札へ）。各分岐はその側の場にソウルがある時だけ選択肢に出る。能力自体は cardCount either pile:soul≧1 で、どちらかの場にソウルがあれば起動可（audit b006-1）。"
     },
     {
       "id": "bf-d-cbt-0018",
@@ -1610,27 +1693,49 @@
             "counter",
             "main"
           ],
-          "cost": [
+          "script": [
             {
-              "op": "destroyOwnMonster",
-              "amount": 1,
+              "op": "selectCards",
+              "var": "sac",
+              "from": "field",
+              "controller": "self",
               "filter": {
                 "cardType": "monster",
                 "attribute": "武装騎竜"
-              }
-            }
-          ],
-          "target": {
-            "type": "fieldCard",
-            "controller": "opponent",
-            "filter": {
-              "cardType": "monster"
-            }
-          },
-          "effects": [
+              },
+              "amount": 1,
+              "title": "煉獄騎士団 ジャックナイフ・ドラゴン",
+              "lead": "破壊する君の場の《武装騎竜》のモンスター１枚を選んでください。"
+            },
             {
-              "op": "destroy",
-              "target": "$target"
+              "op": "destroySelected",
+              "var": "sac",
+              "require": false
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "selectCards",
+                  "var": "oppTarget",
+                  "from": "field",
+                  "controller": "opponent",
+                  "filter": {
+                    "cardType": "monster"
+                  },
+                  "amount": 1,
+                  "title": "煉獄騎士団 ジャックナイフ・ドラゴン",
+                  "lead": "破壊する相手の場のモンスター１枚を選んでください。"
+                },
+                {
+                  "op": "destroySelected",
+                  "var": "oppTarget",
+                  "require": false
+                }
+              ]
             }
           ],
           "limit": {
@@ -1700,7 +1805,8 @@
               "var": "c",
               "payCost": "call",
               "chooseZones": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             },
             {
               "op": "moveSelfToSelectedSoul",
@@ -2171,14 +2277,14 @@
             "sources": [
               "deck"
             ],
-            "amount": 1
+            "amount": 1,
+            "faceDown": true
           }
         ]
       },
       "castCost": {
         "gauge": 1
       },
-      "uniqueSet": true,
       "abilities": [
         {
           "id": "bf-d-cbt-0026-opponent-enter-trap",
@@ -2215,7 +2321,7 @@
               ]
             },
             {
-              "op": "destroySelf"
+              "op": "dropSelf"
             }
           ]
         }
@@ -2572,41 +2678,22 @@
           "filter": {
             "sameInstanceAsSource": true
           },
-          "critical": 1,
-          "conditions": [
-            {
-              "op": "cardCount",
-              "controller": "self",
-              "pile": "drop",
-              "filter": {
-                "attribute": "妖精"
-              },
-              "cmp": "gte",
-              "amount": 1
+          "amountFrom": {
+            "source": "dropAttributeCount",
+            "distinct": true,
+            "filter": {
+              "attributeIn": [
+                "妖精",
+                "ワイダーサカー"
+              ]
+            },
+            "per": {
+              "critical": 1
             }
-          ]
-        },
-        {
-          "op": "modifyStats",
-          "filter": {
-            "sameInstanceAsSource": true
-          },
-          "critical": 1,
-          "conditions": [
-            {
-              "op": "cardCount",
-              "controller": "self",
-              "pile": "drop",
-              "filter": {
-                "attribute": "ワイダーサカー"
-              },
-              "cmp": "gte",
-              "amount": 1
-            }
-          ]
+          }
         }
       ],
-      "_note": "『君のドロップゾーンの《妖精》と《ワイダーサカー》1種類につき、打撃力+1』＝『指定2属性のうちドロップに1枚でも存在する属性の種類数だけ+1』と読み、continuous modifyStats{filter:sameInstanceAsSource}を属性ごとに2本並べ、各々cardCount{pile:drop,filter:{attribute:X},cmp:gte,amount:1}でゲート（bf-d-ss02-0007型の2条件付き自己バフと同形。distinct:trueのdropAttributeCount（0041/0025型）は『同名カードの種類数』を数える別概念のため不採用＝『指定2属性のうち存在する属性数』には合わない）。打撃力=critical（SKILL.md/design.md §4落とし穴）。"
+      "_note": "裁定 R2（2026-10-09 オーナー裁定）: 「〜１種類につき」はカード名の種類数で数える。『君のドロップゾーンの《妖精》と《ワイダーサカー》1種類につき、打撃力+1』＝ドロップの《妖精》か《ワイダーサカー》を持つカードのカード名の種類数×打撃力+1（上限なし）。continuous modifyStats{amountFrom:dropAttributeCount distinct:true + filter.attributeIn}（X-CBT01/0023「《竜騎士》か《雷帝軍》１種類につき」と同形）。旧実装＝属性ごとの存在判定2本（最大+2）は誤り。打撃力=critical。"
     },
     {
       "id": "bf-d-cbt-0032",
@@ -2776,7 +2863,8 @@
                       "payCost": "call",
                       "chooseZones": true,
                       "resolveOnEnter": true,
-                      "require": false
+                      "require": false,
+                      "overwriteWhenFull": true
                     }
                   ]
                 }
@@ -3203,16 +3291,20 @@
         {
           "id": "bf-d-cbt-0036-turnend-selfburn",
           "kind": "triggered",
-          "event": "enter",
+          "event": "turnEnd",
+          "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            }
+          ],
           "effects": [
             {
-              "op": "setDelayedDestroy",
-              "when": "ownTurnEnd"
+              "op": "destroySelf"
             }
           ]
         }
       ],
-      "_note": "鬼IM(bf-d-ss03-0026/0027)型の『登場時効果+ターン終了時自壊』構成だが、本カードは登場時効果が『捨ててよい』(optional)なので同一abilityへ同居させず2本の独立enterトリガに分離した(optionalな捨札コストの成否が無条件の自壊スケジュールに影響しないようにするため=SKILL.md『コストの「〜してよい」は任意abilityで表現』の帰結)。捨てた後の『相手は手札1枚を選び、捨てる』はdiscardHand{player:'opponent'}が受け手(相手)自身に選ばせる(src/15:706-719, promptSeatが相手席へ)ため『相手は…選び、捨てる』の文意に一致。自壊はsetDelayedDestroy{when:'ownTurnEnd'}(ss03-0026/0027で確立、ignoreSoulguard:trueで解決)。"
+      "_note": "鬼IM(bf-d-ss03-0026/0027)型の『登場時効果+ターン終了時自壊』構成だが、本カードは登場時効果が『捨ててよい』(optional)なので同一abilityへ同居させず2本の独立enterトリガに分離した(optionalな捨札コストの成否が無条件の自壊スケジュールに影響しないようにするため=SKILL.md『コストの「〜してよい」は任意abilityで表現』の帰結)。捨てた後の『相手は手札1枚を選び、捨てる』はdiscardHand{player:'opponent'}が受け手(相手)自身に選ばせる(src/15:706-719, promptSeatが相手席へ)ため『相手は…選び、捨てる』の文意に一致。自壊はsetDelayedDestroy{when:'ownTurnEnd'}(ss03-0026/0027で確立、ignoreSoulguard:trueで解決)。 【裁定2026-10-08】カードテキストに誰のターンか明記の無いフェイズ/ターン指定は両者のターンを指す（ユーザー裁定・ver2.05 5.1）。『君のターン終了時、このカードを破壊する。』は登場時の1回限りの setDelayedDestroy ではなく、場にある限り君のターン終了時ごとに誘発する独立の自動能力（turnEnd+turnOwnerIsSelf→destroySelf。鬼IM ss03-0026/0027 の監査 b012-2 修正と同型）に置換。"
     },
     {
       "id": "bf-d-cbt-0037",
@@ -3656,7 +3748,8 @@
                 "center",
                 "right"
               ],
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelected",
@@ -3765,7 +3858,12 @@
               "op": "grantKeyword",
               "target": "$self",
               "keyword": "doubleAttack",
-              "duration": "turn"
+              "duration": "turn",
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
             }
           ]
         }
@@ -4183,7 +4281,7 @@
           "label": "暗躍の影妖精",
           "kind": "triggered",
           "event": "enter",
-          "conditions": [
+          "ifConditions": [
             {
               "op": "ownFieldCardExists",
               "filter": {
@@ -4205,7 +4303,7 @@
           }
         }
       ],
-      "_note": "『君の場にソウルがあるモンスターがいるなら』=ownFieldCardExists{filter:{cardType:monster,soulCountGte:1}}（bf-d-eb01-0057型）。named-once（monster）=limit{scope:turn,shared:true,key:dcbt-暗躍の影妖精}。"
+      "_note": "『君の場にソウルがあるモンスターがいるなら』=ownFieldCardExists{filter:{cardType:monster,soulCountGte:1}}（bf-d-eb01-0057型）。named-once（monster）=limit{scope:turn,shared:true,key:dcbt-暗躍の影妖精}。 監査 rule-continuous-5: 「〜時、XならY」の X は ifConditions（解決時の状態条件・不成立でも1ターン1回を消費＝ver2.05 ④「１ターンに１回」Q2/A2）。"
     },
     {
       "id": "bf-d-cbt-0051",
@@ -4703,7 +4801,8 @@
             "filter": {
               "cardType": "monster",
               "sizeLte": 1
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -4712,12 +4811,14 @@
             },
             {
               "op": "setPreventNextDestroy",
+              "optional": true,
               "target": "$self"
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
       ],
-      "_note": "『ゲージ１を払い、手札１枚を捨ててよい。そうしたら』＝payGauge(mandatory)+discardHand(手札1枚捨て)を両方costに置き、ability-level optional:trueで『能力を起動するか自体は任意、起動したらコストは両方払う』とした（bf-d-bt01-0030絆の魔法騎士／bf-h-bt03-0012堕天魔王ルシファーの『Xしてよい。そうしたら』＋optional:true+costマンドトリーの既存precedentと同型）。『そのターン中、次にこのカードが破壊される場合、このカードを場に残せる』＝setPreventNextDestroy。【FD4・残差2件（現状維持＝engine改修せず既存慣例に合わせる）】(1)ターンスコープ近似: setPreventNextDestroyには『そのターン中』のターン境界が無く、当ターンに破壊されなければ保護フラグが翌ターン以降まで持続し得る（DB内『そのターン中、次に...破壊される場合...場に残せる』文言は多数precedent[bf-d-bt02-0112等]が全て素のsetPreventNextDestroyへ一律実装＝過剰保護側の既存慣例に倣う。ターン境界の追加実装は無い）。(2)対象0時: 破壊対象target{fieldCard,controller:opponent,filter:{cardType:monster,sizeLte:1}}にallowMissingTargetが無いため、相手にサイズ1以下モンスターが居ないと『破壊対象0でも自己保護だけ起動』ができない（軽微なエッジ・原文は破壊と保護を『し』で連結しており通常は破壊が主目的のため実害極小）。lifeLink2実在確認。"
+      "_note": "『ゲージ１を払い、手札１枚を捨ててよい。そうしたら』＝payGauge(mandatory)+discardHand(手札1枚捨て)を両方costに置き、ability-level optional:trueで『能力を起動するか自体は任意、起動したらコストは両方払う』とした（bf-d-bt01-0030絆の魔法騎士／bf-h-bt03-0012堕天魔王ルシファーの『Xしてよい。そうしたら』＋optional:true+costマンドトリーの既存precedentと同型）。『そのターン中、次にこのカードが破壊される場合、このカードを場に残せる』＝setPreventNextDestroy。【FD4・残差2件（現状維持＝engine改修せず既存慣例に合わせる）】(1)ターンスコープ近似: setPreventNextDestroyには『そのターン中』のターン境界が無く、当ターンに破壊されなければ保護フラグが翌ターン以降まで持続し得る（DB内『そのターン中、次に...破壊される場合...場に残せる』文言は多数precedent[bf-d-bt02-0112等]が全て素のsetPreventNextDestroyへ一律実装＝過剰保護側の既存慣例に倣う。ターン境界の追加実装は無い）。(2)対象0時: 破壊対象target{fieldCard,controller:opponent,filter:{cardType:monster,sizeLte:1}}にallowMissingTargetが無いため、相手にサイズ1以下モンスターが居ないと『破壊対象0でも自己保護だけ起動』ができない（軽微なエッジ・原文は破壊と保護を『し』で連結しており通常は破壊が主目的のため実害極小）。lifeLink2実在確認。 【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-d-cbt-0058",
@@ -5282,7 +5383,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "call",
               "chooseZones": true,
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -5411,7 +5513,8 @@
               "var": "call",
               "payCost": "call",
               "chooseZones": true,
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -5902,6 +6005,7 @@
           "id": "bf-d-cbt-0073-battle-end-return",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "returnToHand",
@@ -6658,7 +6762,7 @@
           "label": "お助けするニャ！",
           "kind": "triggered",
           "event": "enter",
-          "conditions": [
+          "ifConditions": [
             {
               "op": "cardCount",
               "controller": "self",
@@ -6720,7 +6824,8 @@
             "key": "dcbt-お助けするニャ！"
           }
         }
-      ]
+      ],
+      "_note": "監査 rule-continuous-5: 「〜時、XならY」の X は ifConditions（解決時の状態条件・不成立でも1ターン1回を消費＝ver2.05 ④「１ターンに１回」Q2/A2）。"
     },
     {
       "id": "bf-d-cbt-0088",
@@ -7102,7 +7207,8 @@
                   "op": "lifeLte",
                   "amount": 1
                 }
-              ]
+              ],
+              "upTo": true
             }
           ],
           "limit": {
@@ -7667,6 +7773,9 @@
         "■君のファイナルフェイズ開始時、このカードをスタンドし、そのターン中、このカードの打撃力＋１！",
         "■場のこのカードは破壊されず、手札に戻せず、能力は無効化されず、このカードはファイナルフェイズ中にも攻撃できる。"
       ],
+      "keywords": [
+        "releaseCondition"
+      ],
       "equipConditions": [
         {
           "op": "lifeLte",
@@ -7719,7 +7828,7 @@
           ]
         }
       ],
-      "cannotBeNullified": true,
+      "nullifyImmune": true,
       "cannotReturnToHand": true,
       "destroyImmunity": [
         {
@@ -7728,12 +7837,11 @@
           }
         },
         {
-          "from": {
-            "byEffect": true
-          }
+          "from": {}
         }
       ],
-      "canAttackInFinalPhase": true
+      "canAttackInFinalPhase": true,
+      "_note": " 【audit-cards-28 b074-1】『能力は無効化されず』は場の能力無効化耐性＝nullifyImmune:true（0003 と同形）。旧 cannotBeNullified は使用宣言(pendingAction)の打ち消し耐性で、能力無効化から守らず装備宣言の打ち消しを防いでいた。"
     },
     {
       "id": "bf-d-cbt-0105",
@@ -7753,6 +7861,9 @@
         "■【装備コスト】君のライフが０になるなら、ゲージ２を払い、手札１枚を捨て、君のライフを１にする。",
         "■場のこのカードは破壊されず、手札に戻せず、能力は無効化されない。",
         "■このカードを装備した時、相手の場のモンスター１枚を破壊し、相手のデッキの上から５枚までを相手のドロップゾーンに置く。"
+      ],
+      "keywords": [
+        "releaseCondition"
       ],
       "equipConditions": [
         {
@@ -7795,7 +7906,7 @@
           }
         ]
       },
-      "cannotBeNullified": true,
+      "nullifyImmune": true,
       "cannotReturnToHand": true,
       "destroyImmunity": [
         {
@@ -7804,9 +7915,7 @@
           }
         },
         {
-          "from": {
-            "byEffect": true
-          }
+          "from": {}
         }
       ],
       "abilities": [
@@ -7821,6 +7930,7 @@
               "cardType": "monster"
             }
           },
+          "allowMissingTarget": true,
           "effects": [
             {
               "op": "destroy",
@@ -7829,12 +7939,13 @@
             {
               "op": "moveTopDeckToDrop",
               "player": "opponent",
-              "amount": 5
+              "amount": 5,
+              "upTo": true
             }
           ]
         }
       ],
-      "_note": "装備コスト『君のライフが０になるなら、ゲージ２を払い、手札１枚を捨て、君のライフを１にする。』は setLife（実在op。ALLOWED記載の『setLifeTo』は誤称で実装名はsetLife）を用い、costs.equip=[payGauge2, discardHand1, setLife{life:1}]の一体コストとして実装（setLifeはplayer.life>targetの時のみ支払い可＝現在ライフが2以上必要、という形で原文の緊迫感を保持）。lifeZeroReplacement/setLifeZeroSafeguard等の『ライフ0の代替』専用機構は、ゲージ/手札コストを合成できずこの equip コストの表現には使えないため不採用。等価な代替コスト構文が既存opの合成で成立しており新op不要。equipConditions『場かドロップゾーンに…』はcondition op\"any\"（OR結合。既存src/13で実在）でownFieldCardExists（場）とcardCount pile:drop（ドロップ）を束ねた。"
+      "_note": "装備コスト『君のライフが０になるなら、ゲージ２を払い、手札１枚を捨て、君のライフを１にする。』は setLife（実在op。ALLOWED記載の『setLifeTo』は誤称で実装名はsetLife）を用い、costs.equip=[payGauge2, discardHand1, setLife{life:1}]の一体コストとして実装（setLifeはplayer.life>targetの時のみ支払い可＝現在ライフが2以上必要、という形で原文の緊迫感を保持）。lifeZeroReplacement/setLifeZeroSafeguard等の『ライフ0の代替』専用機構は、ゲージ/手札コストを合成できずこの equip コストの表現には使えないため不採用。等価な代替コスト構文が既存opの合成で成立しており新op不要。equipConditions『場かドロップゾーンに…』はcondition op\"any\"（OR結合。既存src/13で実在）でownFieldCardExists（場）とcardCount pile:drop（ドロップ）を束ねた。 【audit-cards-28 b074-1 同系是正】『場のこのカードは…能力は無効化されない』は場の能力無効化耐性＝nullifyImmune:true（X2-SS01/0003 と同形）。旧 cannotBeNullified は使用宣言(pendingAction)の打ち消し耐性で、能力無効化から守らず装備宣言の打ち消しを防いでいた。"
     },
     {
       "id": "bf-d-cbt-0106",
@@ -7854,6 +7965,9 @@
         "■【装備コスト】ゲージ２を払う。",
         "■場のこのカードは破壊されず、手札に戻せず、能力は無効化されない。",
         "■アタックフェイズ中、相手の場のモンスター全ては『移動』できず、さらに、君の場に《ネオドラゴン》がいて、君のセンターが空いているなら、相手の場のモンスター全ての能力を無効化する。"
+      ],
+      "keywords": [
+        "releaseCondition"
       ],
       "equipConditions": [
         {
@@ -7879,7 +7993,7 @@
           }
         ]
       },
-      "cannotBeNullified": true,
+      "nullifyImmune": true,
       "cannotReturnToHand": true,
       "destroyImmunity": [
         {
@@ -7888,9 +8002,7 @@
           }
         },
         {
-          "from": {
-            "byEffect": true
-          }
+          "from": {}
         }
       ],
       "continuous": [
@@ -7936,7 +8048,7 @@
           ]
         }
       ],
-      "_note": "解放条件！の『ソウルに《竜装機》が2枚以上』はsoulHasMatching(>=1一致)＋soulCountGte:2(総ソウル枚数)の組合せで近似（design doc §3 C6の推奨形どおり）。ホストのソウルが『竜装機1枚+他カード1枚』のような構成だと厳密には2枚未満でも条件成立してしまう極小の近似が残るが、host限定soulHasMatchingCountGteのようなop が無いため既存op合成で表現（新op不要の方針を優先）。常在4点セットはbf-d-ss03-0015/bf-d-bt03-0001ドラゴンフォース同型（本カードは『ファイナルフェイズ中にも攻撃できる』の記載が原文に無いためcanAttackInFinalPhaseは付与しない）。"
+      "_note": "解放条件！の『ソウルに《竜装機》が2枚以上』はsoulHasMatching(>=1一致)＋soulCountGte:2(総ソウル枚数)の組合せで近似（design doc §3 C6の推奨形どおり）。ホストのソウルが『竜装機1枚+他カード1枚』のような構成だと厳密には2枚未満でも条件成立してしまう極小の近似が残るが、host限定soulHasMatchingCountGteのようなop が無いため既存op合成で表現（新op不要の方針を優先）。常在4点セットはbf-d-ss03-0015/bf-d-bt03-0001ドラゴンフォース同型（本カードは『ファイナルフェイズ中にも攻撃できる』の記載が原文に無いためcanAttackInFinalPhaseは付与しない）。 【audit-cards-28 b074-1 同系是正】『場のこのカードは…能力は無効化されない』は場の能力無効化耐性＝nullifyImmune:true（X2-SS01/0003 と同形）。旧 cannotBeNullified は使用宣言(pendingAction)の打ち消し耐性で、能力無効化から守らず装備宣言の打ち消しを防いでいた。"
     },
     {
       "id": "bf-d-cbt-0107",
@@ -8294,6 +8406,9 @@
         "■君のファイナルフェイズ開始時、このカードをスタンドし、そのターン中、このカードの打撃力＋１！",
         "■場のこのカードは破壊されず、手札に戻せず、能力は無効化されず、このカードはファイナルフェイズ中にも攻撃できる。"
       ],
+      "keywords": [
+        "releaseCondition"
+      ],
       "equipConditions": [
         {
           "op": "lifeLte",
@@ -8346,7 +8461,7 @@
           ]
         }
       ],
-      "cannotBeNullified": true,
+      "nullifyImmune": true,
       "cannotReturnToHand": true,
       "destroyImmunity": [
         {
@@ -8355,12 +8470,11 @@
           }
         },
         {
-          "from": {
-            "byEffect": true
-          }
+          "from": {}
         }
       ],
-      "canAttackInFinalPhase": true
+      "canAttackInFinalPhase": true,
+      "_note": " 【audit-cards-28 b074-1】『能力は無効化されず』は場の能力無効化耐性＝nullifyImmune:true（0003 と同形）。旧 cannotBeNullified は使用宣言(pendingAction)の打ち消し耐性で、能力無効化から守らず装備宣言の打ち消しを防いでいた。"
     },
     {
       "id": "bf-d-cbt-0113",
@@ -8644,6 +8758,9 @@
         "■場のこのカードは破壊されず、手札に戻せず、能力は無効化されない。",
         "■このカードを装備した時、相手の場のモンスター１枚を破壊し、相手のデッキの上から５枚までを相手のドロップゾーンに置く。"
       ],
+      "keywords": [
+        "releaseCondition"
+      ],
       "equipConditions": [
         {
           "op": "any",
@@ -8685,7 +8802,7 @@
           }
         ]
       },
-      "cannotBeNullified": true,
+      "nullifyImmune": true,
       "cannotReturnToHand": true,
       "destroyImmunity": [
         {
@@ -8694,9 +8811,7 @@
           }
         },
         {
-          "from": {
-            "byEffect": true
-          }
+          "from": {}
         }
       ],
       "abilities": [
@@ -8711,6 +8826,7 @@
               "cardType": "monster"
             }
           },
+          "allowMissingTarget": true,
           "effects": [
             {
               "op": "destroy",
@@ -8719,12 +8835,13 @@
             {
               "op": "moveTopDeckToDrop",
               "player": "opponent",
-              "amount": 5
+              "amount": 5,
+              "upTo": true
             }
           ]
         }
       ],
-      "_note": "装備コスト『君のライフが０になるなら、ゲージ２を払い、手札１枚を捨て、君のライフを１にする。』は setLife（実在op。ALLOWED記載の『setLifeTo』は誤称で実装名はsetLife）を用い、costs.equip=[payGauge2, discardHand1, setLife{life:1}]の一体コストとして実装（setLifeはplayer.life>targetの時のみ支払い可＝現在ライフが2以上必要、という形で原文の緊迫感を保持）。lifeZeroReplacement/setLifeZeroSafeguard等の『ライフ0の代替』専用機構は、ゲージ/手札コストを合成できずこの equip コストの表現には使えないため不採用。等価な代替コスト構文が既存opの合成で成立しており新op不要。equipConditions『場かドロップゾーンに…』はcondition op\"any\"（OR結合。既存src/13で実在）でownFieldCardExists（場）とcardCount pile:drop（ドロップ）を束ねた。"
+      "_note": "装備コスト『君のライフが０になるなら、ゲージ２を払い、手札１枚を捨て、君のライフを１にする。』は setLife（実在op。ALLOWED記載の『setLifeTo』は誤称で実装名はsetLife）を用い、costs.equip=[payGauge2, discardHand1, setLife{life:1}]の一体コストとして実装（setLifeはplayer.life>targetの時のみ支払い可＝現在ライフが2以上必要、という形で原文の緊迫感を保持）。lifeZeroReplacement/setLifeZeroSafeguard等の『ライフ0の代替』専用機構は、ゲージ/手札コストを合成できずこの equip コストの表現には使えないため不採用。等価な代替コスト構文が既存opの合成で成立しており新op不要。equipConditions『場かドロップゾーンに…』はcondition op\"any\"（OR結合。既存src/13で実在）でownFieldCardExists（場）とcardCount pile:drop（ドロップ）を束ねた。 【audit-cards-28 b074-1 同系是正】『場のこのカードは…能力は無効化されない』は場の能力無効化耐性＝nullifyImmune:true（X2-SS01/0003 と同形）。旧 cannotBeNullified は使用宣言(pendingAction)の打ち消し耐性で、能力無効化から守らず装備宣言の打ち消しを防いでいた。"
     },
     {
       "id": "bf-d-cbt-0118",
@@ -9013,6 +9130,9 @@
         "■場のこのカードは破壊されず、手札に戻せず、能力は無効化されない。",
         "■アタックフェイズ中、相手の場のモンスター全ては『移動』できず、さらに、君の場に《ネオドラゴン》がいて、君のセンターが空いているなら、相手の場のモンスター全ての能力を無効化する。"
       ],
+      "keywords": [
+        "releaseCondition"
+      ],
       "equipConditions": [
         {
           "op": "ownFieldCardExists",
@@ -9037,7 +9157,7 @@
           }
         ]
       },
-      "cannotBeNullified": true,
+      "nullifyImmune": true,
       "cannotReturnToHand": true,
       "destroyImmunity": [
         {
@@ -9046,9 +9166,7 @@
           }
         },
         {
-          "from": {
-            "byEffect": true
-          }
+          "from": {}
         }
       ],
       "continuous": [
@@ -9094,7 +9212,7 @@
           ]
         }
       ],
-      "_note": "解放条件！の『ソウルに《竜装機》が2枚以上』はsoulHasMatching(>=1一致)＋soulCountGte:2(総ソウル枚数)の組合せで近似（design doc §3 C6の推奨形どおり）。ホストのソウルが『竜装機1枚+他カード1枚』のような構成だと厳密には2枚未満でも条件成立してしまう極小の近似が残るが、host限定soulHasMatchingCountGteのようなop が無いため既存op合成で表現（新op不要の方針を優先）。常在4点セットはbf-d-ss03-0015/bf-d-bt03-0001ドラゴンフォース同型（本カードは『ファイナルフェイズ中にも攻撃できる』の記載が原文に無いためcanAttackInFinalPhaseは付与しない）。"
+      "_note": "解放条件！の『ソウルに《竜装機》が2枚以上』はsoulHasMatching(>=1一致)＋soulCountGte:2(総ソウル枚数)の組合せで近似（design doc §3 C6の推奨形どおり）。ホストのソウルが『竜装機1枚+他カード1枚』のような構成だと厳密には2枚未満でも条件成立してしまう極小の近似が残るが、host限定soulHasMatchingCountGteのようなop が無いため既存op合成で表現（新op不要の方針を優先）。常在4点セットはbf-d-ss03-0015/bf-d-bt03-0001ドラゴンフォース同型（本カードは『ファイナルフェイズ中にも攻撃できる』の記載が原文に無いためcanAttackInFinalPhaseは付与しない）。 【audit-cards-28 b074-1 同系是正】『場のこのカードは…能力は無効化されない』は場の能力無効化耐性＝nullifyImmune:true（X2-SS01/0003 と同形）。旧 cannotBeNullified は使用宣言(pendingAction)の打ち消し耐性で、能力無効化から守らず装備宣言の打ち消しを防いでいた。"
     },
     {
       "id": "bf-d-cbt-0123",
@@ -9328,7 +9446,8 @@
                   "from": "movedToDrop",
                   "controller": "self",
                   "amount": 1,
-                  "require": false
+                  "require": false,
+                  "selectAll": true
                 },
                 {
                   "op": "moveSelected",
@@ -9512,6 +9631,7 @@
           "id": "bf-d-cbt-0128-battle-end-return",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "returnToHand",

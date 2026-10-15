@@ -448,8 +448,17 @@
               "op": "pendingActionIsOpponent"
             },
             {
-              "op": "pendingActionKind",
-              "kind": "spell"
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "pendingActionKind",
+                  "kind": "spell"
+                },
+                {
+                  "op": "pendingActionKind",
+                  "kind": "setSpell"
+                }
+              ]
             },
             {
               "op": "hostMatches",
@@ -908,6 +917,7 @@
             },
             {
               "op": "moveSelected",
+              "discard": true,
               "var": "ninpo",
               "to": "drop",
               "log": "discard"
@@ -955,14 +965,14 @@
             "sources": [
               "deck"
             ],
-            "amount": 1
+            "amount": 1,
+            "faceDown": true
           }
         ]
       },
       "castCost": {
         "gauge": 1
       },
-      "uniqueSet": true,
       "abilities": [
         {
           "id": "bt02-0018-opponent-enter-trap",
@@ -999,7 +1009,7 @@
               ]
             },
             {
-              "op": "destroySelf"
+              "op": "dropSelf"
             }
           ]
         }
@@ -1093,11 +1103,11 @@
               "deck",
               "drop"
             ],
-            "amount": 1
+            "amount": 1,
+            "faceDown": true
           }
         ]
       },
-      "uniqueSet": true,
       "abilities": [
         {
           "id": "bt02-0020-use-hiken",
@@ -1276,7 +1286,8 @@
               "op": "lastDamageSourceMatches",
               "controller": "self",
               "filter": {
-                "cardType": "item"
+                "cardType": "item",
+                "attribute": "武器"
               }
             }
           ],
@@ -1729,14 +1740,22 @@
             {
               "op": "destroy",
               "target": "$target"
-            },
-            {
-              "op": "setDelayedDestroyAtTurnEnd"
             }
           ],
           "allowMissingTarget": true
+        },
+        {
+          "id": "bt02-0034-turn-end-destroy",
+          "kind": "triggered",
+          "event": "turnEnd",
+          "effects": [
+            {
+              "op": "destroySelf"
+            }
+          ]
         }
-      ]
+      ],
+      "_note": "【裁定2026-10-08】カードテキストに誰のターンか明記の無いフェイズ/ターン指定は両者のターンを指す（ユーザー裁定・ver2.05 5.1）。『■ターン終了時、このカードを破壊する。』は登場時能力内の1回限りの遅延破壊ではなく、場にある限り両者のターン終了時に誘発する独立の自動能力（turnEnd→destroySelf。餓鰐 bt03-0093 と同型）。"
     },
     {
       "id": "bt02-0035",
@@ -1789,7 +1808,8 @@
                 "center",
                 "right"
               ],
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelectedAsMonster",
@@ -1911,7 +1931,6 @@
       "costs": {
         "cast": []
       },
-      "uniqueSet": true,
       "abilities": [
         {
           "id": "bt02-0038-soul-draw",
@@ -1926,7 +1945,8 @@
             },
             {
               "op": "putHandToSoul",
-              "amount": 1
+              "amount": 1,
+              "faceDown": true
             }
           ],
           "effects": [
@@ -1987,7 +2007,6 @@
       "keywords": [
         "set"
       ],
-      "uniqueSet": true,
       "abilities": [
         {
           "id": "bt02-0039-drop-call",
@@ -2423,7 +2442,8 @@
             "controller": "self",
             "excludeSource": true,
             "filter": {
-              "cardType": "monster"
+              "cardType": "monster",
+              "nameNot": "竜騎士 リョウマ"
             }
           },
           "effects": [
@@ -2632,6 +2652,9 @@
         {
           "id": "bt02-0052-choice",
           "kind": "impact",
+          "timing": [
+            "final"
+          ],
           "conditions": [
             {
               "op": "ownFieldHasAttribute",
@@ -2647,7 +2670,7 @@
           "script": [
             {
               "op": "chooseBranch",
-              "title": "大魔法 デビルズロッケンロール",
+              "title": "ド・ガイタ・クラッシュナックル！",
               "lead": "解決する効果を選んでください。",
               "options": [
                 {
@@ -2783,11 +2806,8 @@
           ],
           "effects": [
             {
-              "op": "preventNextDamage"
-            },
-            {
-              "op": "gainLife",
-              "amount": 1
+              "op": "preventNextDamage",
+              "gainLife": 1
             }
           ]
         }
@@ -3761,6 +3781,7 @@
           "effects": [
             {
               "op": "setPreventNextDestroy",
+              "optional": true,
               "target": "$target",
               "amount": 1,
               "gainLife": 2
@@ -4239,8 +4260,17 @@
               "op": "pendingActionIsOpponent"
             },
             {
-              "op": "pendingActionKind",
-              "kind": "spell"
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "pendingActionKind",
+                  "kind": "spell"
+                },
+                {
+                  "op": "pendingActionKind",
+                  "kind": "setSpell"
+                }
+              ]
             }
           ],
           "cost": [
@@ -5197,6 +5227,7 @@
             },
             {
               "op": "moveSelected",
+              "discard": true,
               "var": "ninpo",
               "to": "drop",
               "log": "discard"
@@ -5242,11 +5273,11 @@
               "deck",
               "drop"
             ],
-            "amount": 1
+            "amount": 1,
+            "faceDown": true
           }
         ]
       },
-      "uniqueSet": true,
       "abilities": [
         {
           "id": "bt02-s012-use-hiken",

@@ -151,7 +151,7 @@
       ],
       "cannotReturnToHand": true,
       "destroyImmunity": {
-        "fromEffect": true
+        "from": {}
       }
     },
     {
@@ -240,7 +240,8 @@
                 ]
               },
               "title": "夢魔の血",
-              "lead": "手札に加える《英雄》の魔法かアイテムを選んでください。"
+              "lead": "手札に加える《英雄》の魔法かアイテムを選んでください。",
+              "orderRest": true
             }
           ],
           "limit": {
@@ -332,6 +333,7 @@
       "abilities": [
         {
           "id": "bt04-0006-spirit-strike",
+          "label": "霊撃",
           "kind": "triggered",
           "event": "destroyByAttack",
           "effects": [
@@ -1532,6 +1534,7 @@
               "then": [
                 {
                   "op": "moveSelected",
+                  "discard": true,
                   "var": "d",
                   "to": "drop"
                 },
@@ -1648,8 +1651,7 @@
                 "left",
                 "center",
                 "right"
-              ],
-              "emptyOnly": true
+              ]
             },
             {
               "op": "callSelected",
@@ -1740,7 +1742,7 @@
               },
               "nullifyAbilities": true,
               "ignoreSoulguard": true,
-              "ignoreDestroyImmunity": true
+              "ignoreOwnDestroyImmunity": true
             },
             {
               "op": "destroyAll"
@@ -1865,24 +1867,14 @@
               "amount": 3
             }
           ],
-          "script": [
+          "effects": [
             {
-              "op": "selectCards",
-              "var": "m",
-              "from": "field",
-              "controller": "self",
+              "op": "grantKeyword",
+              "scope": "self",
               "filter": {
                 "cardType": "monster",
                 "attribute": "ワイダーサカー"
               },
-              "max": 99,
-              "require": false,
-              "title": "デュラハンの号令",
-              "lead": "『2回攻撃』を与える《ワイダーサカー》を選んでください。"
-            },
-            {
-              "op": "grantKeywordSelected",
-              "var": "m",
               "keyword": "doubleAttack",
               "duration": "turn"
             }
@@ -1943,8 +1935,17 @@
                         "op": "pendingActionIsOpponent"
                       },
                       {
-                        "op": "pendingActionCardType",
-                        "cardType": "spell"
+                        "op": "any",
+                        "conditions": [
+                          {
+                            "op": "pendingActionKind",
+                            "kind": "spell"
+                          },
+                          {
+                            "op": "pendingActionKind",
+                            "kind": "setSpell"
+                          }
+                        ]
                       }
                     ]
                   },
@@ -1962,6 +1963,7 @@
                       "op": "selectCards",
                       "var": "spell",
                       "from": "field",
+                      "controller": "any",
                       "filter": {
                         "cardType": "spell"
                       },
@@ -2075,25 +2077,6 @@
       ],
       "abilities": [
         {
-          "id": "bt04-0037-reduce",
-          "kind": "activated",
-          "timing": [
-            "counter"
-          ],
-          "cost": [
-            {
-              "op": "payGauge",
-              "amount": 2
-            }
-          ],
-          "effects": [
-            {
-              "op": "reduceNextDamage",
-              "amount": 2
-            }
-          ]
-        },
-        {
           "id": "bt04-0037-hand-equip",
           "kind": "activated",
           "timing": [
@@ -2102,11 +2085,25 @@
           "fromHandOnly": true,
           "effects": [
             {
-              "op": "equipSelf"
+              "op": "equipSelf",
+              "effectEquip": true
             }
           ]
         }
-      ]
+      ],
+      "continuous": [
+        {
+          "op": "damageReceivedReduction",
+          "amount": 2,
+          "optionalCost": [
+            {
+              "op": "payGauge",
+              "amount": 2
+            }
+          ]
+        }
+      ],
+      "_note": "【2026-10-09 オーナー裁定R10】『手札のこのカードを装備する』は能力の効果による装備（宣言を経ない装備）: equipSelf に effectEquip:true。バディギフトは得られず、バディコールの権利も消費しない（変身/搭乗/着任/必殺変身の宣言とは別）。"
     },
     {
       "id": "bt04-0038",
@@ -2131,6 +2128,7 @@
       "abilities": [
         {
           "id": "bt04-0038-spirit",
+          "label": "霊撃",
           "kind": "triggered",
           "event": "destroyByAttack",
           "effects": [
@@ -2178,6 +2176,7 @@
       "abilities": [
         {
           "id": "bt04-0039-spirit",
+          "label": "霊撃",
           "kind": "triggered",
           "event": "destroyByAttack",
           "effects": [
@@ -2343,7 +2342,8 @@
             }
           ],
           "limit": {
-            "scope": "turn"
+            "scope": "turn",
+            "key": "bt04-0042-draw"
           }
         }
       ]
@@ -2380,6 +2380,7 @@
       "abilities": [
         {
           "id": "bt04-0043-spirit",
+          "label": "霊撃",
           "kind": "triggered",
           "event": "destroyByAttack",
           "effects": [
@@ -2843,6 +2844,7 @@
               "then": [
                 {
                   "op": "moveSelected",
+                  "discard": true,
                   "var": "d",
                   "to": "drop"
                 },
@@ -3018,7 +3020,7 @@
               "op": "moveMatchingDropToHand",
               "amount": 1,
               "filter": {
-                "nameIncludes": "聖杯"
+                "name": "聖杯"
               }
             }
           ]
@@ -3134,6 +3136,12 @@
               "op": "dealDamage",
               "player": "opponent",
               "amount": 1
+            }
+          ],
+          "conditions": [
+            {
+              "op": "incomingDamagePending",
+              "excludeImpact": true
             }
           ]
         }
@@ -3286,6 +3294,11 @@
             {
               "op": "reduceNextDamage",
               "amount": 2
+            }
+          ],
+          "conditions": [
+            {
+              "op": "incomingDamagePending"
             }
           ]
         }
@@ -3494,11 +3507,17 @@
             },
             {
               "op": "destroy",
-              "target": "$target"
+              "target": "$target",
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
             }
           ]
         }
-      ]
+      ],
+      "_note": "【2026-10-09 オーナー裁定R8】『このカードを破壊する。そうしたら/破壊したら』: destroySelf の後続効果に lastDestroySucceeded ゲートを追加（破壊耐性やゲージ/手札へ移る置換で破壊にならなかったら後半を行わない。ソウルガード等で場に残った場合は破壊成功＝後半を行う［2026-10-09 オーナー裁定］）。"
     },
     {
       "id": "bt04-0067",
@@ -3546,6 +3565,7 @@
       "abilities": [
         {
           "id": "bt04-0068-spirit-strike",
+          "label": "霊撃",
           "kind": "triggered",
           "event": "destroyByAttack",
           "effects": [
@@ -3667,6 +3687,11 @@
           "timing": [
             "counter"
           ],
+          "conditions": [
+            {
+              "op": "selfReceivedDamage"
+            }
+          ],
           "cost": [
             {
               "op": "payGauge",
@@ -3772,6 +3797,11 @@
           "timing": [
             "counter"
           ],
+          "conditions": [
+            {
+              "op": "ownMonsterDestroyPending"
+            }
+          ],
           "cost": [
             {
               "op": "payGauge",
@@ -3798,7 +3828,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "【pt-fix-d 2026-10-14】『君の場のモンスターが破壊される時に使える』=ownMonsterDestroyPending（自分の場のモンスターが攻撃されている／相手の宣言に自分の場を破壊しうる op がある時だけ）。"
     },
     {
       "id": "bt04-0074",
@@ -4322,22 +4353,11 @@
                   "description": "君の場のモンスター全てを、そのターン中、攻撃力＋5000する。",
                   "script": [
                     {
-                      "op": "selectCards",
-                      "var": "myMonsters",
-                      "from": "field",
-                      "controller": "self",
+                      "op": "modifyStats",
+                      "scope": "self",
                       "filter": {
                         "cardType": "monster"
                       },
-                      "min": 0,
-                      "max": 3,
-                      "require": false,
-                      "title": "攻撃力+5000の対象",
-                      "lead": "君の場のモンスター全てを選んでください（全体強化）。"
-                    },
-                    {
-                      "op": "modifySelectedStats",
-                      "var": "myMonsters",
                       "power": 5000,
                       "duration": "turn"
                     }
@@ -4631,7 +4651,8 @@
                 "center",
                 "right"
               ],
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelected",
@@ -4900,24 +4921,13 @@
               "op": "ownCenterEmpty"
             },
             {
-              "op": "any",
-              "conditions": [
-                {
-                  "op": "pendingAttackDefenderIsSelf"
-                },
-                {
-                  "op": "pendingActionResponderIsSelf"
-                }
-              ]
+              "op": "incomingDamagePending"
             }
           ],
           "effects": [
             {
-              "op": "preventNextDamage"
-            },
-            {
-              "op": "gainLife",
-              "amount": 1
+              "op": "preventNextDamage",
+              "gainLife": 1
             }
           ]
         }
@@ -5077,20 +5087,28 @@
               "op": "turnOwnerIsSelf"
             }
           ],
-          "cost": [
-            {
-              "op": "destroyOwnMonster",
-              "amount": 1,
-              "excludeSource": true,
-              "filter": {
-                "nameIncludes": "煉獄騎士団"
-              }
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "excludeSource": true,
+            "filter": {
+              "cardType": "monster",
+              "nameIncludes": "煉獄騎士団"
             }
-          ],
+          },
           "effects": [
             {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
               "op": "standTarget",
-              "target": "$self"
+              "target": "$self",
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
             }
           ]
         }
@@ -5241,7 +5259,7 @@
       ],
       "cannotReturnToHand": true,
       "destroyImmunity": {
-        "fromEffect": true
+        "from": {}
       }
     },
     {
@@ -5434,8 +5452,7 @@
                 "left",
                 "center",
                 "right"
-              ],
-              "emptyOnly": true
+              ]
             },
             {
               "op": "callSelected",
@@ -5526,7 +5543,7 @@
               },
               "nullifyAbilities": true,
               "ignoreSoulguard": true,
-              "ignoreDestroyImmunity": true
+              "ignoreOwnDestroyImmunity": true
             },
             {
               "op": "destroyAll"
@@ -5599,6 +5616,7 @@
       "abilities": [
         {
           "id": "bt04-s008-spirit-strike",
+          "label": "霊撃",
           "kind": "triggered",
           "event": "destroyByAttack",
           "effects": [
@@ -5646,6 +5664,7 @@
       "abilities": [
         {
           "id": "bt04-s009-spirit",
+          "label": "霊撃",
           "kind": "triggered",
           "event": "destroyByAttack",
           "effects": [

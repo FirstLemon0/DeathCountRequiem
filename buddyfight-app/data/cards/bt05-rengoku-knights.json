@@ -326,7 +326,6 @@
       "keywords": [
         "set"
       ],
-      "uniqueSet": true,
       "costs": {
         "cast": [
           {
@@ -340,10 +339,8 @@
               "deck",
               "drop"
             ],
-            "amount": 1
-          },
-          {
-            "op": "shuffleDeck"
+            "amount": 1,
+            "faceDown": true
           }
         ]
       },
@@ -384,7 +381,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "D8(2026-10): costs.cast の shuffleDeck はコストハンドラに無い op で黙殺されていたため削除（「デッキを見たら、デッキをシャッフルする」は putCardToSoul コストが deck から選んだ時に moveCostEntriesToSoul でシャッフル済み＝重複不要）。原文「裏向きでこのカードのソウルに置く」に合わせ putCardToSoul に faceDown:true を付与。"
     },
     {
       "id": "bt05-0007",
@@ -635,22 +633,39 @@
               "op": "turnOwnerIsSelf"
             }
           ],
-          "cost": [
+          "script": [
             {
-              "op": "destroyOwnMonster",
+              "op": "selectCards",
+              "var": "sac",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "煉獄騎士団"
+              },
               "amount": 1,
               "excludeSource": true,
-              "filter": {
-                "nameIncludes": "煉獄騎士団"
-              }
-            }
-          ],
-          "effects": [
+              "title": "煉獄騎士団 ガイラムランス・ドラゴン",
+              "lead": "破壊する君の場のカード名に「煉獄騎士団」を含むモンスターを１枚選んでください。"
+            },
             {
-              "op": "modifyStats",
-              "target": "$self",
-              "critical": 1,
-              "duration": "turn"
+              "op": "destroySelected",
+              "var": "sac",
+              "require": false
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "modifyStats",
+                  "target": "$self",
+                  "critical": 1,
+                  "duration": "turn"
+                }
+              ]
             }
           ],
           "limit": {
@@ -856,6 +871,7 @@
           "id": "bt05-0014-battle-end-return",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "returnToHand",
@@ -1016,7 +1032,8 @@
               "var": "call72",
               "payCost": "call",
               "chooseZones": true,
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -1274,23 +1291,36 @@
             "counter",
             "main"
           ],
-          "cost": [
-            {
-              "op": "destroySource"
-            }
-          ],
-          "target": {
-            "type": "fieldCard",
-            "controller": "opponent",
-            "filter": {
-              "cardType": "monster",
-              "sizeLte": 1
-            }
-          },
-          "effects": [
+          "script": [
             {
               "op": "destroy",
-              "target": "$target"
+              "target": "$self"
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "selectCards",
+                  "var": "oppTarget",
+                  "from": "field",
+                  "controller": "opponent",
+                  "filter": {
+                    "cardType": "monster",
+                    "sizeLte": 1
+                  },
+                  "amount": 1,
+                  "title": "デスルーラー グリューエン",
+                  "lead": "破壊する相手の場のサイズ１以下のモンスター１枚を選んでください。"
+                },
+                {
+                  "op": "destroySelected",
+                  "var": "oppTarget",
+                  "require": false
+                }
+              ]
             }
           ]
         }
@@ -1628,16 +1658,9 @@
       "defense": 1000,
       "flavor": "『D・R・システム』を使ってくれ！",
       "costs": {
-        "call": [
-          {
-            "op": "payGauge",
-            "amount": 1
-          }
-        ]
+        "call": []
       },
-      "callCost": {
-        "gauge": 1
-      },
+      "callCost": {},
       "keywords": [
         "penetrate"
       ],
@@ -1646,6 +1669,7 @@
           "id": "bt05-0029-missile-launch",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "returnSelfToDeckBottom"
@@ -1792,7 +1816,10 @@
             "attribute": "魔術師"
           },
           "payOp": "payGauge",
-          "amount": 1
+          "amount": 1,
+          "callFromZoneIn": [
+            "hand"
+          ]
         }
       ]
     },
@@ -1960,7 +1987,8 @@
               "zones": [
                 "center"
               ],
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -2043,7 +2071,6 @@
       "keywords": [
         "set"
       ],
-      "uniqueSet": true,
       "abilities": [
         {
           "id": "bt05-0037-nullify-spell",
@@ -2056,8 +2083,17 @@
               "op": "pendingActionIsOpponent"
             },
             {
-              "op": "pendingActionCardType",
-              "cardType": "spell"
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "pendingActionKind",
+                  "kind": "spell"
+                },
+                {
+                  "op": "pendingActionKind",
+                  "kind": "setSpell"
+                }
+              ]
             }
           ],
           "cost": [
@@ -2347,13 +2383,15 @@
                 "powerGte": 5000
               },
               "amount": 1,
-              "require": true,
+              "require": false,
               "title": "秘剣 彗星",
-              "lead": "破壊する攻撃モンスターを選んでください。"
+              "lead": "破壊する攻撃モンスターを選んでください。",
+              "allowEmpty": true
             },
             {
               "op": "destroySelected",
-              "var": "atk"
+              "var": "atk",
+              "require": false
             },
             {
               "op": "dealDamage",
@@ -2362,7 +2400,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝先頭の対象選択 selectCards に allowEmpty:true（候補が無ければ0枚で続行）＋消費 step require:false。"
     },
     {
       "id": "bt05-0043",
@@ -2425,13 +2464,15 @@
                 "cardType": "monster"
               },
               "amount": 1,
-              "require": true,
+              "require": false,
               "title": "秘剣 明星で破壊するモンスター",
-              "lead": "攻撃しているモンスターを選んでください。"
+              "lead": "攻撃しているモンスターを選んでください。",
+              "allowEmpty": true
             },
             {
               "op": "destroySelected",
-              "var": "atk"
+              "var": "atk",
+              "require": false
             },
             {
               "op": "dealDamage",
@@ -2440,7 +2481,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝先頭の対象選択 selectCards に allowEmpty:true（候補が無ければ0枚で続行）＋消費 step require:false。"
     },
     {
       "id": "bt05-0044",
@@ -2581,15 +2623,25 @@
             },
             {
               "op": "destroySelected",
-              "var": "sac"
+              "var": "sac",
+              "require": false
             },
             {
-              "op": "standTarget",
-              "target": "$self"
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "standTarget",
+                  "target": "$self"
+                }
+              ]
             }
           ]
         }
-      ]
+      ],
+      "_note": "【2026-10-09 オーナー裁定R8】『君の場の〜を破壊する。破壊したら』: 自分のモンスターの destroySelected を require:false にし後半を ifCondition(lastDestroySucceeded) で包んだ。旧形はソウルガードで場に残ると script が『盤面未変更の中断』扱いになり、ソウルを使わせたうえ使用回数/1ターン1回を消費しない穴があった。"
     },
     {
       "id": "bt05-0047",
@@ -4198,28 +4250,39 @@
             },
             {
               "op": "destroySelected",
-              "var": "ally"
+              "var": "ally",
+              "require": false
             },
             {
-              "op": "selectCards",
-              "var": "foe",
-              "from": "field",
-              "controller": "opponent",
-              "filter": {
-                "cardType": "monster"
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
               },
-              "amount": 1,
-              "require": true,
-              "title": "煉獄騎士団 クルーエル・コマンド",
-              "lead": "破壊する相手モンスターを選んでください。"
-            },
-            {
-              "op": "destroySelected",
-              "var": "foe"
+              "then": [
+                {
+                  "op": "selectCards",
+                  "var": "foe",
+                  "from": "field",
+                  "controller": "opponent",
+                  "filter": {
+                    "cardType": "monster"
+                  },
+                  "amount": 1,
+                  "require": false,
+                  "title": "煉獄騎士団 クルーエル・コマンド",
+                  "lead": "破壊する相手モンスターを選んでください。"
+                },
+                {
+                  "op": "destroySelected",
+                  "var": "foe",
+                  "require": false
+                }
+              ]
             }
           ]
         }
-      ]
+      ],
+      "_note": "【2026-10-09 オーナー裁定R8】『君の場の〜を破壊する。破壊したら』: 自分のモンスターの destroySelected を require:false にし後半を ifCondition(lastDestroySucceeded) で包んだ。旧形はソウルガードで場に残ると script が『盤面未変更の中断』扱いになり、ソウルを使わせたうえ使用回数/1ターン1回を消費しない穴があった。後半の相手側選択は require:false（相手の場に対象が無くても続く効果は解決する）。"
     },
     {
       "id": "bt05-0075",
@@ -4306,23 +4369,33 @@
             },
             {
               "op": "destroySelected",
-              "var": "ren"
+              "var": "ren",
+              "require": false
             },
             {
-              "op": "nullifyAttack"
-            },
-            {
-              "op": "dealDamage",
-              "player": "opponent",
-              "amountFrom": {
-                "source": "selectedCardStat",
-                "var": "ren",
-                "stat": "critical"
-              }
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "nullifyAttack"
+                },
+                {
+                  "op": "dealDamage",
+                  "player": "opponent",
+                  "amountFrom": {
+                    "source": "selectedCardStat",
+                    "var": "ren",
+                    "stat": "critical"
+                  }
+                }
+              ]
             }
           ]
         }
-      ]
+      ],
+      "_note": "【2026-10-09 オーナー裁定R8】『君の場の〜を破壊する。破壊したら』: 自分のモンスターの destroySelected を require:false にし後半を ifCondition(lastDestroySucceeded) で包んだ。旧形はソウルガードで場に残ると script が『盤面未変更の中断』扱いになり、ソウルを使わせたうえ使用回数/1ターン1回を消費しない穴があった。"
     },
     {
       "id": "bt05-0077",
@@ -4356,7 +4429,8 @@
             "filter": {
               "cardType": "monster",
               "sizeLte": 1
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -4367,9 +4441,11 @@
               "op": "gainLife",
               "amount": 1
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bt05-0078",
@@ -4449,32 +4525,34 @@
           "conditions": [
             {
               "op": "pendingAttackDefenderIsSelf"
-            }
-          ],
-          "script": [
+            },
             {
-              "op": "selectCards",
-              "var": "m",
-              "from": "field",
-              "controller": "self",
+              "op": "pendingAttackTargetMatches",
               "filter": {
                 "cardType": "monster",
                 "attribute": "死"
-              },
-              "amount": 1,
-              "require": true,
-              "title": "デスカウンター",
-              "lead": "防御力＋4000し『反撃』を与える《死》を選んでください。"
-            },
+              }
+            }
+          ],
+          "target": {
+            "type": "battleCard",
+            "role": "defender",
+            "controller": "self",
+            "filter": {
+              "cardType": "monster",
+              "attribute": "死"
+            }
+          },
+          "effects": [
             {
-              "op": "modifySelectedStats",
-              "var": "m",
+              "op": "modifyStats",
+              "target": "$target",
               "defense": 4000,
               "duration": "battle"
             },
             {
-              "op": "grantKeywordSelected",
-              "var": "m",
+              "op": "grantKeyword",
+              "target": "$target",
               "keyword": "counterattack",
               "duration": "battle"
             }
@@ -4557,6 +4635,10 @@
             {
               "op": "lastDestroyedCardMatches",
               "controller": "self",
+              "zoneIn": [
+                "left",
+                "right"
+              ],
               "filter": {
                 "nameIncludes": "デスルーラー",
                 "cardType": "monster"
@@ -4608,6 +4690,9 @@
           "conditions": [
             {
               "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "selfReceivedDamage"
             }
           ],
           "effects": [
@@ -4734,6 +4819,17 @@
                   1
                 ]
               }
+            },
+            {
+              "op": "targetMatches",
+              "zoneNot": "center",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "死",
+                "sizeIn": [
+                  1
+                ]
+              }
             }
           ],
           "script": [
@@ -4756,7 +4852,8 @@
                 "attribute": "死",
                 "sizeIn": [
                   1
-                ]
+                ],
+                "differentNameFromVar": "$target"
               },
               "amount": 1,
               "require": true,
@@ -4769,7 +4866,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "rev",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -5613,7 +5711,8 @@
             "role": null,
             "filter": {
               "attribute": "72柱"
-            }
+            },
+            "controller": "self"
           },
           "script": [
             {
@@ -5753,8 +5852,17 @@
               "op": "pendingActionIsOpponent"
             },
             {
-              "op": "pendingActionKind",
-              "kind": "spell"
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "pendingActionKind",
+                  "kind": "spell"
+                },
+                {
+                  "op": "pendingActionKind",
+                  "kind": "setSpell"
+                }
+              ]
             },
             {
               "op": "phaseIs",
@@ -6427,7 +6535,6 @@
       "keywords": [
         "set"
       ],
-      "uniqueSet": true,
       "continuous": [
         {
           "op": "modifyStats",
@@ -6458,7 +6565,6 @@
       "keywords": [
         "set"
       ],
-      "uniqueSet": true,
       "continuous": [
         {
           "op": "modifyStats",
@@ -7169,7 +7275,8 @@
               "var": "demons",
               "payCost": "call",
               "chooseZones": true,
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -7262,7 +7369,6 @@
       "keywords": [
         "set"
       ],
-      "uniqueSet": true,
       "castCost": {
         "gauge": 1
       },
@@ -7279,10 +7385,8 @@
               "deck",
               "drop"
             ],
-            "amount": 1
-          },
-          {
-            "op": "shuffleDeck"
+            "amount": 1,
+            "faceDown": true
           }
         ]
       },
@@ -7325,7 +7429,7 @@
           ]
         }
       ],
-      "_note": "【R-BR19(ブラウザレビュー bt05-B8) 出荷済み是正】別絵s007が base 0006 の cast cost 末尾の shuffleDeck を欠いていた（rules「デッキを見たらシャッフル」）→補完。"
+      "_note": "【R-BR19(ブラウザレビュー bt05-B8) 出荷済み是正】別絵s007が base 0006 の cast cost 末尾の shuffleDeck を欠いていた（rules「デッキを見たらシャッフル」）→補完。 D8(2026-10): costs.cast の shuffleDeck はコストハンドラに無い op で黙殺されていたため削除（「デッキを見たら、デッキをシャッフルする」は putCardToSoul コストが deck から選んだ時に moveCostEntriesToSoul でシャッフル済み＝重複不要）。原文「裏向きでこのカードのソウルに置く」に合わせ putCardToSoul に faceDown:true を付与。"
     },
     {
       "id": "bt05-s008",
@@ -7568,20 +7672,28 @@
               "op": "turnOwnerIsSelf"
             }
           ],
-          "cost": [
-            {
-              "op": "destroyOwnMonster",
-              "amount": 1,
-              "excludeSource": true,
-              "filter": {
-                "nameIncludes": "煉獄騎士団"
-              }
+          "target": {
+            "type": "fieldCard",
+            "controller": "self",
+            "excludeSource": true,
+            "filter": {
+              "cardType": "monster",
+              "nameIncludes": "煉獄騎士団"
             }
-          ],
+          },
           "effects": [
             {
+              "op": "destroy",
+              "target": "$target"
+            },
+            {
               "op": "standTarget",
-              "target": "$self"
+              "target": "$self",
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
             }
           ]
         }

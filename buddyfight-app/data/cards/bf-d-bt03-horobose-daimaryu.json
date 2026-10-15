@@ -27,6 +27,9 @@
         "■このカードが他の《太陽竜》と連携攻撃した時、このカードをスタンドする。",
         "■場のこのカードは破壊されず、手札に戻せず、能力は無効化されず、このカードはファイナルフェイズ中にも攻撃できる。"
       ],
+      "keywords": [
+        "releaseCondition"
+      ],
       "equipConditions": [
         {
           "op": "lifeLte",
@@ -72,7 +75,7 @@
           ]
         }
       ],
-      "cannotBeNullified": true,
+      "nullifyImmune": true,
       "cannotReturnToHand": true,
       "destroyImmunity": [
         {
@@ -81,12 +84,11 @@
           }
         },
         {
-          "from": {
-            "byEffect": true
-          }
+          "from": {}
         }
       ],
-      "canAttackInFinalPhase": true
+      "canAttackInFinalPhase": true,
+      "_note": " 【audit-cards-28 b074-1】『能力は無効化されず』は場の能力無効化耐性＝nullifyImmune:true（0003 と同形）。旧 cannotBeNullified は使用宣言(pendingAction)の打ち消し耐性で、能力無効化から守らず装備宣言の打ち消しを防いでいた。"
     },
     {
       "id": "bf-d-bt03-0002",
@@ -300,7 +302,7 @@
           }
         ]
       },
-      "cannotBeNullified": true,
+      "nullifyImmune": true,
       "cannotReturnToHand": true,
       "destroyImmunity": [
         {
@@ -309,14 +311,14 @@
           }
         },
         {
-          "from": {
-            "byEffect": true
-          }
+          "from": {}
         }
       ],
       "keywords": [
-        "quadrupleAttack"
-      ]
+        "quadrupleAttack",
+        "releaseCondition"
+      ],
+      "_note": "【audit-cards-28 b074-1 同系是正】『場のこのカードは…能力は無効化されない』は場の能力無効化耐性＝nullifyImmune:true（X2-SS01/0003 と同形）。旧 cannotBeNullified は使用宣言(pendingAction)の打ち消し耐性で、能力無効化から守らず装備宣言の打ち消しを防いでいた。"
     },
     {
       "id": "bf-d-bt03-0006",
@@ -999,7 +1001,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -1095,7 +1098,8 @@
               "var": "call",
               "payCost": "call",
               "chooseZones": true,
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ],
           "limit": {
@@ -1177,7 +1181,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "call",
               "payCost": "call",
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -1334,7 +1339,8 @@
               "var": "call",
               "payCost": "call",
               "chooseZones": true,
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ],
           "limit": {
@@ -1428,7 +1434,8 @@
               "grantConditionalSize": {
                 "size": 0,
                 "unconditional": true
-              }
+              },
+              "overwriteWhenFull": true
             }
           ],
           "limit": {
@@ -1586,7 +1593,7 @@
           "label": "探求心",
           "kind": "triggered",
           "event": "enter",
-          "conditions": [
+          "ifConditions": [
             {
               "op": "any",
               "conditions": [
@@ -2040,7 +2047,8 @@
                   "op": "selectZone",
                   "var": "zone",
                   "cardVar": "mummy",
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "payCardCostForSelection",
@@ -2365,23 +2373,16 @@
                   },
                   "script": [
                     {
-                      "op": "selectCards",
-                      "var": "discard",
-                      "from": "hand",
-                      "controller": "self",
-                      "filter": {
-                        "attribute": "星"
-                      },
-                      "amount": 1,
-                      "require": true,
-                      "title": "捨てる《星》",
-                      "lead": "捨てる《星》を1枚選んでください。"
-                    },
-                    {
-                      "op": "moveSelected",
-                      "var": "discard",
-                      "to": "drop",
-                      "log": "discard"
+                      "op": "payCost",
+                      "cost": [
+                        {
+                          "op": "discardHand",
+                          "amount": 1,
+                          "filter": {
+                            "attribute": "星"
+                          }
+                        }
+                      ]
                     },
                     {
                       "op": "draw",
@@ -2404,23 +2405,16 @@
                   },
                   "script": [
                     {
-                      "op": "selectCards",
-                      "var": "discard",
-                      "from": "hand",
-                      "controller": "self",
-                      "filter": {
-                        "attribute": "星"
-                      },
-                      "amount": 2,
-                      "require": true,
-                      "title": "捨てる《星》",
-                      "lead": "捨てる《星》を2枚選んでください。"
-                    },
-                    {
-                      "op": "moveSelected",
-                      "var": "discard",
-                      "to": "drop",
-                      "log": "discard"
+                      "op": "payCost",
+                      "cost": [
+                        {
+                          "op": "discardHand",
+                          "amount": 2,
+                          "filter": {
+                            "attribute": "星"
+                          }
+                        }
+                      ]
                     },
                     {
                       "op": "draw",
@@ -2589,7 +2583,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -3018,31 +3013,16 @@
           "kind": "triggered",
           "event": "battleEnd",
           "optional": true,
-          "script": [
+          "cost": [
             {
-              "op": "selectCards",
-              "var": "d",
-              "from": "hand",
-              "controller": "self",
-              "max": 1,
-              "require": false,
-              "title": "輝光星銃 ドラグナーパルス",
-              "lead": "捨てる手札を選んでください。"
-            },
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "effects": [
             {
-              "op": "ifSelection",
-              "var": "d",
-              "then": [
-                {
-                  "op": "moveSelected",
-                  "var": "d",
-                  "to": "drop"
-                },
-                {
-                  "op": "draw",
-                  "amount": 1
-                }
-              ]
+              "op": "draw",
+              "amount": 1
             }
           ]
         }
@@ -3078,7 +3058,9 @@
       "callStack": {
         "filter": {
           "cardType": "monster",
-          "baseSize": 3
+          "sizeIn": [
+            3
+          ]
         }
       },
       "abilities": [
@@ -3391,13 +3373,15 @@
       "abilities": [
         {
           "id": "bf-d-bt03-0047-reikigeki",
+          "label": "霊撃",
           "kind": "triggered",
           "event": "allyMonsterDestroyedByAttack",
           "effects": [
             {
               "op": "dealDamage",
               "player": "opponent",
-              "amount": 1
+              "amount": 1,
+              "spiritStrike": true
             }
           ]
         }
@@ -3536,7 +3520,8 @@
               "var": "call",
               "payCost": "call",
               "chooseZones": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             },
             {
               "op": "shuffleDeck",
@@ -4503,7 +4488,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "call",
               "payCost": "call",
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -4661,8 +4647,17 @@
                         "op": "pendingActionIsOpponent"
                       },
                       {
-                        "op": "pendingActionCardType",
-                        "cardType": "spell"
+                        "op": "any",
+                        "conditions": [
+                          {
+                            "op": "pendingActionKind",
+                            "kind": "spell"
+                          },
+                          {
+                            "op": "pendingActionKind",
+                            "kind": "setSpell"
+                          }
+                        ]
                       }
                     ]
                   },
@@ -4680,6 +4675,7 @@
                       "op": "selectCards",
                       "var": "spell",
                       "from": "field",
+                      "controller": "any",
                       "filter": {
                         "cardType": "spell"
                       },
@@ -4837,7 +4833,8 @@
           ],
           "effects": [
             {
-              "op": "equipSelf"
+              "op": "equipSelf",
+              "effectEquip": true
             }
           ],
           "limit": {
@@ -4846,7 +4843,7 @@
           }
         }
       ],
-      "_note": "『剣の呼び声』は named-once（hand-cast系=fromHandOnly:trueのためabilityLimitKeyが同名カード単位で自動合算＝shared不要。§C10）。テンプレはbf-h-eb02-0037『紅蓮転身！』と同型。"
+      "_note": "『剣の呼び声』は named-once（hand-cast系=fromHandOnly:trueのためabilityLimitKeyが同名カード単位で自動合算＝shared不要。§C10）。テンプレはbf-h-eb02-0037『紅蓮転身！』と同型。 ／【2026-10-09 オーナー裁定R10】『手札のこのカードを装備する』は能力の効果による装備（宣言を経ない装備）: equipSelf に effectEquip:true。バディギフトは得られず、バディコールの権利も消費しない（変身/搭乗/着任/必殺変身の宣言とは別）。"
     },
     {
       "id": "bf-d-bt03-0071",
@@ -5287,7 +5284,9 @@
           "effects": [
             {
               "op": "setLifeZeroSafeguard",
-              "life": 1
+              "life": 1,
+              "once": false,
+              "duration": "attackPhase"
             }
           ],
           "limit": {
@@ -5296,7 +5295,7 @@
           }
         }
       ],
-      "_note": "近似(design C7): 公式は「そのアタックフェイズ中」限定だが setLifeZeroSafeguard はターン終了までクリアされない(ターン粒度)。過保護方向の近似で実害小。"
+      "_note": "「そのアタックフェイズ中、君のライフが０になるなら、かわりに１」＝『次に』の無い期間型。setLifeZeroSafeguard{once:false（消費しない）, duration:\"attackPhase\"（アタックフェイズ中のみ有効）}（監査 rule-damage-5 で旧近似=一回限り・ターン粒度を是正）。"
     },
     {
       "id": "bf-d-bt03-0076",
@@ -5650,6 +5649,7 @@
           "effects": [
             {
               "op": "setPreventNextDestroy",
+              "optional": true,
               "target": "$target",
               "amount": 1,
               "gainLife": 1
@@ -6904,6 +6904,7 @@
           "id": "bf-d-bt03-0104-battle-boost",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "counter",
             "main"
@@ -7886,6 +7887,7 @@
           "id": "bf-d-bt03-0117-hand-gauge",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "main"
           ],
@@ -7930,7 +7932,9 @@
           "conditions": [
             {
               "op": "turnOwnerIsSelf"
-            },
+            }
+          ],
+          "ifConditions": [
             {
               "op": "flagNameIs",
               "name": "ドラゴン・ツヴァイ"
@@ -7980,7 +7984,7 @@
       "rarity": "究極レア",
       "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/dbt_03_s001.png",
       "altArtOf": "bf-d-bt03-0001",
-      "_note": "究極レア別絵再録（基カード=bf-d-bt03-0001・能力同一）",
+      "_note": "究極レア別絵再録（基カード=bf-d-bt03-0001・能力同一） 【audit-cards-28 b074-1】『能力は無効化されず』は場の能力無効化耐性＝nullifyImmune:true（0003 と同形）。旧 cannotBeNullified は使用宣言(pendingAction)の打ち消し耐性で、能力無効化から守らず装備宣言の打ち消しを防いでいた。",
       "world": "ドラゴンW",
       "attributes": [
         "太陽竜",
@@ -7993,6 +7997,9 @@
         "■【装備コスト】ゲージ２を払う。",
         "■このカードが他の《太陽竜》と連携攻撃した時、このカードをスタンドする。",
         "■場のこのカードは破壊されず、手札に戻せず、能力は無効化されず、このカードはファイナルフェイズ中にも攻撃できる。"
+      ],
+      "keywords": [
+        "releaseCondition"
       ],
       "equipConditions": [
         {
@@ -8039,7 +8046,7 @@
           ]
         }
       ],
-      "cannotBeNullified": true,
+      "nullifyImmune": true,
       "cannotReturnToHand": true,
       "destroyImmunity": [
         {
@@ -8048,9 +8055,7 @@
           }
         },
         {
-          "from": {
-            "byEffect": true
-          }
+          "from": {}
         }
       ],
       "canAttackInFinalPhase": true
@@ -8132,7 +8137,7 @@
       "rarity": "究極レア",
       "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/dbt_03_s003.png",
       "altArtOf": "bf-d-bt03-0005",
-      "_note": "究極レア別絵再録（基カード=bf-d-bt03-0005・能力同一）",
+      "_note": "究極レア別絵再録（基カード=bf-d-bt03-0005・能力同一） 【audit-cards-28 b074-1 同系是正】『場のこのカードは…能力は無効化されない』は場の能力無効化耐性＝nullifyImmune:true（X2-SS01/0003 と同形）。旧 cannotBeNullified は使用宣言(pendingAction)の打ち消し耐性で、能力無効化から守らず装備宣言の打ち消しを防いでいた。",
       "world": "スタードラゴンW",
       "attributes": [
         "武器"
@@ -8166,7 +8171,7 @@
           }
         ]
       },
-      "cannotBeNullified": true,
+      "nullifyImmune": true,
       "cannotReturnToHand": true,
       "destroyImmunity": [
         {
@@ -8175,13 +8180,12 @@
           }
         },
         {
-          "from": {
-            "byEffect": true
-          }
+          "from": {}
         }
       ],
       "keywords": [
-        "quadrupleAttack"
+        "quadrupleAttack",
+        "releaseCondition"
       ]
     },
     {

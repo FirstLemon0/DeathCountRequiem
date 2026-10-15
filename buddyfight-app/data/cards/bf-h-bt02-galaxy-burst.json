@@ -95,14 +95,6 @@
             "counter"
           ],
           "optional": true,
-          "conditions": [
-            {
-              "op": "pendingAttackBySource"
-            },
-            {
-              "op": "attackingAlone"
-            }
-          ],
           "cost": [
             {
               "op": "payGauge",
@@ -111,8 +103,10 @@
           ],
           "effects": [
             {
-              "op": "markPendingAttackUnstoppable",
-              "onlyNullify": true
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "singleAttackCannotBeNullified",
+              "duration": "turn"
             }
           ]
         }
@@ -120,7 +114,8 @@
       "deckAnyFlag": {
         "homeWorld": "カタナW",
         "awayMaxCopies": 1
-      }
+      },
+      "_note": "【監査cards-05 b013-1】『そのターン中、このカードが１枚で攻撃している攻撃は無効化されない』はターン持続＝grantKeyword singleAttackCannotBeNullified duration:turn（判定は src/10 pendingAttackNullifyBlocker）。【対抗】が使える時ならいつでも起動可（旧=自身の単独攻撃中限定・その1回の攻撃のみ）。"
     },
     {
       "id": "bf-h-bt02-0003",
@@ -209,7 +204,6 @@
       "keywords": [
         "doubleAttack"
       ],
-      "nullifyImmune": true,
       "continuous": [
         {
           "op": "nullifyAbilities",
@@ -229,7 +223,8 @@
               ],
               "amount": 7
             }
-          ]
+          ],
+          "cannotBeNullified": true
         }
       ]
     },
@@ -281,7 +276,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -1113,7 +1109,8 @@
                       "op": "selectZone",
                       "var": "z",
                       "cardVar": "call",
-                      "emptyOnly": true
+                      "emptyOnly": true,
+                      "overwriteWhenFull": true
                     },
                     {
                       "op": "payCardCostForSelection",
@@ -1154,7 +1151,8 @@
                       "op": "selectZone",
                       "var": "z",
                       "cardVar": "call",
-                      "emptyOnly": true
+                      "emptyOnly": true,
+                      "overwriteWhenFull": true
                     },
                     {
                       "op": "payCardCostForSelection",
@@ -1220,7 +1218,12 @@
               "op": "modifyStats",
               "target": "$self",
               "critical": 1,
-              "duration": "turn"
+              "duration": "turn",
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
             }
           ],
           "limit": {
@@ -1228,7 +1231,8 @@
             "key": "bf-h-bt02-0020-thunder-claw"
           }
         }
-      ]
+      ],
+      "_note": "【監査cards-05 b014-4】『破壊したら』＝modifyStats に lastDestroySucceeded ゲート（ソウルガード/破壊耐性で生存なら打撃力は上がらない）。"
     },
     {
       "id": "bf-h-bt02-0021",
@@ -1271,7 +1275,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-h-bt02-0021-lorentz"
+            "key": "bf-h-bt02-0021-lorentz",
+            "shared": true
           }
         }
       ]
@@ -1607,7 +1612,8 @@
               "controller": "self",
               "filter": {
                 "cardType": "spell",
-                "keyword": "set"
+                "keyword": "set",
+                "world": "ドラゴンW"
               },
               "min": 0,
               "max": 1,
@@ -1883,7 +1889,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -2022,7 +2029,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -2226,7 +2234,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelected",
@@ -2336,13 +2345,10 @@
                 }
               ]
             }
-          ],
-          "limit": {
-            "scope": "turn",
-            "key": "bf-h-bt02-0037-choice"
-          }
+          ]
         }
-      ]
+      ],
+      "_note": "【監査cards-05 b014-5】公式テキストに使用回数制限は無いため limit を削除。"
     },
     {
       "id": "bf-h-bt02-0038",
@@ -2800,9 +2806,16 @@
               "op": "bothCentersEmpty"
             },
             {
-              "op": "ownFieldMonsterAttributeSizeGte",
-              "attribute": "ネオドラゴン",
-              "size": 2
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "field",
+              "filter": {
+                "cardType": "monster",
+                "attribute": "ネオドラゴン",
+                "sizeGte": 2
+              },
+              "cmp": "gte",
+              "amount": 1
             }
           ],
           "cost": [
@@ -3102,7 +3115,8 @@
           ],
           "target": {
             "type": "battleCard",
-            "role": "attacker"
+            "role": "attacker",
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -3112,9 +3126,11 @@
               "op": "destroy",
               "target": "$target"
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-h-bt02-0052",
@@ -3142,6 +3158,17 @@
           "conditions": [
             {
               "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "monster"
+            },
+            {
+              "op": "pendingAttackTargetMatches",
+              "filter": {
+                "cardType": "monster",
+                "sizeLte": 2
+              }
             }
           ],
           "target": {
@@ -3150,7 +3177,8 @@
             "filter": {
               "cardType": "monster",
               "sizeLte": 2
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -3161,9 +3189,11 @@
               "op": "putTopDeckToGauge",
               "amount": 1
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-h-bt02-0053",
@@ -3210,7 +3240,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-h-bt02-0053-roar"
+            "key": "bf-h-bt02-0053-roar",
+            "shared": true
           }
         }
       ]
@@ -3260,18 +3291,14 @@
           "id": "bf-h-bt02-0054-turnend-destroy",
           "kind": "triggered",
           "event": "turnEnd",
-          "conditions": [
-            {
-              "op": "turnOwnerIsSelf"
-            }
-          ],
           "effects": [
             {
               "op": "destroySelf"
             }
           ]
         }
-      ]
+      ],
+      "_note": "【監査cards-05 b014-6】原文『■ターン終了時』（『君の』なし）＝どちらのターン終了時にも自壊。turnOwnerIsSelf を削除。"
     },
     {
       "id": "bf-h-bt02-0055",
@@ -3379,18 +3406,14 @@
           "id": "bf-h-bt02-0056-turnend-destroy",
           "kind": "triggered",
           "event": "turnEnd",
-          "conditions": [
-            {
-              "op": "turnOwnerIsSelf"
-            }
-          ],
           "effects": [
             {
               "op": "destroySelf"
             }
           ]
         }
-      ]
+      ],
+      "_note": "【監査cards-05 b014-6】原文『■ターン終了時』（『君の』なし）＝どちらのターン終了時にも自壊。turnOwnerIsSelf を削除。"
     },
     {
       "id": "bf-h-bt02-0057",
@@ -3468,7 +3491,8 @@
             "role": "attacker",
             "filter": {
               "cardType": "monster"
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -3478,9 +3502,11 @@
               "op": "destroy",
               "target": "$target"
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-h-bt02-0059",
@@ -4045,8 +4071,17 @@
                   ]
                 },
                 {
-                  "op": "pendingActionKind",
-                  "kind": "spell"
+                  "op": "any",
+                  "conditions": [
+                    {
+                      "op": "pendingActionKind",
+                      "kind": "spell"
+                    },
+                    {
+                      "op": "pendingActionKind",
+                      "kind": "setSpell"
+                    }
+                  ]
                 }
               ]
             }
@@ -4248,11 +4283,11 @@
         "■このカードが《ネオドラゴン》のソウルにあるなら、その《ネオドラゴン》とバトルしている元々のサイズが２以下のモンスターの能力全てを無効化する。この能力は無効化されない。",
         "『星合体』（場のこのカードを、君の場の《ネオドラゴン》のソウルに入れる）"
       ],
-      "nullifyImmune": true,
       "soulContinuous": [
         {
           "op": "nullifyBattlingMonsterAbilities",
-          "originalSizeLte": 2
+          "originalSizeLte": 2,
+          "cannotBeNullified": true
         }
       ],
       "abilities": [
@@ -4400,7 +4435,10 @@
           "cost": [
             {
               "op": "discardHand",
-              "amount": 1
+              "amount": 1,
+              "filter": {
+                "world": "ジェネリック"
+              }
             }
           ],
           "effects": [
@@ -4794,18 +4832,14 @@
           "id": "bf-h-bt02-0085-turnend-destroy",
           "kind": "triggered",
           "event": "turnEnd",
-          "conditions": [
-            {
-              "op": "turnOwnerIsSelf"
-            }
-          ],
           "effects": [
             {
               "op": "destroySelf"
             }
           ]
         }
-      ]
+      ],
+      "_note": "【監査cards-05 b014-6】原文『■ターン終了時』（『君の』なし）＝どちらのターン終了時にも自壊。turnOwnerIsSelf を削除。"
     },
     {
       "id": "bf-h-bt02-0086",
@@ -5605,7 +5639,8 @@
             {
               "op": "ownFieldCardCountGte",
               "filter": {
-                "cardType": "monster"
+                "cardType": "monster",
+                "world": "ジェネリック"
               },
               "amount": 2
             }
@@ -6103,7 +6138,12 @@
               "op": "modifyStats",
               "target": "$self",
               "critical": 1,
-              "duration": "turn"
+              "duration": "turn",
+              "conditions": [
+                {
+                  "op": "lastDestroySucceeded"
+                }
+              ]
             }
           ],
           "limit": {
@@ -6111,7 +6151,8 @@
             "key": "bf-h-bt02-0113-thunder-claw"
           }
         }
-      ]
+      ],
+      "_note": "【監査cards-05 b014-4】『破壊したら』＝modifyStats に lastDestroySucceeded ゲート（ソウルガード/破壊耐性で生存なら打撃力は上がらない）。"
     },
     {
       "id": "bf-h-bt02-0114",
@@ -6137,7 +6178,7 @@
       "rarity": "究極レア",
       "imageUrl": "https://fc-buddyfight.com/wordpress/wp-content/images/card/hbt_02_s001.png",
       "altArtOf": "bf-h-bt02-0002",
-      "_note": "究極レア別絵再録（基カード=bf-h-bt02-0002・能力同一）",
+      "_note": "究極レア別絵再録（基カード=bf-h-bt02-0002・能力同一） 【監査cards-05 b013-1】『そのターン中、このカードが１枚で攻撃している攻撃は無効化されない』はターン持続＝grantKeyword singleAttackCannotBeNullified duration:turn（判定は src/10 pendingAttackNullifyBlocker）。【対抗】が使える時ならいつでも起動可（旧=自身の単独攻撃中限定・その1回の攻撃のみ）。",
       "size": 3,
       "power": 8000,
       "critical": 3,
@@ -6170,14 +6211,6 @@
             "counter"
           ],
           "optional": true,
-          "conditions": [
-            {
-              "op": "pendingAttackBySource"
-            },
-            {
-              "op": "attackingAlone"
-            }
-          ],
           "cost": [
             {
               "op": "payGauge",
@@ -6186,8 +6219,10 @@
           ],
           "effects": [
             {
-              "op": "markPendingAttackUnstoppable",
-              "onlyNullify": true
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "singleAttackCannotBeNullified",
+              "duration": "turn"
             }
           ]
         }
@@ -6248,7 +6283,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",

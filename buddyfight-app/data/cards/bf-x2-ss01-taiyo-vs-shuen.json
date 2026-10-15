@@ -196,9 +196,7 @@
           }
         },
         {
-          "from": {
-            "byEffect": true
-          }
+          "from": {}
         }
       ],
       "keywords": [
@@ -230,7 +228,8 @@
                     "attribute": "太陽竜"
                   }
                 }
-              ]
+              ],
+              "anchor": "card"
             },
             {
               "op": "selectCards",
@@ -257,12 +256,13 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             }
           ]
         }
       ],
-      "_note": "ドラゴンフォース “超太陽の型”（単一ワールド表記だがworlds:[ドラゴンW,ダークネスドラゴンW,スタードラゴンW]=skeleton meta、attrs:太陽竜/星/黒竜/武器、アイテム攻/クリ=7000/2、印字【装備コスト】行なし=無償装備=costsキー省略、equipConditionsのみでゲート）。①『解放条件！』〔君の場にカード名に「バルソレイユ」を含むサイズ3のモンスターがいる〕=equipConditions:[ownFieldCardExists{filter:{nameIncludes:バルソレイユ,cardType:monster,sizeIn:[3]}}]（data/cards/bf-d-bt03-horobose-daimaryu.json D-BT03/0001ドラゴンフォース(ドラゴンワールド)の解放条件！確立構造。sizeIn:[3]は厳密サイズ一致の確立キー、sizeLte/sizeGteの単純併用ではなくsizeIn使用がD系DB多数実例）。あわせて自身に keywords:[releaseCondition] を付与（data/cards/bf-hd-pr.json PR/0397デアデビルフォース・data/cards/bf-x2-bt01-legend-buddies.json 複数枚が確立した『解放条件！を持つアイテム自身を他カードのfilter.keyword:releaseConditionから検出可能にする』ための自己タグ。data/cards/bf-x-bt01-reborn-of-satan.json X-BT01/0020バルソレイユ“エターナル・バルブラスター！”の『君が解放条件！を持つアイテムを装備しているなら攻撃は無効化されない』は当時0397/このカードいずれも未実装で常時false=danglingだった注記が既存＝本カードの実装でX-BT01/0020側の判定が実際に機能するようになる連動あり）。②『場のこのカードは破壊されず、手札に戻せず、能力を無効化されない。』=nullifyImmune:true（『能力は無効化されない』はisAbilitiesNullifiedが読むcard.nullifyImmune直読みが正、data/cards/bf-x2-bt01-legend-buddies.json X2-BT01/0016の是正済み注記どおりnullifyImmune採用・cannotBeNullifiedは不使用）+cannotReturnToHand:true+destroyImmunity:[{from:{byBattle:true}},{from:{byEffect:true}}]（D-BT03/0001と同型の3点セット、無条件＝全ての破壊/手札戻し/能力無効化を防ぐ）。③『君のファイナルフェイズ開始時、このカードをスタンドし、このカードはこのファイナルフェイズ中に攻撃できる。さらに、君の手札かドロップゾーンの、必殺モンスター1枚を【コールコスト】を払ってコールしてよい。』=event:finalStart+conditions:[turnOwnerIsSelf]+script:[standTarget{target:$self}→addTurnContinuous{continuous:[{op:grantFinalPhaseAttack,controller:self,filter:{attribute:太陽竜}}]}→selectCards{var:im,from:[hand,drop],filter:{cardType:impactMonster},min:0,max:1,canPayCost:call}→callSelectedToEmptyZones{payCost:call,chooseZones:true,resolveOnEnter:true,require:false}]。standTarget/addTurnContinuousはscript許可opホワイトリスト実在(src/14-ability-script.js:3368-3430)。from:[hand,drop]併記selectCardsはdata/cards/pp01-golden-buddy-pack.jsonPP01/0019エージェント忍者間宮の確立形。canPayCost:call+callSelectedToEmptyZones{payCost:call}は data/cards/bf-x-bt01-reborn-of-satan.json X-BT01/0051太陽神の選択の『手札かドロップの必殺モンスター1枚までをコールコストを払ってコールしてよい』確立形をそのまま踏襲。\n【VM実測による是正】grantFinalPhaseAttackのfilter:{sameInstanceAsSource:true}はdata/cards/bf-x2-bt01-legend-buddies.json X2-BT01/0019流転の悲王ミセリアの_noteが『instanceId単位で厳密に付与』と主張するが、src/09-attack.js grantsFinalPhaseAttackはmatchesCardFilter(card,effect.filter)を素通しで呼ぶだけでありmatchesCardFilter(src/17-targeting.js)はsameInstanceAsSourceキーを一切解釈しない（sameInstanceAsSourceはscriptCardMatches(14)とmatchesRelativeCardFilter(15)専用で、continuous系のmatchesCardFilterには実装が無い）。VM直接呼び出しで実証: 同じturnContinuousをホストに付与した状態でcanDeclareAttackInFinal(host)もcanDeclareAttackInFinal(無関係な自分の別モンスター)も両方trueになり、『そのカードだけ』への絞り込みは機能していない（=X2-BT01/0019側の是正済み既知バグの可能性。本バッチのスコープ外=data/src変更禁止のため未修正、報告のみ）。この検証結果を受け、本カードでは意味の無いsameInstanceAsSourceを使わず、実際に機能するfilter:{attribute:太陽竜}（data/cards/bf-d-eb01-buddy-collection.json D-EB01/0015・bf-h-eb04-buddy-allstars.json H-EB04/0001/0066等の多数precedentが採用する『instanceId単位の対象指定手段が既存に無いため属性一致全体に及ぶ既知の許容近似』）を採用した。実害は原文『このカードは』から『君の場の《太陽竜》全て』へ若干広がる程度で、precedent群と同じ許容範囲内。『2回攻撃』=keywords:[doubleAttack]。grep自己検査: equipConditions.ownFieldCardExists+sizeIn(D-BT03/0001実例)/nullifyImmune直読み(src/05-stats.js:123-124)/cannotReturnToHand・destroyImmunity配列(src/11-destroy-turn.js)/finalStart+turnOwnerIsSelf(src/09-attack.js:813)/standTarget・addTurnContinuous script許可(src/14-ability-script.js:3368-3430)/from配列selectCards(PP01/0019実例)/canPayCost:call+callSelectedToEmptyZones(X-BT01/0051実例)/grantFinalPhaseAttack filter機構の実挙動(src/09-attack.js:84-131、VM直接probe済み) 全実在確認・実挙動検証済み。VM検証: x78-b6-verify.js参照。"
+      "_note": "ドラゴンフォース “超太陽の型”（単一ワールド表記だがworlds:[ドラゴンW,ダークネスドラゴンW,スタードラゴンW]=skeleton meta、attrs:太陽竜/星/黒竜/武器、アイテム攻/クリ=7000/2、印字【装備コスト】行なし=無償装備=costsキー省略、equipConditionsのみでゲート）。①『解放条件！』〔君の場にカード名に「バルソレイユ」を含むサイズ3のモンスターがいる〕=equipConditions:[ownFieldCardExists{filter:{nameIncludes:バルソレイユ,cardType:monster,sizeIn:[3]}}]（data/cards/bf-d-bt03-horobose-daimaryu.json D-BT03/0001ドラゴンフォース(ドラゴンワールド)の解放条件！確立構造。sizeIn:[3]は厳密サイズ一致の確立キー、sizeLte/sizeGteの単純併用ではなくsizeIn使用がD系DB多数実例）。あわせて自身に keywords:[releaseCondition] を付与（data/cards/bf-hd-pr.json PR/0397デアデビルフォース・data/cards/bf-x2-bt01-legend-buddies.json 複数枚が確立した『解放条件！を持つアイテム自身を他カードのfilter.keyword:releaseConditionから検出可能にする』ための自己タグ。data/cards/bf-x-bt01-reborn-of-satan.json X-BT01/0020バルソレイユ“エターナル・バルブラスター！”の『君が解放条件！を持つアイテムを装備しているなら攻撃は無効化されない』は当時0397/このカードいずれも未実装で常時false=danglingだった注記が既存＝本カードの実装でX-BT01/0020側の判定が実際に機能するようになる連動あり）。②『場のこのカードは破壊されず、手札に戻せず、能力を無効化されない。』=nullifyImmune:true（『能力は無効化されない』はisAbilitiesNullifiedが読むcard.nullifyImmune直読みが正、data/cards/bf-x2-bt01-legend-buddies.json X2-BT01/0016の是正済み注記どおりnullifyImmune採用・cannotBeNullifiedは不使用）+cannotReturnToHand:true+destroyImmunity:[{from:{byBattle:true}},{from:{byEffect:true}}]（D-BT03/0001と同型の3点セット、無条件＝全ての破壊/手札戻し/能力無効化を防ぐ）。③『君のファイナルフェイズ開始時、このカードをスタンドし、このカードはこのファイナルフェイズ中に攻撃できる。さらに、君の手札かドロップゾーンの、必殺モンスター1枚を【コールコスト】を払ってコールしてよい。』=event:finalStart+conditions:[turnOwnerIsSelf]+script:[standTarget{target:$self}→addTurnContinuous{continuous:[{op:grantFinalPhaseAttack,controller:self,filter:{attribute:太陽竜}}]}→selectCards{var:im,from:[hand,drop],filter:{cardType:impactMonster},min:0,max:1,canPayCost:call}→callSelectedToEmptyZones{payCost:call,chooseZones:true,resolveOnEnter:true,require:false}]。standTarget/addTurnContinuousはscript許可opホワイトリスト実在(src/14-ability-script.js:3368-3430)。from:[hand,drop]併記selectCardsはdata/cards/pp01-golden-buddy-pack.jsonPP01/0019エージェント忍者間宮の確立形。canPayCost:call+callSelectedToEmptyZones{payCost:call}は data/cards/bf-x-bt01-reborn-of-satan.json X-BT01/0051太陽神の選択の『手札かドロップの必殺モンスター1枚までをコールコストを払ってコールしてよい』確立形をそのまま踏襲。\n【VM実測による是正】grantFinalPhaseAttackのfilter:{sameInstanceAsSource:true}はdata/cards/bf-x2-bt01-legend-buddies.json X2-BT01/0019流転の悲王ミセリアの_noteが『instanceId単位で厳密に付与』と主張するが、src/09-attack.js grantsFinalPhaseAttackはmatchesCardFilter(card,effect.filter)を素通しで呼ぶだけでありmatchesCardFilter(src/17-targeting.js)はsameInstanceAsSourceキーを一切解釈しない（sameInstanceAsSourceはscriptCardMatches(14)とmatchesRelativeCardFilter(15)専用で、continuous系のmatchesCardFilterには実装が無い）。VM直接呼び出しで実証: 同じturnContinuousをホストに付与した状態でcanDeclareAttackInFinal(host)もcanDeclareAttackInFinal(無関係な自分の別モンスター)も両方trueになり、『そのカードだけ』への絞り込みは機能していない（=X2-BT01/0019側の是正済み既知バグの可能性。本バッチのスコープ外=data/src変更禁止のため未修正、報告のみ）。この検証結果を受け、本カードでは意味の無いsameInstanceAsSourceを使わず、実際に機能するfilter:{attribute:太陽竜}（data/cards/bf-d-eb01-buddy-collection.json D-EB01/0015・bf-h-eb04-buddy-allstars.json H-EB04/0001/0066等の多数precedentが採用する『instanceId単位の対象指定手段が既存に無いため属性一致全体に及ぶ既知の許容近似』）を採用した。実害は原文『このカードは』から『君の場の《太陽竜》全て』へ若干広がる程度で、precedent群と同じ許容範囲内。『2回攻撃』=keywords:[doubleAttack]。grep自己検査: equipConditions.ownFieldCardExists+sizeIn(D-BT03/0001実例)/nullifyImmune直読み(src/05-stats.js:123-124)/cannotReturnToHand・destroyImmunity配列(src/11-destroy-turn.js)/finalStart+turnOwnerIsSelf(src/09-attack.js:813)/standTarget・addTurnContinuous script許可(src/14-ability-script.js:3368-3430)/from配列selectCards(PP01/0019実例)/canPayCost:call+callSelectedToEmptyZones(X-BT01/0051実例)/grantFinalPhaseAttack filter機構の実挙動(src/09-attack.js:84-131、VM直接probe済み) 全実在確認・実挙動検証済み。VM検証: x78-b6-verify.js参照。 監査 rule-continuous-1: addTurnContinuous は「このカード」への付与なので anchor:\"card\"（発生源カードに載せ、場を離れれば消える）。"
     },
     {
       "id": "bf-x2-ss01-0004",
@@ -426,7 +426,9 @@
                 "cardType": "monster",
                 "attribute": "太陽竜"
               }
-            },
+            }
+          ],
+          "ifConditions": [
             {
               "op": "opponentCenterEmpty"
             }
@@ -936,7 +938,8 @@
           "event": "enter",
           "limit": {
             "scope": "turn",
-            "key": "xcp01-baldragon-force"
+            "key": "xcp01-baldragon-force",
+            "shared": true
           },
           "script": [
             {
@@ -1007,22 +1010,16 @@
           "id": "bf-x2-ss01-0013-flare-gift",
           "kind": "triggered",
           "event": "enter",
-          "conditions": [
-            {
-              "op": "ownOtherFieldCardExists",
-              "filter": {
-                "attribute": "太陽竜"
-              }
-            }
-          ],
           "effects": [
             {
               "op": "putTopDeckToGauge",
-              "amount": 1
+              "amount": 1,
+              "conditions": [{"op": "ownOtherFieldCardExists", "filter": {"attribute": "太陽竜"}}]
             },
             {
               "op": "draw",
-              "amount": 1
+              "amount": 1,
+              "conditions": [{"op": "ownOtherFieldCardExists", "filter": {"attribute": "太陽竜"}}]
             }
           ],
           "limit": {
@@ -1031,7 +1028,8 @@
             "shared": true
           }
         }
-      ]
+      ],
+      "_note": "監査 rule-continuous-5: 「〜時、XならY」の X は ifConditions（解決時の状態条件・不成立でも1ターン1回を消費＝ver2.05 ④「１ターンに１回」Q2/A2）。"
     },
     {
       "id": "bf-x2-ss01-0014",
@@ -1324,6 +1322,7 @@
           "effects": [
             {
               "op": "setPreventNextDestroy",
+              "optional": true,
               "target": "$target"
             }
           ]
@@ -1376,6 +1375,9 @@
         "■このカードが他の《太陽竜》と連携攻撃した時、このカードをスタンドする。",
         "■場のこのカードは破壊されず、手札に戻せず、能力は無効化されず、このカードはファイナルフェイズ中にも攻撃できる。"
       ],
+      "keywords": [
+        "releaseCondition"
+      ],
       "abilities": [
         {
           "id": "bf-x2-ss01-0019-link-stand",
@@ -1401,7 +1403,7 @@
         }
       ],
       "canAttackInFinalPhase": true,
-      "cannotBeNullified": true,
+      "nullifyImmune": true,
       "cannotReturnToHand": true,
       "costs": {
         "equip": [
@@ -1418,9 +1420,7 @@
           }
         },
         {
-          "from": {
-            "byEffect": true
-          }
+          "from": {}
         }
       ],
       "equipConditions": [
@@ -1435,7 +1435,8 @@
             "cardType": "monster"
           }
         }
-      ]
+      ],
+      "_note": " 【audit-cards-28 b074-1】『能力は無効化されず』は場の能力無効化耐性＝nullifyImmune:true（0003 と同形）。旧 cannotBeNullified は使用宣言(pendingAction)の打ち消し耐性で、能力無効化から守らず装備宣言の打ち消しを防いでいた。"
     },
     {
       "id": "bf-x2-ss01-0020",
@@ -1458,6 +1459,9 @@
         "■【装備コスト】ゲージ２を払う。",
         "■場のこのカードは破壊されず、手札に戻せず、能力は無効化されず、このカードはファイナルフェイズ中にも攻撃できる。",
         "■このカードが他の《太陽竜》と連携攻撃した時、相手の場のモンスター全てを破壊し、破壊した枚数分、相手にダメージ！"
+      ],
+      "keywords": [
+        "releaseCondition"
       ],
       "abilities": [
         {
@@ -1494,7 +1498,7 @@
         }
       ],
       "canAttackInFinalPhase": true,
-      "cannotBeNullified": true,
+      "nullifyImmune": true,
       "cannotReturnToHand": true,
       "costs": {
         "equip": [
@@ -1511,9 +1515,7 @@
           }
         },
         {
-          "from": {
-            "byEffect": true
-          }
+          "from": {}
         }
       ],
       "equipConditions": [
@@ -1528,7 +1530,8 @@
             "cardType": "monster"
           }
         }
-      ]
+      ],
+      "_note": "【監査cards-05 b012-1】『能力は無効化されず』は能力無効化への耐性＝nullifyImmune:true（src/05 isAbilitiesNullified）。旧 cannotBeNullified はカード使用/装備宣言の打ち消し耐性で原文に無いため削除。"
     },
     {
       "id": "bf-x2-ss01-0021",
@@ -1551,6 +1554,9 @@
         "■【装備コスト】ゲージ２を払う。",
         "■君のファイナルフェイズ開始時、このカードをスタンドし、そのターン中、このカードの打撃力＋１！",
         "■場のこのカードは破壊されず、手札に戻せず、能力は無効化されず、このカードはファイナルフェイズ中にも攻撃できる。"
+      ],
+      "keywords": [
+        "releaseCondition"
       ],
       "abilities": [
         {
@@ -1577,7 +1583,7 @@
         }
       ],
       "canAttackInFinalPhase": true,
-      "cannotBeNullified": true,
+      "nullifyImmune": true,
       "cannotReturnToHand": true,
       "costs": {
         "equip": [
@@ -1594,9 +1600,7 @@
           }
         },
         {
-          "from": {
-            "byEffect": true
-          }
+          "from": {}
         }
       ],
       "equipConditions": [
@@ -1618,7 +1622,8 @@
             ]
           }
         }
-      ]
+      ],
+      "_note": " 【audit-cards-28 b074-1】『能力は無効化されず』は場の能力無効化耐性＝nullifyImmune:true（0003 と同形）。旧 cannotBeNullified は使用宣言(pendingAction)の打ち消し耐性で、能力無効化から守らず装備宣言の打ち消しを防いでいた。"
     },
     {
       "id": "bf-x2-ss01-0022",
@@ -1651,11 +1656,12 @@
           }
         ]
       },
-      "deckAnyFlag": true,
+      "usableInAnyFlag": true,
       "keywords": [
         "singleAttackCannotBeNullified",
         "soulguard"
-      ]
+      ],
+      "_note": "D2(2026-10): 角王アイコンではない構築緩和のため deckAnyFlag:true→usableInAnyFlag:true へ分離（角王判定 filter.deckAnyFlag・角王の非ホーム1枚制限に波及させない）。"
     },
     {
       "id": "bf-x2-ss01-0023",
@@ -1707,26 +1713,32 @@
                   "to": "deckBottom"
                 },
                 {
-                  "op": "selectCards",
-                  "var": "kill",
-                  "from": "field",
-                  "controller": "opponent",
-                  "filter": {},
-                  "min": 0,
-                  "maxFrom": {
+                  "op": "repeat",
+                  "timesFrom": {
                     "source": "selectedCount",
                     "var": "m"
                   },
-                  "require": false,
-                  "allowEmpty": true,
-                  "emptyMessage": "破壊できる相手の場のカードがありません。",
-                  "title": "バルドラゴン “グレイトフル・バルラリアット！！”",
-                  "lead": "相手の場のカードを、置いた枚数分まで選んでください。"
-                },
-                {
-                  "op": "destroySelected",
-                  "var": "kill",
-                  "require": false
+                  "stopWhenNoCandidates": true,
+                  "steps": [
+                    {
+                      "op": "selectCards",
+                      "var": "kill",
+                      "from": "field",
+                      "controller": "opponent",
+                      "filter": {},
+                      "amount": 1,
+                      "min": 1,
+                      "max": 1,
+                      "require": true,
+                      "title": "バルドラゴン “グレイトフル・バルラリアット！！”",
+                      "lead": "破壊する相手の場のカードを1枚選んでください（置いた枚数分くり返す・同じカードを選べる）。"
+                    },
+                    {
+                      "op": "destroySelected",
+                      "var": "kill",
+                      "require": false
+                    }
+                  ]
                 }
               ]
             }
@@ -1862,13 +1874,38 @@
               }
             }
           ],
-          "effects": [
+          "script": [
             {
               "op": "modifyStats",
               "target": "$self",
               "power": 999999,
               "critical": 99,
               "duration": "turn"
+            },
+            {
+              "op": "selectCards",
+              "var": "infiniteSelf",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "sameInstanceAsSource": true
+              },
+              "amount": 1,
+              "require": false,
+              "forceDialog": false,
+              "title": "バルソレイユ “エターナル・バルブラスター！”",
+              "lead": "∞（減らせない）にするこのカード。"
+            },
+            {
+              "op": "grantTemporaryAttackResistanceSelected",
+              "var": "infiniteSelf",
+              "resistances": [
+                {
+                  "effects": [
+                    "reduce"
+                  ]
+                }
+              ]
             }
           ]
         }
@@ -2008,7 +2045,8 @@
               "var": "ajd",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             },
             {
               "op": "shuffleDeck"
@@ -2092,8 +2130,7 @@
             "type": "fieldCard",
             "controller": "self",
             "filter": {
-              "cardType": "monster",
-              "attributeIncludesAny": [
+              "attributeIn": [
                 "悪神竜",
                 "神"
               ]
@@ -2107,7 +2144,7 @@
           ]
         }
       ],
-      "_note": "諸悪の断片 アンラマンユ・エレメント（S3/7000/0/5000, ダークネスドラゴンW, 属性:悪神竜）。①『【コールコスト】君のドロップゾーンのカード1枚をこのカードのソウルに入れ、ゲージ1を払う。』=costs.call:[putDropToSoul{amount:1,filter:{}},payGauge{amount:1}]（無filter=種別限定なし『カード』。src/04-cost-resource.js putDropToSoul、多数precedent）。②『君の場に他の元々のサイズが3以上のモンスターがいるなら、場のこのカードのサイズを3減らす。』=continuous:[modifyStats{filter:{sameInstanceAsSource:true},size:-3,conditions:[cardCount{controller:self,pile:field,excludeSource:true,filter:{cardType:monster,baseSizeGte:3},cmp:gte,amount:1}]}]（X-UB03/0021百機将C・ギシンギュウキの『他の元々のサイズが3のモンスターがいるなら-3』と同型。baseSizeGte=印字サイズ判定、src/17-targeting.js:425）。③『このカードが攻撃した時、君の場の《悪神竜》か《神》1枚をスタンドする。この能力は1ターンに1回だけ発動する。』=kind:triggered,event:attack,limit:{scope:turn}(無名の1ターン1回=シンプルlimit、named-oneではない),target:{type:fieldCard,controller:self,filter:{cardType:monster,attributeIncludesAny:[悪神竜,神]}},effects:[standTarget{target:$target}]（対象は自身も含みうる=このカード自身の属性が悪神竜のため自己選択も可、除外指定なし=原文どおり）。④『移動』『ソウルガード』=keywords:[move,soulguard]。grep自己検査: putDropToSoul/payGauge(src/04)/modifyStats size継続+sameInstanceAsSource+cardCount excludeSource baseSizeGte(src/05-stats.js,src/13-abilities-core.js,src/17-targeting.js:425、X-UB03/0021実例)/event:attack(多数precedent)/limit.scope:turn(SKILL.md確立慣用)/target fieldCard attributeIncludesAny(src/17-targeting.js)/standTarget(src/15-ability-effects.js)/keywords move・soulguard(src/18-tooltip-format.js keywordAliases) 全実在確認。VM検証: x78-b7-verify.js test0028参照。"
+      "_note": "諸悪の断片 アンラマンユ・エレメント（S3/7000/0/5000, ダークネスドラゴンW, 属性:悪神竜）。①『【コールコスト】君のドロップゾーンのカード1枚をこのカードのソウルに入れ、ゲージ1を払う。』=costs.call:[putDropToSoul{amount:1,filter:{}},payGauge{amount:1}]（無filter=種別限定なし『カード』。src/04-cost-resource.js putDropToSoul、多数precedent）。②『君の場に他の元々のサイズが3以上のモンスターがいるなら、場のこのカードのサイズを3減らす。』=continuous:[modifyStats{filter:{sameInstanceAsSource:true},size:-3,conditions:[cardCount{controller:self,pile:field,excludeSource:true,filter:{cardType:monster,baseSizeGte:3},cmp:gte,amount:1}]}]（X-UB03/0021百機将C・ギシンギュウキの『他の元々のサイズが3のモンスターがいるなら-3』と同型。baseSizeGte=印字サイズ判定、src/17-targeting.js:425）。③『このカードが攻撃した時、君の場の《悪神竜》か《神》1枚をスタンドする。この能力は1ターンに1回だけ発動する。』=kind:triggered,event:attack,limit:{scope:turn}(無名の1ターン1回=シンプルlimit、named-oneではない),target:{type:fieldCard,controller:self,filter:{cardType:monster,attributeIncludesAny:[悪神竜,神]}},effects:[standTarget{target:$target}]（対象は自身も含みうる=このカード自身の属性が悪神竜のため自己選択も可、除外指定なし=原文どおり）。④『移動』『ソウルガード』=keywords:[move,soulguard]。grep自己検査: putDropToSoul/payGauge(src/04)/modifyStats size継続+sameInstanceAsSource+cardCount excludeSource baseSizeGte(src/05-stats.js,src/13-abilities-core.js,src/17-targeting.js:425、X-UB03/0021実例)/event:attack(多数precedent)/limit.scope:turn(SKILL.md確立慣用)/target fieldCard attributeIncludesAny(src/17-targeting.js)/standTarget(src/15-ability-effects.js)/keywords move・soulguard(src/18-tooltip-format.js keywordAliases) 全実在確認。VM検証: x78-b7-verify.js test0028参照。 【audit-cards-28 b074-2】《悪神竜》か《神》は属性の完全一致＝attributeIn。attributeIncludesAny（部分一致で《闇神竜》《戦神機》等も拾う）と cardType:monster 限定（属性《神》のアイテム扱いカードを除外）を是正。"
     },
     {
       "id": "bf-x2-ss01-0029",
@@ -2389,50 +2426,86 @@
               ]
             }
           ],
-          "cost": [
+          "script": [
             {
-              "op": "destroyOwnMonster",
+              "op": "selectCards",
+              "var": "sac",
+              "from": "field",
+              "controller": "self",
               "filter": {
+                "cardType": "monster",
                 "nameIncludes": "アジ・ダハーカ",
                 "sizeGte": 3
-              }
+              },
+              "amount": 1,
+              "title": "魔竜の眷属 プロヴァラガ",
+              "lead": "破壊する君の場のカード名に「アジ・ダハーカ」を含むサイズ３以上のモンスター１枚を選んでください。"
             },
             {
-              "op": "dropSource"
-            }
-          ],
-          "effects": [
+              "op": "destroySelected",
+              "var": "sac",
+              "require": false
+            },
             {
-              "op": "draw",
-              "amount": 2
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "dropSelf"
+                },
+                {
+                  "op": "draw",
+                  "amount": 2
+                }
+              ]
             }
           ]
         },
         {
           "id": "bf-x2-ss01-0032-sac-hand",
           "kind": "activated",
-          "fromHandOnly": true,
           "timing": [
             "counter"
           ],
-          "cost": [
+          "fromHandOnly": true,
+          "script": [
             {
-              "op": "destroyOwnMonster",
+              "op": "selectCards",
+              "var": "sac",
+              "from": "field",
+              "controller": "self",
               "filter": {
+                "cardType": "monster",
                 "nameIncludes": "アジ・ダハーカ",
                 "sizeGte": 3
-              }
-            }
-          ],
-          "effects": [
+              },
+              "amount": 1,
+              "title": "魔竜の眷属 プロヴァラガ",
+              "lead": "破壊する君の場のカード名に「アジ・ダハーカ」を含むサイズ３以上のモンスター１枚を選んでください。"
+            },
             {
-              "op": "draw",
-              "amount": 2
+              "op": "destroySelected",
+              "var": "sac",
+              "require": false
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "draw",
+                  "amount": 2
+                }
+              ]
             }
           ]
         }
       ],
-      "_note": "魔竜の眷属 プロヴァラガ（S1/3000/1/1000, ダークネスドラゴンW, 属性:黒竜/神）。コールコスト行なし=costsキー省略。①『君の場にカード名に「アジ・ダハーカ」を含むモンスターがいるなら、場のこのカードのサイズを1減らす。』=continuous:[modifyStats{filter:{sameInstanceAsSource:true},size:-1,conditions:[ownFieldCardExists{filter:{cardType:monster,nameIncludes:アジ・ダハーカ}}]}]（bf-x-cbt01-0012叛逆の堕天使ルシファー『君の場にカード名に「アスモダイ」を含むカードがあるなら-3』と同型のownFieldCardExists利用。自分自身の名はアジ・ダハーカを含まないため除外不要）。②『【対抗】【起動】君の場のカード名に「アジ・ダハーカ」を含むサイズ3以上のモンスター1枚を破壊し、場か手札のこのカードをドロップゾーンに置いてよい。そうしたら、カード2枚を引く。』=X-UB01/0063古代兵器の操縦者ダッシュ型の2ability併記（『場か手札のこのカード』を場発動(sourceZoneIn:[left,center,right])/手札発動(fromHandOnly:true)の2版で表現。手札版は明示コスト不要=useHandAbilityAction がcounterTiming時に使用中カードを自動的にdropへ積む挙動(src/13-abilities-core.js:200-224、isCounterAbilityがtrueだとpendingAction経路をskipしplayer.drop.push(usedCard)が直行実行される)で『手札のこのカードを捨てる』を暗黙充足＝D-SS03/0055魔竜の眷属カースドラゴンJr.の『手札のこのカードを捨ててよい』注記『fromHandOnly活性化=手札のこのカードを捨てるは暗黙・costにdiscardHand不要』と同じ確立パターン）。破壊対象選択はcost:[destroyOwnMonster{filter:{nameIncludes:アジ・ダハーカ,sizeGte:3}}]自体が候補提示・選択・破壊(対話経路destroyFieldCard)を担う(src/04-cost-resource.js:815,1259,2036-2042、候補0枚ならcanPayでコスト不成立=ability自体使用不可)。場版のみ追加でcost:[dropSource]（このカードを場からドロップへ、src/04-cost-resource.js:1198,2018、X-BT04/0065偽王剣アルマース・レプリカのcost:[payLife,dropSource]と同系統）。sourceZoneIn:[left,center,right]はX-UB01/0063の場版と同じ『純粋な場ゾーン限定』ガード。効果はeffects:[draw{amount:2}]（両版共通、『そうしたら、カード2枚を引く』）。grep自己検査: modifyStats+ownFieldCardExists(src/05,src/13、bf-x-cbt01-0012実例)/destroyOwnMonster cost 3経路(src/04-cost-resource.js:815,1259,2036)/dropSource cost(src/04-cost-resource.js:755,1198,2018、X-BT04/0065実例)/kind:activated+fromHandOnly+timing:[counter]手札自動drop(src/13-abilities-core.js:196-224、X-UB01/0063実例)/sourceZoneIn(src/13-abilities-core.js)/draw(src/15) 全実在確認。VM検証: x78-b7-verify.js test0032参照。"
+      "_note": "魔竜の眷属 プロヴァラガ（S1/3000/1/1000, ダークネスドラゴンW, 属性:黒竜/神）。コールコスト行なし=costsキー省略。①『君の場にカード名に「アジ・ダハーカ」を含むモンスターがいるなら、場のこのカードのサイズを1減らす。』=continuous:[modifyStats{filter:{sameInstanceAsSource:true},size:-1,conditions:[ownFieldCardExists{filter:{cardType:monster,nameIncludes:アジ・ダハーカ}}]}]（bf-x-cbt01-0012叛逆の堕天使ルシファー『君の場にカード名に「アスモダイ」を含むカードがあるなら-3』と同型のownFieldCardExists利用。自分自身の名はアジ・ダハーカを含まないため除外不要）。②『【対抗】【起動】君の場のカード名に「アジ・ダハーカ」を含むサイズ3以上のモンスター1枚を破壊し、場か手札のこのカードをドロップゾーンに置いてよい。そうしたら、カード2枚を引く。』=X-UB01/0063古代兵器の操縦者ダッシュ型の2ability併記（『場か手札のこのカード』を場発動(sourceZoneIn:[left,center,right])/手札発動(fromHandOnly:true)の2版で表現。手札版は明示コスト不要=useHandAbilityAction がcounterTiming時に使用中カードを自動的にdropへ積む挙動(src/13-abilities-core.js:200-224、isCounterAbilityがtrueだとpendingAction経路をskipしplayer.drop.push(usedCard)が直行実行される)で『手札のこのカードを捨てる』を暗黙充足＝D-SS03/0055魔竜の眷属カースドラゴンJr.の『手札のこのカードを捨ててよい』注記『fromHandOnly活性化=手札のこのカードを捨てるは暗黙・costにdiscardHand不要』と同じ確立パターン）。破壊対象選択はcost:[destroyOwnMonster{filter:{nameIncludes:アジ・ダハーカ,sizeGte:3}}]自体が候補提示・選択・破壊(対話経路destroyFieldCard)を担う(src/04-cost-resource.js:815,1259,2036-2042、候補0枚ならcanPayでコスト不成立=ability自体使用不可)。場版のみ追加でcost:[dropSource]（このカードを場からドロップへ、src/04-cost-resource.js:1198,2018、X-BT04/0065偽王剣アルマース・レプリカのcost:[payLife,dropSource]と同系統）。sourceZoneIn:[left,center,right]はX-UB01/0063の場版と同じ『純粋な場ゾーン限定』ガード。効果はeffects:[draw{amount:2}]（両版共通、『そうしたら、カード2枚を引く』）。grep自己検査: modifyStats+ownFieldCardExists(src/05,src/13、bf-x-cbt01-0012実例)/destroyOwnMonster cost 3経路(src/04-cost-resource.js:815,1259,2036)/dropSource cost(src/04-cost-resource.js:755,1198,2018、X-BT04/0065実例)/kind:activated+fromHandOnly+timing:[counter]手札自動drop(src/13-abilities-core.js:196-224、X-UB01/0063実例)/sourceZoneIn(src/13-abilities-core.js)/draw(src/15) 全実在確認。VM検証: x78-b7-verify.js test0032参照。 ／【2026-10-09 オーナー裁定R8】『〜を破壊し、このカードをドロップゾーンに置いてよい。そうしたら』の破壊は効果。旧 cost:destroyOwnMonster(+dropSource) を script（解決時に destroySelected{require:false}→ifCondition(lastDestroySucceeded) で場版は dropSelf→draw2、手札版は draw2）へ移した。ソウルガード等で場に残っても破壊は成功している（2026-10-09 オーナー裁定）ので後半（場版の自身ドロップ・ドロー）を行う。破壊耐性で破壊されなかった時だけ後半を行わない。手札版の『手札のこのカードを置く』は従来どおり手札発動【対抗】の宣言時ドロップ（エンジン既存挙動）。"
     },
     {
       "id": "bf-x2-ss01-0033",
@@ -2551,6 +2624,7 @@
           "id": "bf-x2-ss01-0034-counter-nullify",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "counter"
           ],
@@ -2788,9 +2862,7 @@
           ]
         },
         {
-          "from": {
-            "byEffect": true
-          },
+          "from": {},
           "conditions": [
             {
               "op": "sourceZoneIn",
@@ -3169,7 +3241,8 @@
               "grantConditionalSize": {
                 "size": 0,
                 "unconditional": true
-              }
+              },
+              "overwriteWhenFull": true
             }
           ],
           "limit": {
@@ -3241,7 +3314,8 @@
                   "from": "movedToDrop",
                   "controller": "self",
                   "amount": 1,
-                  "require": false
+                  "require": false,
+                  "selectAll": true
                 },
                 {
                   "op": "moveSelected",
@@ -3376,6 +3450,7 @@
           "id": "bf-x2-ss01-0043-tsuvai-damage-reduce",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "counter"
           ],
@@ -3396,6 +3471,7 @@
           "id": "bf-x2-ss01-0043-drai-lifegain",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "counter"
           ],
@@ -3437,6 +3513,7 @@
           "id": "bf-x2-ss01-0044-hand-gauge",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "main"
           ],
@@ -3647,6 +3724,7 @@
           "id": "bf-x2-ss01-0048-preserve",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "counter",
             "main"
@@ -3710,6 +3788,7 @@
           "id": "bf-x2-ss01-0049-defense-buff",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "counter"
           ],
@@ -3792,7 +3871,9 @@
           "conditions": [
             {
               "op": "turnOwnerIsSelf"
-            },
+            }
+          ],
+          "ifConditions": [
             {
               "op": "flagNameIs",
               "name": "ドラゴン・ツヴァイ"

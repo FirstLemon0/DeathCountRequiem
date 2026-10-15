@@ -29,11 +29,6 @@
         "■このカードはレフトとライトに攻撃できず、このカードが１枚で攻撃しているバトル中、相手は【対抗】を使えない。",
         "『移動』『２回攻撃』『ソウルガード』"
       ],
-      "nullifyImmune": true,
-      "cannotAttackZones": [
-        "left",
-        "right"
-      ],
       "keywords": [
         "move",
         "doubleAttack",
@@ -65,6 +60,17 @@
               "op": "phaseIs",
               "phase": "attack"
             }
+          ],
+          "cannotBeNullified": true
+        },
+        {
+          "op": "restrictAttackTargets",
+          "filter": {
+            "sameInstanceAsSource": true
+          },
+          "zones": [
+            "left",
+            "right"
           ]
         }
       ],
@@ -81,6 +87,7 @@
           "effects": [
             {
               "op": "preventOpponentCounterThisTurn",
+              "sourceMustAttack": true,
               "conditions": [
                 {
                   "op": "attackingAlone"
@@ -90,7 +97,7 @@
           ]
         }
       ],
-      "_note": "C1(3節分解): (i)『アタックフェイズ中、相手の場のカード全ての能力を無効化する。この能力は無効化されない』は、当初設計案(nullifyFieldAbilities一発snapshot＋cannotBeNullified)ではなく、より精密な既存precedent bf-s-ub-c03-0024 はぴはぴアイドル諸星きらり（同一文言『お互いのアタックフェイズ中、相手の場のカード全ての能力を無効化する。この能力は無効化されない』）が使う continuous{op:nullifyAbilities, controller:opponent, zones:[field,soul], filter:{}, conditions:[phaseIs attack]} + card級 nullifyImmune:true を採用（isAbilitiesNullified src/05:101 が card.cannotBeNullified を一切読まず、card.nullifyImmune/cardProtectedFrom(nullify)のみを読むため、design.mdの cannotBeNullified 提案は実際にはトリガー能力を保護しない＝より正確な実装へ変更。cannotBeNullified はpendingAction＝【対抗】等で打ち消される宣言の保護用で本件と別機構）。継続版はアタックフェイズ中のみ真に有効＝turnNullifies一発snapshotよりも忠実（ファイナルフェイズへの越境が無い）。(ii)『レフトとライトに攻撃できず』=cannotAttackZones(cp01-0013/bf-h-sd01-0005等前例)。(iii)『1枚で攻撃しているバトル中、相手は対抗を使えない』=event:attack+conditions:[attackingAlone]+preventOpponentCounterThisTurn{conditions:[attackingAlone]}（D-EB03/0004 ガガルガリオス型＝効果側conditionsがロックのwhileになり毎バトル再評価。第9回メカレビュー是正: 当初は効果側conditions空でwhile=[]→ターン全体の無条件ブロックとなり、発生源が攻撃していない連携攻撃バトルまで相手の対抗を封じていた。ver2.05『そのバトル中』はそのバトル限定＝attackingAloneをwhileに置きバトル毎に再評価するのが忠実。旧_note『バトル中→そのターン中近似』はガガルガリオスのper-battleパターンを誤引用していた）。grep自己検査: nullifyAbilities(src/05:148)/nullifyImmune(src/05:102)/cannotAttackZones(src/multiple)/attackingAlone(src/13:836)/preventOpponentCounterThisTurn(bf-h-eb04/bf-d-eb03等) 全実在確認。"
+      "_note": "C1(3節分解): (i)『アタックフェイズ中、相手の場のカード全ての能力を無効化する。この能力は無効化されない』は、当初設計案(nullifyFieldAbilities一発snapshot＋cannotBeNullified)ではなく、より精密な既存precedent bf-s-ub-c03-0024 はぴはぴアイドル諸星きらり（同一文言『お互いのアタックフェイズ中、相手の場のカード全ての能力を無効化する。この能力は無効化されない』）が使う continuous{op:nullifyAbilities, controller:opponent, zones:[field,soul], filter:{}, conditions:[phaseIs attack]} + card級 nullifyImmune:true を採用（isAbilitiesNullified src/05:101 が card.cannotBeNullified を一切読まず、card.nullifyImmune/cardProtectedFrom(nullify)のみを読むため、design.mdの cannotBeNullified 提案は実際にはトリガー能力を保護しない＝より正確な実装へ変更。cannotBeNullified はpendingAction＝【対抗】等で打ち消される宣言の保護用で本件と別機構）。継続版はアタックフェイズ中のみ真に有効＝turnNullifies一発snapshotよりも忠実（ファイナルフェイズへの越境が無い）。(ii)『レフトとライトに攻撃できず』=cannotAttackZones(cp01-0013/bf-h-sd01-0005等前例)。(iii)『1枚で攻撃しているバトル中、相手は対抗を使えない』=event:attack+conditions:[attackingAlone]+preventOpponentCounterThisTurn{conditions:[attackingAlone]}（D-EB03/0004 ガガルガリオス型＝効果側conditionsがロックのwhileになり毎バトル再評価。第9回メカレビュー是正: 当初は効果側conditions空でwhile=[]→ターン全体の無条件ブロックとなり、発生源が攻撃していない連携攻撃バトルまで相手の対抗を封じていた。ver2.05『そのバトル中』はそのバトル限定＝attackingAloneをwhileに置きバトル毎に再評価するのが忠実。旧_note『バトル中→そのターン中近似』はガガルガリオスのper-battleパターンを誤引用していた）。grep自己検査: nullifyAbilities(src/05:148)/nullifyImmune(src/05:102)/cannotAttackZones(src/multiple)/attackingAlone(src/13:836)/preventOpponentCounterThisTurn(bf-h-eb04/bf-d-eb03等) 全実在確認。 監査2026-10(b052-1): 『レフトとライトに攻撃できず』は攻撃対象の制限。旧sugar cannotAttackZones は src/11 canDeclareAttack で攻撃元ゾーンとしても判定され、自分のレフト/ライトに居ると一切攻撃できない二重制限になっていたため、bf-x-bt01-0023 と同じ新DSL直書き continuous restrictAttackTargets{sameInstanceAsSource,zones:[left,right]} に置換（対象制限のみ）。 統合(engine-inter): 『この能力は無効化されない』は能力単位＝カード級 nullifyImmune ではなく当該 continuous の cannotBeNullified:true。"
     },
     {
       "id": "bf-x-cp01-0002",
@@ -416,6 +423,20 @@
           "timing": [
             "main"
           ],
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "cardType": "monster",
+                "nameIncludes": "バッツ",
+                "sizeGte": 2
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
           "script": [
             {
               "op": "selectCards",
@@ -434,52 +455,59 @@
               "lead": "コールする、ドロップゾーンのカード名に「バッツ」を含むサイズ2以上のモンスターを選んでください（選ばなくてもよい）。"
             },
             {
-              "op": "chooseBranch",
-              "title": "バッツ“SD”",
-              "lead": "ゲージ1を払って、場のこのカードをドロップゾーンに置き、選んだカードをコールしますか？",
-              "options": [
+              "op": "ifSelection",
+              "var": "batz",
+              "then": [
                 {
-                  "key": "pay",
-                  "label": "ゲージ1を払ってコールする",
-                  "script": [
+                  "op": "chooseBranch",
+                  "title": "バッツ“SD”",
+                  "lead": "ゲージ1を払って、場のこのカードをドロップゾーンに置き、選んだカードをコールしますか？",
+                  "options": [
                     {
-                      "op": "payCost",
-                      "cost": [
+                      "key": "pay",
+                      "label": "ゲージ1を払ってコールする",
+                      "script": [
                         {
-                          "op": "payGauge",
-                          "amount": 1
+                          "op": "payCost",
+                          "cost": [
+                            {
+                              "op": "payGauge",
+                              "amount": 1
+                            }
+                          ]
+                        },
+                        {
+                          "op": "dropSelf"
+                        },
+                        {
+                          "op": "callSelectedToEmptyZones",
+                          "var": "batz",
+                          "payCost": "call",
+                          "resolveOnEnter": true,
+                          "overwriteWhenFull": true
+                        },
+                        {
+                          "op": "modifySelectedStats",
+                          "var": "batz",
+                          "power": 3000,
+                          "critical": 1,
+                          "duration": "turn"
                         }
                       ]
                     },
                     {
-                      "op": "dropSelf"
-                    },
-                    {
-                      "op": "callSelectedToEmptyZones",
-                      "var": "batz",
-                      "payCost": "call",
-                      "resolveOnEnter": true
-                    },
-                    {
-                      "op": "modifySelectedStats",
-                      "var": "batz",
-                      "power": 3000,
-                      "critical": 1,
-                      "duration": "turn"
+                      "key": "skip",
+                      "label": "何もしない",
+                      "script": []
                     }
                   ]
-                },
-                {
-                  "key": "skip",
-                  "label": "何もしない",
-                  "script": []
                 }
               ]
             }
           ]
         }
       ],
-      "_note": "C2(自壊リアニメイト): 【起動】ドロップの『バッツ』含むサイズ2以上を選び、ゲージ1、場のこれをドロップに置いてよい。そうしたら選んだカードを【コールコスト】払ってコール＋攻撃力+3000打撃+1。X-BT01/0031 中忍 半月丸（同型『選び、コストを払い、自壊してよい。そうしたら…コール』文言）を忠実踏襲: selectCards(min:0,require:false)で候補を先に選び→chooseBranch(pay/skip)でゲージ1の可否確認込みの全体任意性を表現→pay分岐内でpayCost→dropSelf→callSelectedToEmptyZones{payCost:call}→modifySelectedStats。dropSelfをchooseBranchのpay分岐内だけに置くことで『払わない場合に自己犠牲だけ無駄になる』事故を回避（0031の_note記載パターンと同一）。「コールコスト」が印字されていない(コールコストの記載行が無い)=このカード自身は無償コール(costs省略)。grep自己検査: selectCards/chooseBranch/payCost/dropSelf/callSelectedToEmptyZones/modifySelectedStats 全実在確認（callSelectedToEmptyZones payCost:call=src/14:2615-2623、modifySelectedStats=src/14:1474、td07-0011型）。"
+      "_note": "C2(自壊リアニメイト): 【起動】ドロップの『バッツ』含むサイズ2以上を選び、ゲージ1、場のこれをドロップに置いてよい。そうしたら選んだカードを【コールコスト】払ってコール＋攻撃力+3000打撃+1。X-BT01/0031 中忍 半月丸（同型『選び、コストを払い、自壊してよい。そうしたら…コール』文言）を忠実踏襲: selectCards(min:0,require:false)で候補を先に選び→chooseBranch(pay/skip)でゲージ1の可否確認込みの全体任意性を表現→pay分岐内でpayCost→dropSelf→callSelectedToEmptyZones{payCost:call}→modifySelectedStats。dropSelfをchooseBranchのpay分岐内だけに置くことで『払わない場合に自己犠牲だけ無駄になる』事故を回避（0031の_note記載パターンと同一）。「コールコスト」が印字されていない(コールコストの記載行が無い)=このカード自身は無償コール(costs省略)。grep自己検査: selectCards/chooseBranch/payCost/dropSelf/callSelectedToEmptyZones/modifySelectedStats 全実在確認（callSelectedToEmptyZones payCost:call=src/14:2615-2623、modifySelectedStats=src/14:1474、td07-0011型）。 監査2026-10(b052-4): 『選び、払い、置いてよい。そうしたら』は選ぶことを含む一連の任意行動のため、ドロップに候補が無ければ起動できない（ability.conditions cardCount≥1）。候補を選ばなかった場合も払う/置く分岐へ進まない（ifSelection batz でゲート）。以前は空選択のままゲージ1と自身を失っていた。"
     },
     {
       "id": "bf-x-cp01-0007",
@@ -559,7 +587,8 @@
                   "var": "calls",
                   "payCost": "call",
                   "resolveOnEnter": true,
-                  "require": false
+                  "require": false,
+                  "overwriteWhenFull": true
                 }
               ]
             }
@@ -781,6 +810,7 @@
           "effects": [
             {
               "op": "preventOpponentCounterThisTurn",
+              "sourceMustAttack": true,
               "conditions": [
                 {
                   "op": "pendingAttackTargetZone",
@@ -802,8 +832,8 @@
           ]
         }
       ],
-      "deckAnyFlag": true,
-      "_note": "必殺モンスター（type:impactMonster はskeleton保持）。①【コールコスト】=0004と同型（ゲージ3）。②『このカードがセンターのモンスターを攻撃しているバトル中、相手は対抗を使えない』=event:attack(自己発火)+effects preventOpponentCounterThisTurn{conditions:[pendingAttackTargetZone{zone:center}]}（bf-d-eb03-0004型。conditionsはCONDITIONS_DEFERRED_TO_CONSUMER_OPSにより対抗使用時に再評価されるため『バトル中』が続く限り機能）。③『このカードが相手にダメージを与えた時、相手の場のカード全てを破壊する』=event:dealDamage(自己発火・接頭辞なし)+effects destroy{scope:opponent}（filter無指定=zones全域=モンスター/アイテム/設置すべて＝『カード全て』に一致。bf-h-eb02-0010-return型のdealDamage自己発火を踏襲）。deckAnyFlag:true追記(2026-07-16・201706_11対応): 公式レシピ201706_11「ゼータデッキ」（ヒーローワールド・ジェムクローンbuddy）が本カードのヒーローＷでの使用を実証。ジェムクローン構築緩和の soft rule 近似＝bf-d-eb01-0007のFD8/R5と同扱い（deckAnyFlag:true で全フラッグ構築可・mech/rules無変更）。"
+      "usableInAnyFlag": true,
+      "_note": "必殺モンスター（type:impactMonster はskeleton保持）。①【コールコスト】=0004と同型（ゲージ3）。②『このカードがセンターのモンスターを攻撃しているバトル中、相手は対抗を使えない』=event:attack(自己発火)+effects preventOpponentCounterThisTurn{conditions:[pendingAttackTargetZone{zone:center}]}（bf-d-eb03-0004型。conditionsはCONDITIONS_DEFERRED_TO_CONSUMER_OPSにより対抗使用時に再評価されるため『バトル中』が続く限り機能）。③『このカードが相手にダメージを与えた時、相手の場のカード全てを破壊する』=event:dealDamage(自己発火・接頭辞なし)+effects destroy{scope:opponent}（filter無指定=zones全域=モンスター/アイテム/設置すべて＝『カード全て』に一致。bf-h-eb02-0010-return型のdealDamage自己発火を踏襲）。deckAnyFlag:true追記(2026-07-16・201706_11対応): 公式レシピ201706_11「ゼータデッキ」（ヒーローワールド・ジェムクローンbuddy）が本カードのヒーローＷでの使用を実証。ジェムクローン構築緩和の soft rule 近似＝bf-d-eb01-0007のFD8/R5と同扱い（deckAnyFlag:true で全フラッグ構築可・mech/rules無変更）。 D2(2026-10): 角王アイコンではない構築緩和のため deckAnyFlag:true→usableInAnyFlag:true へ分離（角王判定 filter.deckAnyFlag・角王の非ホーム1枚制限に波及させない）。"
     },
     {
       "id": "bf-x-cp01-0011",
@@ -1073,7 +1103,6 @@
           {
             "op": "putSelectedOwnFieldCardsToSoul",
             "filter": {
-              "cardType": "monster",
               "attribute": "竜騎士"
             },
             "min": 1,
@@ -1153,7 +1182,7 @@
           ]
         }
       ],
-      "_note": "0015: コールコストはputSelectedOwnFieldCardsToSoul{min1,max1,filter:竜騎士monster}+payGauge2。攻撃時のカスケード(2/4/6種類)はcardCount distinctByNameを閾値別に3効果へ個別conditionsで付与（grantKeyword penetrate/doubleAttack はduration:turn必須、dealDamageは即時1回のみのためduration不要）。3効果は独立条件ゲートなので『さらに』の重ね掛け文意を維持（例: 6種類ならpenetrate+doubleAttack+damageの全部が成立）。"
+      "_note": "0015: コールコストはputSelectedOwnFieldCardsToSoul{min1,max1,filter:竜騎士monster}+payGauge2。攻撃時のカスケード(2/4/6種類)はcardCount distinctByNameを閾値別に3効果へ個別conditionsで付与（grantKeyword penetrate/doubleAttack はduration:turn必須、dealDamageは即時1回のみのためduration不要）。3効果は独立条件ゲートなので『さらに』の重ね掛け文意を維持（例: 6種類ならpenetrate+doubleAttack+damageの全部が成立）。 監査2026-10: コールコスト『君の場の《竜騎士》』はモンスター限定の語が無いため filter を {attribute:竜騎士} に（装備中の《竜騎士》アイテムも選べる）。"
     },
     {
       "id": "bf-x-cp01-0016",
@@ -1509,6 +1538,12 @@
           "conditions": [
             {
               "op": "attackingAlone"
+            },
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "monster"
+              }
             }
           ],
           "effects": [
@@ -1543,7 +1578,7 @@
           ]
         }
       ],
-      "_note": "『君の場のモンスターが1枚で攻撃した時』はallyAttack(bf-d-bt01-0026前例)+attackingAlone条件。『このカードの攻撃で破壊/ダメージ時ゲージ1』はbf-h-eb03-0016と完全同型（bare destroyByAttack/dealDamage、アイテム自身の攻撃に直接配信済み＝grep実証）。"
+      "_note": "『君の場のモンスターが1枚で攻撃した時』はallyAttack(bf-d-bt01-0026前例)+attackingAlone条件。『このカードの攻撃で破壊/ダメージ時ゲージ1』はbf-h-eb03-0016と完全同型（bare destroyByAttack/dealDamage、アイテム自身の攻撃に直接配信済み＝grep実証）。 監査2026-10(b053-2): 『モンスターが1枚で攻撃した時』なのでアイテム(ファイター)の攻撃では誘発しない＝eventCardMatches{cardType:monster} を追加。"
     },
     {
       "id": "bf-x-cp01-0023",
@@ -1584,6 +1619,22 @@
           "timing": [
             "main"
           ],
+          "conditions": [
+            {
+              "op": "cardCount",
+              "controller": "self",
+              "pile": "drop",
+              "filter": {
+                "cardType": "monster",
+                "sizeIn": [
+                  3
+                ],
+                "world": "ドラゴンW"
+              },
+              "cmp": "gte",
+              "amount": 1
+            }
+          ],
           "optional": true,
           "cost": [
             {
@@ -1604,10 +1655,10 @@
                 ],
                 "world": "ドラゴンW"
               },
-              "amount": 1,
-              "optional": true
+              "amount": 1
             }
-          ]
+          ],
+          "selectBeforeCost": true
         },
         {
           "id": "bf-x-cp01-0023-galvanic-charge",
@@ -1622,7 +1673,7 @@
           ]
         }
       ],
-      "_note": "0023: 【起動】選び→ゲージ払ってよい→払ったら手札に、はbf-x-ss01-0033型（ability.optional:true+cost payGauge+effects moveMatchingDropToHand{filter,amount,optional:true}）に1ターン1回のlimitを加えた形。filterはsizeスカラー禁止のためsizeIn:[3]（厳守事項）。「ガルバニックチャージ」は原文に『1ターンに1回だけ発動する』節が無い単なる技名表記のためlimit key不要（labelのみ付与）。"
+      "_note": "0023: 【起動】選び→ゲージ払ってよい→払ったら手札に、はbf-x-ss01-0033型（ability.optional:true+cost payGauge+effects moveMatchingDropToHand{filter,amount,optional:true}）に1ターン1回のlimitを加えた形。filterはsizeスカラー禁止のためsizeIn:[3]（厳守事項）。「ガルバニックチャージ」は原文に『1ターンに1回だけ発動する』節が無い単なる技名表記のためlimit key不要（labelのみ付与）。 【R5 2026-10-09 オーナー裁定】「〜を選び、…を払ってよい。払ったら」は選べるカードが無いなら支払えない（何も起きない）＝能力に selectBeforeCost:true（先頭の選択に候補が無ければコストを提示しない）。旧 _note の「optional 承諾＝コスト先払い→script 内で選択」の近似は、候補0でもコストだけ払えてしまう点が誤りだった。"
     },
     {
       "id": "bf-x-cp01-0024",
@@ -1726,7 +1777,6 @@
           {
             "op": "putSelectedOwnFieldCardsToSoul",
             "filter": {
-              "cardType": "monster",
               "attribute": "竜騎士"
             },
             "min": 1
@@ -1751,7 +1801,6 @@
           "amountFrom": {
             "source": "dropAttributeCount",
             "filter": {
-              "cardType": "monster",
               "attribute": "竜騎士"
             },
             "distinct": true,
@@ -1762,7 +1811,7 @@
           }
         }
       ],
-      "_note": "0025: コールコスト「君の場の《竜騎士》1枚以上」はputSelectedOwnFieldCardsToSoul{min:1}(max省略=上限なし=1枚以上)。「ドロップの《竜騎士》1種類につき+1000/+1000」はmodifyStats amountFrom{source:dropAttributeCount,distinct:true,per:{power,defense}}（bf-h-bt03-0041型のdistinct:true実例）。"
+      "_note": "0025: コールコスト「君の場の《竜騎士》1枚以上」はputSelectedOwnFieldCardsToSoul{min:1}(max省略=上限なし=1枚以上)。「ドロップの《竜騎士》1種類につき+1000/+1000」はmodifyStats amountFrom{source:dropAttributeCount,distinct:true,per:{power,defense}}（bf-h-bt03-0041型のdistinct:true実例）。 監査2026-10: コールコスト『君の場の《竜騎士》』はモンスター限定の語が無いため filter を {attribute:竜騎士} に（装備中の《竜騎士》アイテムも選べる）。 監査2026-10(b053-3): 『ドロップゾーンの《竜騎士》1種類につき』は魔法/アイテム/必殺技も数える＝amountFrom.filter から cardType:monster を除去。"
     },
     {
       "id": "bf-x-cp01-0026",
@@ -1812,7 +1861,7 @@
           "id": "bf-x-cp01-0026-battleend-stand",
           "kind": "triggered",
           "event": "battleEnd",
-          "conditions": [
+          "ifConditions": [
             {
               "op": "ownFieldCardExists",
               "filter": {
@@ -2055,6 +2104,9 @@
           "filter": {
             "attribute": "雷帝軍"
           },
+          "from": {
+            "byOpponent": true
+          },
           "conditions": [
             {
               "op": "turnOwnerIsSelf"
@@ -2062,7 +2114,7 @@
           ]
         }
       ],
-      "_note": "『君のターン中、君の場の《雷帝軍》のカード全ては相手のカードの効果でレストされず、手札に戻せない』= continuous 2本。grantRestImmunity{controller:self,filter:{attribute:雷帝軍},from:{byOpponent:true},conditions:[turnOwnerIsSelf]}（Z4系・grantedProtectionBlocksがfromを判定＝bf-s-ub-c03系前例と同型）。preventReturnToHand{controller:self,filter:{attribute:雷帝軍},conditions:[turnOwnerIsSelf]}（bf-d-ss01-neo-dragonic-force.json前例と同型）は意図的にfromキーを付けていない: cannotReturnToHand(src/17:234)が呼ぶcontinuousEffectApplies(src/05:763)はeffect.fromを一切判定しない実装（grantedProtectionBlocks/destroyImmunityBlocksとは別レイヤ）ため、fromを書いても無効＝『相手の効果限定』は表現できず自分の効果による返却も等しくブロックする近似（既存DB全preventReturnToHand共通の制約・実害は皆無=自分から自分の雷帝軍を手札に戻す効果は本弾に無い）。grep自己検査: grantRestImmunity(src/05:844,PROTECTION_OP_BY_KIND)/preventReturnToHand(src/17:250)/continuousEffectApplies(src/05:763,fromキー不読を実証) 全実在確認。"
+      "_note": "『君のターン中、君の場の《雷帝軍》のカード全ては相手のカードの効果でレストされず、手札に戻せない』= continuous 2本。grantRestImmunity{controller:self,filter:{attribute:雷帝軍},from:{byOpponent:true},conditions:[turnOwnerIsSelf]}（Z4系・grantedProtectionBlocksがfromを判定＝bf-s-ub-c03系前例と同型）。preventReturnToHand{controller:self,filter:{attribute:雷帝軍},conditions:[turnOwnerIsSelf]}（bf-d-ss01-neo-dragonic-force.json前例と同型）は意図的にfromキーを付けていない: cannotReturnToHand(src/17:234)が呼ぶcontinuousEffectApplies(src/05:763)はeffect.fromを一切判定しない実装（grantedProtectionBlocks/destroyImmunityBlocksとは別レイヤ）ため、fromを書いても無効＝『相手の効果限定』は表現できず自分の効果による返却も等しくブロックする近似（既存DB全preventReturnToHand共通の制約・実害は皆無=自分から自分の雷帝軍を手札に戻す効果は本弾に無い）。grep自己検査: grantRestImmunity(src/05:844,PROTECTION_OP_BY_KIND)/preventReturnToHand(src/17:250)/continuousEffectApplies(src/05:763,fromキー不読を実証) 全実在確認。 ／【audit2 return-to-hand-cause】preventReturnToHand に from:{byOpponent:true} を付与。cannotReturnToHand(card, cause) が原因を受け取り from を判定するよう拡張したため、自分の効果・コストによる手札戻しは止めない（上記の近似は解消）。"
     },
     {
       "id": "bf-x-cp01-0032",
@@ -2094,7 +2146,7 @@
           "kind": "triggered",
           "event": "enter",
           "optional": true,
-          "conditions": [
+          "ifConditions": [
             {
               "op": "cardCount",
               "controller": "self",
@@ -2126,7 +2178,7 @@
           }
         }
       ],
-      "_note": "0032: コールコスト行なし=costs.call:[]+callCost:{gauge:0}（bf-x-ss01-0033慣例）。「登場した時、条件を満たすなら手札1枚を捨ててよい。捨てたら2枚引く」はability.optional:true+cost discardHand(bf-s-ub-c03-0010型)。条件『君の場に他の《竜騎士》2枚以上』はcardCount{excludeSource:true,cmp:gte,amount:2}。named-once限定キーは設計書§5指定のxcp01-geijutsu-no-hogosha（shared:true）。"
+      "_note": "0032: コールコスト行なし=costs.call:[]+callCost:{gauge:0}（bf-x-ss01-0033慣例）。「登場した時、条件を満たすなら手札1枚を捨ててよい。捨てたら2枚引く」はability.optional:true+cost discardHand(bf-s-ub-c03-0010型)。条件『君の場に他の《竜騎士》2枚以上』はcardCount{excludeSource:true,cmp:gte,amount:2}。named-once限定キーは設計書§5指定のxcp01-geijutsu-no-hogosha（shared:true）。 監査 rule-continuous-5: 「〜時、XならY」の X は ifConditions（解決時の状態条件・不成立でも1ターン1回を消費＝ver2.05 ④「１ターンに１回」Q2/A2）。"
     },
     {
       "id": "bf-x-cp01-0033",
@@ -2276,39 +2328,15 @@
       ],
       "abilities": [
         {
-          "id": "bf-x-cp01-0034-link-mark",
-          "kind": "triggered",
-          "event": "attack",
-          "conditions": [
-            {
-              "op": "pendingAttackBySource"
-            },
-            {
-              "op": "pendingAttackIncludesOtherMatching",
-              "filter": {
-                "attribute": "太陽竜"
-              }
-            }
-          ],
-          "effects": [
-            {
-              "op": "grantKeyword",
-              "target": "$self",
-              "keyword": "xcp01-0034-linked",
-              "duration": "turn"
-            }
-          ]
-        },
-        {
           "id": "bf-x-cp01-0034-battleend-drop-draw",
           "kind": "triggered",
           "event": "battleEnd",
           "conditions": [
             {
-              "op": "targetMatches",
-              "ref": "$self",
-              "filter": {
-                "keyword": "xcp01-0034-linked"
+              "op": "lastAttackIsLink",
+              "includesSource": true,
+              "otherFilter": {
+                "attribute": "太陽竜"
               }
             }
           ],
@@ -2332,7 +2360,7 @@
           ]
         }
       ],
-      "_note": "『他の《太陽竜》と連携攻撃したバトルの終了時』はbf-x-bt01-0057（メラエグゾースト・ドラゴン）の2能力橋渡し技法をそのまま踏襲: (a)event:attack+pendingAttackBySource+pendingAttackIncludesOtherMatching(filter:太陽竜)でリンク成立検知→一時マーカーkeyword(xcp01-0034-linked)をduration:turnで自身に付与、(b)event:battleEndでtargetMatches(ref:$self,filter:{keyword:...})により本体を解決。理由: queueBattleEndTriggers起動時点でstate.pendingAttackは既にclearPendingAttack済みのためpendingAttackBySource等はbattleEnd側で使えない（src/10-battle-resolve.js）。『場のこのカードをドロップゾーンに置いてよい。置いたら、カード1枚を引く』はconfirmPrompt(bf-d-eb01-0019前例)のthen内でdropSelf（『破壊』でなく『置く』のためdestroySelfでなくdropSelfを使用=dropFieldCardByRule・ソウルガード等を経由しないルール移動）+draw(1)。grep自己検査: pendingAttackBySource(src/13:1306)/pendingAttackIncludesOtherMatching(src/13:1345)/battleEnd(src/10:494,516,522)/targetMatches(src/13:839)/confirmPrompt(src/13:776)/dropSelf(src/15:941)/draw(src/15:223) 全実在確認済み。"
+      "_note": "【audit2 更新】連携判定は attack 時の duration:turn 印キーワード方式をやめ、battleEnd の条件 lastAttackIsLink{includesSource:true(,otherFilter)} に置換（同ターンの後続の単独攻撃で再誘発しないため）。以下の旧記述は履歴。 『他の《太陽竜》と連携攻撃したバトルの終了時』はbf-x-bt01-0057（メラエグゾースト・ドラゴン）の2能力橋渡し技法をそのまま踏襲: (a)event:attack+pendingAttackBySource+pendingAttackIncludesOtherMatching(filter:太陽竜)でリンク成立検知→一時マーカーkeyword(xcp01-0034-linked)をduration:turnで自身に付与、(b)event:battleEndでtargetMatches(ref:$self,filter:{keyword:...})により本体を解決。理由: queueBattleEndTriggers起動時点でstate.pendingAttackは既にclearPendingAttack済みのためpendingAttackBySource等はbattleEnd側で使えない（src/10-battle-resolve.js）。『場のこのカードをドロップゾーンに置いてよい。置いたら、カード1枚を引く』はconfirmPrompt(bf-d-eb01-0019前例)のthen内でdropSelf（『破壊』でなく『置く』のためdestroySelfでなくdropSelfを使用=dropFieldCardByRule・ソウルガード等を経由しないルール移動）+draw(1)。grep自己検査: pendingAttackBySource(src/13:1306)/pendingAttackIncludesOtherMatching(src/13:1345)/battleEnd(src/10:494,516,522)/targetMatches(src/13:839)/confirmPrompt(src/13:776)/dropSelf(src/15:941)/draw(src/15:223) 全実在確認済み。"
     },
     {
       "id": "bf-x-cp01-0035",
@@ -2818,30 +2846,39 @@
               "op": "destroySelf"
             },
             {
-              "op": "selectCards",
-              "var": "recall",
-              "from": "hand",
-              "controller": "self",
-              "filter": {
-                "name": "キャノンボール隊"
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
               },
-              "amount": 1,
-              "min": 0,
-              "require": false,
-              "canPayCost": "call",
-              "callable": true,
-              "title": "キャノンボール隊",
-              "lead": "コールする、手札の「キャノンボール隊」を1枚まで選んでください（選ばなくてもよい）。"
-            },
-            {
-              "op": "callSelectedToEmptyZones",
-              "var": "recall",
-              "payCost": "call"
+              "then": [
+                {
+                  "op": "selectCards",
+                  "var": "recall",
+                  "from": "hand",
+                  "controller": "self",
+                  "filter": {
+                    "name": "キャノンボール隊"
+                  },
+                  "amount": 1,
+                  "min": 0,
+                  "require": false,
+                  "canPayCost": "call",
+                  "callable": true,
+                  "title": "キャノンボール隊",
+                  "lead": "コールする、手札の「キャノンボール隊」を1枚まで選んでください（選ばなくてもよい）。"
+                },
+                {
+                  "op": "callSelectedToEmptyZones",
+                  "var": "recall",
+                  "payCost": "call",
+                  "overwriteWhenFull": true
+                }
+              ]
             }
           ]
         }
       ],
-      "_note": "C9(自壊連鎖)+E-XC3: 『「キャノンボール隊」はデッキに何枚でも入れられる！』=card級 deckUnlimitedCopies:true（E-XC3・engine-notes記載の5層一括実装を利用・builder cardCopyLimitForFlag/engine canUseCardForFlag/deck-code/server/validate_recommendは既に対応済のためカード側はフラグを立てるのみ）。『君のドロップゾーンに「キャノンボール隊」2枚以上/5枚以上』=continuous modifyStats×2(filter:sameInstanceAsSource,conditions:[cardCount{pile:drop,filter:{name:キャノンボール隊},cmp:gte,amount:2/5}])。『このカードのバトル終了時、場のこれを破壊してよい。破壊したら、手札の「キャノンボール隊」1枚までをコールする』=event:battleEnd+optional:true+script:[destroySelf→selectCards(hand,name一致,min:0,require:false,canPayCost:call)→callSelectedToEmptyZones{payCost:call}]。『破壊してよい』=destroy系（dropSelfではない）。連鎖はlimit不要（battleEndは同一バトルにつき1回のみ発火・再入なし）。F3是正: 原文は無限定の「このカードのバトル終了時」＝被攻撃側でも発火すべきだが bare battleEnd は攻撃者スロットのみ配信（src/10）＝防御バトルで不発だった。includeDefender:true を付け、被攻撃側でも battleEnd を発火させる（オプトイン・既存 bare battleEnd 57件は非保持で挙動不変）。デッキ無制限投入の実測（builder関数直呼び）は別途verifyスクリプトで実施。grep自己検査: deckUnlimitedCopies(builder.js:672)/destroySelf(src/15:988)/battleEnd/cardCount/callSelectedToEmptyZones 全実在確認。"
+      "_note": "C9(自壊連鎖)+E-XC3: 『「キャノンボール隊」はデッキに何枚でも入れられる！』=card級 deckUnlimitedCopies:true（E-XC3・engine-notes記載の5層一括実装を利用・builder cardCopyLimitForFlag/engine canUseCardForFlag/deck-code/server/validate_recommendは既に対応済のためカード側はフラグを立てるのみ）。『君のドロップゾーンに「キャノンボール隊」2枚以上/5枚以上』=continuous modifyStats×2(filter:sameInstanceAsSource,conditions:[cardCount{pile:drop,filter:{name:キャノンボール隊},cmp:gte,amount:2/5}])。『このカードのバトル終了時、場のこれを破壊してよい。破壊したら、手札の「キャノンボール隊」1枚までをコールする』=event:battleEnd+optional:true+script:[destroySelf→selectCards(hand,name一致,min:0,require:false,canPayCost:call)→callSelectedToEmptyZones{payCost:call}]。『破壊してよい』=destroy系（dropSelfではない）。連鎖はlimit不要（battleEndは同一バトルにつき1回のみ発火・再入なし）。F3是正: 原文は無限定の「このカードのバトル終了時」＝被攻撃側でも発火すべきだが bare battleEnd は攻撃者スロットのみ配信（src/10）＝防御バトルで不発だった。includeDefender:true を付け、被攻撃側でも battleEnd を発火させる（オプトイン・既存 bare battleEnd 57件は非保持で挙動不変）。デッキ無制限投入の実測（builder関数直呼び）は別途verifyスクリプトで実施。grep自己検査: deckUnlimitedCopies(builder.js:672)/destroySelf(src/15:988)/battleEnd/cardCount/callSelectedToEmptyZones 全実在確認。 ／【2026-10-09 オーナー裁定R8】『場のこのカードを破壊してよい。破壊したら』: destroySelf の後続を lastDestroySucceeded ゲートへ（置換で場に残ったらコールしない）。"
     },
     {
       "id": "bf-x-cp01-0044",
@@ -2908,7 +2945,6 @@
           {
             "op": "putSelectedOwnFieldCardsToSoul",
             "filter": {
-              "cardType": "monster",
               "attribute": "竜騎士"
             },
             "min": 1,
@@ -2949,7 +2985,7 @@
           ]
         }
       ],
-      "_note": "0045: 「ドロップに《竜騎士》4種類以上あるなら、場の《竜騎士》全て+2000/+2000」はcontinuous modifyStats{controller:self,filter:{attribute:竜騎士},conditions:[cardCount distinct gte4]}（D-BT03/0007型のconditions付きcontinuous）。"
+      "_note": "0045: 「ドロップに《竜騎士》4種類以上あるなら、場の《竜騎士》全て+2000/+2000」はcontinuous modifyStats{controller:self,filter:{attribute:竜騎士},conditions:[cardCount distinct gte4]}（D-BT03/0007型のconditions付きcontinuous）。 監査2026-10: コールコスト『君の場の《竜騎士》』はモンスター限定の語が無いため filter を {attribute:竜騎士} に（装備中の《竜騎士》アイテムも選べる）。"
     },
     {
       "id": "bf-x-cp01-0046",
@@ -3202,10 +3238,11 @@
               "var": "pick",
               "to": "hand"
             }
-          ]
+          ],
+          "selectBeforeCost": true
         }
       ],
-      "_note": "『1枚を選び、ゲージ2を払ってよい。払ったら、選んだカードを手札に加える』はability.optional:true+cost:[payGauge2]+script(selectCards from:drop→moveSelected to:hand)のDB既存イディオム（bf-d-bt02-0029/bf-h-eb04-0007と同型）。原文は選択→支払いの順だが、エンジンのoptional起動能力は宣言時に支払い可否を先に確定する構造のため『支払い可否を先に決め、その後で対象を選ぶ』という手順の入替えが起きる（結果は同一・DB全体で確立済みの標準近似・_note個別記載は先例で省略されているが明記）。"
+      "_note": "『1枚を選び、ゲージ2を払ってよい。払ったら、選んだカードを手札に加える』はability.optional:true+cost:[payGauge2]+script(selectCards from:drop→moveSelected to:hand)のDB既存イディオム（bf-d-bt02-0029/bf-h-eb04-0007と同型）。原文は選択→支払いの順だが、エンジンのoptional起動能力は宣言時に支払い可否を先に確定する構造のため『支払い可否を先に決め、その後で対象を選ぶ』という手順の入替えが起きる（結果は同一・DB全体で確立済みの標準近似・_note個別記載は先例で省略されているが明記）。 【R5 2026-10-09 オーナー裁定】「〜を選び、…を払ってよい。払ったら」は選べるカードが無いなら支払えない（何も起きない）＝能力に selectBeforeCost:true（先頭の選択に候補が無ければコストを提示しない）。旧 _note の「optional 承諾＝コスト先払い→script 内で選択」の近似は、候補0でもコストだけ払えてしまう点が誤りだった。"
     },
     {
       "id": "bf-x-cp01-0052",
@@ -3846,6 +3883,7 @@
           "effects": [
             {
               "op": "setPreventNextDestroy",
+              "optional": true,
               "target": "$target"
             }
           ]
@@ -3890,6 +3928,7 @@
           "effects": [
             {
               "op": "setPreventNextDestroy",
+              "optional": true,
               "target": "$target",
               "amount": 1,
               "gainLife": 2
@@ -4224,7 +4263,8 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             },
             {
               "op": "shuffleDeck",
@@ -4284,6 +4324,9 @@
           "filter": {
             "attribute": "雷帝軍"
           },
+          "from": {
+            "byOpponent": true
+          },
           "conditions": [
             {
               "op": "turnOwnerIsSelf"
@@ -4291,7 +4334,7 @@
           ]
         }
       ],
-      "_note": "『君のターン中、君の場の《雷帝軍》のカード全ては相手のカードの効果でレストされず、手札に戻せない』= continuous 2本。grantRestImmunity{controller:self,filter:{attribute:雷帝軍},from:{byOpponent:true},conditions:[turnOwnerIsSelf]}（Z4系・grantedProtectionBlocksがfromを判定＝bf-s-ub-c03系前例と同型）。preventReturnToHand{controller:self,filter:{attribute:雷帝軍},conditions:[turnOwnerIsSelf]}（bf-d-ss01-neo-dragonic-force.json前例と同型）は意図的にfromキーを付けていない: cannotReturnToHand(src/17:234)が呼ぶcontinuousEffectApplies(src/05:763)はeffect.fromを一切判定しない実装（grantedProtectionBlocks/destroyImmunityBlocksとは別レイヤ）ため、fromを書いても無効＝『相手の効果限定』は表現できず自分の効果による返却も等しくブロックする近似（既存DB全preventReturnToHand共通の制約・実害は皆無=自分から自分の雷帝軍を手札に戻す効果は本弾に無い）。grep自己検査: grantRestImmunity(src/05:844,PROTECTION_OP_BY_KIND)/preventReturnToHand(src/17:250)/continuousEffectApplies(src/05:763,fromキー不読を実証) 全実在確認。"
+      "_note": "『君のターン中、君の場の《雷帝軍》のカード全ては相手のカードの効果でレストされず、手札に戻せない』= continuous 2本。grantRestImmunity{controller:self,filter:{attribute:雷帝軍},from:{byOpponent:true},conditions:[turnOwnerIsSelf]}（Z4系・grantedProtectionBlocksがfromを判定＝bf-s-ub-c03系前例と同型）。preventReturnToHand{controller:self,filter:{attribute:雷帝軍},conditions:[turnOwnerIsSelf]}（bf-d-ss01-neo-dragonic-force.json前例と同型）は意図的にfromキーを付けていない: cannotReturnToHand(src/17:234)が呼ぶcontinuousEffectApplies(src/05:763)はeffect.fromを一切判定しない実装（grantedProtectionBlocks/destroyImmunityBlocksとは別レイヤ）ため、fromを書いても無効＝『相手の効果限定』は表現できず自分の効果による返却も等しくブロックする近似（既存DB全preventReturnToHand共通の制約・実害は皆無=自分から自分の雷帝軍を手札に戻す効果は本弾に無い）。grep自己検査: grantRestImmunity(src/05:844,PROTECTION_OP_BY_KIND)/preventReturnToHand(src/17:250)/continuousEffectApplies(src/05:763,fromキー不読を実証) 全実在確認。 ／【audit2 return-to-hand-cause】preventReturnToHand に from:{byOpponent:true} を付与。cannotReturnToHand(card, cause) が原因を受け取り from を判定するよう拡張したため、自分の効果・コストによる手札戻しは止めない（上記の近似は解消）。"
     },
     {
       "id": "bf-x-cp01-0073",
@@ -4405,7 +4448,8 @@
           "event": "enter",
           "limit": {
             "scope": "turn",
-            "key": "xcp01-baldragon-force"
+            "key": "xcp01-baldragon-force",
+            "shared": true
           },
           "script": [
             {
@@ -4515,39 +4559,15 @@
       ],
       "abilities": [
         {
-          "id": "bf-x-cp01-0076-link-mark",
-          "kind": "triggered",
-          "event": "attack",
-          "conditions": [
-            {
-              "op": "pendingAttackBySource"
-            },
-            {
-              "op": "pendingAttackIncludesOtherMatching",
-              "filter": {
-                "attribute": "太陽竜"
-              }
-            }
-          ],
-          "effects": [
-            {
-              "op": "grantKeyword",
-              "target": "$self",
-              "keyword": "xcp01-0034-linked",
-              "duration": "turn"
-            }
-          ]
-        },
-        {
           "id": "bf-x-cp01-0076-battleend-drop-draw",
           "kind": "triggered",
           "event": "battleEnd",
           "conditions": [
             {
-              "op": "targetMatches",
-              "ref": "$self",
-              "filter": {
-                "keyword": "xcp01-0034-linked"
+              "op": "lastAttackIsLink",
+              "includesSource": true,
+              "otherFilter": {
+                "attribute": "太陽竜"
               }
             }
           ],
@@ -4571,7 +4591,7 @@
           ]
         }
       ],
-      "_note": "『他の《太陽竜》と連携攻撃したバトルの終了時』はbf-x-bt01-0057（メラエグゾースト・ドラゴン）の2能力橋渡し技法をそのまま踏襲: (a)event:attack+pendingAttackBySource+pendingAttackIncludesOtherMatching(filter:太陽竜)でリンク成立検知→一時マーカーkeyword(xcp01-0034-linked)をduration:turnで自身に付与、(b)event:battleEndでtargetMatches(ref:$self,filter:{keyword:...})により本体を解決。理由: queueBattleEndTriggers起動時点でstate.pendingAttackは既にclearPendingAttack済みのためpendingAttackBySource等はbattleEnd側で使えない（src/10-battle-resolve.js）。『場のこのカードをドロップゾーンに置いてよい。置いたら、カード1枚を引く』はconfirmPrompt(bf-d-eb01-0019前例)のthen内でdropSelf（『破壊』でなく『置く』のためdestroySelfでなくdropSelfを使用=dropFieldCardByRule・ソウルガード等を経由しないルール移動）+draw(1)。grep自己検査: pendingAttackBySource(src/13:1306)/pendingAttackIncludesOtherMatching(src/13:1345)/battleEnd(src/10:494,516,522)/targetMatches(src/13:839)/confirmPrompt(src/13:776)/dropSelf(src/15:941)/draw(src/15:223) 全実在確認済み。"
+      "_note": "【audit2 更新】連携判定は attack 時の duration:turn 印キーワード方式をやめ、battleEnd の条件 lastAttackIsLink{includesSource:true(,otherFilter)} に置換（同ターンの後続の単独攻撃で再誘発しないため）。以下の旧記述は履歴。 『他の《太陽竜》と連携攻撃したバトルの終了時』はbf-x-bt01-0057（メラエグゾースト・ドラゴン）の2能力橋渡し技法をそのまま踏襲: (a)event:attack+pendingAttackBySource+pendingAttackIncludesOtherMatching(filter:太陽竜)でリンク成立検知→一時マーカーkeyword(xcp01-0034-linked)をduration:turnで自身に付与、(b)event:battleEndでtargetMatches(ref:$self,filter:{keyword:...})により本体を解決。理由: queueBattleEndTriggers起動時点でstate.pendingAttackは既にclearPendingAttack済みのためpendingAttackBySource等はbattleEnd側で使えない（src/10-battle-resolve.js）。『場のこのカードをドロップゾーンに置いてよい。置いたら、カード1枚を引く』はconfirmPrompt(bf-d-eb01-0019前例)のthen内でdropSelf（『破壊』でなく『置く』のためdestroySelfでなくdropSelfを使用=dropFieldCardByRule・ソウルガード等を経由しないルール移動）+draw(1)。grep自己検査: pendingAttackBySource(src/13:1306)/pendingAttackIncludesOtherMatching(src/13:1345)/battleEnd(src/10:494,516,522)/targetMatches(src/13:839)/confirmPrompt(src/13:776)/dropSelf(src/15:941)/draw(src/15:223) 全実在確認済み。"
     },
     {
       "id": "bf-x-cp01-0077",
@@ -4628,6 +4648,12 @@
           "conditions": [
             {
               "op": "pendingAttackIsLink"
+            },
+            {
+              "op": "eventAttackersInclude",
+              "filter": {
+                "cardType": "item"
+              }
             }
           ],
           "effects": [
@@ -4638,7 +4664,7 @@
           ]
         }
       ],
-      "_note": "BR03別絵(X-CP01/BR03)のbase。①【コールコスト】『このカードを君の場のカード名に「ドラム」を含むモンスター1枚までの上に重ね、ゲージ2を払う』=callStack:{nameIncludes:ドラム,optional:true}（E-ZA4『まで』型・bf-x-ss02-0002型）+costs.call[payGauge:2]。②『君の場のアイテムは貫通を得る』=continuous grantKeyword{keyword:penetrate,controller:self,filter:{cardType:item}}。③『このカードが君と連携攻撃しているなら、その攻撃は無効化されない』=event:attack(自己発火・接頭辞なし)+conditions[pendingAttackIsLink]+effects markPendingAttackUnstoppable{onlyNullify:true}（src/15-ability-effects.js:1869-1873の実装コメントが直接『ドラム・ザ・フューチャー』=bf-h-bt01-0003を挙げる本カード直系の先例op。0077はダメージ減少耐性を伴わない『無効化されない』のみのためonlyNullify:trueで限定）。"
+      "_note": "BR03別絵(X-CP01/BR03)のbase。①【コールコスト】『このカードを君の場のカード名に「ドラム」を含むモンスター1枚までの上に重ね、ゲージ2を払う』=callStack:{nameIncludes:ドラム,optional:true}（E-ZA4『まで』型・bf-x-ss02-0002型）+costs.call[payGauge:2]。②『君の場のアイテムは貫通を得る』=continuous grantKeyword{keyword:penetrate,controller:self,filter:{cardType:item}}。③『このカードが君と連携攻撃しているなら、その攻撃は無効化されない』=event:attack(自己発火・接頭辞なし)+conditions[pendingAttackIsLink]+effects markPendingAttackUnstoppable{onlyNullify:true}（src/15-ability-effects.js:1869-1873の実装コメントが直接『ドラム・ザ・フューチャー』=bf-h-bt01-0003を挙げる本カード直系の先例op。0077はダメージ減少耐性を伴わない『無効化されない』のみのためonlyNullify:trueで限定）。 監査2026-10(b053-1): 『君と連携攻撃』＝ファイター(装備アイテム)が攻撃者に含まれる時のみ。eventAttackersInclude{cardType:item} を追加（bf-pr-0049/bf-x2-bt01-0069 と同型）。モンスター同士の連携では無効化耐性を得ない。"
     },
     {
       "id": "bf-x-cp01-0078",
@@ -4851,7 +4877,8 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             },
             {
               "op": "shuffleDeck",
@@ -4899,7 +4926,8 @@
           "event": "enter",
           "limit": {
             "scope": "turn",
-            "key": "xcp01-baldragon-force"
+            "key": "xcp01-baldragon-force",
+            "shared": true
           },
           "script": [
             {
@@ -4997,6 +5025,12 @@
           "conditions": [
             {
               "op": "pendingAttackIsLink"
+            },
+            {
+              "op": "eventAttackersInclude",
+              "filter": {
+                "cardType": "item"
+              }
             }
           ],
           "effects": [
@@ -5007,7 +5041,7 @@
           ]
         }
       ],
-      "_note": "BR03別絵(X-CP01/BR03)のbase。①【コールコスト】『このカードを君の場のカード名に「ドラム」を含むモンスター1枚までの上に重ね、ゲージ2を払う』=callStack:{nameIncludes:ドラム,optional:true}（E-ZA4『まで』型・bf-x-ss02-0002型）+costs.call[payGauge:2]。②『君の場のアイテムは貫通を得る』=continuous grantKeyword{keyword:penetrate,controller:self,filter:{cardType:item}}。③『このカードが君と連携攻撃しているなら、その攻撃は無効化されない』=event:attack(自己発火・接頭辞なし)+conditions[pendingAttackIsLink]+effects markPendingAttackUnstoppable{onlyNullify:true}（src/15-ability-effects.js:1869-1873の実装コメントが直接『ドラム・ザ・フューチャー』=bf-h-bt01-0003を挙げる本カード直系の先例op。0077はダメージ減少耐性を伴わない『無効化されない』のみのためonlyNullify:trueで限定）。"
+      "_note": "BR03別絵(X-CP01/BR03)のbase。①【コールコスト】『このカードを君の場のカード名に「ドラム」を含むモンスター1枚までの上に重ね、ゲージ2を払う』=callStack:{nameIncludes:ドラム,optional:true}（E-ZA4『まで』型・bf-x-ss02-0002型）+costs.call[payGauge:2]。②『君の場のアイテムは貫通を得る』=continuous grantKeyword{keyword:penetrate,controller:self,filter:{cardType:item}}。③『このカードが君と連携攻撃しているなら、その攻撃は無効化されない』=event:attack(自己発火・接頭辞なし)+conditions[pendingAttackIsLink]+effects markPendingAttackUnstoppable{onlyNullify:true}（src/15-ability-effects.js:1869-1873の実装コメントが直接『ドラム・ザ・フューチャー』=bf-h-bt01-0003を挙げる本カード直系の先例op。0077はダメージ減少耐性を伴わない『無効化されない』のみのためonlyNullify:trueで限定）。 監査2026-10(b053-1): 『君と連携攻撃』＝ファイター(装備アイテム)が攻撃者に含まれる時のみ。eventAttackersInclude{cardType:item} を追加（bf-pr-0049/bf-x2-bt01-0069 と同型）。モンスター同士の連携では無効化耐性を得ない。"
     }
   ]
 }

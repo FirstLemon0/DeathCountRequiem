@@ -263,6 +263,7 @@
           "id": "ss01-0008-battle-end-return",
           "kind": "triggered",
           "event": "battleEnd",
+          "includeDefender": true,
           "effects": [
             {
               "op": "returnToHand",
@@ -491,6 +492,7 @@
           "id": "ss01-0013-monster-returned-gauge",
           "kind": "triggered",
           "event": "allyMonsterReturned",
+          "returnedToZones": ["hand", "deck"],
           "limit": {
             "scope": "turn",
             "key": "ss01-0013-monster-returned-gauge"
@@ -643,6 +645,7 @@
           "id": "ss01-0016-power-up-on-return",
           "kind": "triggered",
           "event": "allyMonsterReturned",
+          "returnedToZones": ["hand", "deck"],
           "limit": {
             "scope": "turn",
             "key": "ss01-0016-power-up-on-return"
@@ -953,7 +956,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "ss01-0023-burning-sword"
+            "key": "ss01-0023-burning-sword",
+            "shared": true
           },
           "cost": [
             {
@@ -1693,6 +1697,11 @@
             {
               "op": "reduceNextDamage",
               "amount": 2
+            }
+          ],
+          "conditions": [
+            {
+              "op": "incomingDamagePending"
             }
           ]
         }

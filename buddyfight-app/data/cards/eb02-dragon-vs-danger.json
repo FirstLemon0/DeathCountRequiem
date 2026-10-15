@@ -173,6 +173,18 @@
           {
             "op": "payGauge",
             "amount": 1
+          },
+          {
+            "op": "putCardToSoul",
+            "sources": [
+              "hand"
+            ],
+            "min": 0,
+            "max": 1,
+            "amount": 1,
+            "filter": {
+              "nameIncludes": "蒼穹騎士団"
+            }
           }
         ]
       },
@@ -183,32 +195,6 @@
         "soulguard"
       ],
       "abilities": [
-        {
-          "id": "eb02-0004-soul-in",
-          "kind": "triggered",
-          "event": "enter",
-          "optional": true,
-          "script": [
-            {
-              "op": "selectCards",
-              "var": "s",
-              "from": "hand",
-              "controller": "self",
-              "filter": {
-                "nameIncludes": "蒼穹騎士団"
-              },
-              "amount": 1,
-              "allowEmpty": true,
-              "title": "ドラムバンカー・ドラゴン",
-              "lead": "ソウルに入れる手札の「蒼穹騎士団」を含むカードを選んでください。"
-            },
-            {
-              "op": "moveSelected",
-              "var": "s",
-              "to": "soul"
-            }
-          ]
-        },
         {
           "id": "eb02-0004-attack-life",
           "kind": "triggered",
@@ -519,6 +505,9 @@
           {
             "op": "payGauge",
             "amount": 2
+          },
+          {
+            "op": "discardAllHand"
           }
         ]
       },
@@ -534,9 +523,6 @@
           "kind": "triggered",
           "event": "enter",
           "effects": [
-            {
-              "op": "discardAllHand"
-            },
             {
               "op": "gainLife",
               "amount": 2
@@ -864,8 +850,17 @@
               "op": "pendingActionIsOpponent"
             },
             {
-              "op": "pendingActionCardType",
-              "cardType": "spell"
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "pendingActionKind",
+                  "kind": "spell"
+                },
+                {
+                  "op": "pendingActionKind",
+                  "kind": "setSpell"
+                }
+              ]
             }
           ],
           "cost": [
@@ -1242,6 +1237,9 @@
               "op": "turnOwnerIsOpponent"
             },
             {
+              "op": "pendingAttackExists"
+            },
+            {
               "op": "hostMatches",
               "filter": {
                 "cardType": "item",
@@ -1295,6 +1293,9 @@
           "conditions": [
             {
               "op": "turnOwnerIsOpponent"
+            },
+            {
+              "op": "pendingAttackExists"
             },
             {
               "op": "ownCenterEmpty"
@@ -1406,6 +1407,11 @@
             {
               "op": "putTopDeckToGaugeEqualToLastDamage"
             }
+          ],
+          "conditions": [
+            {
+              "op": "selfReceivedDamage"
+            }
           ]
         }
       ]
@@ -1436,6 +1442,9 @@
           "conditions": [
             {
               "op": "ownCenterEmpty"
+            },
+            {
+              "op": "ownFieldCardDestroyPending"
             }
           ],
           "target": {
@@ -1670,7 +1679,8 @@
               "op": "ownCenterEmpty"
             },
             {
-              "op": "pendingAttackDefenderIsSelf"
+              "op": "incomingDamagePending",
+              "from": "attack"
             }
           ],
           "cost": [
@@ -1681,11 +1691,8 @@
           ],
           "effects": [
             {
-              "op": "preventNextDamage"
-            },
-            {
-              "op": "gainLife",
-              "amount": 1
+              "op": "preventNextDamage",
+              "gainLife": 1
             }
           ]
         }
@@ -2096,6 +2103,11 @@
               "op": "reduceNextDamage",
               "amount": 2
             }
+          ],
+          "conditions": [
+            {
+              "op": "incomingDamagePending"
+            }
           ]
         }
       ]
@@ -2190,6 +2202,7 @@
       "abilities": [
         {
           "id": "eb02-0048-spirit",
+          "label": "霊撃",
           "kind": "triggered",
           "event": "destroyByAttack",
           "effects": [
@@ -2324,6 +2337,18 @@
           {
             "op": "payGauge",
             "amount": 1
+          },
+          {
+            "op": "putCardToSoul",
+            "sources": [
+              "hand"
+            ],
+            "min": 0,
+            "max": 1,
+            "amount": 1,
+            "filter": {
+              "nameIncludes": "蒼穹騎士団"
+            }
           }
         ]
       },
@@ -2334,32 +2359,6 @@
         "soulguard"
       ],
       "abilities": [
-        {
-          "id": "eb02-s003-soul-in",
-          "kind": "triggered",
-          "event": "enter",
-          "optional": true,
-          "script": [
-            {
-              "op": "selectCards",
-              "var": "s",
-              "from": "hand",
-              "controller": "self",
-              "filter": {
-                "nameIncludes": "蒼穹騎士団"
-              },
-              "amount": 1,
-              "allowEmpty": true,
-              "title": "ドラムバンカー・ドラゴン",
-              "lead": "ソウルに入れる手札の「蒼穹騎士団」を含むカードを選んでください。"
-            },
-            {
-              "op": "moveSelected",
-              "var": "s",
-              "to": "soul"
-            }
-          ]
-        },
         {
           "id": "eb02-s003-attack-life",
           "kind": "triggered",

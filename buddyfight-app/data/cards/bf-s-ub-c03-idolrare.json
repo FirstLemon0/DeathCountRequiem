@@ -212,6 +212,9 @@
           "filter": {
             "attributeIncludes": "アイドル"
           },
+          "from": {
+            "byOpponent": true
+          },
           "conditions": [
             {
               "op": "cardCount",
@@ -308,7 +311,8 @@
               "amount": 3,
               "require": false,
               "title": "本田未央",
-              "lead": "『３回攻撃』を得るカードを確認してください。"
+              "lead": "『３回攻撃』を得るカードを確認してください。",
+              "selectAll": true
             },
             {
               "op": "grantKeywordSelected",
@@ -445,14 +449,13 @@
               "op": "turnOwnerIsOpponent"
             },
             {
-              "op": "phaseIs",
-              "phase": "attack"
+              "op": "pendingAttackExists"
             }
           ],
-          "effects": [
+          "script": [
             {
-              "op": "returnToHand",
-              "target": "$self"
+              "op": "returnSelfToHand",
+              "require": true
             },
             {
               "op": "nullifyAttack"
@@ -634,7 +637,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-s-ub-c03-ir006-yami-ni-nomareyo"
+            "key": "s-ub-c03-yami-ni-nomareyo",
+            "shared": true
           }
         },
         {
@@ -668,7 +672,8 @@
               "amount": 2,
               "require": false,
               "title": "神崎蘭子",
-              "lead": "『貫通』と『２回攻撃』を得るカードを確認してください。"
+              "lead": "『貫通』と『２回攻撃』を得るカードを確認してください。",
+              "selectAll": true
             },
             {
               "op": "grantKeywordSelected",
@@ -939,7 +944,9 @@
               "var": "d",
               "chooseZones": true,
               "payCost": "call",
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true,
+              "excludeSourceZone": true
             }
           ],
           "limit": {
@@ -1427,7 +1434,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -1543,7 +1551,8 @@
             "type": "fieldCard",
             "controller": "opponent",
             "allowMissingTarget": true,
-            "filter": {}
+            "filter": {},
+            "upTo": true
           },
           "effects": [
             {
@@ -1579,7 +1588,7 @@
           }
         ]
       },
-      "_note": " ／【E-XB20監査(x70スライス) 2026-07-17】原文の独立/保証部（「し、」・「〜まで」＋固定効果）に対し triggered の候補0件スキップで保証部まで不発だった潜在を、ability 直下 allowMissingTarget:true 付与で忠実化（エンジンは B1 従属型19件保護のため非対称を維持＝data 側修正が正）。"
+      "_note": " ／【E-XB20監査(x70スライス) 2026-07-17】原文の独立/保証部（「し、」・「〜まで」＋固定効果）に対し triggered の候補0件スキップで保証部まで不発だった潜在を、ability 直下 allowMissingTarget:true 付与で忠実化（エンジンは B1 従属型19件保護のため非対称を維持＝data 側修正が正）。 【R1 2026-10-09 オーナー裁定】「相手の場のカード１枚までをレストし、」＝0枚（選ばない）も選べる（target.upTo:true＋能力直下 allowMissingTarget:true。選ばなくても後段は解決）。"
     },
     {
       "id": "bf-s-ub-c03-ir015",
@@ -2175,43 +2184,38 @@
               "lead": "相手の場のカードを1枚まで選びます。"
             },
             {
-              "op": "ifSelection",
-              "var": "t",
-              "then": [
+              "op": "chooseBranch",
+              "options": [
                 {
-                  "op": "chooseBranch",
-                  "options": [
+                  "key": "pay",
+                  "label": "場のこのカードを手札に戻す",
+                  "script": [
                     {
-                      "key": "pay",
-                      "label": "場のこのカードを手札に戻す",
-                      "script": [
-                        {
-                          "op": "returnSelfToHand"
-                        },
-                        {
-                          "op": "restSelected",
-                          "var": "t"
-                        },
-                        {
-                          "op": "draw",
-                          "amount": 1,
-                          "conditions": [
-                            {
-                              "op": "ownFieldCardExists",
-                              "filter": {
-                                "nameIncludes": "鷺沢文香"
-                              }
-                            }
-                          ]
-                        }
-                      ]
+                      "op": "returnSelfToHand",
+                      "require": true
                     },
                     {
-                      "key": "skip",
-                      "label": "戻さない",
-                      "script": []
+                      "op": "restSelected",
+                      "var": "t"
+                    },
+                    {
+                      "op": "draw",
+                      "amount": 1,
+                      "conditions": [
+                        {
+                          "op": "ownFieldCardExists",
+                          "filter": {
+                            "nameIncludes": "鷺沢文香"
+                          }
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "key": "skip",
+                  "label": "戻さない",
+                  "script": []
                 }
               ]
             }
@@ -2382,21 +2386,47 @@
           "script": [
             {
               "op": "selectCards",
-              "var": "cools",
+              "var": "cools3",
               "from": "pendingAttackers",
               "controller": "self",
               "filter": {
                 "attributeIncludes": "クール"
               },
-              "min": 0,
+              "min": 3,
               "max": 3,
               "require": false,
               "title": "スタンドする連携攻撃した《クール》",
-              "lead": "連携攻撃した《クール》を選んでスタンドします（全て選ぶことができます）。"
+              "lead": "連携攻撃した《クール》全てをスタンドします。"
             },
             {
-              "op": "standSelected",
-              "var": "cools"
+              "op": "ifSelection",
+              "var": "cools3",
+              "then": [
+                {
+                  "op": "standSelected",
+                  "var": "cools3"
+                }
+              ],
+              "else": [
+                {
+                  "op": "selectCards",
+                  "var": "cools2",
+                  "from": "pendingAttackers",
+                  "controller": "self",
+                  "filter": {
+                    "attributeIncludes": "クール"
+                  },
+                  "min": 2,
+                  "max": 2,
+                  "require": false,
+                  "title": "スタンドする連携攻撃した《クール》",
+                  "lead": "連携攻撃した《クール》全てをスタンドします。"
+                },
+                {
+                  "op": "standSelected",
+                  "var": "cools2"
+                }
+              ]
             }
           ]
         }
@@ -2409,6 +2439,7 @@
             "attributeIncludes": "クール"
           },
           "from": {
+            "byEffect": true,
             "byOpponent": true
           },
           "conditions": [
@@ -2584,7 +2615,6 @@
           }
         ]
       },
-      "nullifyImmune": true,
       "continuous": [
         {
           "op": "modifyStats",
@@ -2624,7 +2654,8 @@
               "op": "phaseIs",
               "phase": "attack"
             }
-          ]
+          ],
+          "cannotBeNullified": true
         }
       ]
     },
@@ -2738,7 +2769,8 @@
             {
               "op": "moveGaugeToDrop",
               "player": "opponent",
-              "amount": 2
+              "amount": 2,
+              "upTo": true
             }
           ]
         },
@@ -2762,7 +2794,7 @@
           ]
         }
       ],
-      "_note": "公式は『2枚まで』の任意選択だが、ゲージは裏向きで選択に意味が薄いため常に最大枚数（min(ゲージ,2)）を自動で捨てる近似（moveGaugeToDropの既存挙動、Fable設計§1.16-1）。"
+      "_note": "公式は『2枚まで』の任意選択＝0〜2枚を選ばせる（moveGaugeToDrop upTo:true。R1・2026-10-09 オーナー裁定。旧実装は常に最大枚数を自動で捨てる近似だった）。 【R1 2026-10-09 オーナー裁定】「相手のゲージ２枚までを捨てる」＝0〜2枚を選ぶ（moveGaugeToDrop upTo:true。CPU既定=最大）。"
     },
     {
       "id": "bf-s-ub-c03-ir027",
@@ -3054,7 +3086,8 @@
             "type": "fieldCard",
             "controller": "opponent",
             "allowMissingTarget": true,
-            "filter": {}
+            "filter": {},
+            "upTo": true
           },
           "effects": [
             {
@@ -3070,7 +3103,7 @@
           "allowMissingTarget": true
         }
       ],
-      "_note": " ／【E-XB20監査(x70スライス) 2026-07-17】原文の独立/保証部（「し、」・「〜まで」＋固定効果）に対し triggered の候補0件スキップで保証部まで不発だった潜在を、ability 直下 allowMissingTarget:true 付与で忠実化（エンジンは B1 従属型19件保護のため非対称を維持＝data 側修正が正）。"
+      "_note": " ／【E-XB20監査(x70スライス) 2026-07-17】原文の独立/保証部（「し、」・「〜まで」＋固定効果）に対し triggered の候補0件スキップで保証部まで不発だった潜在を、ability 直下 allowMissingTarget:true 付与で忠実化（エンジンは B1 従属型19件保護のため非対称を維持＝data 側修正が正）。 【R1 2026-10-09 オーナー裁定】「相手の場のカード１枚までを破壊し、」＝0枚（選ばない）も選べる（target.upTo:true＋能力直下 allowMissingTarget:true。選ばなくても後段は解決）。"
     },
     {
       "id": "bf-s-ub-c03-ir030",
@@ -3111,7 +3144,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -3138,6 +3172,9 @@
           "controller": "self",
           "filter": {
             "attributeIncludes": "アイドル"
+          },
+          "from": {
+            "byOpponent": true
           }
         },
         {
@@ -3445,16 +3482,6 @@
         {
           "op": "modifyStats",
           "controller": "self",
-          "filter": {
-            "anyOf": [
-              {
-                "nameIncludes": "前川みく"
-              },
-              {
-                "nameIncludes": "多田李衣菜"
-              }
-            ]
-          },
           "power": 5000,
           "critical": 1,
           "conditions": [
@@ -3464,7 +3491,27 @@
                 "nameIncludes": "前川みく"
               }
             }
-          ]
+          ],
+          "filter": {
+            "nameIncludes": "前川みく"
+          }
+        },
+        {
+          "op": "modifyStats",
+          "controller": "self",
+          "power": 5000,
+          "critical": 1,
+          "conditions": [
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "nameIncludes": "前川みく"
+              }
+            }
+          ],
+          "filter": {
+            "sameInstanceAsSource": true
+          }
         }
       ]
     },
@@ -3520,6 +3567,9 @@
           "kind": "triggered",
           "event": "finalStart",
           "conditions": [
+            {
+              "op": "turnOwnerIsSelf"
+            },
             {
               "op": "not",
               "condition": {
@@ -4012,21 +4062,36 @@
             {
               "op": "phaseIs",
               "phase": "attack"
+            },
+            {
+              "op": "ownFieldCardExists",
+              "filter": {
+                "cardType": "monster",
+                "attributeIncludes": "キュート",
+                "nameNotIncludes": "三村かな子",
+                "standing": true
+              }
             }
           ],
-          "target": {
-            "type": "fieldCard",
-            "controller": "self",
-            "filter": {
-              "cardType": "monster",
-              "attributeIncludes": "キュート",
-              "nameNotIncludes": "三村かな子"
-            }
-          },
-          "effects": [
+          "script": [
             {
-              "op": "restTarget",
-              "target": "$target"
+              "op": "selectCards",
+              "var": "r",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster",
+                "attributeIncludes": "キュート",
+                "nameNotIncludes": "三村かな子",
+                "standing": true
+              },
+              "amount": 1,
+              "title": "ふんわり甘～いアイドル 三村かな子",
+              "lead": "レストする[三村かな子]以外の君の場の《キュート》1枚を選んでください。"
+            },
+            {
+              "op": "restSelected",
+              "var": "r"
             },
             {
               "op": "standTarget",
@@ -4132,7 +4197,9 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true,
+              "excludeSourceZone": true
             }
           ]
         },
@@ -4148,6 +4215,17 @@
               }
             }
           ],
+          "effects": [
+            {
+              "op": "gainLife",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "id": "bf-s-ub-c03-ir040-self-damage-life",
+          "kind": "triggered",
+          "event": "dealDamage",
           "effects": [
             {
               "op": "gainLife",
@@ -4313,6 +4391,7 @@
             {
               "op": "sourceSoulMatchingCountGte",
               "filter": {
+                "cardType": "monster",
                 "sizeIn": [
                   0
                 ]
@@ -4331,6 +4410,7 @@
             {
               "op": "sourceSoulMatchingCountGte",
               "filter": {
+                "cardType": "monster",
                 "sizeIn": [
                   1
                 ]
@@ -4349,6 +4429,7 @@
             {
               "op": "sourceSoulMatchingCountGte",
               "filter": {
+                "cardType": "monster",
                 "sizeGte": 2
               },
               "amount": 1
@@ -4420,7 +4501,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromSoul",
@@ -4990,9 +5072,8 @@
             {
               "op": "targetMatches",
               "ref": "$attackTarget",
-              "filter": {
-                "zone": "center"
-              }
+              "zone": "center",
+              "filter": {}
             }
           ],
           "effects": [
@@ -5009,6 +5090,12 @@
                   "op": "pendingAttackTargetMatches",
                   "filter": {
                     "zone": "center"
+                  }
+                },
+                {
+                  "op": "ownFieldCardExists",
+                  "filter": {
+                    "nameIncludes": "椎名法子"
                   }
                 }
               ]
@@ -5045,7 +5132,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "D10(2026-10): targetMatches の filter.zone は matchesCardFilter が解釈せず黙殺（死に条件）だったため、targetMatches が自前で判定する condition.zone 形へ移した（D-BT01/0091 の確立形）。"
     },
     {
       "id": "bf-s-ub-c03-ir051",
@@ -5213,7 +5301,8 @@
             {
               "op": "dropTargetSoul",
               "target": "$target",
-              "amount": 1
+              "amount": 1,
+              "upTo": true
             }
           ]
         },
@@ -5248,7 +5337,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "【R1 2026-10-09 オーナー裁定】「ソウルN枚までを置く／捨てる」＝0〜N枚を選ぶ（dropTargetSoul upTo:true）。"
     },
     {
       "id": "bf-s-ub-c03-ir054",
@@ -5416,7 +5506,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -5428,18 +5519,13 @@
           "id": "bf-s-ub-c03-ir056-enter-buff",
           "kind": "triggered",
           "event": "enter",
-          "target": {
-            "type": "fieldCard",
-            "controller": "self",
-            "allowMissingTarget": true,
-            "filter": {
-              "nameIncludes": "神崎蘭子"
-            }
-          },
           "effects": [
             {
               "op": "modifyStats",
-              "target": "$target",
+              "scope": "self",
+              "filter": {
+                "nameIncludes": "神崎蘭子"
+              },
               "power": 10000,
               "defense": 10000,
               "duration": "turn"
@@ -5684,7 +5770,8 @@
               "op": "redirectPendingAttackToSelected",
               "var": "t"
             }
-          ]
+          ],
+          "selectBeforeCost": true
         }
       ],
       "costs": {
@@ -5703,7 +5790,8 @@
         {
           "op": "fighterCannotBeLinkAttacked"
         }
-      ]
+      ],
+      "_note": "【R5 2026-10-09 オーナー裁定】「〜を選び、…を払ってよい。払ったら」は選べるカードが無いなら支払えない（何も起きない）＝能力に selectBeforeCost:true（先頭の選択に候補が無ければコストを提示しない）。旧 _note の「optional 承諾＝コスト先払い→script 内で選択」の近似は、候補0でもコストだけ払えてしまう点が誤りだった。"
     },
     {
       "id": "bf-s-ub-c03-ir060",
@@ -5966,7 +6054,8 @@
               "op": "swapFieldPositions",
               "var": "pair"
             }
-          ]
+          ],
+          "selectBeforeCost": true
         }
       ],
       "costs": {
@@ -5992,7 +6081,8 @@
           },
           "size": -1
         }
-      ]
+      ],
+      "_note": "【R5 2026-10-09 オーナー裁定】「〜を選び、…を払ってよい。払ったら」は選べるカードが無いなら支払えない（何も起きない）＝能力に selectBeforeCost:true（先頭の選択に候補が無ければコストを提示しない）。旧 _note の「optional 承諾＝コスト先払い→script 内で選択」の近似は、候補0でもコストだけ払えてしまう点が誤りだった。"
     },
     {
       "id": "bf-s-ub-c03-ir064",
@@ -6514,7 +6604,8 @@
               "lead": "防御力を上げる君の場の《アイドル》1枚を選んでください。"
             },
             {
-              "op": "returnSelfToHand"
+              "op": "returnSelfToHand",
+              "require": true
             },
             {
               "op": "modifySelectedStats",
@@ -6766,7 +6857,8 @@
                 "cardType": "monster"
               },
               "title": "不思議なアイドル 依田芳乃",
-              "lead": "手札に加えるキャラを選んでください（加えなくてもよい）。"
+              "lead": "手札に加えるキャラを選んでください（加えなくてもよい）。",
+              "orderRest": true
             }
           ]
         },
@@ -6797,9 +6889,12 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true,
+              "excludeSourceZone": true
             }
-          ]
+          ],
+          "includeDefender": true
         }
       ]
     },
@@ -6954,12 +7049,12 @@
           }
         ]
       },
-      "nullifyImmune": true,
       "continuous": [
         {
           "op": "nullifyAbilities",
           "controller": "opponent",
-          "battleOpponentOnly": true
+          "battleOpponentOnly": true,
+          "cannotBeNullified": true
         }
       ]
     }

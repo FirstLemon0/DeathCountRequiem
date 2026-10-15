@@ -351,23 +351,16 @@
                   },
                   "script": [
                     {
-                      "op": "selectCards",
-                      "var": "discard",
-                      "from": "hand",
-                      "controller": "self",
-                      "filter": {
-                        "attribute": "星"
-                      },
-                      "amount": 1,
-                      "require": true,
-                      "title": "捨てる《星》",
-                      "lead": "捨てる《星》を1枚選んでください。"
-                    },
-                    {
-                      "op": "moveSelected",
-                      "var": "discard",
-                      "to": "drop",
-                      "log": "discard"
+                      "op": "payCost",
+                      "cost": [
+                        {
+                          "op": "discardHand",
+                          "amount": 1,
+                          "filter": {
+                            "attribute": "星"
+                          }
+                        }
+                      ]
                     },
                     {
                       "op": "draw",
@@ -390,23 +383,16 @@
                   },
                   "script": [
                     {
-                      "op": "selectCards",
-                      "var": "discard",
-                      "from": "hand",
-                      "controller": "self",
-                      "filter": {
-                        "attribute": "星"
-                      },
-                      "amount": 2,
-                      "require": true,
-                      "title": "捨てる《星》",
-                      "lead": "捨てる《星》を2枚選んでください。"
-                    },
-                    {
-                      "op": "moveSelected",
-                      "var": "discard",
-                      "to": "drop",
-                      "log": "discard"
+                      "op": "payCost",
+                      "cost": [
+                        {
+                          "op": "discardHand",
+                          "amount": 2,
+                          "filter": {
+                            "attribute": "星"
+                          }
+                        }
+                      ]
                     },
                     {
                       "op": "draw",
@@ -460,7 +446,7 @@
           }
         },
         {
-          "fromEffect": true
+          "from": {}
         }
       ],
       "cannotCallNormally": true
@@ -899,7 +885,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -966,7 +953,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -1211,7 +1199,8 @@
           ],
           "limit": {
             "scope": "turn",
-            "key": "bf-h-bt01-0017-beam"
+            "key": "bf-h-bt01-0017-beam",
+            "shared": true
           }
         }
       ]
@@ -1510,6 +1499,10 @@
           "conditions": [
             {
               "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "monster"
             }
           ],
           "target": {
@@ -2725,45 +2718,33 @@
           ],
           "script": [
             {
-              "op": "chooseBranch",
-              "title": "ダメージ・コントロール",
-              "lead": "捨てる手札を選んでください。",
-              "options": [
+              "op": "discardHand",
+              "amount": 1,
+              "var": "discarded"
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "selectionMatches",
+                "var": "discarded",
+                "filter": {
+                  "attribute": "戦神機"
+                }
+              },
+              "then": [
                 {
-                  "key": "sengineki",
-                  "label": "《戦神機》を捨てる（次に受けるダメージ−4）",
+                  "op": "reduceNextDamage",
+                  "amount": 4
+                }
+              ],
+              "else": [
+                {
+                  "op": "ifCondition",
                   "condition": {
-                    "op": "cardCount",
-                    "controller": "self",
-                    "pile": "hand",
-                    "filter": {
-                      "attribute": "戦神機"
-                    },
-                    "cmp": "gte",
-                    "amount": 1
+                    "op": "selectionMatches",
+                    "var": "discarded"
                   },
-                  "script": [
-                    {
-                      "op": "discardHand",
-                      "amount": 1,
-                      "filter": {
-                        "attribute": "戦神機"
-                      }
-                    },
-                    {
-                      "op": "reduceNextDamage",
-                      "amount": 4
-                    }
-                  ]
-                },
-                {
-                  "key": "other",
-                  "label": "手札１枚を捨てる（次に受けるダメージ−2）",
-                  "script": [
-                    {
-                      "op": "discardHand",
-                      "amount": 1
-                    },
+                  "then": [
                     {
                       "op": "reduceNextDamage",
                       "amount": 2
@@ -3774,8 +3755,17 @@
               "op": "pendingActionIsOpponent"
             },
             {
-              "op": "pendingActionCardType",
-              "cardType": "spell"
+              "op": "any",
+              "conditions": [
+                {
+                  "op": "pendingActionKind",
+                  "kind": "spell"
+                },
+                {
+                  "op": "pendingActionKind",
+                  "kind": "setSpell"
+                }
+              ]
             }
           ],
           "cost": [
@@ -5127,7 +5117,7 @@
       "costs": {
         "call": [
           {
-            "op": "dropOwnMonster",
+            "op": "dropOwnFieldCard",
             "amount": 1,
             "filter": {}
           },
@@ -5246,7 +5236,8 @@
             }
           ]
         }
-      ]
+      ],
+      "_note": "【R-BR23(ブラウザレビュー bf-h-bt01-B6) 出荷済み是正】コールコスト「君の場のカード１枚をドロップに置き」を dropOwnMonster(モンスター限定)で実装しており原文「カード」(任意カード)より狭かった→dropOwnFieldCard へ（別プリント pp01-0056 は正）。"
     },
     {
       "id": "bf-h-bt01-0102",
@@ -5342,11 +5333,10 @@
       "keywords": [
         "set"
       ],
-      "uniqueSet": true,
       "cannotReturnToHand": true,
       "nullifyImmune": true,
       "destroyImmunity": {
-        "fromEffect": true
+        "from": {}
       },
       "continuous": [
         {

@@ -46,14 +46,6 @@
           "timing": [
             "counter"
           ],
-          "conditions": [
-            {
-              "op": "pendingAttackBySource"
-            },
-            {
-              "op": "attackingAlone"
-            }
-          ],
           "cost": [
             {
               "op": "payGauge",
@@ -62,8 +54,10 @@
           ],
           "effects": [
             {
-              "op": "markPendingAttackUnstoppable",
-              "onlyNullify": true
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "singleAttackCannotBeNullified",
+              "duration": "turn"
             }
           ]
         }
@@ -133,7 +127,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "call",
               "chooseZones": true,
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -528,7 +523,7 @@
           "kind": "triggered",
           "event": "battleEnd",
           "optional": true,
-          "conditions": [
+          "ifConditions": [
             {
               "op": "not",
               "condition": {
@@ -675,6 +670,7 @@
               "then": [
                 {
                   "op": "moveSelected",
+                  "discard": true,
                   "var": "d",
                   "to": "drop"
                 },
@@ -798,6 +794,7 @@
               "then": [
                 {
                   "op": "moveSelected",
+                  "discard": true,
                   "var": "d",
                   "to": "drop"
                 },
@@ -872,7 +869,8 @@
               "controller": "self",
               "filter": {
                 "cardType": "monster",
-                "sizeLte": 1
+                "sizeLte": 1,
+                "world": "エンシェントW"
               },
               "amount": 1
             },
@@ -880,7 +878,9 @@
               "op": "selectZone",
               "var": "z",
               "controller": "self",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true,
+              "excludeSourceZone": true
             },
             {
               "op": "callSelected",
@@ -956,11 +956,14 @@
               "var": "pick",
               "payCost": "call",
               "chooseZones": true,
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ],
           "limit": {
-            "scope": "turn"
+            "scope": "turn",
+            "shared": true,
+            "key": "bf-h-pp01-0014-absolute-queendom"
           }
         }
       ]
@@ -1395,7 +1398,9 @@
             }
           ],
           "limit": {
-            "scope": "turn"
+            "scope": "turn",
+            "shared": true,
+            "key": "bf-h-pp01-0018-force-liberate"
           }
         }
       ]
@@ -2201,7 +2206,8 @@
               "payCost": "call",
               "chooseZones": true,
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             },
             {
               "op": "shuffleDeck"
@@ -2230,13 +2236,11 @@
           "timing": [
             "main"
           ],
-          "cost": [
+          "effects": [
             {
               "op": "discardHand",
               "amount": 1
-            }
-          ],
-          "effects": [
+            },
             {
               "op": "moveMatchingDropToHand",
               "filter": {
@@ -2346,6 +2350,25 @@
       ],
       "abilities": [
         {
+          "id": "bf-h-pp01-0035-henshin-hand",
+          "kind": "activated",
+          "fromHandOnly": true,
+          "timing": [
+            "main"
+          ],
+          "cost": [
+            {
+              "op": "payGauge",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "equipSelf"
+            }
+          ]
+        },
+        {
           "id": "bf-h-pp01-0035-henshin-field",
           "kind": "activated",
           "timing": [
@@ -2427,6 +2450,7 @@
               "then": [
                 {
                   "op": "moveSelected",
+                  "discard": true,
                   "var": "d",
                   "to": "drop"
                 },
@@ -2456,7 +2480,8 @@
             {
               "op": "returnSelfToHand"
             }
-          ]
+          ],
+          "includeDefender": true
         }
       ]
     },
@@ -2635,7 +2660,6 @@
             "type": "fieldCard",
             "controller": "self",
             "filter": {
-              "cardType": "monster",
               "attribute": "竜騎士"
             }
           },
@@ -3009,18 +3033,14 @@
           "id": "bf-h-pp01-0047-turn-end-destroy",
           "kind": "triggered",
           "event": "turnEnd",
-          "conditions": [
-            {
-              "op": "turnOwnerIsSelf"
-            }
-          ],
           "effects": [
             {
               "op": "destroySelf"
             }
           ]
         }
-      ]
+      ],
+      "_note": "【裁定2026-10-08】カードテキストに誰のターンか明記の無いフェイズ/ターン指定は両者のターンを指す（ユーザー裁定・ver2.05 5.1）。『ターン終了時、このカードを破壊する。』は turnOwnerIsSelf を外し、両者のターン終了時に誘発する。"
     },
     {
       "id": "bf-h-pp01-0048",
@@ -3117,12 +3137,17 @@
           "purpose": "call",
           "filter": {
             "cardType": "monster",
-            "sizeGte": 2
+            "sizeGte": 2,
+            "world": "カタナW"
           },
           "payOp": "payGauge",
-          "amount": 1
+          "amount": 1,
+          "callFromZoneIn": [
+            "hand"
+          ]
         }
-      ]
+      ],
+      "_note": "【監査 2026-10-08 b020-4】filter に world:カタナW を追加（原文の＜カタナＷ＞限定）。【audit2 b078-6】原文「手札からコールする場合」を callFromZoneIn:[hand] で忠実化（通常コールは callFromZone:\"hand\"・奇襲は \"drop\" をエンジンが明示供給）。"
     },
     {
       "id": "bf-h-pp01-0050",
@@ -3218,18 +3243,37 @@
               "phase": "attack"
             }
           ],
-          "cost": [
+          "script": [
             {
-              "op": "destroyOwnMonster",
-              "amount": 1
-            }
-          ],
-          "effects": [
+              "op": "selectCards",
+              "var": "sac",
+              "from": "field",
+              "controller": "self",
+              "filter": {
+                "cardType": "monster"
+              },
+              "amount": 1,
+              "title": "忍者刀 散桜",
+              "lead": "破壊する君の場のモンスター１枚を選んでください。"
+            },
             {
-              "op": "modifyStats",
-              "target": "$self",
-              "power": 5000,
-              "duration": "turn"
+              "op": "destroySelected",
+              "var": "sac",
+              "require": false
+            },
+            {
+              "op": "ifCondition",
+              "condition": {
+                "op": "lastDestroySucceeded"
+              },
+              "then": [
+                {
+                  "op": "modifyStats",
+                  "target": "$self",
+                  "power": 5000,
+                  "duration": "turn"
+                }
+              ]
             }
           ]
         }
@@ -3380,6 +3424,14 @@
         "■【コールコスト】ゲージ１を払う。",
         "■このカードが攻撃した時、君が《冒険者》のアイテムを装備しているなら、そのターン中、このカードは『貫通』を得て、君がアイテム２枚を装備しているなら、さらに『２回攻撃』を得る！"
       ],
+      "costs": {
+        "call": [
+          {
+            "op": "payGauge",
+            "amount": 1
+          }
+        ]
+      },
       "abilities": [
         {
           "id": "bf-h-pp01-0055-attack-buff",
@@ -3558,7 +3610,8 @@
               "op": "enteredCardMatches",
               "filter": {
                 "cardType": "monster",
-                "sizeGte": 2
+                "sizeGte": 2,
+                "world": "レジェンドW"
               }
             }
           ],
@@ -3585,7 +3638,8 @@
               "var": "target",
               "payCost": "call",
               "resolveOnEnter": true,
-              "require": false
+              "require": false,
+              "overwriteWhenFull": true
             },
             {
               "op": "shuffleDeck"
@@ -3762,7 +3816,8 @@
             {
               "op": "destroySelf"
             }
-          ]
+          ],
+          "includeDefender": true
         }
       ]
     },
@@ -3840,7 +3895,8 @@
             {
               "op": "returnSelfToHand"
             }
-          ]
+          ],
+          "includeDefender": true
         }
       ]
     },
@@ -3941,7 +3997,7 @@
               "phase": "attack"
             },
             {
-              "op": "lastDestroyedCardMatches",
+              "op": "lastLeftFieldCardMatches",
               "controller": "self",
               "filter": {
                 "cardType": "monster"
@@ -4044,7 +4100,8 @@
               "cardType": "monster",
               "sizeLte": 2,
               "soulCountLte": 0
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -4055,9 +4112,11 @@
               "op": "putTopDeckToGauge",
               "amount": 1
             }
-          ]
+          ],
+          "allowMissingTarget": true
         }
-      ]
+      ],
+      "_note": "【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-h-pp01-0068",
@@ -4120,14 +4179,6 @@
           "timing": [
             "counter"
           ],
-          "conditions": [
-            {
-              "op": "pendingAttackBySource"
-            },
-            {
-              "op": "attackingAlone"
-            }
-          ],
           "cost": [
             {
               "op": "payGauge",
@@ -4136,8 +4187,10 @@
           ],
           "effects": [
             {
-              "op": "markPendingAttackUnstoppable",
-              "onlyNullify": true
+              "op": "grantKeyword",
+              "target": "$self",
+              "keyword": "singleAttackCannotBeNullified",
+              "duration": "turn"
             }
           ]
         }
@@ -4203,7 +4256,8 @@
               "op": "callSelectedToEmptyZones",
               "var": "call",
               "chooseZones": true,
-              "resolveOnEnter": true
+              "resolveOnEnter": true,
+              "overwriteWhenFull": true
             }
           ]
         }
@@ -4607,7 +4661,7 @@
           "kind": "triggered",
           "event": "battleEnd",
           "optional": true,
-          "conditions": [
+          "ifConditions": [
             {
               "op": "not",
               "condition": {

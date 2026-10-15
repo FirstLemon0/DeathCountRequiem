@@ -64,6 +64,7 @@
             },
             {
               "op": "moveSelected",
+              "discard": true,
               "var": "discard",
               "to": "drop",
               "log": "discard",
@@ -75,13 +76,19 @@
               "var": "destroyTarget",
               "from": "field",
               "controller": "opponent",
-              "amount": 9,
-              "max": 9,
-              "min": 0,
-              "require": false,
+              "maxFrom": {
+                "source": "selectedCount",
+                "var": "discard"
+              },
+              "minFrom": {
+                "source": "selectedCount",
+                "var": "discard"
+              },
+              "clampMinToCandidates": true,
+              "require": true,
               "allowEmpty": true,
               "title": "気が済むまでバックドロップで破壊する相手の場のカード",
-              "lead": "捨てた枚数分、相手の場のカードを選んで破壊してください。",
+              "lead": "捨てた枚数分（相手の場のカードが足りなければその全て）、相手の場のカードを選んで破壊してください。",
               "emptyMessage": "破壊できる相手の場のカードがありません。"
             },
             {
@@ -302,7 +309,14 @@
             }
           ],
           "target": {
-            "type": "fieldCard"
+            "type": "fieldCard",
+            "filter": {
+              "cardTypeIn": [
+                "monster",
+                "item",
+                "spell"
+              ]
+            }
           },
           "effects": [
             {
@@ -553,11 +567,8 @@
           ],
           "effects": [
             {
-              "op": "preventNextDamage"
-            },
-            {
-              "op": "gainLife",
-              "amount": 1
+              "op": "preventNextDamage",
+              "gainLife": 1
             }
           ]
         }

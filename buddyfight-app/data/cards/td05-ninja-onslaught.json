@@ -67,7 +67,7 @@
       "rarity": "デッキ商品",
       "rules": [
         "■【コールコスト】ゲージ１を払う。",
-        "■君は相手の場のカードから連携攻撃されない。"
+        "■君は相手の場のカードから連携攻撃されない。（君のモンスターは連携攻撃されるから注意だ！）"
       ],
       "costs": {
         "call": [
@@ -175,7 +175,7 @@
       "rarity": "デッキ商品",
       "rules": [
         "■【コールコスト】ゲージ１を払う。",
-        "■君のドロップゾーンにカード名に「月影」を含むカードがあるなら、このカードを打撃力＋１する。"
+        "■君のドロップゾーンにカード名に「月影」を含むカードがあるなら、このカードを打撃力＋１する！"
       ],
       "costs": {
         "call": [
@@ -371,6 +371,9 @@
             },
             {
               "op": "pendingAttackNotLink"
+            },
+            {
+              "op": "pendingAttackByOpponentMonster"
             }
           ],
           "cost": [
@@ -691,11 +694,11 @@
               "deck",
               "drop"
             ],
-            "amount": 1
+            "amount": 1,
+            "faceDown": true
           }
         ]
       },
-      "uniqueSet": true,
       "abilities": [
         {
           "id": "bt02-s012-use-hiken",
@@ -770,6 +773,10 @@
             },
             {
               "op": "pendingAttackDefenderIsSelf"
+            },
+            {
+              "op": "pendingAttackTargetIs",
+              "targetType": "fighter"
             }
           ],
           "script": [

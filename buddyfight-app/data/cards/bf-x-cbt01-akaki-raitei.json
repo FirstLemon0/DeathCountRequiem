@@ -255,7 +255,14 @@
           "kind": "activated",
           "keyword": "reversal",
           "timing": [
-            "attack"
+            "attack",
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "phaseIs",
+              "phase": "attack"
+            }
           ],
           "limit": {
             "scope": "fight",
@@ -298,7 +305,7 @@
           ]
         }
       ],
-      "_note": "逆天魔王 アスモダイ。印字コール行なし＝costsキー省略（無償コール）。①『君の場に《72柱》か《雷帝軍》のモンスターが登場した時、相手の場のカード１枚を選び、君の手札１枚を捨ててよい。捨てたら、選んだカードを破壊する。』は自分以外を含む場全体への登場で反応するally系イベント: event:allyEnter+conditions:[enteredCardMatches{filter:{cardType:monster,attributeIn:[72柱,雷帝軍]}}]（bf-x-bt04-rainbow-striker.json X-BT04/0028雷帝のシンボルの確立骨格を踏襲しfilter.attributeで単一属性→attributeInで2属性ORへ拡張）+optional:true+target:{type:fieldCard,controller:opponent}（cardType不問=原文『カード』）+cost:[discardHand{amount:1}]+effects:[destroy{target:$target}]（bf-x-ub01-buddy-quest.json X-UB01/0024魔王番長デュエルイェーガーの『選び、手札1枚を捨ててよい。捨てたら、選んだカードを破壊する。』確立形と同型・event側のみenter→allyEnterへ差替）。②『『逆天』〔アタックフェイズ中、ゲージ１を払う〕そのターン中、君の場のモンスター１枚の攻撃力＋50000、防御力＋10000、打撃力＋３し、『貫通』と『反撃』を与える！！』はR23(x73)確定規約どおりkind:activated,keyword:reversal,label:逆天,timing:[attack],limit:{scope:fight,key:reversal},cost:[payGauge{amount:1}]（同一slice内bf-x-cbt01-0008逆天戦艦サツキGの確立型を踏襲・追加のturnOwnerIsSelf/phaseIs条件は付けずtiming:[attack]のみで統一）,target:{type:fieldCard,controller:self,filter:{cardType:monster}}（『君の場のモンスター１枚』の対象選択、自己を除外する記載が無いため自分自身も候補に含む）,effects:[modifyStats{target:$target,power:50000,defense:10000,critical:3,duration:turn}（『打撃力』はcritical、SKILL.md既知落とし穴）,grantKeyword{target:$target,keyword:penetrate,duration:turn},grantKeyword{target:$target,keyword:counterattack,duration:turn}]（bf-d-cbt-dragon-fighters.json内grantKeyword duration:turn型・src/15-ability-effects.js:1984確立op、貫通・反撃をそれぞれ独立エントリで付与）。grep自己検査: event:allyEnter配信(src/07-actions-turn.js、X-BT04/0028実例)/enteredCardMatches attributeIn(src/13-abilities-core.js、src/17-targeting.js:449)/discardHand cost(src/04-cost-resource.js)/destroy(src/15)/keyword:reversal判定(src/13-abilities-core.js、README.md「逆天」節・R23)/payGauge/target+filter cardType:monster/modifyStats critical(src/15)/grantKeyword duration:turn(src/15-ability-effects.js:1984)/limit scope:fight key:reversal(既定と同値の明示) 全実在確認。VM検証はx74-b8-verify.js test0003参照（(a)自分の場に《72柱》か《雷帝軍》のモンスターが登場すると相手の場のカード1枚を選べ、手札を1枚捨てる選択で選んだカードが破壊される（捨てない選択では破壊されない）、(b)72柱でも雷帝軍でもないモンスターの登場では発動しない、(c)アタックフェイズ中に逆天を起動でゲージ1を払い、選んだ自分の場のモンスター1枚の攻撃力+50000・防御力+10000・打撃力+3、貫通と反撃を獲得、(d)同一ファイト内で逆天2回目は起動不可、を実測）。"
+      "_note": "逆天魔王 アスモダイ。印字コール行なし＝costsキー省略（無償コール）。①『君の場に《72柱》か《雷帝軍》のモンスターが登場した時、相手の場のカード１枚を選び、君の手札１枚を捨ててよい。捨てたら、選んだカードを破壊する。』は自分以外を含む場全体への登場で反応するally系イベント: event:allyEnter+conditions:[enteredCardMatches{filter:{cardType:monster,attributeIn:[72柱,雷帝軍]}}]（bf-x-bt04-rainbow-striker.json X-BT04/0028雷帝のシンボルの確立骨格を踏襲しfilter.attributeで単一属性→attributeInで2属性ORへ拡張）+optional:true+target:{type:fieldCard,controller:opponent}（cardType不問=原文『カード』）+cost:[discardHand{amount:1}]+effects:[destroy{target:$target}]（bf-x-ub01-buddy-quest.json X-UB01/0024魔王番長デュエルイェーガーの『選び、手札1枚を捨ててよい。捨てたら、選んだカードを破壊する。』確立形と同型・event側のみenter→allyEnterへ差替）。②『『逆天』〔アタックフェイズ中、ゲージ１を払う〕そのターン中、君の場のモンスター１枚の攻撃力＋50000、防御力＋10000、打撃力＋３し、『貫通』と『反撃』を与える！！』はR23(x73)確定規約どおりkind:activated,keyword:reversal,label:逆天,timing:[attack],limit:{scope:fight,key:reversal},cost:[payGauge{amount:1}]（同一slice内bf-x-cbt01-0008逆天戦艦サツキGの確立型を踏襲・追加のturnOwnerIsSelf/phaseIs条件は付けずtiming:[attack]のみで統一）,target:{type:fieldCard,controller:self,filter:{cardType:monster}}（『君の場のモンスター１枚』の対象選択、自己を除外する記載が無いため自分自身も候補に含む）,effects:[modifyStats{target:$target,power:50000,defense:10000,critical:3,duration:turn}（『打撃力』はcritical、SKILL.md既知落とし穴）,grantKeyword{target:$target,keyword:penetrate,duration:turn},grantKeyword{target:$target,keyword:counterattack,duration:turn}]（bf-d-cbt-dragon-fighters.json内grantKeyword duration:turn型・src/15-ability-effects.js:1984確立op、貫通・反撃をそれぞれ独立エントリで付与）。grep自己検査: event:allyEnter配信(src/07-actions-turn.js、X-BT04/0028実例)/enteredCardMatches attributeIn(src/13-abilities-core.js、src/17-targeting.js:449)/discardHand cost(src/04-cost-resource.js)/destroy(src/15)/keyword:reversal判定(src/13-abilities-core.js、README.md「逆天」節・R23)/payGauge/target+filter cardType:monster/modifyStats critical(src/15)/grantKeyword duration:turn(src/15-ability-effects.js:1984)/limit scope:fight key:reversal(既定と同値の明示) 全実在確認。VM検証はx74-b8-verify.js test0003参照（(a)自分の場に《72柱》か《雷帝軍》のモンスターが登場すると相手の場のカード1枚を選べ、手札を1枚捨てる選択で選んだカードが破壊される（捨てない選択では破壊されない）、(b)72柱でも雷帝軍でもないモンスターの登場では発動しない、(c)アタックフェイズ中に逆天を起動でゲージ1を払い、選んだ自分の場のモンスター1枚の攻撃力+50000・防御力+10000・打撃力+3、貫通と反撃を獲得、(d)同一ファイト内で逆天2回目は起動不可、を実測）。 【監査修正 2026-10-08】逆天の〔アタックフェイズ中〕は「君の」限定が無い＝双方のアタックフェイズで使える（相手の攻撃中の対抗窓・自分の攻撃宣言後のバトル中を含む）。timing:[attack,counter]+conditions:[phaseIs{phase:attack}]（ターン主は限定しない。bf-x-cbt02-0006 の相手アタックフェイズ型からターン主条件を外した形）。"
     },
     {
       "id": "bf-x-cbt01-0004",
@@ -355,13 +362,15 @@
               }
             }
           ],
+          "allowMissingTarget": true,
           "target": {
             "type": "fieldCard",
             "controller": "any",
             "filter": {
               "cardType": "monster"
             },
-            "allowMissingTarget": true
+            "allowMissingTarget": true,
+            "upTo": true
           },
           "effects": [
             {
@@ -387,13 +396,15 @@
               }
             }
           ],
+          "allowMissingTarget": true,
           "target": {
             "type": "fieldCard",
             "controller": "any",
             "filter": {
               "cardType": "monster"
             },
-            "allowMissingTarget": true
+            "allowMissingTarget": true,
+            "upTo": true
           },
           "effects": [
             {
@@ -407,7 +418,7 @@
           ]
         }
       ],
-      "_note": "獄天竜 ヘルエンド・ヘブンズ。①【コールコスト】『君のデッキの上から1枚をこのカードのソウルに入れ、ゲージ1を払い、ライフ1を払う』=costs.call:[putTopDeckToSoul(1),payGauge(1),payLife(1)]。②『君の場の《天国》が攻撃した時、場のモンスター1枚までを手札に戻し、相手にダメージ1！』/③『君の場の《地獄》が攻撃した時、場のモンスター1枚までを破壊し、君のライフを+1！』はいずれも自身以外の味方も対象になる場全体ブロードキャスト=event:allyAttack+conditions:[eventCardMatches{filter:{attribute:天国/地獄}}]（bf-hd-pr.json PR/0341『ドラゴンフォース“相棒の型”』・PR/0463『竜装機フォルフェックス』系のally-attack broadcast確立パターン。本カード自身が天国/地獄両属性を持つため自分の攻撃でも両方に反応し得る点は原文の『二つの世界を併せ持つ』意匠どおり・過剰絞り込みなし）。対象『場のモンスター』は原文に君の/相手の指定が無いためcontroller:\"any\"（bf-hd-pr.json PR/????『場のモンスターかアイテム1枚を、持ち主の手札に戻す』・bf-x-cp02-100-yen-star-dragon.json/bf-hd-pr-0011『場のモンスター1枚をスタンドする』のcontroller:any前例と同型）+target.allowMissingTarget:true（『1枚まで』＝0枚可、bf-pr-0481竜装機フォルフェックスの同型『相手の場のモンスター1枚までを手札に戻す』直接前例。ability.target+allowMissingTargetで対象0でも安全にno-op、returnToHand/destroyのみ対象依存・dealDamage/gainLifeは対象非依存で常時実行）。『貫通』『ソウルガード』=keywords:[penetrate,soulguard]。grep自己検査: event:allyAttack配信(src/09-attack.js:471、runFieldEventTriggers)/eventCardMatches(src/13-abilities-core.js:1535-1538、context.eventCard.card判定)/ability.target+allowMissingTarget(bf-pr-0481実例)/returnToHand・destroy・dealDamage・gainLife(src/15-ability-effects.js) 全実在確認。VM検証: x74-b7-verify.js test0004参照（A: 天国属性の味方が攻撃した時に場のモンスターを手札に戻せ相手に1ダメージ、B: 地獄属性の味方が攻撃した時に場のモンスターを破壊し自ライフ+1、C: 対象となる場のモンスターが存在しなくても後続の無条件効果は成立、D: このカード自身が攻撃した場合は天国・地獄両方の能力が発火する）。"
+      "_note": "獄天竜 ヘルエンド・ヘブンズ。①【コールコスト】『君のデッキの上から1枚をこのカードのソウルに入れ、ゲージ1を払い、ライフ1を払う』=costs.call:[putTopDeckToSoul(1),payGauge(1),payLife(1)]。②『君の場の《天国》が攻撃した時、場のモンスター1枚までを手札に戻し、相手にダメージ1！』/③『君の場の《地獄》が攻撃した時、場のモンスター1枚までを破壊し、君のライフを+1！』はいずれも自身以外の味方も対象になる場全体ブロードキャスト=event:allyAttack+conditions:[eventCardMatches{filter:{attribute:天国/地獄}}]（bf-hd-pr.json PR/0341『ドラゴンフォース“相棒の型”』・PR/0463『竜装機フォルフェックス』系のally-attack broadcast確立パターン。本カード自身が天国/地獄両属性を持つため自分の攻撃でも両方に反応し得る点は原文の『二つの世界を併せ持つ』意匠どおり・過剰絞り込みなし）。対象『場のモンスター』は原文に君の/相手の指定が無いためcontroller:\"any\"（bf-hd-pr.json PR/????『場のモンスターかアイテム1枚を、持ち主の手札に戻す』・bf-x-cp02-100-yen-star-dragon.json/bf-hd-pr-0011『場のモンスター1枚をスタンドする』のcontroller:any前例と同型）+target.allowMissingTarget:true（『1枚まで』＝0枚可、bf-pr-0481竜装機フォルフェックスの同型『相手の場のモンスター1枚までを手札に戻す』直接前例。ability.target+allowMissingTargetで対象0でも安全にno-op、returnToHand/destroyのみ対象依存・dealDamage/gainLifeは対象非依存で常時実行）。『貫通』『ソウルガード』=keywords:[penetrate,soulguard]。grep自己検査: event:allyAttack配信(src/09-attack.js:471、runFieldEventTriggers)/eventCardMatches(src/13-abilities-core.js:1535-1538、context.eventCard.card判定)/ability.target+allowMissingTarget(bf-pr-0481実例)/returnToHand・destroy・dealDamage・gainLife(src/15-ability-effects.js) 全実在確認。VM検証: x74-b7-verify.js test0004参照（A: 天国属性の味方が攻撃した時に場のモンスターを手札に戻せ相手に1ダメージ、B: 地獄属性の味方が攻撃した時に場のモンスターを破壊し自ライフ+1、C: 対象となる場のモンスターが存在しなくても後続の無条件効果は成立、D: このカード自身が攻撃した場合は天国・地獄両方の能力が発火する）。 【R1 2026-10-09 オーナー裁定】「場のモンスター１枚までを手札に戻し／破壊し、」（自分のモンスターしかいなくても選ばずに後段を解決できる）＝0枚（選ばない）も選べる（target.upTo:true＋能力直下 allowMissingTarget:true。選ばなくても後段は解決）。"
     },
     {
       "id": "bf-x-cbt01-0005",
@@ -483,10 +494,11 @@
               "var": "t",
               "resolveOnEnter": true
             }
-          ]
+          ],
+          "selectBeforeCost": true
         }
       ],
-      "_note": "【コールコスト】『君のドロップゾーンのカード２枚までをこのカードのソウルに入れ、ゲージ３を払う。』=原文記述順どおり costs.call:[putDropToSoul{amount:2,min:0}, payGauge{amount:3}]（bf-d-bt02-0122/0124武神番長デュエルイェーガー『ゲージ２を払い、ドロップ２枚までをソウルに入れる』の completely同型キー構成だが記述順が逆のため0005は soul→gauge の順で並べた。putDropToSoul の『まで』=min:0 は同2枚のprecedentと同型）。コールコスト行に『重ね』の記述は無いためこのカード自体は通常コール（callStackキーを持たない）。重ねコールは本カードの側の起動能力で『他のカードをこのカードの上に』行う側（下記）。『【対抗】【起動】「剛力の求道者 デュエルイェーガー」以外の君のドロップゾーンのサイズ３の《竜王番長》のモンスター１枚を選び、君の手札１枚を捨ててよい。捨てたら、選んだカードを【コールコスト】を払わず、このカードの上に重ねてコールする。』=kind:activated,timing:[counter,main]+cost:[discardHand{amount:1}]（bf-x-bt01-0070ブラッドドラゴンシルヴァニア型＝『捨ててよい。捨てたら』は起動能力自体の任意発動性でカバーし、costステップに落とす。SKILL.mdの『してよい系コストはcostステップにしない』はゲージ等の即時支払いに対する注意で、discardHandはこのカード種の全既存precedent(bf-x-bt02-0003/bf-x-bt01-0070/bf-d-bt02-0122)が一貫してcostステップ化しており踏襲）+script:[selectCards{from:drop,controller:self,filter:{cardType:monster,sizeIn:[3],attribute:竜王番長,nameNot:'剛力の求道者 デュエルイェーガー'}}→stackCallSelected{var:t,resolveOnEnter:true}]（payCost省略=『コールコストを払わず』。stackCallSelectedForScript(src/14-ability-script.js:3218-3266)はzoneVar未指定時はcontext.card(=このカード自身)の場所へ重ねる=『このカードの上に』に忠実。stackFieldCardAsSoul(src/14)がベース(=このカード自身)をソウルへ格納し新カードが場に残る）。原文の記述順（先に対象選択、後に捨ててよい）と実装順（先にcost払い、後にscript選択）が食い違うが、起動能力自体が任意発動でありコストを払わなければ発動しない点は同一のため実害なし（bf-x-bt01-0070_note記載の既存precedentと同型の許容差分）。1ターンに1回の制限は原文に無いため limit なし。keywords: 『２回攻撃』『ソウルガード』=doubleAttack,soulguard。grep自己検査: putDropToSoul(src/04-cost-resource.js:682,1094,1859)/payGauge(同614,1020,1794)/discardHand(同629,1031,1804)/selectCards・stackCallSelected(src/14-ability-script.js:475-476,3218-3266)/nameNot(src/17-targeting.js:497)/doubleAttack・soulguard alias(src/18-tooltip-format.js:463,471) 全実在確認。VM実測はx74-b5-verify.js参照。"
+      "_note": "【コールコスト】『君のドロップゾーンのカード２枚までをこのカードのソウルに入れ、ゲージ３を払う。』=原文記述順どおり costs.call:[putDropToSoul{amount:2,min:0}, payGauge{amount:3}]（bf-d-bt02-0122/0124武神番長デュエルイェーガー『ゲージ２を払い、ドロップ２枚までをソウルに入れる』の completely同型キー構成だが記述順が逆のため0005は soul→gauge の順で並べた。putDropToSoul の『まで』=min:0 は同2枚のprecedentと同型）。コールコスト行に『重ね』の記述は無いためこのカード自体は通常コール（callStackキーを持たない）。重ねコールは本カードの側の起動能力で『他のカードをこのカードの上に』行う側（下記）。『【対抗】【起動】「剛力の求道者 デュエルイェーガー」以外の君のドロップゾーンのサイズ３の《竜王番長》のモンスター１枚を選び、君の手札１枚を捨ててよい。捨てたら、選んだカードを【コールコスト】を払わず、このカードの上に重ねてコールする。』=kind:activated,timing:[counter,main]+cost:[discardHand{amount:1}]（bf-x-bt01-0070ブラッドドラゴンシルヴァニア型＝『捨ててよい。捨てたら』は起動能力自体の任意発動性でカバーし、costステップに落とす。SKILL.mdの『してよい系コストはcostステップにしない』はゲージ等の即時支払いに対する注意で、discardHandはこのカード種の全既存precedent(bf-x-bt02-0003/bf-x-bt01-0070/bf-d-bt02-0122)が一貫してcostステップ化しており踏襲）+script:[selectCards{from:drop,controller:self,filter:{cardType:monster,sizeIn:[3],attribute:竜王番長,nameNot:'剛力の求道者 デュエルイェーガー'}}→stackCallSelected{var:t,resolveOnEnter:true}]（payCost省略=『コールコストを払わず』。stackCallSelectedForScript(src/14-ability-script.js:3218-3266)はzoneVar未指定時はcontext.card(=このカード自身)の場所へ重ねる=『このカードの上に』に忠実。stackFieldCardAsSoul(src/14)がベース(=このカード自身)をソウルへ格納し新カードが場に残る）。原文の記述順（先に対象選択、後に捨ててよい）と実装順（先にcost払い、後にscript選択）が食い違うが、起動能力自体が任意発動でありコストを払わなければ発動しない点は同一のため実害なし（bf-x-bt01-0070_note記載の既存precedentと同型の許容差分）。1ターンに1回の制限は原文に無いため limit なし。keywords: 『２回攻撃』『ソウルガード』=doubleAttack,soulguard。grep自己検査: putDropToSoul(src/04-cost-resource.js:682,1094,1859)/payGauge(同614,1020,1794)/discardHand(同629,1031,1804)/selectCards・stackCallSelected(src/14-ability-script.js:475-476,3218-3266)/nameNot(src/17-targeting.js:497)/doubleAttack・soulguard alias(src/18-tooltip-format.js:463,471) 全実在確認。VM実測はx74-b5-verify.js参照。 【R5 2026-10-09 オーナー裁定】「〜を選び、…を払ってよい。払ったら」は選べるカードが無いなら支払えない（何も起きない）＝能力に selectBeforeCost:true（先頭の選択に候補が無ければコストを提示しない）。旧 _note の「optional 承諾＝コスト先払い→script 内で選択」の近似は、候補0でもコストだけ払えてしまう点が誤りだった。"
     },
     {
       "id": "bf-x-cbt01-0006",
@@ -541,7 +553,8 @@
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
-            "filter": {}
+            "filter": {},
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -561,10 +574,11 @@
           ],
           "limit": {
             "scope": "turn"
-          }
+          },
+          "allowMissingTarget": true
         }
       ],
-      "_note": "破壊の王剣 トリシューラ（アイテム・雷帝軍/英雄/武器、power7000/critical2）。①【装備コスト】『君の場のカード１枚をドロップゾーンに置き、ゲージ２を払う。』=costs.equip:[dropOwnFieldCard{amount:1}, payGauge{amount:2}]（原文『カード』はcardType不問のため過剰絞り込みしない。dropOwnFieldCardは場カードコストopとしてcanPay/pay/payWithSelectionの3経路全てで装備コスト等どのcosts.*キーでも動作する汎用op＝bf-d-ss01-0020ジャックナイフ“ゴルドリッター”がdropOwnMonsterを装備コストに使う前例と同種の『場カードコストは種別問わず装備コストにも使える』確立規約）。②『【対抗】【起動】このターン中、３回以上君のカードが攻撃しているなら、相手の場のカード１枚を破壊し、さらに、君のライフが４以下なら、このカードをスタンドする。この能力は１ターンに１回だけ使える。』=kind:activated,timing:[counter,main]+conditions:[attacksThisTurnGte{amount:3}]（同弾mech-X74-B1の0042小さな氷竜グラソン／B5の0051舎弟見習いロボメカ・新と同一のattacksThisTurnGte確立イディオム）+target:{type:fieldCard,controller:opponent,filter:{}}（原文『相手の場のカード』にモンスター限定表記が無いため型不問）+effects:[destroy{target:$target}, standTarget{target:$self,conditions:[lifeLte{amount:4}]}]（同弾B1の0002雷帝への覚醒バッツ『選んだカードをスタンドし、さらに、ライフ4以下なら自分自身もスタンド』のstandTarget+lifeLte汎用conditionsゲートと同型）+limit:{scope:turn}（無名『1ターンに1回』）。keywords:『２回攻撃』=doubleAttack。相手の場が空の場合はability.target解決不能によりfieldAbilityUsableで自動的に候補外となる(allowMissingTarget未指定=必須解決)。grep自己検査: dropOwnFieldCard(src/04-cost-resource.js:732,1161,2032)/payGauge(同614,1020,1794)/attacksThisTurnGte(src/13-abilities-core.js:1398)/destroy単体target(src/15-ability-effects.js:1572)/standTarget(src/15-ability-effects.js:2141)/lifeLte(src/13-abilities-core.js:1015) 全実在確認。VM検証はx74-b9-verify.js test0006参照（equipCardDirect実経路で場のカード1枚をドロップへ+ゲージ2課金、攻撃回数2回以下では起動能力候補に出ず3回以上で候補に出ること、相手の場のカード1枚を選んで破壊しライフ4以下なら自身もスタンド・ライフ5以上では自身は不発なこと、1ターン1回制限を確認）。"
+      "_note": "破壊の王剣 トリシューラ（アイテム・雷帝軍/英雄/武器、power7000/critical2）。①【装備コスト】『君の場のカード１枚をドロップゾーンに置き、ゲージ２を払う。』=costs.equip:[dropOwnFieldCard{amount:1}, payGauge{amount:2}]（原文『カード』はcardType不問のため過剰絞り込みしない。dropOwnFieldCardは場カードコストopとしてcanPay/pay/payWithSelectionの3経路全てで装備コスト等どのcosts.*キーでも動作する汎用op＝bf-d-ss01-0020ジャックナイフ“ゴルドリッター”がdropOwnMonsterを装備コストに使う前例と同種の『場カードコストは種別問わず装備コストにも使える』確立規約）。②『【対抗】【起動】このターン中、３回以上君のカードが攻撃しているなら、相手の場のカード１枚を破壊し、さらに、君のライフが４以下なら、このカードをスタンドする。この能力は１ターンに１回だけ使える。』=kind:activated,timing:[counter,main]+conditions:[attacksThisTurnGte{amount:3}]（同弾mech-X74-B1の0042小さな氷竜グラソン／B5の0051舎弟見習いロボメカ・新と同一のattacksThisTurnGte確立イディオム）+target:{type:fieldCard,controller:opponent,filter:{}}（原文『相手の場のカード』にモンスター限定表記が無いため型不問）+effects:[destroy{target:$target}, standTarget{target:$self,conditions:[lifeLte{amount:4}]}]（同弾B1の0002雷帝への覚醒バッツ『選んだカードをスタンドし、さらに、ライフ4以下なら自分自身もスタンド』のstandTarget+lifeLte汎用conditionsゲートと同型）+limit:{scope:turn}（無名『1ターンに1回』）。keywords:『２回攻撃』=doubleAttack。相手の場が空の場合はability.target解決不能によりfieldAbilityUsableで自動的に候補外となる(allowMissingTarget未指定=必須解決)。grep自己検査: dropOwnFieldCard(src/04-cost-resource.js:732,1161,2032)/payGauge(同614,1020,1794)/attacksThisTurnGte(src/13-abilities-core.js:1398)/destroy単体target(src/15-ability-effects.js:1572)/standTarget(src/15-ability-effects.js:2141)/lifeLte(src/13-abilities-core.js:1015) 全実在確認。VM検証はx74-b9-verify.js test0006参照（equipCardDirect実経路で場のカード1枚をドロップへ+ゲージ2課金、攻撃回数2回以下では起動能力候補に出ず3回以上で候補に出ること、相手の場のカード1枚を選んで破壊しライフ4以下なら自身もスタンド・ライフ5以上では自身は不発なこと、1ターン1回制限を確認）。 【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝能力直下 allowMissingTarget:true＋target.allowMissingTarget（対象が無くても使用でき、後半だけ解決）。"
     },
     {
       "id": "bf-x-cbt01-0007",
@@ -599,12 +613,14 @@
           "id": "bf-x-cbt01-0007-enter-destroy-spell",
           "kind": "triggered",
           "event": "enter",
+          "allowMissingTarget": true,
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
             "filter": {
               "cardType": "spell"
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -621,12 +637,14 @@
           "id": "bf-x-cbt01-0007-attack-destroy-item",
           "kind": "triggered",
           "event": "attack",
+          "allowMissingTarget": true,
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
             "filter": {
               "cardType": "item"
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -644,12 +662,14 @@
           "id": "bf-x-cbt01-0007-destroyed-destroy-monster",
           "kind": "triggered",
           "event": "destroyed",
+          "allowMissingTarget": true,
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
             "filter": {
               "cardType": "monster"
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -663,7 +683,7 @@
           ]
         }
       ],
-      "_note": "逆巻く黒渦 アビゲール・アジール。【コールコスト】ゲージ２=costs.call:[payGauge{amount:2}]。①『このカードが登場した時、相手の場の魔法１枚を破壊し、君のライフを＋１！』②『このカードが攻撃した時、相手の場のアイテム１枚を破壊し、相手にダメージ１！』③『このカードが破壊された時、相手の場のモンスター１枚を破壊し、君のデッキの上から１枚をゲージに置く！』はいずれも『破壊し、〜』（『破壊したら』ではない）の接続で、対象が存在しない場合は能力自体が不成立になる確立文体＝bf-x-ub02-hero-wars-new-generations.json X-UB02/0015制服戦士ドクターフリル『このカードが破壊された時か手札に戻った時、相手の場のサイズ２以下のモンスター１枚を破壊し、君のライフを＋１！』と同型（target直下・target内ともにallowMissingTargetを付けない＝targetCandidatesFromSpecForOwnerゲートで合法対象が無ければ発動自体しない）。①event:enter+target:{type:fieldCard,controller:opponent,filter:{cardType:spell}}+effects:[destroy{target:$target},gainLife{amount:1}]。②event:attack（カード自身の攻撃へ直接発火・接頭辞なし）+target:{type:fieldCard,controller:opponent,filter:{cardType:item}}+effects:[destroy{target:$target},dealDamage{player:opponent,amount:1}]。③event:destroyed+target:{type:fieldCard,controller:opponent,filter:{cardType:monster}}+effects:[destroy{target:$target},putTopDeckToGauge{amount:1}]。gainLife/dealDamage/putTopDeckToGaugeはX-UB02/0015・bf-x-bt04-rainbow-striker.json X-BT04/0032 C・フレイヤの確立destroy→追加効果連結と同型（本カードは対象必須の非allowMissingTarget型のためlastDestroySucceededゲートは不要）。grep自己検査: payGauge(src/04-cost-resource.js)/event:enter・attack・destroyed直接発火(src/13-abilities-core.js runTriggeredAbilities)/target+filter(src/17-targeting.js)/destroy(src/15-ability-effects.js:1296)/gainLife(src/15:642)/dealDamage(src/15)/putTopDeckToGauge(src/15:310) 全実在確認。VM検証はx74-b8-verify.js test0007参照（(a)callMonster実経路でゲージ2課金、(b)resolveOnEnter実経路で相手の場の魔法1枚を破壊しライフ+1、相手場に魔法が無ければ能力不発でライフ増加なし、(c)攻撃時に相手の場のアイテム1枚を破壊し相手に1ダメージ、(d)destroyFieldCard実経路の破壊時に相手の場のモンスター1枚を破壊しゲージに1枚置く、をそれぞれ実測）。"
+      "_note": "逆巻く黒渦 アビゲール・アジール。【コールコスト】ゲージ２=costs.call:[payGauge{amount:2}]。①『このカードが登場した時、相手の場の魔法１枚を破壊し、君のライフを＋１！』②『このカードが攻撃した時、相手の場のアイテム１枚を破壊し、相手にダメージ１！』③『このカードが破壊された時、相手の場のモンスター１枚を破壊し、君のデッキの上から１枚をゲージに置く！』はいずれも『破壊し、〜』（『破壊したら』ではない）の接続で、対象が存在しなくても後半を解決する（R7・2026-10-09 オーナー裁定）＝bf-x-ub02-hero-wars-new-generations.json X-UB02/0015制服戦士ドクターフリル『このカードが破壊された時か手札に戻った時、相手の場のサイズ２以下のモンスター１枚を破壊し、君のライフを＋１！』と同型（能力直下と target 内に allowMissingTarget:true＝合法対象が無くても発動し、destroy は $target 不在で自然にスキップ、後半だけ解決）。①event:enter+target:{type:fieldCard,controller:opponent,filter:{cardType:spell}}+effects:[destroy{target:$target},gainLife{amount:1}]。②event:attack（カード自身の攻撃へ直接発火・接頭辞なし）+target:{type:fieldCard,controller:opponent,filter:{cardType:item}}+effects:[destroy{target:$target},dealDamage{player:opponent,amount:1}]。③event:destroyed+target:{type:fieldCard,controller:opponent,filter:{cardType:monster}}+effects:[destroy{target:$target},putTopDeckToGauge{amount:1}]。gainLife/dealDamage/putTopDeckToGaugeはX-UB02/0015・bf-x-bt04-rainbow-striker.json X-BT04/0032 C・フレイヤの確立destroy→追加効果連結と同型（『破壊したら』ではないので lastDestroySucceeded ゲートは付けない）。grep自己検査: payGauge(src/04-cost-resource.js)/event:enter・attack・destroyed直接発火(src/13-abilities-core.js runTriggeredAbilities)/target+filter(src/17-targeting.js)/destroy(src/15-ability-effects.js:1296)/gainLife(src/15:642)/dealDamage(src/15)/putTopDeckToGauge(src/15:310) 全実在確認。VM検証はx74-b8-verify.js test0007参照（(a)callMonster実経路でゲージ2課金、(b)resolveOnEnter実経路で相手の場の魔法1枚を破壊しライフ+1、相手場に魔法が無ければ当時は能力不発（現在は R7 により対象が無くてもライフ+1）、(c)攻撃時に相手の場のアイテム1枚を破壊し相手に1ダメージ、(d)destroyFieldCard実経路の破壊時に相手の場のモンスター1枚を破壊しゲージに1枚置く、をそれぞれ実測）。 【監査修正 2026-10-08】3能力とも「破壊し、〜」は破壊対象が居なくても後半（ライフ+1／ダメージ1／デッキ上1枚をゲージ）を解決する（D1裁定・X-UB02/0070 と同じ）。能力直下と target 内に allowMissingTarget:true を付与（destroy は $target 不在なら自然にスキップ）。 【R7 2026-10-09 オーナー裁定で確定】「〜を破壊し、〜」は対象がなくても後半を解決する（能力直下 allowMissingTarget:true が正）。"
     },
     {
       "id": "bf-x-cbt01-0008",
@@ -737,7 +757,14 @@
           "kind": "activated",
           "keyword": "reversal",
           "timing": [
-            "attack"
+            "attack",
+            "counter"
+          ],
+          "conditions": [
+            {
+              "op": "phaseIs",
+              "phase": "attack"
+            }
           ],
           "limit": {
             "scope": "fight",
@@ -758,10 +785,8 @@
               }
             },
             {
-              "op": "selectCards",
-              "var": "call",
+              "op": "grantPhaseCallRight",
               "from": "soul",
-              "controller": "self",
               "filter": {
                 "cardType": "monster",
                 "attributeIn": [
@@ -769,41 +794,13 @@
                   "雷帝軍"
                 ]
               },
-              "amount": 1,
-              "min": 0,
-              "max": 1,
-              "require": false,
-              "callable": true,
-              "title": "逆天戦艦 サツキG",
-              "lead": "【コールコスト】を払わずコールする、このカードのソウルの《艦載機》か《雷帝軍》のモンスターを１枚まで選んでください（選ばなくてもよい）。"
-            },
-            {
-              "op": "ifSelection",
-              "var": "call",
-              "then": [
-                {
-                  "op": "selectZone",
-                  "var": "z",
-                  "cardVar": "call",
-                  "zones": [
-                    "left",
-                    "center",
-                    "right"
-                  ],
-                  "emptyOnly": true
-                },
-                {
-                  "op": "callSelected",
-                  "var": "call",
-                  "zoneVar": "z",
-                  "resolveOnEnter": true
-                }
-              ]
+              "free": true,
+              "until": "attackPhaseEnd"
             }
           ]
         }
       ],
-      "_note": "逆天戦艦 サツキG。①『君が『着任』した時、君のドロップゾーンのモンスター２枚までをこのカードのソウルに入れる。』=E-XB49① 統括反映済み。kind:triggered,event:\"arrived\",script:[selectCards{var:d,from:drop,controller:self,filter:{cardType:monster},min:0,max:2,require:false,allowEmpty:true}→moveSelected{var:d,to:soul}]。E-XB49① で arriveCard(src/08-card-use.js:295-298)へ着任カード自身への runTriggeredAbilities(\"arrived\")＋場全体への runFieldEventTriggers(\"arrived\") ブロードキャストが新設され、『着任した時』トリガーが発火可能になった。moveSelected{to:soul} は context.card（＝サツキG自身）の soul へ push（src/14-ability-script.js:1570-1573）。②『『逆天』〔アタックフェイズ中、君の手札1枚を捨てる〕そのターン中、君の場のモンスター全ての能力を無効化し、君はこのカードのソウルにある《艦載機》か《雷帝軍》のモンスターを、このアタックフェイズ中、【コールコスト】を払わずコールできる！！』=E-XB49② 統括反映済み。前段（無効化）と後段（無償コール）を1つの script に統一: kind:activated,keyword:reversal(R23＝ファイト1回・limit:{scope:fight,key:reversal})+cost:[discardHand(1)](ブラケットコスト),timing:[attack],script:[nullifyFieldAbilities{controller:self,filter:{cardType:monster}}, selectCards{var:call,from:soul(＝context.card自身のソウル、src/14-ability-script.js:872),controller:self,filter:{cardType:monster,attributeIn:[艦載機,雷帝軍]},min:0,max:1,require:false,callable:true}→ifSelection{var:call,then:[selectZone{emptyOnly:true},callSelected{resolveOnEnter:true}（payCardCostForSelection を挟まない＝無償コール）]}]。E-XB49② で nullifyFieldAbilities が script 許可op（isScriptEffectStep、src/14-ability-script.js:3446-3451）に加わり、script なら『無効化 → 同一 script 連続実行で soul 無償コール』を両立できる（実行中の script は findUsableFieldAbilities の再発見を経ないため、自己無効化のカード単位ゲートに阻まれない）。nullifyFieldAbilities は発動時点の instanceId 集合を snapshot する（src/15-ability-effects.js:1531-1533）ため、後段で新規にコールしたモンスターは無効化対象に含まれない（＝原文どおり新規コール分は能力を保つ）。soul 無償コールの構造は本バッチ 0035『出撃するぞ！』（selectCards from:soul callable→selectZone→callSelected）と同型で、payCardCostForSelection を挟まない点だけが『払わず』の差分。③『貫通』『ソウルガード』『着任』〔君のデッキの上から4枚をこのカードのソウルに入れ、ゲージ3を払う〕=keywords:[penetrate,soulguard,arrival]+costs.arrival:[putTopDeckToSoul(4),payGauge(3)](X-UB02/0001暦級五番艦サツキ型と同型の着任コスト構造)。grep自己検査: arrived ブロードキャスト(src/08-card-use.js:295-298)/moveSelected to:soul(src/14-ability-script.js:1570-1573)/discardHand(src/04-cost-resource.js:1031)/nullifyFieldAbilities script許可op(src/14-ability-script.js:3446-3451、isScriptEffectStep 経由 executeAbilityEffect 委譲 src/14:524-525)/nullifyFieldAbilities snapshot(src/15-ability-effects.js:1529-1554)/selectCards from:soul 自己ソウル(src/14-ability-script.js:872)/callSelected・selectZone・ifSelection(本バッチ0035実例)/putTopDeckToSoul cost/keyword:reversal既定fight-limit(README「逆天」節・R23) 全実在確認。VM検証はx74-b6-verify.js参照（着任経路でドロップのモンスター最大2枚が自ソウルへ／逆天発動で自場モンスター能力の無効化＋自ソウルの《艦載機》/《雷帝軍》を無償コール、を実操作経路で実測）。"
+      "_note": "逆天戦艦 サツキG。①『君が『着任』した時、君のドロップゾーンのモンスター２枚までをこのカードのソウルに入れる。』=E-XB49① 統括反映済み。kind:triggered,event:\"arrived\",script:[selectCards{var:d,from:drop,controller:self,filter:{cardType:monster},min:0,max:2,require:false,allowEmpty:true}→moveSelected{var:d,to:soul}]。E-XB49① で arriveCard(src/08-card-use.js:295-298)へ着任カード自身への runTriggeredAbilities(\"arrived\")＋場全体への runFieldEventTriggers(\"arrived\") ブロードキャストが新設され、『着任した時』トリガーが発火可能になった。moveSelected{to:soul} は context.card（＝サツキG自身）の soul へ push（src/14-ability-script.js:1570-1573）。②『『逆天』〔アタックフェイズ中、君の手札1枚を捨てる〕そのターン中、君の場のモンスター全ての能力を無効化し、君はこのカードのソウルにある《艦載機》か《雷帝軍》のモンスターを、このアタックフェイズ中、【コールコスト】を払わずコールできる！！』=E-XB49② 統括反映済み。前段（無効化）と後段（無償コール）を1つの script に統一: kind:activated,keyword:reversal(R23＝ファイト1回・limit:{scope:fight,key:reversal})+cost:[discardHand(1)](ブラケットコスト),timing:[attack],script:[nullifyFieldAbilities{controller:self,filter:{cardType:monster}}, selectCards{var:call,from:soul(＝context.card自身のソウル、src/14-ability-script.js:872),controller:self,filter:{cardType:monster,attributeIn:[艦載機,雷帝軍]},min:0,max:1,require:false,callable:true}→ifSelection{var:call,then:[selectZone{emptyOnly:true},callSelected{resolveOnEnter:true}（payCardCostForSelection を挟まない＝無償コール）]}]。E-XB49② で nullifyFieldAbilities が script 許可op（isScriptEffectStep、src/14-ability-script.js:3446-3451）に加わり、script なら『無効化 → 同一 script 連続実行で soul 無償コール』を両立できる（実行中の script は findUsableFieldAbilities の再発見を経ないため、自己無効化のカード単位ゲートに阻まれない）。nullifyFieldAbilities は発動時点の instanceId 集合を snapshot する（src/15-ability-effects.js:1531-1533）ため、後段で新規にコールしたモンスターは無効化対象に含まれない（＝原文どおり新規コール分は能力を保つ）。soul 無償コールの構造は本バッチ 0035『出撃するぞ！』（selectCards from:soul callable→selectZone→callSelected）と同型で、payCardCostForSelection を挟まない点だけが『払わず』の差分。③『貫通』『ソウルガード』『着任』〔君のデッキの上から4枚をこのカードのソウルに入れ、ゲージ3を払う〕=keywords:[penetrate,soulguard,arrival]+costs.arrival:[putTopDeckToSoul(4),payGauge(3)](X-UB02/0001暦級五番艦サツキ型と同型の着任コスト構造)。grep自己検査: arrived ブロードキャスト(src/08-card-use.js:295-298)/moveSelected to:soul(src/14-ability-script.js:1570-1573)/discardHand(src/04-cost-resource.js:1031)/nullifyFieldAbilities script許可op(src/14-ability-script.js:3446-3451、isScriptEffectStep 経由 executeAbilityEffect 委譲 src/14:524-525)/nullifyFieldAbilities snapshot(src/15-ability-effects.js:1529-1554)/selectCards from:soul 自己ソウル(src/14-ability-script.js:872)/callSelected・selectZone・ifSelection(本バッチ0035実例)/putTopDeckToSoul cost/keyword:reversal既定fight-limit(README「逆天」節・R23) 全実在確認。VM検証はx74-b6-verify.js参照（着任経路でドロップのモンスター最大2枚が自ソウルへ／逆天発動で自場モンスター能力の無効化＋自ソウルの《艦載機》/《雷帝軍》を無償コール、を実操作経路で実測）。 【監査修正 2026-10-08】逆天の〔アタックフェイズ中〕は「君の」限定が無い＝双方のアタックフェイズで使える（相手の攻撃中の対抗窓・自分の攻撃宣言後のバトル中を含む）。timing:[attack,counter]+conditions:[phaseIs{phase:attack}]（ターン主は限定しない。bf-x-cbt02-0006 の相手アタックフェイズ型からターン主条件を外した形）。 【監査修正 2026-10-08 b047-3】後段『このカードのソウルにある《艦載機》か《雷帝軍》のモンスターを、このアタックフェイズ中、【コールコスト】を払わずコールできる』は解決時1回きりのコールではなくフェイズ中のコール権。新 op grantPhaseCallRight{from:soul,filter,free:true,until:attackPhaseEnd} で記帳し、アタックフェイズ中は何度でも（ソウルに候補がある限り）このカードの起動候補『ソウルからコール』から無償コールできる。権利はプレイヤーのもの＝自己無効化後も使える。"
     },
     {
       "id": "bf-x-cbt01-0009",
@@ -1009,9 +1006,7 @@
           "id": "bf-x-cbt01-0011-power-up",
           "kind": "activated",
           "timing": [
-            "main",
-            "attack",
-            "final"
+            "main"
           ],
           "cost": [
             {
@@ -1059,7 +1054,7 @@
           }
         }
       ],
-      "_note": "バッツ・ザ・スピリット（アイテム）。装備コスト行が原文に無いため costs キー無し（無償装備）。①『【起動】ライフ１を払う。払ったら、そのターン中、このカードの攻撃力＋5000！この能力は１ターンに１回だけ使える。』=kind:activated,timing:[main,attack,final]（対抗タグ無し・フェイズ限定句無しの素の【起動】の確立既定値＝x73-slice mech-X73-B1.json 0078等で確立）+cost:[payLife{amount:1}]+effects:[modifyStats{target:$self,power:5000,duration:turn}]+limit:{scope:turn}。②『【対抗】【起動】ゲージ１を払う。払ったら、そのターン中、君が攻撃で受けるダメージを１減らす。この能力は１ターンに１回だけ使える。』=kind:activated,timing:[counter,main]+cost:[payGauge{amount:1}]+effects:[addTurnContinuous{continuous:{op:damageReceivedReduction,amount:1,attackOnly:true}}]（『攻撃で受けるダメージ』＝attackOnly:trueで攻撃ダメージ限定・E-ZA2/X-SS02/0002超光星竜ジャックナイフ“ソル・アステール”の継続damageReceivedReduction{attackOnly:true}を、addTurnContinuous(X19・D-BT01/0131で確立)経由でこのカード自身へ『そのターン中』だけ一時付与する組み合わせ。damageReceivedReductionFor(src/04-cost-resource.js)がactiveContinuousEffects(continuous+turnContinuousの合流、src/05-stats.js:312-329)を読むため、場に残るアイテムへの一時付与として機能する。既存の『そのターン中、受けるダメージをN減らす』grantTurnDamageReduction(state.turnDamageReductions)はattackOnly分岐を持たない全ダメージ軽減のため、攻撃限定を厳密化するにはaddTurnContinuous+damageReceivedReduction{attackOnly:true}の組み合わせが必要）+limit:{scope:turn}。grep自己検査: payLife(src/04-cost-resource.js)/modifyStats target:$self duration:turn/payGauge/addTurnContinuous(src/15-ability-effects.js:543-556)/damageReceivedReduction+attackOnly(src/04-cost-resource.js damageReceivedReductionFor 236-238、bf-x-ss02-radiant-vs-rengoku.json X-SS02/0002実例)/activeContinuousEffects turnContinuous合流(src/05-stats.js:312-329) 全実在確認。VM実測はx74-b1-verify.jsのtest0011参照（useFieldAbilityAction実経路でライフ1を払い、このターン中攻撃力+5000が乗ること／ゲージ1を払い、applyDamageToPlayer実経路のbyAttack:trueダメージが1減り、byAttack:falseの効果ダメージには軽減が効かないこと／各能力1ターン1回制限を実測）。"
+      "_note": "バッツ・ザ・スピリット（アイテム）。装備コスト行が原文に無いため costs キー無し（無償装備）。①『【起動】ライフ１を払う。払ったら、そのターン中、このカードの攻撃力＋5000！この能力は１ターンに１回だけ使える。』=kind:activated,timing:[main,attack,final]（対抗タグ無し・フェイズ限定句無しの素の【起動】の確立既定値＝x73-slice mech-X73-B1.json 0078等で確立）+cost:[payLife{amount:1}]+effects:[modifyStats{target:$self,power:5000,duration:turn}]+limit:{scope:turn}。②『【対抗】【起動】ゲージ１を払う。払ったら、そのターン中、君が攻撃で受けるダメージを１減らす。この能力は１ターンに１回だけ使える。』=kind:activated,timing:[counter,main]+cost:[payGauge{amount:1}]+effects:[addTurnContinuous{continuous:{op:damageReceivedReduction,amount:1,attackOnly:true}}]（『攻撃で受けるダメージ』＝attackOnly:trueで攻撃ダメージ限定・E-ZA2/X-SS02/0002超光星竜ジャックナイフ“ソル・アステール”の継続damageReceivedReduction{attackOnly:true}を、addTurnContinuous(X19・D-BT01/0131で確立)経由でこのカード自身へ『そのターン中』だけ一時付与する組み合わせ。damageReceivedReductionFor(src/04-cost-resource.js)がactiveContinuousEffects(continuous+turnContinuousの合流、src/05-stats.js:312-329)を読むため、場に残るアイテムへの一時付与として機能する。既存の『そのターン中、受けるダメージをN減らす』grantTurnDamageReduction(state.turnDamageReductions)はattackOnly分岐を持たない全ダメージ軽減のため、攻撃限定を厳密化するにはaddTurnContinuous+damageReceivedReduction{attackOnly:true}の組み合わせが必要）+limit:{scope:turn}。grep自己検査: payLife(src/04-cost-resource.js)/modifyStats target:$self duration:turn/payGauge/addTurnContinuous(src/15-ability-effects.js:543-556)/damageReceivedReduction+attackOnly(src/04-cost-resource.js damageReceivedReductionFor 236-238、bf-x-ss02-radiant-vs-rengoku.json X-SS02/0002実例)/activeContinuousEffects turnContinuous合流(src/05-stats.js:312-329) 全実在確認。VM実測はx74-b1-verify.jsのtest0011参照（useFieldAbilityAction実経路でライフ1を払い、このターン中攻撃力+5000が乗ること／ゲージ1を払い、applyDamageToPlayer実経路のbyAttack:trueダメージが1減り、byAttack:falseの効果ダメージには軽減が効かないこと／各能力1ターン1回制限を実測）。 【監査修正 2026-10-08】①は対抗の無い素の【起動】＝ルール ver2.05『【対抗】などの指定がない限り、自分のメインフェイズ中にしか使えません』に従い timing:[main] へ是正（上記の [main,attack,final] 記述は誤り）。"
     },
     {
       "id": "bf-x-cbt01-0012",
@@ -1218,7 +1213,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromHand",
@@ -1493,6 +1489,7 @@
               }
             }
           ],
+          "allowMissingTarget": true,
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
@@ -1576,7 +1573,8 @@
                   "cmp": "eq",
                   "amount": 0
                 }
-              ]
+              ],
+              "spiritStrike": false
             }
           ]
         },
@@ -1967,7 +1965,6 @@
           }
         ]
       },
-      "nullifyImmune": true,
       "continuous": [
         {
           "op": "grantNullifyImmunity",
@@ -1975,7 +1972,8 @@
           "filter": {
             "cardType": "monster",
             "attribute": "プリズムドラゴン"
-          }
+          },
+          "cannotBeNullified": true
         },
         {
           "op": "modifyStats",
@@ -1985,7 +1983,8 @@
             "attribute": "プリズムドラゴン"
           },
           "power": 2000,
-          "defense": 2000
+          "defense": 2000,
+          "cannotBeNullified": true
         }
       ],
       "keywords": [
@@ -2232,7 +2231,7 @@
               "target": "$target",
               "options": {
                 "ignoreSoulguard": true,
-                "ignoreDestroyImmunity": true,
+                "ignoreOwnDestroyImmunity": true,
                 "ignoreDestroyReplacement": true,
                 "suppressDestroyedTriggers": true,
                 "suppressLifeLink": true
@@ -2315,7 +2314,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -3166,7 +3166,8 @@
                     "center",
                     "right"
                   ],
-                  "emptyOnly": true
+                  "emptyOnly": true,
+                  "overwriteWhenFull": true
                 },
                 {
                   "op": "payCardCostForSelection",
@@ -3362,14 +3363,16 @@
               },
               "amount": 1,
               "min": 1,
-              "require": true,
+              "require": false,
               "title": "トラクタービーム",
-              "lead": "手札に戻す、場のモンスター１枚を選んでください。"
+              "lead": "手札に戻す、場のモンスター１枚を選んでください。",
+              "allowEmpty": true
             },
             {
               "op": "moveSelected",
               "var": "m",
-              "to": "hand"
+              "to": "hand",
+              "require": false
             },
             {
               "op": "selectCards",
@@ -3388,12 +3391,13 @@
             {
               "op": "moveSelected",
               "var": "g",
-              "to": "gauge"
+              "to": "gauge",
+              "require": false
             }
           ]
         }
       ],
-      "_note": "トラクタービーム（魔法・スタードラゴンW/移動）。①『【使用コスト】君の手札1枚を君のデッキの上に置く。』=E-XB48 統括反映済み。costs.cast:[putHandToDeckTop{amount:1}]。E-XB48 で cost op putHandToDeckTop（手札N枚→デッキ上＝配列末尾 push。putHandToSoul と同型の canPay/payStructured/対話選択の3経路対応、src/04-cost-resource.js:682/1111/1422/1922）が新設され、これまで表現不能だった『手札→デッキ上』の使用コストゲートを忠実に実装できる。②『【対抗】場のモンスター1枚を手札に戻し、君のドロップゾーンのカード1枚までをゲージに置く。』=kind:spell,timing:[counter],script:[selectCards{var:m,from:field,controller:any,filter:{cardType:monster},min:1,require:true}→moveSelected{var:m,to:hand}（場のモンスターをその所有者の手札へ。scriptMoveDestinationOwner が toOwner 未指定時 entry.owner を返す＝返した先はカード所有者の手札、src/14-ability-script.js:1548-1561/1560-1561）→selectCards{var:g,from:drop,controller:self,min:0,max:1,require:false,allowEmpty:true}→moveSelected{var:g,to:gauge}（『1枚まで』=0/1任意選択。bf-x-ss01-0034 導魔 ダインガスの『ドロップのカード2枚までをゲージに置く』selectCards(min:0,max)→moveSelected(to:gauge)と同型）]。『場のモンスター』=controller:\"any\"（両席のモンスター＝scriptOwnersForController any→[0,1]、src/14-ability-script.js:849-857）。grep自己検査: putHandToDeckTop 4経路(src/04-cost-resource.js:682/1111/1422/1922)/selectCards controller:any(src/14-ability-script.js:849-857)/moveSelected to:hand・to:gauge=moveScriptCardToDestination(src/14-ability-script.js:1558-1587、gauge は queueGaugePlacedTriggers 付)/allowEmpty min:0 max:1(bf-x-ss01-0034実例) 全実在確認。VM検証: x74-b3-verify.js参照（useCardAction 実経路で手札1枚がデッキ上へ乗る使用コスト、場のモンスターがその所有者の手札へ戻る、ドロップ1枚までがゲージへ置かれる（0枚選択も可）ことを実測）。"
+      "_note": "トラクタービーム（魔法・スタードラゴンW/移動）。①『【使用コスト】君の手札1枚を君のデッキの上に置く。』=E-XB48 統括反映済み。costs.cast:[putHandToDeckTop{amount:1}]。E-XB48 で cost op putHandToDeckTop（手札N枚→デッキ上＝配列末尾 push。putHandToSoul と同型の canPay/payStructured/対話選択の3経路対応、src/04-cost-resource.js:682/1111/1422/1922）が新設され、これまで表現不能だった『手札→デッキ上』の使用コストゲートを忠実に実装できる。②『【対抗】場のモンスター1枚を手札に戻し、君のドロップゾーンのカード1枚までをゲージに置く。』=kind:spell,timing:[counter],script:[selectCards{var:m,from:field,controller:any,filter:{cardType:monster},min:1,require:true}→moveSelected{var:m,to:hand}（場のモンスターをその所有者の手札へ。scriptMoveDestinationOwner が toOwner 未指定時 entry.owner を返す＝返した先はカード所有者の手札、src/14-ability-script.js:1548-1561/1560-1561）→selectCards{var:g,from:drop,controller:self,min:0,max:1,require:false,allowEmpty:true}→moveSelected{var:g,to:gauge}（『1枚まで』=0/1任意選択。bf-x-ss01-0034 導魔 ダインガスの『ドロップのカード2枚までをゲージに置く』selectCards(min:0,max)→moveSelected(to:gauge)と同型）]。『場のモンスター』=controller:\"any\"（両席のモンスター＝scriptOwnersForController any→[0,1]、src/14-ability-script.js:849-857）。grep自己検査: putHandToDeckTop 4経路(src/04-cost-resource.js:682/1111/1422/1922)/selectCards controller:any(src/14-ability-script.js:849-857)/moveSelected to:hand・to:gauge=moveScriptCardToDestination(src/14-ability-script.js:1558-1587、gauge は queueGaugePlacedTriggers 付)/allowEmpty min:0 max:1(bf-x-ss01-0034実例) 全実在確認。VM検証: x74-b3-verify.js参照（useCardAction 実経路で手札1枚がデッキ上へ乗る使用コスト、場のモンスターがその所有者の手札へ戻る、ドロップ1枚までがゲージへ置かれる（0枚選択も可）ことを実測）。 【R7 2026-10-09 オーナー裁定】「〜し、〜」（「したら」でない連結）は対象がなくても後半を解決する＝先頭の対象選択 selectCards に allowEmpty:true（候補が無ければ0枚で続行）＋消費 step require:false。"
     },
     {
       "id": "bf-x-cbt01-0038",
@@ -3507,6 +3511,7 @@
           "id": "bf-x-cbt01-0039-hand-discard-buff",
           "kind": "activated",
           "fromHandOnly": true,
+          "landAsDiscard": true,
           "timing": [
             "counter",
             "main"
@@ -4487,12 +4492,13 @@
             {
               "op": "dropTargetSoul",
               "target": "$target",
-              "amount": 2
+              "amount": 2,
+              "upTo": true
             }
           ]
         }
       ],
-      "_note": "雷伝の騎士 ニルス。コールコスト行なし=costsキー省略（無償コール）。『このカードが他の《冒険者》か《雷帝軍》と連携攻撃した時、相手の場のカード1枚のソウル2枚までをドロップゾーンに置く』=event:allyLinkAttack+conditions:[pendingAttackBySource,eventAttackersInclude{excludeSelf:true,filter:{attributeIn:[冒険者,雷帝軍]}}]（bf-x-ub01-0004一緒に戦おうぜ！型の『他の《X》か《Y》と連携攻撃した時』確立パターン、attributeInで2属性OR）+target:{fieldCard,controller:opponent,filter:{soulCountGte:1},allowMissingTarget:true}+effects:[dropTargetSoul{target:$target,amount:2}]（bf-x-bt02-chaos-control-crisis.json X-BT02/0089開かずの間・bf-x-bt03-gyakuten-raiteigun.json弾けるゴレム等多数前例のtarget+soulCountGte+dropTargetSoul定型。dropTargetSoulのamountはmin(ソウル枚数,amount)を自動移動=『2枚まで』の忠実表現、src/15-ability-effects.js:2003-2045）。grep自己検査: allyLinkAttack/pendingAttackBySource/eventAttackersInclude+attributeIn/target.filter.soulCountGte+allowMissingTarget/dropTargetSoul(src/15-ability-effects.js:2003-2045) 全実在確認。VM検証: x74-b7-verify.js test0055参照（A: 《冒険者》か《雷帝軍》を含む連携攻撃(2枚以上)に参加すると相手の場のカード1枚のソウルから最大2枚がドロップへ移る、B: 《冒険者》《雷帝軍》いずれも含まない連携攻撃では不発、C: 単独攻撃では不発(allyLinkAttack自体が非発火)、D: 相手の場にソウル持ちカードが無ければ安全にno-op）。"
+      "_note": "雷伝の騎士 ニルス。コールコスト行なし=costsキー省略（無償コール）。『このカードが他の《冒険者》か《雷帝軍》と連携攻撃した時、相手の場のカード1枚のソウル2枚までをドロップゾーンに置く』=event:allyLinkAttack+conditions:[pendingAttackBySource,eventAttackersInclude{excludeSelf:true,filter:{attributeIn:[冒険者,雷帝軍]}}]（bf-x-ub01-0004一緒に戦おうぜ！型の『他の《X》か《Y》と連携攻撃した時』確立パターン、attributeInで2属性OR）+target:{fieldCard,controller:opponent,filter:{soulCountGte:1},allowMissingTarget:true}+effects:[dropTargetSoul{target:$target,amount:2}]（bf-x-bt02-chaos-control-crisis.json X-BT02/0089開かずの間・bf-x-bt03-gyakuten-raiteigun.json弾けるゴレム等多数前例のtarget+soulCountGte+dropTargetSoul定型。dropTargetSoul{amount:2,upTo:true}で0〜2枚（ソウル枚数が上限）を選ばせる=『2枚まで』の表現［R1・2026-10-09 オーナー裁定。旧実装は min(ソウル枚数,amount) を自動移動］、src/15-ability-effects.js）。grep自己検査: allyLinkAttack/pendingAttackBySource/eventAttackersInclude+attributeIn/target.filter.soulCountGte+allowMissingTarget/dropTargetSoul(src/15-ability-effects.js:2003-2045) 全実在確認。VM検証: x74-b7-verify.js test0055参照（A: 《冒険者》か《雷帝軍》を含む連携攻撃(2枚以上)に参加すると相手の場のカード1枚のソウルから最大2枚がドロップへ移る、B: 《冒険者》《雷帝軍》いずれも含まない連携攻撃では不発、C: 単独攻撃では不発(allyLinkAttack自体が非発火)、D: 相手の場にソウル持ちカードが無ければ安全にno-op）。 【R1 2026-10-09 オーナー裁定】「ソウルN枚までを置く／捨てる」＝0〜N枚を選ぶ（dropTargetSoul upTo:true）。"
     },
     {
       "id": "bf-x-cbt01-0056",
@@ -4517,55 +4523,37 @@
           "id": "bf-x-cbt01-0056-enter-discard-gauge-draw",
           "kind": "triggered",
           "event": "enter",
-          "script": [
+          "optional": true,
+          "cost": [
             {
-              "op": "selectCards",
-              "var": "d",
-              "from": "hand",
-              "controller": "self",
-              "amount": 1,
-              "min": 0,
-              "require": false,
-              "title": "キイロバット",
-              "lead": "捨てる手札１枚までを選んでください（選ばなくてもよい）。"
+              "op": "discardHand",
+              "amount": 1
+            }
+          ],
+          "effects": [
+            {
+              "op": "putTopDeckToGauge",
+              "amount": 1
             },
             {
-              "op": "ifSelection",
-              "var": "d",
-              "then": [
+              "op": "draw",
+              "amount": 1,
+              "conditions": [
                 {
-                  "op": "moveSelected",
-                  "var": "d",
-                  "to": "drop"
-                },
-                {
-                  "op": "putTopDeckToGauge",
-                  "amount": 1
-                },
-                {
-                  "op": "ifCondition",
-                  "condition": {
-                    "op": "ownOtherFieldCardExists",
-                    "filter": {
-                      "attributeIn": [
-                        "Dエネミー",
-                        "雷帝軍"
-                      ]
-                    }
-                  },
-                  "then": [
-                    {
-                      "op": "draw",
-                      "amount": 1
-                    }
-                  ]
+                  "op": "ownOtherFieldCardExists",
+                  "filter": {
+                    "attributeIn": [
+                      "Dエネミー",
+                      "雷帝軍"
+                    ]
+                  }
                 }
               ]
             }
           ]
         }
       ],
-      "_note": "キイロバット。コールコスト行なし=costsキー省略（無償コール）。『このカードが登場した時、手札1枚を捨ててよい。捨てたら、君のデッキの上から1枚をゲージに置く。さらに、君の場に他の《Dエネミー》か《雷帝軍》があるなら、カード1枚を引く』は『捨てたら』節が『さらに』の続きも包含する構文（bf-s-ub-c03-cinderella-theater.json bf-s-ub-c03-0038大人な落ち着きアイドル三船美優『捨てたら、選んだカードをレストする。さらに、[条件]なら、[効果]』が『さらに』側効果も同じ捨てた場合のみ有効という解釈の直接前例）。event:enter+script:[selectCards{var:d,from:hand,controller:self,min:0,require:false}(『捨ててよい』=0選択可、bf-cr-0017タフだぜ!アスモダイの同型idiom)→ifSelection{then:[moveSelected(d→drop),putTopDeckToGauge(1),ifCondition{condition:ownOtherFieldCardExists{filter:{attributeIn:[Dエネミー,雷帝軍]}},then:[draw(1)]}]}]（ownOtherFieldCardExistsは自分自身のinstanceIdを除外=『他の』を担保、src/13-abilities-core.js:1256-1265）。捨てなかった場合はゲージもドローも一切発生しない（『捨てたら』節全体が未実行）。grep自己検査: event:enter+selectCards from:hand min:0(bf-cr-0017実例)/ifSelection(src/14-ability-script.js:339,1192-1199)/moveSelected/putTopDeckToGauge/ifCondition(src/14-ability-script.js:1214-1221)/ownOtherFieldCardExists+attributeIn(src/13-abilities-core.js:1256-1265) 全実在確認。VM検証: x74-b7-verify.js test0056参照（A: 登場時に手札を捨てない選択をするとゲージもドローも発生しない、B: 手札1枚を捨てるとデッキ上1枚がゲージへ、C: 捨てた上で場に他の《Dエネミー》か《雷帝軍》があればカード1枚を引く、D: 捨てても他の該当カードが場になければドローは発生しない、E: 手札が0枚でも安全にno-op）。"
+      "_note": "キイロバット。コールコスト行なし=costsキー省略（無償コール）。『このカードが登場した時、手札1枚を捨ててよい。捨てたら、君のデッキの上から1枚をゲージに置く。さらに、君の場に他の《Dエネミー》か《雷帝軍》があるなら、カード1枚を引く』は『捨てたら』節が『さらに』の続きも包含する構文（bf-s-ub-c03-cinderella-theater.json bf-s-ub-c03-0038大人な落ち着きアイドル三船美優『捨てたら、選んだカードをレストする。さらに、[条件]なら、[効果]』が『さらに』側効果も同じ捨てた場合のみ有効という解釈の直接前例）。event:enter+script:[selectCards{var:d,from:hand,controller:self,min:0,require:false}(『捨ててよい』=0選択可、bf-cr-0017タフだぜ!アスモダイの同型idiom)→ifSelection{then:[moveSelected(d→drop),putTopDeckToGauge(1),ifCondition{condition:ownOtherFieldCardExists{filter:{attributeIn:[Dエネミー,雷帝軍]}},then:[draw(1)]}]}]（ownOtherFieldCardExistsは自分自身のinstanceIdを除外=『他の』を担保、src/13-abilities-core.js:1256-1265）。捨てなかった場合はゲージもドローも一切発生しない（『捨てたら』節全体が未実行）。grep自己検査: event:enter+selectCards from:hand min:0(bf-cr-0017実例)/ifSelection(src/14-ability-script.js:339,1192-1199)/moveSelected/putTopDeckToGauge/ifCondition(src/14-ability-script.js:1214-1221)/ownOtherFieldCardExists+attributeIn(src/13-abilities-core.js:1256-1265) 全実在確認。VM検証: x74-b7-verify.js test0056参照（A: 登場時に手札を捨てない選択をするとゲージもドローも発生しない、B: 手札1枚を捨てるとデッキ上1枚がゲージへ、C: 捨てた上で場に他の《Dエネミー》か《雷帝軍》があればカード1枚を引く、D: 捨てても他の該当カードが場になければドローは発生しない、E: 手札が0枚でも安全にno-op）。 【監査修正 2026-10-08】『手札１枚を捨ててよい。捨てたら』を selectCards+moveSelected(to:drop)（＝捨て扱いにならず discardedFromHand 等が不発）から、DB確立形の optional:true+cost:[discardHand{amount:1}]（discardHandCardsToDrop 経由＝手札から捨てられた時の誘発が発火。0003①・X-UB01/0024 と同型）へ変更。さらに部分は draw に effect-level conditions:[ownOtherFieldCardExists{attributeIn:[Dエネミー,雷帝軍]}]。"
     },
     {
       "id": "bf-x-cbt01-0057",
@@ -4861,6 +4849,13 @@
           "id": "bf-x-cbt01-0061-deck-milled-destroy",
           "kind": "triggered",
           "event": "allyDeckMilled",
+          "conditions": [
+            {
+              "op": "eventMillCauseMatches",
+              "sourceController": "self",
+              "allowCost": true
+            }
+          ],
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
@@ -4906,7 +4901,7 @@
           }
         }
       ],
-      "_note": "厳正戦士 ジャスティホープ。『君のカードで、ドロップゾーンのカードがデッキに戻った時かデッキのカードがドロップゾーンに置かれた時、相手の場の防御力3000以下のモンスター1枚を破壊する。この能力は1ターンに1回だけ発動する。』は「Aした時かBした時」型のOR誘発＝2つのtriggered ability entryへ分割し同一limit.keyを共有(『した時か』OR型の確立イディオム。X-BT02/0047狩猟者ドッグレッグ等多数前例)。A:『デッキのカードがドロップゾーンに置かれた時』=event:allyDeckMilled(E5=D-BT04/0039型のデッキ→ドロップのミル ブロードキャスト。原文に『君のカードの効果で』の限定句が無いため eventMillCauseMatches 条件は付けない=cause不問で発火)。B:『ドロップゾーンのカードがデッキに戻った時』は【近似・要報告】: 該当する専用トリガー(発生源=ドロップゾーンからの復帰のみを識別する場ブロードキャスト)がsrc全域に存在しない。デッキ下への流入を捕捉する event:allyDeckBottomPlaced(E-XB18)は発生源ゾーンの情報を運ばない(queueDeckBottomPlacedTriggersはcards配列のcount集計のみ・details.sourceZone等のフィールドが無い=src/07-actions-turn.js:794-827)ため、ソウル→デッキ下/場→デッキ下の移動もまとめて誤検出する過大近似になる点、かつデッキの『上』への復帰(デッキTOPへ戻すケース)は対応するブロードキャストが一切存在せず本実装の対象外になる点の両方を明記して報告する(既存最近似primitiveの採用=X-UB02/0018ブレイブマシン格納庫のownItemIsMonster近似と同種の運用)。効果本体『相手の場の防御力3000以下のモンスター1枚を破壊する』=target:{fieldCard,controller:opponent,filter:{cardType:monster,defenseLte:3000},allowMissingTarget:true}+effects:[destroy($target)]。grep自己検査: allyDeckMilled配信(src/07-actions-turn.js:757-792)/allyDeckBottomPlaced配信(src/07-actions-turn.js:802-827、sourceZone等の詳細フィールド不在を確認)/defenseLte(src/17-targeting.js:386)/destroy target(src/15-ability-effects.js:1572) 全実在確認。VM検証はx74-b6-verify.js参照（Bの近似分は近似の挙動＝ソウル/場からのデッキ下流入でも発火することを含めて実測）。"
+      "_note": "厳正戦士 ジャスティホープ。『君のカードで、ドロップゾーンのカードがデッキに戻った時かデッキのカードがドロップゾーンに置かれた時、相手の場の防御力3000以下のモンスター1枚を破壊する。この能力は1ターンに1回だけ発動する。』は「Aした時かBした時」型のOR誘発＝2つのtriggered ability entryへ分割し同一limit.keyを共有(『した時か』OR型の確立イディオム。X-BT02/0047狩猟者ドッグレッグ等多数前例)。A:『デッキのカードがドロップゾーンに置かれた時』=event:allyDeckMilled(E5=D-BT04/0039型のデッキ→ドロップのミル ブロードキャスト。原文に『君のカードの効果で』の限定句が無いため eventMillCauseMatches 条件は付けない=cause不問で発火)。B:『ドロップゾーンのカードがデッキに戻った時』は【近似・要報告】: 該当する専用トリガー(発生源=ドロップゾーンからの復帰のみを識別する場ブロードキャスト)がsrc全域に存在しない。デッキ下への流入を捕捉する event:allyDeckBottomPlaced(E-XB18)は発生源ゾーンの情報を運ばない(queueDeckBottomPlacedTriggersはcards配列のcount集計のみ・details.sourceZone等のフィールドが無い=src/07-actions-turn.js:794-827)ため、ソウル→デッキ下/場→デッキ下の移動もまとめて誤検出する過大近似になる点、かつデッキの『上』への復帰(デッキTOPへ戻すケース)は対応するブロードキャストが一切存在せず本実装の対象外になる点の両方を明記して報告する(既存最近似primitiveの採用=X-UB02/0018ブレイブマシン格納庫のownItemIsMonster近似と同種の運用)。効果本体『相手の場の防御力3000以下のモンスター1枚を破壊する』=target:{fieldCard,controller:opponent,filter:{cardType:monster,defenseLte:3000},allowMissingTarget:true}+effects:[destroy($target)]。grep自己検査: allyDeckMilled配信(src/07-actions-turn.js:757-792)/allyDeckBottomPlaced配信(src/07-actions-turn.js:802-827、sourceZone等の詳細フィールド不在を確認)/defenseLte(src/17-targeting.js:386)/destroy target(src/15-ability-effects.js:1572) 全実在確認。VM検証はx74-b6-verify.js参照（Bの近似分は近似の挙動＝ソウル/場からのデッキ下流入でも発火することを含めて実測）。 【監査修正 2026-10-08】原文冒頭は「君のカードで、」であり起因限定がある（上記『限定句が無い』は読み違い）。A側(allyDeckMilled)に conditions:[eventMillCauseMatches{sourceController:self,allowCost:true}]（君のカードの効果・コストによるミルのみ）を付与。相手のデッキが君のカードでミルされた場合を含めるか、B側(allyDeckBottomPlaced)の起因限定は未対応のまま。"
     },
     {
       "id": "bf-x-cbt01-0062",
@@ -4978,7 +4973,8 @@
           "label": "デックカノン",
           "kind": "activated",
           "timing": [
-            "attack"
+            "attack",
+            "counter"
           ],
           "conditions": [
             {
@@ -4988,7 +4984,6 @@
             {
               "op": "hostMatches",
               "filter": {
-                "cardType": "monster",
                 "attribute": "戦艦"
               }
             }
@@ -4997,7 +4992,8 @@
             {
               "op": "selectZone",
               "var": "z",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "callSelfFromSoul",
@@ -5011,7 +5007,7 @@
           }
         }
       ],
-      "_note": "クィンク＝ラーダ専用固定砲台。『【対抗】【起動】“デックカノン”アタックフェイズ中、君の場の《戦艦》のソウルのこのカードをコールする。「デックカノン」は1ターンに1回だけ使える。』は原文『アタックフェイズ中』に君の/相手のの限定句が無い＝双方のアタックフェイズで使用可能（X-BT03/0008黒雷竜リバーペインの確立解釈: abilityTimingIncludesがphase直接一致で所有者を問わずtrue化するためtiming:[attack]のみで足り、対抗(相手ターン)用の別timing:[counter]エントリは不要。conditions:[phaseIs(attack)]は明示のため冗長併記）。ソウルにある間だけ使える起動能力＝soulAbilities配列(findUsableSoulAbilitiesが場の各カードのsoul内を走査してcontextにhostCard/hostOwner/hostZoneを渡す。src/13-abilities-core.js:534)。『君の場の《戦艦》のソウルの』=conditions:[hostMatches{filter:{cardType:monster,attribute:戦艦}}](S-UB-C03/0058・X-CP03/0049デスタリカ・ハンド・X-BT04/0067竜装機リターンビット等の確立パターン。ホストが戦艦以外(例えば別の艦載機)のソウルにある間は起動不可)。『ソウルのこのカードをコールする』=script:[selectZone{emptyOnly:true},callSelfFromSoul{zoneVar:z}](コスト記載なし=無償コール。Z5(S-UB-C03/0058)型と同じ callSelfFromSoul。ホストがどの《戦艦》かは問わず、場のどこかの《戦艦》のソウルにあれば起動可＝原文が『君の場の《戦艦》のソウルにあるこのカード』の総称形であるため個別ホスト選択は不要)。limit:{scope:turn,shared:true,key:\"xcbt01-デックカノン\"}(『「デックカノン」は1ターンに1回だけ使える』の鉤括弧付き名称=named-once。同名カード合算のためshared:true付与=X-BT03/0008型と同じ扱い)。grep自己検査: findUsableSoulAbilities+hostMatches(src/13-abilities-core.js:534,1174)/phaseIs(src/13-abilities-core.js:1012)/abilityTimingIncludesの所有者非依存判定(X-BT03/0008 _note記載どおり)/selectZone/callSelfFromSoul(src/14-ability-script.js:460-461,2912-2951) 全実在確認。VM検証はx74-b6-verify.js参照（ソウルに入れてから起動できること・ホストが戦艦以外だと起動不可なこと・1ターン1回制限を実測）。"
+      "_note": "クィンク＝ラーダ専用固定砲台。『【対抗】【起動】“デックカノン”アタックフェイズ中、君の場の《戦艦》のソウルのこのカードをコールする。「デックカノン」は1ターンに1回だけ使える。』は原文『アタックフェイズ中』に君の/相手のの限定句が無い＝双方のアタックフェイズで使用可能（X-BT03/0008黒雷竜リバーペインの確立解釈: abilityTimingIncludesがphase直接一致で所有者を問わずtrue化するためtiming:[attack]のみで足り、対抗(相手ターン)用の別timing:[counter]エントリは不要。conditions:[phaseIs(attack)]は明示のため冗長併記）。ソウルにある間だけ使える起動能力＝soulAbilities配列(findUsableSoulAbilitiesが場の各カードのsoul内を走査してcontextにhostCard/hostOwner/hostZoneを渡す。src/13-abilities-core.js:534)。『君の場の《戦艦》のソウルの』=conditions:[hostMatches{filter:{cardType:monster,attribute:戦艦}}](S-UB-C03/0058・X-CP03/0049デスタリカ・ハンド・X-BT04/0067竜装機リターンビット等の確立パターン。ホストが戦艦以外(例えば別の艦載機)のソウルにある間は起動不可)。『ソウルのこのカードをコールする』=script:[selectZone{emptyOnly:true},callSelfFromSoul{zoneVar:z}](コスト記載なし=無償コール。Z5(S-UB-C03/0058)型と同じ callSelfFromSoul。ホストがどの《戦艦》かは問わず、場のどこかの《戦艦》のソウルにあれば起動可＝原文が『君の場の《戦艦》のソウルにあるこのカード』の総称形であるため個別ホスト選択は不要)。limit:{scope:turn,shared:true,key:\"xcbt01-デックカノン\"}(『「デックカノン」は1ターンに1回だけ使える』の鉤括弧付き名称=named-once。同名カード合算のためshared:true付与=X-BT03/0008型と同じ扱い)。grep自己検査: findUsableSoulAbilities+hostMatches(src/13-abilities-core.js:534,1174)/phaseIs(src/13-abilities-core.js:1012)/abilityTimingIncludesの所有者非依存判定(X-BT03/0008 _note記載どおり)/selectZone/callSelfFromSoul(src/14-ability-script.js:460-461,2912-2951) 全実在確認。VM検証はx74-b6-verify.js参照（ソウルに入れてから起動できること・ホストが戦艦以外だと起動不可なこと・1ターン1回制限を実測）。 D5(2026-10): timing:[attack] のみだと攻撃の対抗ウィンドウ（timing=counter・state.phase=defense）で使えなかったため、【対抗】【起動】アタックフェイズ中の確立形 timing:[attack,counter]＋phaseIs(attack)（H-PP01/0051・X-CBT01/0036 等15件と同型）へ揃えた。"
     },
     {
       "id": "bf-x-cbt01-0064",
@@ -5438,7 +5434,8 @@
               "op": "selectZone",
               "var": "z",
               "cardVar": "call",
-              "emptyOnly": true
+              "emptyOnly": true,
+              "overwriteWhenFull": true
             },
             {
               "op": "payCardCostForSelection",
@@ -5866,6 +5863,12 @@
           "conditions": [
             {
               "op": "attackingAlone"
+            },
+            {
+              "op": "eventCardMatches",
+              "filter": {
+                "cardType": "monster"
+              }
             }
           ],
           "effects": [
@@ -5881,7 +5884,7 @@
           "id": "bf-x-cbt01-0074-triple-attack-on-high-power",
           "kind": "triggered",
           "event": "attack",
-          "conditions": [
+          "ifConditions": [
             {
               "op": "selfStatGte",
               "stat": "power",
@@ -5902,7 +5905,7 @@
           }
         }
       ],
-      "_note": "轟天覇王拳 ドラグランブル（アイテム・雷帝軍/武器）。①【装備コスト】ゲージ1=costs.equip:[payGauge{amount:1}]。②『君の場のモンスターが1枚で攻撃した時、そのターン中、このカードの攻撃力+2000！』=kind:triggered,event:allyAttack,conditions:[attackingAlone{}],effects:[modifyStats{target:$self,power:2000,duration:turn}]（X-CP01/0022雷竜の大太刀の『君の場のモンスターが1枚で攻撃した時、そのターン中、このカードの攻撃力+3000！』と一字一句同型の確立形をpower:2000に差替）。③『このカードが攻撃した時、このカードの攻撃力が10000以上なら、そのターン中、このカードは『3回攻撃』を得る。この能力は1ターンに1回だけ発動する』=E-XB51② 統括反映済み。kind:triggered,event:\"attack\"（このカード自身への bare 発火＝context.card=攻撃したこのアイテム、src/09-attack.js runAttackDeclarationTriggers）+conditions:[selfStatGte{stat:power,amount:10000}]+effects:[grantKeyword{target:$self,keyword:tripleAttack,duration:turn}]+limit:{scope:turn}（『1ターンに1回だけ発動』）。E-XB51② で条件op selfStatGte{stat,amount}（発生源カード自身の visible stat 閾値判定＝context.card||getSelectedCard の visiblePower/Defense/Critical、src/13-abilities-core.js:1182-1192）が新設され、powerGte が matchesTargetFilter 経由で sameInstanceAsSource を解釈しない穴を埋める source 限定版として『このカードの攻撃力10000以上』を安全に判定できる。tripleAttack=『3回攻撃』（src/18-tooltip-format.js:478 alias）。grep自己検査: event:allyAttack+attackingAlone(src/13-abilities-core.js:879-881、X-CP01/0022実例)/modifyStats target:$self+duration:turn(多数前例)/event:attack bare発火(src/09-attack.js runAttackDeclarationTriggers)/selfStatGte(src/13-abilities-core.js:1182-1192)/grantKeyword duration:turn(src/15-ability-effects.js:1993)/tripleAttack alias(src/18-tooltip-format.js:478) 全実在確認。VM検証: x74-b2-verify.js test0074参照（equipCardDirect実経路でゲージ1課金の上装備される、performAttackDeclaration実経路で自場のモンスターが単騎攻撃した時のみこのカードの攻撃力がそのターン中+2000されること、連携攻撃では加算されないこと、E-XB51② 反映後は攻撃時にこのカードの攻撃力が10000以上なら『3回攻撃』(tripleAttack)がそのターン付与され10000未満では付与されず1ターン1回制限が効くことを実測）。"
+      "_note": "轟天覇王拳 ドラグランブル（アイテム・雷帝軍/武器）。①【装備コスト】ゲージ1=costs.equip:[payGauge{amount:1}]。②『君の場のモンスターが1枚で攻撃した時、そのターン中、このカードの攻撃力+2000！』=kind:triggered,event:allyAttack,conditions:[attackingAlone{}],effects:[modifyStats{target:$self,power:2000,duration:turn}]（X-CP01/0022雷竜の大太刀の『君の場のモンスターが1枚で攻撃した時、そのターン中、このカードの攻撃力+3000！』と一字一句同型の確立形をpower:2000に差替）。③『このカードが攻撃した時、このカードの攻撃力が10000以上なら、そのターン中、このカードは『3回攻撃』を得る。この能力は1ターンに1回だけ発動する』=E-XB51② 統括反映済み。kind:triggered,event:\"attack\"（このカード自身への bare 発火＝context.card=攻撃したこのアイテム、src/09-attack.js runAttackDeclarationTriggers）+conditions:[selfStatGte{stat:power,amount:10000}]+effects:[grantKeyword{target:$self,keyword:tripleAttack,duration:turn}]+limit:{scope:turn}（『1ターンに1回だけ発動』）。E-XB51② で条件op selfStatGte{stat,amount}（発生源カード自身の visible stat 閾値判定＝context.card||getSelectedCard の visiblePower/Defense/Critical、src/13-abilities-core.js:1182-1192）が新設され、powerGte が matchesTargetFilter 経由で sameInstanceAsSource を解釈しない穴を埋める source 限定版として『このカードの攻撃力10000以上』を安全に判定できる。tripleAttack=『3回攻撃』（src/18-tooltip-format.js:478 alias）。grep自己検査: event:allyAttack+attackingAlone(src/13-abilities-core.js:879-881、X-CP01/0022実例)/modifyStats target:$self+duration:turn(多数前例)/event:attack bare発火(src/09-attack.js runAttackDeclarationTriggers)/selfStatGte(src/13-abilities-core.js:1182-1192)/grantKeyword duration:turn(src/15-ability-effects.js:1993)/tripleAttack alias(src/18-tooltip-format.js:478) 全実在確認。VM検証: x74-b2-verify.js test0074参照（equipCardDirect実経路でゲージ1課金の上装備される、performAttackDeclaration実経路で自場のモンスターが単騎攻撃した時のみこのカードの攻撃力がそのターン中+2000されること、連携攻撃では加算されないこと、E-XB51② 反映後は攻撃時にこのカードの攻撃力が10000以上なら『3回攻撃』(tripleAttack)がそのターン付与され10000未満では付与されず1ターン1回制限が効くことを実測）。 【監査修正 2026-10-08】②は『君の場のモンスターが』単独で攻撃した時のみ。allyAttack は攻撃者自身(アイテム＝ファイター攻撃)にも配送されるため conditions に eventCardMatches{filter:{cardType:monster}}（eventCard=攻撃者）を追加。"
     },
     {
       "id": "bf-x-cbt01-0075",
@@ -6054,15 +6057,13 @@
               }
             },
             {
-              "op": "nullifiedAttackerMatches",
-              "filter": {
-                "cardType": "monster",
-                "nameIncludes": "ジャックナイフ"
-              }
+              "op": "selfIsNullifiedAttacker"
             }
           ],
           "limit": {
-            "scope": "turn"
+            "scope": "turn",
+            "shared": true,
+            "key": "bf-x-cbt01-0076-shipyard-double"
           },
           "effects": [
             {
@@ -6114,7 +6115,7 @@
           ]
         }
       ],
-      "_note": "剣星機 J・アーセナル。①『『星合体』(bare label)』=竜装機系キーワードの標準boilerplateとしてkind:activated,label:星合体,timing:[main],conditions:[sourceZoneIn:{zones:[left,center,right]}]+script:[selectCards(host,filter:{cardType:monster,nameIncludes:ジャックナイフ},require:true)→moveSelfToSelectedSoul](bf-x-cp02-0026大竜装機トリプルバスター『このカードが《ネオドラゴン》ソウルにあるなら、...『星合体』』のbare label+同型abilities一式の直接前例=note原文「星合体は標準boilerplate(bf-x-ss02系22件と同型)」。0076はrules文中に他の場→ソウル搭乗記述が無い(bf-x-bt04-0067リターンビットのような独自バトル終了時搭乗テンプレートも無い)ため、標準boilerplateを適用。host選択filterは自身の恩恵条件(nameIncludes:ジャックナイフ)と一致させた(0026のfilter:{attribute:ネオドラゴン}が自身のsoulContinuous条件と一致するのと同型対応)。②『このカードがカード名に「ジャックナイフ」を含むモンスターのソウルにあるなら、そのカードは『移動』と『貫通』を得る。』=soulContinuous:[grantKeyword{keyword:move,filter:{cardType:monster,nameIncludes:ジャックナイフ}},grantKeyword{keyword:penetrate,filter:同}](移動=move、貫通=penetrate、CLAUDE.mdキーワード内部名対応表。bf-x-cp02-0026のsoulContinuous grantKeyword型と同型)。③『“星竜の兵器庫”このカードがソウルにあるカード名に「ジャックナイフ」を含むモンスターの攻撃が無効化された時、そのターン中、そのカードは『2回攻撃』を得る。「星竜の兵器庫」は1ターンに1回だけ発動する。』=soulAbilities(kind:triggered,event:allyAttackNullified)(src/10-battle-resolve.js:771-789 fireAllyAttackNullifiedTriggersがホスト場札へブロードキャスト。ソウルカードのtriggered soulAbilitiesも乗っているホストのイベントで発火=src/14-ability-script.js:19-24)。ally-broadcastは陣営全体へ配送されるため、条件2件で精度を担保: targetMatches{ref:$self,filter:nameIncludes:ジャックナイフ}(src/13-abilities-core.js:882、$self=ホスト自身、bf-x-cp02-0026等soulAbilities event:attack系の確立形と同一op)でホスト自身が対象名一致することを確認し、さらにnullifiedAttackerMatches{filter:同}(src/13-abilities-core.js:1492-1509、X-SS04/0033・X-BT02/0052忠実化の確立op)でstate.lastAttackOutcome.attackers(無効化された実際の攻撃者スロット)がfilterに一致することも確認する二重ゲート(単なるtargetMatchesのみだと、ホストが攻撃していなくても同陣営の別カードの攻撃無効化にホストが名前一致するだけで誤発火する構造的懸念を、nullifiedAttackerMatchesの実攻撃者フィルタ照合で解消。既存確立opの組合せのみで新op創作なし)。効果はgrantKeyword{target:$self,keyword:doubleAttack,duration:turn}(target:\"$self\"はresolveEffectReference、src/15-ability-effects.js:3117-3118)。named-once=limit:{scope:turn}(ability.id依拠のunnamed key)。grep自己検査: grantKeyword filter(src/15-ability-effects.js:1938近傍)/selectCards+moveSelfToSelectedSoul(src/14-ability-script.js、bf-x-cp02-0026実例)/sourceZoneIn(src/13-abilities-core.js:703,1141)/allyAttackNullified発火元(src/10-battle-resolve.js:771-789)/soulAbilities triggered発火配線(src/14-ability-script.js:19-24)/targetMatches ref(src/13-abilities-core.js:882)/nullifiedAttackerMatches(src/13-abilities-core.js:1492-1509)/resolveEffectReference $self(src/15-ability-effects.js:3117-3118) 全実在確認。VM検証: x74-b4-verify.js test0076参照。"
+      "_note": "剣星機 J・アーセナル。①『『星合体』(bare label)』=竜装機系キーワードの標準boilerplateとしてkind:activated,label:星合体,timing:[main],conditions:[sourceZoneIn:{zones:[left,center,right]}]+script:[selectCards(host,filter:{cardType:monster,nameIncludes:ジャックナイフ},require:true)→moveSelfToSelectedSoul](bf-x-cp02-0026大竜装機トリプルバスター『このカードが《ネオドラゴン》ソウルにあるなら、...『星合体』』のbare label+同型abilities一式の直接前例=note原文「星合体は標準boilerplate(bf-x-ss02系22件と同型)」。0076はrules文中に他の場→ソウル搭乗記述が無い(bf-x-bt04-0067リターンビットのような独自バトル終了時搭乗テンプレートも無い)ため、標準boilerplateを適用。host選択filterは自身の恩恵条件(nameIncludes:ジャックナイフ)と一致させた(0026のfilter:{attribute:ネオドラゴン}が自身のsoulContinuous条件と一致するのと同型対応)。②『このカードがカード名に「ジャックナイフ」を含むモンスターのソウルにあるなら、そのカードは『移動』と『貫通』を得る。』=soulContinuous:[grantKeyword{keyword:move,filter:{cardType:monster,nameIncludes:ジャックナイフ}},grantKeyword{keyword:penetrate,filter:同}](移動=move、貫通=penetrate、CLAUDE.mdキーワード内部名対応表。bf-x-cp02-0026のsoulContinuous grantKeyword型と同型)。③『“星竜の兵器庫”このカードがソウルにあるカード名に「ジャックナイフ」を含むモンスターの攻撃が無効化された時、そのターン中、そのカードは『2回攻撃』を得る。「星竜の兵器庫」は1ターンに1回だけ発動する。』=soulAbilities(kind:triggered,event:allyAttackNullified)(src/10-battle-resolve.js:771-789 fireAllyAttackNullifiedTriggersがホスト場札へブロードキャスト。ソウルカードのtriggered soulAbilitiesも乗っているホストのイベントで発火=src/14-ability-script.js:19-24)。ally-broadcastは陣営全体へ配送されるため、条件2件で精度を担保: targetMatches{ref:$self,filter:nameIncludes:ジャックナイフ}(src/13-abilities-core.js:882、$self=ホスト自身、bf-x-cp02-0026等soulAbilities event:attack系の確立形と同一op)でホスト自身が対象名一致することを確認し、さらに[監査cards-19是正]selfIsNullifiedAttacker(旧nullifiedAttackerMatchesは無効化された攻撃者の誰か1枚が名前一致すれば真＝ホスト以外の別ジャックナイフの攻撃無効化でもホストが2回攻撃を得ていた。公式『そのカードは』=ホスト自身の攻撃に限るため置換)(src/13-abilities-core.js:1492-1509、X-SS04/0033・X-BT02/0052忠実化の確立op)でstate.lastAttackOutcome.attackers(無効化された実際の攻撃者スロット)にホスト(context.card)自身が含まれることを確認する二重ゲート(単なるtargetMatchesのみだと、ホストが攻撃していなくても同陣営の別カードの攻撃無効化にホストが名前一致するだけで誤発火する構造的懸念を、nullifiedAttackerMatchesの実攻撃者フィルタ照合で解消。既存確立opの組合せのみで新op創作なし)。効果はgrantKeyword{target:$self,keyword:doubleAttack,duration:turn}(target:\"$self\"はresolveEffectReference、src/15-ability-effects.js:3117-3118)。named-once=limit:{scope:turn}(ability.id依拠のunnamed key)。grep自己検査: grantKeyword filter(src/15-ability-effects.js:1938近傍)/selectCards+moveSelfToSelectedSoul(src/14-ability-script.js、bf-x-cp02-0026実例)/sourceZoneIn(src/13-abilities-core.js:703,1141)/allyAttackNullified発火元(src/10-battle-resolve.js:771-789)/soulAbilities triggered発火配線(src/14-ability-script.js:19-24)/targetMatches ref(src/13-abilities-core.js:882)/nullifiedAttackerMatches(src/13-abilities-core.js:1492-1509)/resolveEffectReference $self(src/15-ability-effects.js:3117-3118) 全実在確認。VM検証: x74-b4-verify.js test0076参照。"
     },
     {
       "id": "bf-x-cbt01-0077",
@@ -6804,12 +6805,14 @@
           "id": "bf-x-cbt01-0007-enter-destroy-spell",
           "kind": "triggered",
           "event": "enter",
+          "allowMissingTarget": true,
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
             "filter": {
               "cardType": "spell"
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -6826,12 +6829,14 @@
           "id": "bf-x-cbt01-0007-attack-destroy-item",
           "kind": "triggered",
           "event": "attack",
+          "allowMissingTarget": true,
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
             "filter": {
               "cardType": "item"
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -6849,12 +6854,14 @@
           "id": "bf-x-cbt01-0007-destroyed-destroy-monster",
           "kind": "triggered",
           "event": "destroyed",
+          "allowMissingTarget": true,
           "target": {
             "type": "fieldCard",
             "controller": "opponent",
             "filter": {
               "cardType": "monster"
-            }
+            },
+            "allowMissingTarget": true
           },
           "effects": [
             {
@@ -6868,7 +6875,7 @@
           ]
         }
       ],
-      "_note": "逆巻く黒渦 アビゲール・アジール。【コールコスト】ゲージ２=costs.call:[payGauge{amount:2}]。①『このカードが登場した時、相手の場の魔法１枚を破壊し、君のライフを＋１！』②『このカードが攻撃した時、相手の場のアイテム１枚を破壊し、相手にダメージ１！』③『このカードが破壊された時、相手の場のモンスター１枚を破壊し、君のデッキの上から１枚をゲージに置く！』はいずれも『破壊し、〜』（『破壊したら』ではない）の接続で、対象が存在しない場合は能力自体が不成立になる確立文体＝bf-x-ub02-hero-wars-new-generations.json X-UB02/0015制服戦士ドクターフリル『このカードが破壊された時か手札に戻った時、相手の場のサイズ２以下のモンスター１枚を破壊し、君のライフを＋１！』と同型（target直下・target内ともにallowMissingTargetを付けない＝targetCandidatesFromSpecForOwnerゲートで合法対象が無ければ発動自体しない）。①event:enter+target:{type:fieldCard,controller:opponent,filter:{cardType:spell}}+effects:[destroy{target:$target},gainLife{amount:1}]。②event:attack（カード自身の攻撃へ直接発火・接頭辞なし）+target:{type:fieldCard,controller:opponent,filter:{cardType:item}}+effects:[destroy{target:$target},dealDamage{player:opponent,amount:1}]。③event:destroyed+target:{type:fieldCard,controller:opponent,filter:{cardType:monster}}+effects:[destroy{target:$target},putTopDeckToGauge{amount:1}]。gainLife/dealDamage/putTopDeckToGaugeはX-UB02/0015・bf-x-bt04-rainbow-striker.json X-BT04/0032 C・フレイヤの確立destroy→追加効果連結と同型（本カードは対象必須の非allowMissingTarget型のためlastDestroySucceededゲートは不要）。grep自己検査: payGauge(src/04-cost-resource.js)/event:enter・attack・destroyed直接発火(src/13-abilities-core.js runTriggeredAbilities)/target+filter(src/17-targeting.js)/destroy(src/15-ability-effects.js:1296)/gainLife(src/15:642)/dealDamage(src/15)/putTopDeckToGauge(src/15:310) 全実在確認。VM検証はx74-b8-verify.js test0007参照（(a)callMonster実経路でゲージ2課金、(b)resolveOnEnter実経路で相手の場の魔法1枚を破壊しライフ+1、相手場に魔法が無ければ能力不発でライフ増加なし、(c)攻撃時に相手の場のアイテム1枚を破壊し相手に1ダメージ、(d)destroyFieldCard実経路の破壊時に相手の場のモンスター1枚を破壊しゲージに1枚置く、をそれぞれ実測）。"
+      "_note": "逆巻く黒渦 アビゲール・アジール。【コールコスト】ゲージ２=costs.call:[payGauge{amount:2}]。①『このカードが登場した時、相手の場の魔法１枚を破壊し、君のライフを＋１！』②『このカードが攻撃した時、相手の場のアイテム１枚を破壊し、相手にダメージ１！』③『このカードが破壊された時、相手の場のモンスター１枚を破壊し、君のデッキの上から１枚をゲージに置く！』はいずれも『破壊し、〜』（『破壊したら』ではない）の接続で、対象が存在しなくても後半を解決する（R7・2026-10-09 オーナー裁定）＝bf-x-ub02-hero-wars-new-generations.json X-UB02/0015制服戦士ドクターフリル『このカードが破壊された時か手札に戻った時、相手の場のサイズ２以下のモンスター１枚を破壊し、君のライフを＋１！』と同型（能力直下と target 内に allowMissingTarget:true＝合法対象が無くても発動し、destroy は $target 不在で自然にスキップ、後半だけ解決）。①event:enter+target:{type:fieldCard,controller:opponent,filter:{cardType:spell}}+effects:[destroy{target:$target},gainLife{amount:1}]。②event:attack（カード自身の攻撃へ直接発火・接頭辞なし）+target:{type:fieldCard,controller:opponent,filter:{cardType:item}}+effects:[destroy{target:$target},dealDamage{player:opponent,amount:1}]。③event:destroyed+target:{type:fieldCard,controller:opponent,filter:{cardType:monster}}+effects:[destroy{target:$target},putTopDeckToGauge{amount:1}]。gainLife/dealDamage/putTopDeckToGaugeはX-UB02/0015・bf-x-bt04-rainbow-striker.json X-BT04/0032 C・フレイヤの確立destroy→追加効果連結と同型（『破壊したら』ではないので lastDestroySucceeded ゲートは付けない）。grep自己検査: payGauge(src/04-cost-resource.js)/event:enter・attack・destroyed直接発火(src/13-abilities-core.js runTriggeredAbilities)/target+filter(src/17-targeting.js)/destroy(src/15-ability-effects.js:1296)/gainLife(src/15:642)/dealDamage(src/15)/putTopDeckToGauge(src/15:310) 全実在確認。VM検証はx74-b8-verify.js test0007参照（(a)callMonster実経路でゲージ2課金、(b)resolveOnEnter実経路で相手の場の魔法1枚を破壊しライフ+1、相手場に魔法が無ければ当時は能力不発（現在は R7 により対象が無くてもライフ+1）、(c)攻撃時に相手の場のアイテム1枚を破壊し相手に1ダメージ、(d)destroyFieldCard実経路の破壊時に相手の場のモンスター1枚を破壊しゲージに1枚置く、をそれぞれ実測）。 【監査修正 2026-10-08】3能力とも「破壊し、〜」は破壊対象が居なくても後半（ライフ+1／ダメージ1／デッキ上1枚をゲージ）を解決する（D1裁定・X-UB02/0070 と同じ）。能力直下と target 内に allowMissingTarget:true を付与（destroy は $target 不在なら自然にスキップ）。 【R7 2026-10-09 オーナー裁定で確定】「〜を破壊し、〜」は対象がなくても後半を解決する（能力直下 allowMissingTarget:true が正）。"
     }
   ]
 }

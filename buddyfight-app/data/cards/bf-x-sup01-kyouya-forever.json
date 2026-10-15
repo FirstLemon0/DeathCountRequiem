@@ -442,7 +442,8 @@
             "allowMissingTarget": true,
             "filter": {
               "cardType": "monster",
-              "attribute": "ディザスター"
+              "attribute": "ディザスター",
+              "nameNot": "門番長 シドー"
             }
           },
           "effects": [
@@ -453,7 +454,7 @@
           ]
         }
       ],
-      "_note": "コール印字なし（原文に【コールコスト】行が無い＝無償コール、costsキー省略）。『“潜影”このカードは相手のセンターにモンスターがいても、相手を攻撃できる』=keywords:[canAttackFighterThroughCenter]（多数前例、src/12-render.js:995-998、src/18-tooltip-format.js:465）。『このカードが攻撃された時、「門番長 シドー」以外の君の場の《ディザスター》のモンスター１枚を選び、その攻撃の対象を選んだカードに変更する』はカード名を直接ハードコードせず excludeSource:true（自分自身を候補から除外＝『「門番長 シドー」以外』の意味論を満たす）で表現。ability級 target:{type:fieldCard,controller:self,excludeSource:true,allowMissingTarget:true,filter:{cardType:monster,attribute:ディザスター}}（候補複数なら対話選択・0枚ならallowMissingTargetで不発）+ effects:[redirectPendingAttackToTarget{target:$target}]は H-BT02/0089 鬼道 馬鹿囃子『【対抗】その攻撃の対象を、君の場のモンスター１枚に変更する』のability級target+redirectPendingAttackToTarget形を kind:triggered,event:attacked（bf-x-bt01-0016等で確立済みの直接発火イベント）へ移植。grep自己検査: canAttackFighterThroughCenter(src/12-render.js:995,src/18-tooltip-format.js:465)/event:attacked直接発火(bf-x-bt01-reborn-of-satan.json:1462実例)/target.excludeSource+allowMissingTarget(src/17-targeting.js:122,216、bf-x-bt02-0105実例)/redirectPendingAttackToTarget(src/15-ability-effects.js:2160-2172、bf-h-bt02-galaxy-burst.json:4957実例) 全実在確認。"
+      "_note": "コール印字なし（原文に【コールコスト】行が無い＝無償コール、costsキー省略）。『“潜影”このカードは相手のセンターにモンスターがいても、相手を攻撃できる』=keywords:[canAttackFighterThroughCenter]（多数前例、src/12-render.js:995-998、src/18-tooltip-format.js:465）。『このカードが攻撃された時、「門番長 シドー」以外の君の場の《ディザスター》のモンスター１枚を選び、その攻撃の対象を選んだカードに変更する』はカード名を直接ハードコードせず excludeSource:true（自分自身を候補から除外＝『「門番長 シドー」以外』の意味論を満たす）で表現。ability級 target:{type:fieldCard,controller:self,excludeSource:true,allowMissingTarget:true,filter:{cardType:monster,attribute:ディザスター}}（候補複数なら対話選択・0枚ならallowMissingTargetで不発）+ effects:[redirectPendingAttackToTarget{target:$target}]は H-BT02/0089 鬼道 馬鹿囃子『【対抗】その攻撃の対象を、君の場のモンスター１枚に変更する』のability級target+redirectPendingAttackToTarget形を kind:triggered,event:attacked（bf-x-bt01-0016等で確立済みの直接発火イベント）へ移植。grep自己検査: canAttackFighterThroughCenter(src/12-render.js:995,src/18-tooltip-format.js:465)/event:attacked直接発火(bf-x-bt01-reborn-of-satan.json:1462実例)/target.excludeSource+allowMissingTarget(src/17-targeting.js:122,216、bf-x-bt02-0105実例)/redirectPendingAttackToTarget(src/15-ability-effects.js:2160-2172、bf-h-bt02-galaxy-burst.json:4957実例) 全実在確認。 ／【監査修正 b061-1】『「門番長 シドー」以外』は名前による除外。excludeSource（発生源インスタンスのみ除外）だけでは場の別の同名シドーが変更先候補に残るため、target.filter に nameNot:\"門番長 シドー\" を追加（excludeSource は残置）。"
     },
     {
       "id": "bf-x-sup01-0008",

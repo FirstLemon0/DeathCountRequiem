@@ -474,7 +474,8 @@
               "from": "field",
               "controller": "any",
               "filter": {
-                "attribute": "プリズムドラゴン"
+                "attribute": "プリズムドラゴン",
+                "cardType": "monster"
               },
               "onlyBattling": true,
               "amount": 1,
@@ -678,7 +679,9 @@
                 "cardType": "monster",
                 "attribute": "プリズムドラゴン"
               }
-            },
+            }
+          ],
+          "ifConditions": [
             {
               "op": "cardCount",
               "controller": "self",
@@ -778,7 +781,7 @@
           ]
         }
       ],
-      "_note": "E-X2採用カード。useConditionsはengine-notes.md記法どおり: not(damageTakenThisTurn)（damageOwner省略=self・amount省略=1＝『このターン中、君がダメージを受けていない』）＋cardCount{pile:center, filter:{attribute:プリズムドラゴン, sizeIn:[3]}, cmp:gte, amount:1}（size:3スカラーはFS1黙殺のためsizeIn使用・design.md row13/engine-notes.md明記）。★追加: 『相手のターンのファイナルフェイズに使える』はtiming:[\"counter\"]だけでは保証されない——isCounterPlayTiming()（src/13-abilities-core.js:104-106）はturnOwner非依存でdraw/charge/main/attack/finalの全フェイズでtrue化する汎用ゲートのため、明示的にability.conditionsへturnOwnerIsOpponent+phaseIs{phase:\"final\"}を追加（bt05-s012 ディストーション・パニッシャー!!の実例=phaseIs+turnOwnerIsOpponentを対抗必殺techに付与する precedent と同型。これが無いと自分のターンの終盤フェイズでも使用可能になってしまう対応漏れを防止）。使用コストゲージ3はcosts.cast+ability.costの両方（FIX7）。ダメージはdealDamage{player:opponent, amount:3}（player キーが実DB193件で標準＝target/controllerではない）。grep/VM自己検査: turnDamageTaken条件op(src/13:853)・turnOwnerIsOpponent(src/13)・phaseIs(src/13)全実在確認、_scratch/xsd-probe.jsのE-X2節（damageTakenThisTurn+not+funnel加算点+room復元+旧state後方互換）全PASS再確認済み。本バッチでは追加でability.conditions(turnOwnerIsOpponent+phaseIs final)込みの完全なability形をVMハーネスで直接実測（別紙一時スクリプト・後述自己検査ログ）。"
+      "_note": "E-X2採用カード。useConditionsはengine-notes.md記法どおり: not(damageTakenThisTurn)（damageOwner省略=self・amount省略=1＝『このターン中、君がダメージを受けていない』）＋cardCount{pile:center, filter:{attribute:プリズムドラゴン, sizeIn:[3]}, cmp:gte, amount:1}（size:3スカラーはFS1黙殺のためsizeIn使用・design.md row13/engine-notes.md明記）。★追加: 『相手のターンのファイナルフェイズに使える』はtiming:[\"counter\"]だけでは保証されない——isCounterPlayTiming()（src/13-abilities-core.js:104-106）はturnOwner非依存でdraw/charge/main/attack/finalの全フェイズでtrue化する汎用ゲートのため、明示的にability.conditionsへturnOwnerIsOpponent+phaseIs{phase:\"final\"}を追加（bt05-s012 ディストーション・パニッシャー!!の実例=phaseIs+turnOwnerIsOpponentを対抗必殺techに付与する precedent と同型。これが無いと自分のターンの終盤フェイズでも使用可能になってしまう対応漏れを防止）。使用コストゲージ3はcosts.cast+ability.costの両方（FIX7）。ダメージはdealDamage{player:opponent, amount:3}（player キーが実DB193件で標準＝target/controllerではない）。grep/VM自己検査: turnDamageTaken条件op(src/13:853)・turnOwnerIsOpponent(src/13)・phaseIs(src/13)全実在確認、_scratch/xsd-probe.jsのE-X2節（damageTakenThisTurn+not+funnel加算点+room復元+旧state後方互換）全PASS再確認済み。本バッチでは追加でability.conditions(turnOwnerIsOpponent+phaseIs final)込みの完全なability形をVMハーネスで直接実測（別紙一時スクリプト・後述自己検査ログ）。 ／【rulings-f 2026-10-13 オーナー裁定】公式Q&A Q1627/Q1628/Q1610 はこのカードに「相手のライフは変更されない」系のロック（×天バスター系 suppressLifeZeroReplacement と同種）があるように読めるが、印字テキストには無い。オーナーは Q&A 側の誤りと判断＝ロックは実装しない（このダメージでライフ0になってもチェレックス！の＋１・ライフ0置換・セーフガードは通常どおり）。回帰 tests/rulings-f.test.js。"
     },
     {
       "id": "bf-x-sd02-0017",
