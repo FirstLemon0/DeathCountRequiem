@@ -4647,36 +4647,37 @@ body.thin-client:not(.game-started) .hand-dock {
     background: rgb(var(--art-band-rgb));
     overflow: hidden;
   }
-  /* 手札の絵の切り取り: 盤面と同じくイラスト中心（細長い枠なので枠幅の 240%・左へ 75%・上を 6% 切る）。 */
+  /* 手札の絵: カード全体を枠幅いっぱいに収めて上寄せ（オーナー要望「手札はアップでなく全体」）。下の余白に名前の帯が乗る。 */
   body.bf-game .hand-list .card.has-art:not(.landscape) > .card-img {
     display: block;
     position: absolute;
     top: 0;
-    left: -75%;
+    left: 0;
     z-index: 0;
-    width: 240%;
+    width: 100%;
     max-width: none;
     height: auto;
-    max-height: none;
+    max-height: calc(100% - 18px);
     aspect-ratio: 160 / 224;
-    object-fit: fill;
+    object-fit: contain;
+    object-position: 50% 0;
     border-radius: 0;
-    transform: translateY(-6%);
+    transform: none;
   }
   body.bf-game .hand-list .card.has-art.landscape > .card-img {
     display: block;
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
     z-index: 0;
     width: 100%;
-    height: 100%;
+    height: calc(100% - 18px);
     max-height: none;
     aspect-ratio: auto;
-    object-fit: cover;
-    object-position: 50% 35%;
+    object-fit: contain;
+    object-position: 50% 50%;
     border-radius: 0;
-    transform: scale(1.25);
-    transform-origin: 50% 35%;
+    transform: none;
   }
   body.bf-game .hand-list .card.has-art > .m-tile-part { position: relative; z-index: 2; }
   body.bf-game .hand-list .card.has-art .ht-top { position: absolute; top: 2px; left: 2px; right: 2px; height: auto; padding: 0; }
