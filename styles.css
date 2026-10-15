@@ -1,0 +1,4772 @@
+:root {
+  color-scheme: dark;
+  /* 基本（仕様§50-67 ダーク=ネオン） */
+  --bg: #0A0E1A;
+  --panel: #141B2B;
+  --panel-rgb: 20 27 43;
+  --panel-soft: #1E2740;
+  --panel-soft-rgb: 30 39 64;
+  --surface-deep-rgb: 12 16 28;
+  --line: #2A3550;
+  --line-soft: #2E3A58;
+  --card-line: #46557A;
+  --seat-line: #3C6489;
+  --remote-line: #3D4866;
+  --text: #EAF1FF;
+  --text-2: #C9D6F0;
+  --muted: #8492AE;
+  --muted-rgb: 132 146 174;
+  /* アクセント / プレイヤー */
+  --primary: #38E1C6;
+  --warn: #FFC04D;
+  --p1: #3D9BFF;
+  --p1-rgb: 61 155 255;
+  --p2: #FF5D7A;
+  --p2-rgb: 255 93 122;
+  --success: #5BD08A;
+  --accent: #3D82C4;
+  /* カード種別(rgbチャンネル) */
+  --c-monster-rgb: 255 107 122;
+  --c-spell-rgb: 56 225 198;
+  --c-item-rgb: 61 155 255;
+  --c-impact-rgb: 255 180 84;
+  --c-flag-rgb: 91 208 138;
+  /* サーフェス / 部品 */
+  --btn-bg: #212C46;
+  --field-bg: #0E1426;
+  --card-bg: #1A2238;
+  --inset-bg: #0E1322;
+  --primary-soft: #103A33;
+  --peek-text: #FFD98A;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.40);
+  /* 上面シーン(光沢): dark=白ハイライト。light では白washを避けるためトークン化 */
+  --sheen: rgba(255, 255, 255, 0.08);
+  --sheen-body: rgba(255, 255, 255, 0.035);
+}
+
+/* === ライト/ダーク2モード(A2): 既定はOS追従、[data-theme]で手動上書き === */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+    --accent: #2D6FB0;
+  /* 基本 */
+  --bg: #ECE8DF;
+  --panel: #FFFFFF;
+  --panel-rgb: 255 255 255;
+  --panel-soft: #F6F3EB;
+  --panel-soft-rgb: 246 243 235;
+  --surface-deep-rgb: 240 236 227;
+  --line: #DAD5C9;
+  --line-soft: #CFC8B8;
+  --card-line: #C7BFAD;
+  --seat-line: #C7BFAD;
+  --remote-line: #CFC8B8;
+  --text: #1E1B16;
+  --text-2: #2E2A22;
+  --muted: #6B6459;
+  --muted-rgb: 107 100 89;
+  /* アクセント / プレイヤー */
+  --primary: #1E7A66;
+  --warn: #8A6410;
+  --p1: #2D6FB0;
+  --p1-rgb: 45 111 176;
+  --p2: #C0453C;
+  --p2-rgb: 192 69 60;
+  --success: #2F7D3F;
+  /* カード種別(rgbチャンネル) */
+  --c-monster-rgb: 188 74 66;
+  --c-spell-rgb: 30 122 102;
+  --c-item-rgb: 45 111 176;
+  --c-impact-rgb: 181 134 47;
+  --c-flag-rgb: 59 125 69;
+  /* サーフェス / 部品 */
+  --btn-bg: #EFE7D9;
+  --field-bg: #FFFFFF;
+  --card-bg: #FBF8F1;
+  --inset-bg: #F0EBDF;
+  --primary-soft: #D9EBE5;
+  --peek-text: #8A6A1E;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.12);
+  --sheen: rgba(255, 255, 255, 0);
+  --sheen-body: rgba(255, 255, 255, 0);
+  }
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --accent: #2D6FB0;
+  /* 基本 */
+  --bg: #ECE8DF;
+  --panel: #FFFFFF;
+  --panel-rgb: 255 255 255;
+  --panel-soft: #F6F3EB;
+  --panel-soft-rgb: 246 243 235;
+  --surface-deep-rgb: 240 236 227;
+  --line: #DAD5C9;
+  --line-soft: #CFC8B8;
+  --card-line: #C7BFAD;
+  --seat-line: #C7BFAD;
+  --remote-line: #CFC8B8;
+  --text: #1E1B16;
+  --text-2: #2E2A22;
+  --muted: #6B6459;
+  --muted-rgb: 107 100 89;
+  /* アクセント / プレイヤー */
+  --primary: #1E7A66;
+  --warn: #8A6410;
+  --p1: #2D6FB0;
+  --p1-rgb: 45 111 176;
+  --p2: #C0453C;
+  --p2-rgb: 192 69 60;
+  --success: #2F7D3F;
+  /* カード種別(rgbチャンネル) */
+  --c-monster-rgb: 188 74 66;
+  --c-spell-rgb: 30 122 102;
+  --c-item-rgb: 45 111 176;
+  --c-impact-rgb: 181 134 47;
+  --c-flag-rgb: 59 125 69;
+  /* サーフェス / 部品 */
+  --btn-bg: #EFE7D9;
+  --field-bg: #FFFFFF;
+  --card-bg: #FBF8F1;
+  --inset-bg: #F0EBDF;
+  --primary-soft: #D9EBE5;
+  --peek-text: #8A6A1E;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.12);
+  --sheen: rgba(255, 255, 255, 0);
+  --sheen-body: rgba(255, 255, 255, 0);
+}
+
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    linear-gradient(90deg, rgb(var(--p1-rgb) / 0.12) 0 60%, rgb(var(--c-monster-rgb) / 0.1) 60% 100%),
+    linear-gradient(180deg, var(--sheen-body), transparent 240px),
+    var(--bg);
+  color: var(--text);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+button,
+select,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--btn-bg);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease,
+    background 160ms ease;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+select,
+input,
+textarea {
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field-bg);
+  color: var(--text);
+  padding: 0 12px;
+}
+
+textarea {
+  min-height: 130px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(360px, 2fr);
+  align-items: start;
+  gap: 12px;
+  width: min(1440px, calc(100vw - 24px));
+  margin: 0 auto;
+  padding: 18px 0 28px;
+}
+
+.topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.eyebrow,
+.label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(1.55rem, 2vw, 2.4rem);
+  letter-spacing: 0;
+}
+
+h2 {
+  font-size: 0.95rem;
+  letter-spacing: 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.toolbar button {
+  min-width: 72px;
+}
+
+.toolbar-link {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--btn-bg);
+  color: var(--text);
+  padding: 0 12px;
+  text-decoration: none;
+}
+
+.toolbar-link:hover {
+  border-color: var(--primary);
+}
+
+.deck-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.deck-picker select {
+  width: min(34vw, 260px);
+}
+
+.status-strip {
+  grid-column: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr 2fr;
+  gap: 10px;
+}
+
+.turn-card,
+.fighter-panel,
+.action-panel,
+.hand-dock,
+.log-panel,
+.network-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgb(var(--panel-rgb) / 0.9);
+  box-shadow: var(--shadow);
+}
+
+.turn-card {
+  padding: 10px 12px;
+}
+
+.network-panel {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+}
+
+.network-main,
+.network-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.network-main {
+  justify-content: space-between;
+}
+
+.network-actions {
+  justify-content: flex-end;
+}
+
+.network-actions input {
+  width: 160px;
+  text-transform: uppercase;
+}
+
+.seat-label {
+  border: 1px solid var(--seat-line);
+  border-radius: 999px;
+  background: var(--inset-bg);
+  color: var(--text-2);
+  padding: 5px 10px;
+  font-size: 0.82rem;
+}
+
+.turn-card strong {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playmat {
+  display: contents;
+}
+
+.player-zone {
+  grid-column: 1;
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--player-line);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, var(--player-soft), transparent 48%),
+    rgb(var(--surface-deep-rgb) / 0.78);
+  padding: 12px;
+  box-shadow: var(--shadow);
+}
+
+#player1Zone {
+  --player-accent: var(--p1);
+  --player-soft: rgb(var(--p1-rgb) / 0.14);
+  --player-line: rgb(var(--p1-rgb) / 0.58);
+}
+
+#player2Zone {
+  --player-accent: var(--p2);
+  --player-soft: rgb(var(--p2-rgb) / 0.14);
+  --player-line: rgb(var(--p2-rgb) / 0.58);
+}
+
+.network-connected .player-zone.local-seat .fighter-panel {
+  border-color: var(--player-accent);
+}
+
+.network-connected .player-zone.remote-seat .fighter-panel {
+  border-color: var(--remote-line);
+  background: rgb(var(--surface-deep-rgb) / 0.88);
+}
+
+.network-connected .player-zone.turn-seat .player-name::after {
+  content: " / ターン中";
+  color: var(--warn);
+}
+
+/* 席相対フリップ(#20): 後手(P2)席の視点では自分の場を下段・相手を上段に入れ替える。
+   DOM は P2(opponent)=上/P1(active-player)=下 固定なので、seat-flip 時のみ order で反転する
+   （player2Zone=自分→下段, player1Zone=相手→上段）。デスクトップ(col1グリッド)・モバイル(単列flow)共通。 */
+body.seat-flip .player-zone.active-player {
+  order: 2;
+}
+body.seat-flip .player-zone.opponent {
+  order: 3;
+}
+
+.fighter-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-color: var(--player-line);
+  background:
+    linear-gradient(90deg, var(--player-soft), transparent 62%),
+    rgb(var(--panel-rgb) / 0.94);
+  padding: 12px;
+}
+
+.player-name {
+  margin-bottom: 6px;
+  color: var(--player-accent);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.stat-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.stat-line span {
+  color: var(--muted);
+}
+
+.stat-line strong {
+  color: var(--player-accent);
+  font-size: 1.7rem;
+}
+
+.mini-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.mini-stats span,
+#sizeLabel {
+  border: 1px solid var(--player-line, var(--seat-line));
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: var(--text-2);
+  background: rgb(var(--surface-deep-rgb) / 0.9);
+  font-size: 0.8rem;
+}
+
+/* コスト資源のゲージは山/手より一段強調(ライフに次ぐ情報階層)。プレイヤー配色に連動。 */
+#p1Gauge,
+#p2Gauge {
+  border-color: var(--player-accent);
+  color: var(--player-accent);
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.zones-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(96px, 1fr));
+  gap: 10px;
+}
+
+/* 盤面は 3列: [field 3枠] 行 ＋ [后列ピル 配置/装備/墓地] 行（点対称・センターは中央列）。 */
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(72px, 1fr));
+  gap: 10px;
+}
+
+.zone {
+  position: relative;
+  min-height: 122px;
+  padding: 8px;
+  overflow: hidden;
+  border-color: var(--player-line);
+  border-style: dashed;
+  background:
+    linear-gradient(180deg, var(--player-soft), transparent 48%),
+    rgb(var(--panel-soft-rgb) / 0.84);
+  text-align: left;
+}
+
+.board-cell,
+.flag-slot {
+  min-height: 122px;
+  border: 1px dashed var(--player-line);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, var(--player-soft), transparent 48%),
+    rgb(var(--panel-soft-rgb) / 0.84);
+  color: var(--text-2);
+  padding: 10px;
+}
+
+.board-cell {
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.gauge-cell {
+  border-style: solid;
+  border-color: var(--player-accent);
+  color: var(--player-accent);
+  font-weight: 800;
+}
+
+.set-spell-cell {
+  grid-column: span 1;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+/* Z2(S-UB-C03): バディゾーン裏向きパイル。board-gridの外側に置く単発の細い帯（board-gridの
+   3列グリッドを崩さないため独立した行として配置）。枚数バッジのみ・タップでの中身閲覧は無し
+   （ネット対戦の秘匿はengine-host.js viewForで別途担保、閲覧UIはBatch0後の追補候補）。 */
+.buddyzone-row {
+  margin-top: 6px;
+}
+.buddyzone-pile {
+  min-height: 36px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+  cursor: default;
+}
+.buddyzone-pile.has-cards {
+  color: var(--text);
+  font-weight: 700;
+  border-color: var(--player-accent);
+}
+
+/* 配置魔法は1パイルに集約（ドロップ等と同じ）。タップで一覧ダイアログ。複数設置に対応。 */
+.set-pile {
+  min-height: 122px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  border-color: rgb(var(--c-impact-rgb) / 0.82);
+  color: var(--muted);
+}
+.set-pile.has-cards {
+  color: var(--text);
+  font-weight: 700;
+}
+/* rule-call-11: 設置の枚数は無制限。パイルは「末尾1枚のサムネイル＋枚数」（一覧はタップ）。 */
+.set-pile.has-cards {
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 2px;
+  padding: 4px;
+  overflow: hidden;
+}
+.set-pile-thumb {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  max-height: 86px;
+  overflow: hidden;
+}
+.set-pile-thumb .card-img {
+  max-width: 100%;
+  max-height: 86px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+.set-pile-label {
+  font-size: 0.85rem;
+  line-height: 1.1;
+}
+
+.flag-item-zone,
+.buddy-cell,
+.deck-zone {
+  min-height: 122px;
+}
+
+.buddy-cell {
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.flag-item-zone {
+  padding: 8px;
+}
+
+.flag-item-stack {
+  position: relative;
+  display: block;
+  min-height: 100%;
+}
+
+.flag-layer {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 104px;
+  border: 1px solid rgb(var(--c-flag-rgb) / 0.78);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgb(var(--c-flag-rgb) / 0.16), transparent 55%),
+    rgb(var(--surface-deep-rgb) / 0.92);
+  color: var(--text-2);
+  padding: 9px;
+  text-align: center;
+  overflow: hidden;
+}
+
+/* フラッグ絵: レイヤー全体を覆い、下部にフラッグ名キャプションを重ねる。読込失敗時は JS が
+   .flag-img を外し .has-flag-img を落とすので、キャプションは自動で中央（現行の見た目）へ戻る。 */
+.flag-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 7px;
+  z-index: 0;
+}
+
+.flag-caption {
+  display: grid;
+  place-items: center;
+  gap: 1px;
+  z-index: 1;
+}
+
+.flag-layer.has-flag-img .flag-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 2px 4px 3px;
+  background: linear-gradient(
+    to top,
+    rgb(var(--surface-deep-rgb) / 0.92),
+    rgb(var(--surface-deep-rgb) / 0.5) 65%,
+    transparent
+  );
+}
+
+.stack-layer-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.stack-layer-name {
+  overflow-wrap: anywhere;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.flag-item-stack.has-item .flag-layer {
+  position: absolute;
+  inset: 0 20px 20px 0;
+  opacity: 0.82;
+  transform: translate(-2px, -2px);
+}
+
+/* E-XB54b(∞ the Chaos ∞): 攻撃してレストしたフラッグ。実機のレスト=横向きの代替として .card.used と同じ
+   淡色＋脱色で「使用済み＝待機」を示す。has-item 併記でアイテム装備時(opacity:0.82)にも used が優先される。 */
+.flag-layer.used,
+.flag-item-stack.has-item .flag-layer.used {
+  opacity: 0.5;
+  filter: grayscale(0.55);
+}
+
+.flag-item-stack.has-item .item-layer {
+  position: relative;
+  min-height: 118px;
+  margin: 18px 0 0 18px;
+  box-shadow: -9px -9px 0 rgb(var(--c-flag-rgb) / 0.25);
+}
+
+/* 複数アイテム装備時: 2枚目以降を少しずつ右下にずらして全て見えるようにする（--item-index を利用）。 */
+/* 束見せ(#4): 複数アイテムはゾーンを縦に肥大させず束で重ねる。1枚目(item-layer)が高さの基準となり、
+   2枚目以降(item-layer-stacked)を絶対配置で右下へ少しずつずらす。隠れた札は端が覗きホバー/タップで確認。 */
+.flag-item-stack.multi-item .item-layer-stacked {
+  position: absolute;
+  top: calc(18px + var(--item-index, 1) * 10px);
+  left: calc(18px + var(--item-index, 1) * 16px);
+  margin: 0;
+  z-index: calc(10 + var(--item-index, 0));
+}
+
+/* センター強調は「モンスターがいる時だけ」。空センターは通常表示（§75）。 */
+.zone.center.center-occupied {
+  position: relative;
+  border-color: var(--warn);
+  box-shadow: inset 0 0 0 1px var(--warn);
+}
+.zone.center.center-occupied::before {
+  content: "🛡";
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 0.85em;
+  line-height: 1;
+  filter: saturate(0.9);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.zone.item {
+  border-color: rgb(var(--c-item-rgb));
+}
+
+.zone.pile {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--muted);
+}
+
+.drop-zone {
+  text-align: center;
+}
+
+.card {
+  display: flex;
+  min-height: 120px;
+  height: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 4px;
+  border: 1px solid var(--card-line);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, var(--sheen), transparent 40%),
+    var(--card-bg);
+  color: var(--text);
+  padding: 5px;
+  text-align: center;
+  overflow: hidden;
+}
+
+/* スマホの長押しでOSのコンテキストメニュー（テキスト選択・画像の詳細/コピー窓）が
+   カード上で開かないようにする。長押しは本アプリのカード確認（プレビュー/閲覧シート）に
+   割り当て済みのため。ログ等のテキスト選択は殺さないよう .card 配下に限定する。 */
+.card,
+.card *,
+.hand-card,
+.hand-card * {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.card-img,
+.card img {
+  -webkit-user-drag: none;
+  /* iOS Safari の画像長押しメニュー(「写真を保存」「コピー」)は、touch-callout を親経由(.card *)で
+     継承させるだけでは <img> に効かず漏れることがある。画像要素へ直接指定し、さらに pointer-events:none で
+     OS が画像自体を長押し標的にしないようにする（タップ/長押しプレビューは親のカードボタンが処理するため無害）。 */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* カード画像（盤面・手札共通）。カード枠内に収まるよう contain。読み込み中/失敗は下の no-image で処理。 */
+.card-img {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  object-fit: contain;
+  border-radius: 6px;
+  display: block;
+}
+
+/* 盤面カード: 画像下に 攻/防/クリ のみ（攻=赤・防=青・クリ=金で識別、ラベルなし）。 */
+.card-stats-board {
+  flex: 0 0 auto;
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+.card-stats-board .st-pow { color: rgb(var(--c-monster-rgb)); }
+.card-stats-board .st-def { color: rgb(var(--c-item-rgb)); }
+.card-stats-board .st-crit { color: rgb(var(--c-impact-rgb)); }
+.card-stats-board .sep { color: var(--muted); margin: 0 1px; font-weight: 400; }
+
+/* 手札カード: 画像下にカード名（効果/コストはタップのポップアップに任せる）。 */
+.hand-card .card-name {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 必殺技・必殺モンスターは公式カードが横長。横長比のフレームで表示し、画像を過度にレターボックスしない。
+   （object-fit:contain のため向きに関わらず歪まないが、横長カードは横長枠に寄せる。） */
+.card.landscape {
+  min-height: 0;
+}
+.card.landscape .card-img {
+  flex: 0 0 auto;
+  height: auto;
+  aspect-ratio: 160 / 115;
+}
+.hand-card.landscape .card-name {
+  -webkit-line-clamp: 1;
+}
+
+/* 画像が無い/取得失敗のカード: 画像枠にカード名を表示（識別のため）。 */
+.card.no-image .card-img-fallback {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.8rem;
+  padding: 6px;
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+
+.card.monster {
+  border-color: rgb(var(--c-monster-rgb) / 0.8);
+}
+
+.card.spell {
+  border-color: rgb(var(--c-spell-rgb) / 0.9);
+}
+
+.card.item {
+  border-color: rgb(var(--c-item-rgb) / 0.9);
+}
+
+.card.impact {
+  border-color: rgb(var(--c-impact-rgb) / 0.96);
+}
+
+.card.flag {
+  border-color: rgb(var(--c-flag-rgb) / 0.96);
+}
+
+.card.selected {
+  outline: 2px solid var(--warn);
+  outline-offset: 2px;
+}
+
+.card.linked {
+  box-shadow: inset 0 0 0 2px rgb(var(--c-spell-rgb) / 0.9);
+}
+
+/* レスト(行動済): 淡色だけでなく脱色で「使用済み＝待機」を明確化（実機のレスト=横向きの代替表現）。 */
+.card.used {
+  opacity: 0.5;
+  filter: grayscale(0.55);
+}
+
+/* 対抗ウィンドウ中の「打てる手」: 防御側が対抗で使える手札を強調（成功色の枠＋淡い面）。 */
+.card.counter-playable {
+  box-shadow: inset 0 0 0 2px rgb(var(--c-flag-rgb) / 0.85);
+  background:
+    linear-gradient(180deg, rgb(var(--c-flag-rgb) / 0.16), transparent 60%),
+    var(--card-bg);
+}
+
+.card-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 800;
+}
+
+.card-stack-peek {
+  align-self: flex-start;
+  border: 1px solid rgb(var(--c-impact-rgb) / 0.72);
+  border-radius: 999px;
+  background: rgb(var(--c-impact-rgb) / 0.13);
+  color: var(--peek-text);
+  padding: 2px 7px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.card-name {
+  overflow-wrap: anywhere;
+}
+
+.card-kind {
+  flex: 0 0 auto;
+  border-radius: 6px;
+  padding: 2px 6px;
+  background: var(--inset-bg);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.card-text {
+  color: var(--text-2);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+/* 場のカードのステータス: 攻/防/打 を「数値 / 数値 / 数値」で表示。項目は色で識別(攻=赤/防=青/打=金)
+   するのでラベルは付けない。コスト/サイズはカード面に出さない(詳細にあり)。手札では .card-stats ごと非表示。 */
+.card-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.card-stats .st-cost,
+.card-stats .st-size { display: none; }
+.card-stats .st-def::before,
+.card-stats .st-crit::before {
+  content: "/";
+  margin-right: 4px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* 手札カードはコスト/サイズ/攻/打のチップを非表示（スマホ・PC共に枠に収まらず崩れるため）。
+   各値は詳細(タップ/ホバーのカード情報)に全項目が出るので情報は失われない。盤面カードは別途攻/打のみ表示。 */
+.hand-list .card .card-stats {
+  display: none;
+}
+
+/* 手札カードの効果文は2行で切り詰めてカード高を揃える(全文はタップのカードシートで)。 */
+.hand-list .card .card-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-stats span {
+  min-width: 0;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+/* ステータスの色分け(攻=赤系 / 防=青系 / 打=金系)。ラベル無しでも色＋並び順で項目を識別。 */
+.st-pow { color: rgb(var(--c-monster-rgb)); }
+.st-def { color: rgb(var(--c-item-rgb)); }
+.st-crit { color: rgb(var(--c-impact-rgb)); }
+
+.partner-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 10px;
+}
+
+.partner-slot,
+.hand-preview {
+  min-height: 48px;
+  border: 1px solid var(--player-line);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, var(--player-soft), transparent 58%),
+    rgb(var(--surface-deep-rgb) / 0.82);
+}
+
+.partner-slot {
+  display: block;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  padding: 9px;
+  text-align: center;
+}
+
+/* ヘッダ3分割: [名前・ライフ] | [ワールドタイル] | [手/ゲ/山]。
+   ワールドタイルは盤面セルではなくヘッダ中央のコンパクトなチップにする。 */
+.fp-id { flex: 0 0 auto; }
+.fighter-panel .partner-slot {
+  min-height: 0;
+  flex: 0 1 auto;
+  max-width: 42%;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--player-accent);
+  background:
+    linear-gradient(90deg, var(--player-soft), transparent 70%),
+    rgb(var(--panel-soft-rgb) / 0.9);
+}
+.fighter-panel .partner-slot .world-tile-label { font-size: 0.82rem; }
+
+.partner-text {
+  color: var(--text);
+  cursor: help;
+  font-weight: 700;
+}
+
+.hand-preview {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  padding: 8px;
+}
+
+.hand-back {
+  width: 28px;
+  height: 38px;
+  flex: 0 0 auto;
+  border: 1px solid var(--card-line);
+  border-radius: 5px;
+  background:
+    linear-gradient(135deg, rgb(var(--c-impact-rgb) / 0.45), transparent 48%),
+    var(--card-bg);
+}
+
+.action-panel {
+  grid-column: 2;
+  grid-row: span 2;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  padding: 12px;
+}
+
+.action-grid,
+.summon-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.attack-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.hand-dock {
+  grid-column: 2;
+  padding: 12px;
+}
+
+.hand-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.hand-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 10px;
+  max-height: 38vh;
+  overflow: auto;
+}
+
+.hand-list .card {
+  min-height: 154px;
+  cursor: pointer;
+}
+
+.log-panel {
+  grid-column: 2;
+  padding: 12px;
+}
+
+.log-panel ol {
+  display: grid;
+  max-height: 34vh;
+  margin: 10px 0 0;
+  padding-left: 22px;
+  gap: 4px;
+  overflow: auto;
+  color: var(--text-2);
+  font-size: 0.88rem;
+}
+
+dialog {
+  max-width: min(620px, calc(100vw - 28px));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.68);
+}
+
+.dialog-content {
+  display: grid;
+  gap: 12px;
+}
+
+.dialog-content header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dialog-content ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text-2);
+}
+
+.drop-dialog-body {
+  width: min(560px, calc(100vw - 28px));
+}
+
+.drop-dialog-list {
+  display: grid;
+  gap: 6px;
+  max-height: min(58vh, 520px);
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.drop-dialog-card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+}
+
+/* MR17-2: 裏向きソウル（所有者以外は中身を見られない）。押せない伏せ札として見せる。 */
+.drop-dialog-card-hidden {
+  opacity: 0.6;
+  cursor: default;
+}
+.drop-dialog-card-hidden .drop-dialog-name {
+  font-style: italic;
+  color: var(--muted);
+}
+
+.drop-dialog-order {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+/* ドロップからの起動能力（墓場のDJ等）の「発動」ボタン。 */
+.drop-dialog-activate {
+  margin-top: 4px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #fff;
+  background: var(--accent, #3b6ea5);
+  border-radius: 6px;
+}
+
+.drop-dialog-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 800;
+}
+
+/* 配置魔法一覧: カード名の下に効果要約を表示（ドロップダイアログを流用）。 */
+.set-effect {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-2);
+  font-size: 0.78rem;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.drop-dialog-type {
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: var(--inset-bg);
+  color: var(--text-2);
+  padding: 3px 8px;
+  font-size: 0.72rem;
+}
+
+.drop-dialog-empty {
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  padding: 12px;
+  text-align: center;
+}
+
+.selection-dialog-body {
+  width: min(680px, calc(100vw - 28px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100dvh - 28px);
+}
+
+.selection-dialog-tools {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.selection-dialog-lead {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.selection-dialog-preview {
+  min-height: 0;
+  max-height: 28vh;
+  overflow: auto;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: var(--inset-bg);
+  padding: 10px;
+}
+
+.selection-dialog-preview .tooltip-head {
+  margin-bottom: 8px;
+}
+
+.selection-dialog-preview dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
+.selection-dialog-preview dl div {
+  min-width: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: var(--inset-bg);
+  padding: 5px;
+}
+
+.selection-dialog-preview dt {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.selection-dialog-preview dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.selection-dialog-preview .tooltip-rules {
+  margin-top: 8px;
+}
+
+.selection-dialog-preview ul {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--text-2);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.selection-preview-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.selection-dialog-list {
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+  max-height: min(58vh, 520px);
+  overflow: auto;
+}
+
+.selection-choice {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  text-align: left;
+}
+
+.selection-choice.selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.selection-choice-index {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+.selection-choice-main {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.selection-choice-name {
+  overflow-wrap: anywhere;
+  font-weight: 800;
+}
+
+.selection-choice-meta {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.selection-choice-type {
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: var(--inset-bg);
+  color: var(--text-2);
+  padding: 3px 8px;
+  font-size: 0.72rem;
+}
+
+.selection-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* 盤面確認中は非モーダル(dialog.show())へ切り替える。非モーダルの dialog は top layer に入らず
+   既定で position:absolute になるため、明示的に fixed で右上に固定し、盤面より前面へ持ち上げる。 */
+dialog.selection-board-peek {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  left: auto;
+  bottom: auto;
+  margin: 0;
+  z-index: 242;
+  width: min(360px, calc(100vw - 28px));
+  max-width: min(360px, calc(100vw - 28px));
+}
+
+/* 非モーダルでは ::backdrop は出ない（＝盤面をタップできる）。モーダルのまま class が付く経路への保険。 */
+dialog.selection-board-peek::backdrop {
+  background: rgba(0, 0, 0, 0.16);
+}
+
+dialog.selection-board-peek .selection-dialog-body {
+  width: auto;
+}
+
+dialog.selection-board-peek .selection-dialog-lead,
+dialog.selection-board-peek .selection-dialog-preview,
+dialog.selection-board-peek .selection-dialog-list {
+  display: none;
+}
+
+dialog.selection-board-peek .selection-dialog-actions {
+  display: none;
+}
+
+.card-tooltip {
+  position: fixed;
+  z-index: 2147483647;
+  display: none;
+  width: min(360px, calc(100vw - 20px));
+  border: 1px solid var(--card-line);
+  border-radius: 8px;
+  background: rgb(var(--surface-deep-rgb) / 0.98);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  padding: 12px;
+  pointer-events: none;
+}
+
+.card-tooltip.visible {
+  display: block;
+}
+
+.tooltip-head {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+.tooltip-head strong {
+  overflow-wrap: anywhere;
+  font-size: 1rem;
+}
+
+.tooltip-head span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.card-tooltip dl,
+.card-sheet-detail dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.card-tooltip dl div,
+.card-sheet-detail dl div {
+  min-width: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: var(--inset-bg);
+  padding: 6px;
+}
+
+.card-tooltip dt,
+.card-sheet-detail dt {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.card-tooltip dd,
+.card-sheet-detail dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.card-tooltip p,
+.card-sheet-detail p {
+  color: var(--text-2);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.tooltip-rules {
+  margin-top: 10px;
+}
+
+.tooltip-rules strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.card-tooltip ul,
+.card-sheet-detail ul {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--text-2);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 980px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar,
+  .network-panel,
+  .status-strip,
+  .player-zone,
+  .action-panel,
+  .hand-dock,
+  .log-panel {
+    grid-column: 1;
+  }
+
+  .playmat {
+    display: grid;
+    grid-template-rows: minmax(176px, auto) auto minmax(176px, auto);
+    gap: 12px;
+  }
+
+  .action-panel {
+    grid-row: auto;
+  }
+
+  .status-strip,
+  .action-panel,
+  .network-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .zones-row {
+    grid-template-columns: repeat(3, minmax(92px, 1fr));
+  }
+
+  .board-grid {
+    grid-template-columns: repeat(3, minmax(92px, 1fr));
+  }
+}
+
+/* デスクトップではモバイル専用ボタンを隠す(B1) */
+.mobile-only { display: none; }
+
+@media (max-width: 640px) {
+  /* === B1 スマホ・レスポンシブ(厳格1画面・点対称・☰メニュー/logドロワー) === */
+  .mobile-only { display: inline-flex; }
+  html,
+  html { overflow-x: hidden; }
+  /* スマホは縦積み(上=相手/下=自分)。横分割(90deg)では席に合わないので、席に対応した縦グラデへ。 */
+  body {
+    overflow-x: hidden;
+    background:
+      linear-gradient(180deg, rgb(var(--c-monster-rgb) / 0.1) 0 38%, rgb(var(--p1-rgb) / 0.12) 62% 100%),
+      var(--bg);
+  }
+
+  .app-shell {
+    display: flex;
+    flex-direction: column;
+    /* 基底 .app-shell は grid 用に align-items:start。縦flexのスマホでは交差軸=幅で子が
+       内容幅に縮み左寄せ→手札ドック/アクションバー/トップバーが 100vw に伸びず、
+       横スクロール不能・☰メニュー誤アンカー・ボタン到達不能を招く。stretch で全幅化。 */
+    align-items: stretch;
+    width: 100vw;
+    max-width: 100vw;
+    gap: 6px;
+    padding: 0 0 6px;
+  }
+
+  /* playmat は @media 980 で grid 箱(minmax176px×3行)になるが、スマホでは contents に戻す。
+     こうすると相手/自分ゾーン・アクションバーが app-shell の flex 子へフラット化し、
+     下の order(相手2/自分3/手札4/アクション5=sticky下端) が正しく効く＝空きグリッド余白も消える。 */
+  .playmat {
+    display: contents;
+  }
+
+  /* スリムヘッダー */
+  .topbar {
+    order: 0;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar .eyebrow { display: none; }
+  .topbar h1 {
+    font-size: 1.05rem;
+    white-space: nowrap;
+  }
+
+  /* ツールバー: 既定は ☰/テーマ/ログ のみ。nav-open でメニュー展開 */
+  .toolbar .deck-picker,
+  .toolbar .toolbar-link,
+  .toolbar .account-control-slot,
+  #newGameButton,
+  #matchHistoryButton,
+  #exportLogButton,
+  #rulesButton,
+  #newDeckButton,
+  #saveDeckButton,
+  #exportDeckButton { display: none; }
+  body.nav-open .toolbar {
+    position: absolute;
+    top: 52px;
+    right: 6px;
+    z-index: 60;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    max-width: min(86vw, 320px);
+    padding: 8px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+  }
+  body.nav-open .toolbar .deck-picker,
+  body.nav-open .toolbar .toolbar-link,
+  body.nav-open .toolbar .account-control-slot,
+  body.nav-open #newGameButton,
+  body.nav-open #matchHistoryButton,
+  body.nav-open #exportLogButton,
+  body.nav-open #rulesButton,
+  body.nav-open #newDeckButton,
+  body.nav-open #saveDeckButton,
+  body.nav-open #exportDeckButton { display: flex; }
+  body.nav-open .deck-picker select { width: 100%; }
+
+  /* ターン/フェイズはコンパクト常時表示。選択中・ネットパネルは隠す */
+  .status-strip {
+    order: 1;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 0 8px;
+  }
+  .status-strip .turn-card.wide { display: none; }
+  .turn-card { padding: 6px 8px; }
+  .network-panel { display: none; }
+
+  /* play.html(シンクライアント)のロビーはモバイルでも必須（netplay中継パネルとは別物）。
+     対戦開始前＝ロビーを主役に盤面/操作/手札を隠す。開始後＝盤面を主役にロビーを畳む。 */
+  body.thin-client #lobbyPanel {
+    display: block;
+    order: 1;
+    margin: 8px 6px;
+  }
+  body.thin-client:not(.game-started) .status-strip,
+  body.thin-client:not(.game-started) .playmat,
+  body.thin-client:not(.game-started) .hand-dock {
+    display: none;
+  }
+  body.thin-client.game-started #lobbyPanel { display: none; }
+
+  /* 中継版 netplay.html の接続パネル(#netplayPanel)はモバイルでも必須。
+     部屋作成/参加/URLコピー＋接続状態(#networkStatus)を表示する（.network-panel の
+     display:none 例外）。#netplayPanel は netplay.html だけが持つidなので他画面に影響しない。 */
+  #netplayPanel {
+    display: block;
+    order: 1;
+    margin: 8px 6px;
+  }
+
+  /* 盤面: 相手(上)→自分(下)。自分はヘッダを下端へ送りセンターを中央ラインで向かい合わせ */
+  .player-zone {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 4px 6px;
+  }
+  .player-zone.opponent { order: 2; }
+  .player-zone:not(.opponent) {
+    order: 3;
+    flex-direction: column-reverse;
+    position: relative;
+    border-top: 2px solid var(--warn);
+    margin-top: 6px;
+  }
+  /* 中央ライン: 両フィールドの境目に細い区切り＋剣（占有強調の warn と同系）。 */
+  .player-zone:not(.opponent)::before {
+    content: "⚔";
+    position: absolute;
+    top: -11px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0 7px;
+    background: var(--bg);
+    color: var(--warn);
+    font-size: 0.85rem;
+    line-height: 1;
+    z-index: 5;
+    pointer-events: none;
+  }
+  .fighter-panel {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+  }
+  .partner-row { grid-template-columns: 1fr; }
+  .board-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+  .set-spell-cell { grid-column: span 1; }
+  .zone,
+  .flag-item-zone,
+  .buddy-cell,
+  .deck-zone,
+  .set-pile { min-height: 44px; } /* タップ標的 44px(a11y/iOS HIG) */
+  /* スマホ: 設置パイルのサムネイルは小さく（行の高さを他ゾーンと揃える） */
+  .set-pile-thumb, .set-pile-thumb .card-img { max-height: 40px; }
+  .set-pile-label { font-size: 0.72rem; }
+  .board-grid .card { min-height: 44px; }
+  .card {
+    gap: 3px;
+    padding: 4px 6px;
+    font-size: 0.7rem;
+  }
+  /* 盤面の小カードは効果文を隠して高さ節約(詳細はタップ=B2で) */
+  .board-grid .card .card-text { display: none; }
+  /* スマホでは種別バッジ(モンスター/魔法 等)を全カードで非表示。種別は枠色で識別でき、
+     バッジが名前領域を奪って見栄えを損なうため（盤面では名前の縦積みの主因でもある）。 */
+  .card-kind { display: none; }
+  .board-grid .card .card-name {
+    min-width: 0;
+    overflow-wrap: normal;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* 盤面チップ: 攻/防/打 の3値を「数値 / 数値 / 数値」で(色で識別)。狭いセルに収まるよう少し小さく中央寄せ。 */
+  .board-grid .card .card-stats-board {
+    font-size: 0.62rem;
+    letter-spacing: -0.02em;
+    white-space: normal;
+  }
+  .board-grid .card .card-stats-board .sep { margin: 0; }
+  /* 盤面のカード裏プレビュー行はモバイルでは枚数表示(手N)に集約して隠す（縦圧縮・1画面化） */
+  .hand-preview { display: none; }
+  /* 盤面カードの画像高さを抑えて行高を圧縮（1画面化・詳細はタップ=カードシート）。
+     grid 行は最も高いセルに揃うため、画像高さを下げると空ゾーンの伸長も同時に縮む。 */
+  .board-grid .card-img,
+  .flag-item-zone .card-img { max-height: 104px; }
+  /* 空ゾーンのラベルはコンパクトに（場所を食う主因の一つ） */
+  .board-grid .zone,
+  .flag-item-zone { font-size: 0.72rem; padding: 3px 4px; }
+  .zone .zone-label,
+  .zone .zone-hint { font-size: 0.72rem; line-height: 1.15; }
+
+  /* 手札ドック: 下部・横スクロール */
+  .hand-dock {
+    order: 4;
+    padding: 6px 8px;
+    min-width: 0; /* 念のため: flex子が内容幅へ膨張せず 100vw に収まるよう保証 */
+  }
+  .hand-list {
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    grid-auto-columns: 116px;
+    max-height: none;
+    overflow-x: auto;
+    width: 100%;
+    min-width: 0;
+  }
+  .hand-list .card { min-height: 98px; }
+  /* スクロール発見性: 右にまだ続く時だけ右端をフェード（alphaマスク=テーマ非依存）。
+     has-overflow は renderHand が scrollWidth>clientWidth かつ末尾でない時のみ付与。 */
+  .hand-list.has-overflow {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  }
+
+  /* アクションバー: 下部固定・横スクロール */
+  /* アクションバーは最下部・1行（横スクロール）。3つのサブグリッドの子ボタンを
+     display:contents で action-panel の1行に流し込む（フェイズ進行＋文脈ボタンが横並び）。 */
+  .action-panel {
+    order: 5;
+    position: sticky;
+    bottom: 0;
+    z-index: 40;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    overflow-x: auto;
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+  }
+  .action-grid,
+  .summon-grid,
+  .attack-row {
+    display: contents;
+  }
+  .action-panel button {
+    flex: 0 0 auto;
+    height: 44px; /* design-7: タップ標的 44px 以上 */
+    min-height: 44px;
+    padding: 6px 10px;
+    white-space: nowrap;
+  }
+  /* design-6: 無効ボタンは隠して主役を明確化＋クラッタ低減（横スクロールの混雑も緩和）。
+     有効になれば再表示。常に最低1つ(フェイズ進行/ターン終了/解決)は有効。 */
+  .action-panel button:disabled { display: none; }
+  /* design-6: 現フェイズの進行ボタン(相互排他に活性化)を主役CTAとして強調。 */
+  .action-panel #drawButton:not(:disabled),
+  .action-panel #mainPhaseButton:not(:disabled),
+  .action-panel #attackPhaseButton:not(:disabled),
+  .action-panel #finalPhaseButton:not(:disabled),
+  .action-panel #endTurnButton:not(:disabled) {
+    border-color: var(--primary);
+    background: rgb(var(--c-spell-rgb) / 0.18);
+    color: var(--text);
+    font-weight: 800;
+  }
+  /* attackTarget/effectTarget の <select> はタッチ操作(盤面タップ)で不要。1行アクションバーから除外。 */
+  .action-panel select { display: none; }
+  /* 1行ぶんに固定（44pxボタン＋上下padding 6px=56px。phantom 高さを抑える） */
+  .action-panel { height: 56px; min-height: 56px; }
+
+  /* design-7: ヘッダのアイコントグルもタップ標的 44px 以上に。 */
+  .topbar .theme-toggle,
+  .topbar .nav-toggle,
+  .topbar .log-toggle {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* ログ: 既定は隠す→ log-open で下からドロワー */
+  .log-panel { display: none; }
+  body.log-open .log-panel {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 70;
+    margin: 0;
+    max-height: 62vh;
+    overflow: auto;
+    border-radius: 12px 12px 0 0;
+    box-shadow: var(--shadow);
+  }
+
+  /* B2: カードシートは下からのボトムシート（showModalはtop-layerなのでz-index不要） */
+  #cardSheet {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    inset: auto 0 0 0;
+    border-radius: 14px 14px 0 0;
+    border-bottom: none;
+  }
+  #cardSheet .card-sheet-detail {
+    max-height: 56vh;
+  }
+}
+
+/* テーマトグル(A2) */
+.theme-toggle {
+  min-width: 44px;
+  min-height: 40px;
+  padding: 0 10px;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+/* === A3 見た目ブラッシュアップ(CSSのみ・:has()) === */
+
+/* (1) 破線は「空きスロット」専用。占有ゾーン・構造ゾーンは実線。 */
+.zone:has(.card) {
+  border-style: solid;
+}
+.zone.pile,
+.zone.flag-item-zone,
+.gauge-cell {
+  border-style: solid;
+}
+
+/* (2) 手番側ゾーンの階層強調(控えめ)。手番側はわずかに持ち上げ、非手番側は沈める。 */
+.player-zone.turn-seat {
+  box-shadow: 0 0 0 1px var(--player-line), var(--shadow);
+}
+.player-zone:not(.turn-seat) {
+  opacity: 0.94;
+}
+
+/* (3) カード種別の上端カラーストライプ。 */
+.card {
+  border-top-width: 3px;
+}
+.card.monster {
+  border-top-color: rgb(var(--c-monster-rgb));
+}
+.card.spell {
+  border-top-color: rgb(var(--c-spell-rgb));
+}
+.card.item {
+  border-top-color: rgb(var(--c-item-rgb));
+}
+.card.impact {
+  border-top-color: rgb(var(--c-impact-rgb));
+}
+.card.flag {
+  border-top-color: rgb(var(--c-flag-rgb));
+}
+
+
+/* (4) カード内ステータス文字の拡大(読みやすさ)。数値/区切りの行なので箱padなし。 */
+.card-stats {
+  font-size: 0.8rem;
+}
+.card-stats span {
+  padding: 0;
+}
+
+/* === B2: タッチ操作刷新（カードシート/対象タップ/確認/デッキ情報） === */
+
+/* 攻撃・効果対象のselectは画面外退避（値保持のフォールバックとしてDOMは残す） */
+#attackTarget,
+#effectTarget {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* カードシート（PC=中央モーダル。スマホはボトムシート＝@media側で上書き） */
+.card-sheet {
+  width: min(440px, calc(100vw - 28px));
+  padding: 16px;
+}
+.card-sheet-detail {
+  max-height: min(56vh, 540px);
+  overflow-y: auto;
+}
+.card-sheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.card-sheet-action {
+  min-height: 44px;
+  padding: 8px 14px;
+  font-weight: 800;
+}
+.card-sheet-action.primary {
+  border-color: var(--primary);
+  background: rgb(var(--c-spell-rgb) / 0.18);
+  color: var(--text);
+}
+.card-sheet-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* デッキ情報ポップアップ */
+.deck-info-body {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+/* デッキ情報のバディ行: タップで閲覧専用カードシート（能力詳細）を開くリンク風ボタン。
+   ローカル(src/20)と権威版(play.js)の両方から使う共有クラス。 */
+.buddy-detail-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent, #7fd1ff);
+  text-decoration: underline;
+  cursor: pointer;
+  text-align: left;
+}
+.buddy-detail-link:hover,
+.buddy-detail-link:focus-visible {
+  filter: brightness(1.2);
+}
+.deck-info-body div {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: var(--inset-bg);
+  padding: 8px;
+}
+.deck-info-body dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.deck-info-body dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+
+/* 確認ダイアログ */
+.confirm-dialog {
+  width: min(380px, calc(100vw - 28px));
+  padding: 18px;
+}
+.confirm-message {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.confirm-actions button {
+  min-height: 44px;
+  padding: 8px 18px;
+  font-weight: 800;
+}
+#confirmOkButton {
+  border-color: var(--primary);
+  background: rgb(var(--c-spell-rgb) / 0.2);
+}
+
+/* 戦績・対戦履歴パネル (D5)。配色トークンは既存共有＝ライト/ダーク両対応 */
+.match-history-dialog {
+  width: min(560px, calc(100vw - 28px));
+}
+.match-history-empty {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.match-history-section {
+  display: grid;
+  gap: 8px;
+}
+.match-history-section h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+.match-table-scroll {
+  overflow-x: auto;
+}
+.match-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.match-stats-table th,
+.match-stats-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  color: var(--text);
+}
+.match-stats-table th {
+  color: var(--text-2);
+  font-weight: 700;
+}
+.match-stats-table .match-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.match-recent-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  max-height: 42vh;
+  overflow-y: auto;
+}
+.match-recent-item {
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.match-recent-head {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+.match-recent-sub {
+  font-size: 0.78rem;
+  color: var(--text-2);
+  margin-top: 2px;
+}
+
+/* ワールド名タイル（旧バディスロットを転用） */
+.world-tile {
+  cursor: pointer;
+}
+.world-tile-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 800;
+  font-size: 0.78rem;
+}
+
+/* 対象選択モードのハイライト */
+/* 権威版(play.js)の攻撃対象ハイライト .attack-target-highlight も減光の除外に含める
+   （含めないと対象も opacity:0.5 になり、特にダークモードで赤枠が背景に埋もれて見えない）。 */
+body.targeting-active .zone.field:not(.attack-target-candidate):not(.effect-target-candidate):not(.attack-target-highlight) {
+  opacity: 0.5;
+}
+/* 攻撃候補は権威版(.attack-target-highlight)と同じ赤枠パルスに統一。
+   本体(ファイター)攻撃の目印は相手の装備枠に付く（fighter-panelタップも受付は継続）。 */
+.attack-target-candidate {
+  outline: 3px solid #ff5d6c;
+  outline-offset: -3px;
+  box-shadow: 0 0 0 2px rgba(255, 93, 108, 0.35), 0 0 16px rgba(255, 93, 108, 0.5);
+  animation: attackTargetPulse 1.1s ease-in-out infinite;
+  cursor: pointer;
+}
+.effect-target-candidate {
+  outline: 3px solid rgb(var(--c-spell-rgb));
+  outline-offset: -3px;
+  box-shadow: 0 0 14px rgb(var(--c-spell-rgb) / 0.5);
+  cursor: pointer;
+}
+
+/* ===== レビュー反映: a11y / 操作フィードバック ===== */
+
+/* キーボードフォーカスの可視化(テーマ非依存・二重リングで背景差を吸収)。選択(selected)の warn とは別色。 */
+:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px rgb(var(--surface-deep-rgb) / 0.55);
+}
+/* マウスクリック時はリングを出さない(focus-visible のみ)。 */
+
+/* モーション低減の安全弁(将来の演出追加時にも効く)。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 対象選択中の指示バナー(モバイル)。targeting-active 時のみ上部に固定表示。 */
+.targeting-banner {
+  display: none;
+}
+body.targeting-active .targeting-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  position: fixed;
+  left: 50%;
+  top: 8px;
+  transform: translateX(-50%);
+  z-index: 70;
+  max-width: min(94vw, 520px);
+  padding: 8px 12px;
+  border: 1px solid var(--warn);
+  border-radius: 999px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.targeting-banner .targeting-cancel {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+
+/* 文脈ヒント(操作可能ボタンが無い時など、次の一手を一言で案内)。 */
+.context-hint {
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+/* ===== オンライン(thin client)レビュー反映 ===== */
+
+/* 開戦後も見える状態バナー(再接続/相手切断/操作不可など)。lobbyPanel が隠れても残る。 */
+#netStatus { display: none; }
+.thin-client.game-started #netStatus:not(:empty) {
+  display: block;
+  position: fixed;
+  left: 50%;
+  bottom: 64px; /* sticky アクションバー(56px)の上 */
+  transform: translateX(-50%);
+  z-index: 65;
+  max-width: 92vw;
+  padding: 6px 14px;
+  border: 1px solid var(--seat-line);
+  border-radius: 999px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  color: var(--text-2);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+/* カード操作系ボタン(召喚/コール/使用/攻撃/対象select)は全クライアントで非表示。
+   カード操作は「カードタップ→下部アクションメニュー」（権威版と同一仕様）に一本化し、
+   パネルにはフェイズ進行と解決だけ残す。<select>はタップ選択の値置き場として隠したまま残す。 */
+.action-panel .summon-grid,
+.action-panel .attack-row,
+#castButton,
+#linkToggleButton,
+#partnerCallButton,
+#attackButton,
+#chargeButton { display: none; }
+/* 攻防手札切替はホットシート(ローカル/中継)専用。thin(権威版)は1席1画面なので不要。 */
+.thin-client #counterHandButton { display: none; }
+
+/* 対戦開始前は thin(権威版)の偽プレースホルダ盤面/操作/手札を全幅で隠す（PC幅でも）。
+   モバイルは @media 640 にも同等ルールがあるが、PCでは未接続でも static 初期値
+   (ライフ10/ターン プレイヤー1)とフェイズボタンが露出するため top-level にも置く。 */
+body.thin-client:not(.game-started) .status-strip,
+body.thin-client:not(.game-started) .playmat,
+body.thin-client:not(.game-started) .hand-dock {
+  display: none;
+}
+
+/* 共有: 画面下部アクションメニュー（カードタップ→操作。ローカル/中継/権威版で同一見た目） */
+.play-action-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 199;
+  background: rgb(0 0 0 / 0.28);
+  pointer-events: auto;
+  touch-action: none;
+}
+.play-action-menu {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.4);
+  max-width: 94vw;
+}
+.play-action-menu button {
+  min-height: 40px;
+  padding: 6px 12px;
+  font-weight: 800;
+}
+.play-action-menu button.menu-close { font-weight: 400; }
+/* thin の不要なツールバー要素(1P/2Pデッキ選択・ログ保存・新規=部屋作成と重複)を隠す。 */
+.thin-client .toolbar .deck-picker,
+.thin-client #newGameButton,
+.thin-client #exportLogButton { display: none; }
+
+/* ===== トースト / 初回ガイド / ロビーロスター ===== */
+
+/* 一過性トースト（空マスタップ等の短いヒント）。 */
+#toast {
+  display: none;
+}
+#toast.show {
+  display: block;
+  position: fixed;
+  left: 50%;
+  bottom: 72px;
+  transform: translateX(-50%);
+  z-index: 80;
+  max-width: 90vw;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: 0.84rem;
+  text-align: center;
+}
+
+/* 初回ガイド(コーチ)ダイアログ。 */
+#coachDialog::backdrop { background: rgb(0 0 0 / 0.5); }
+#coachDialog {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  max-width: min(92vw, 420px);
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+#coachDialog h2 { margin-bottom: 8px; }
+#coachDialog ul { margin: 0 0 14px; padding-left: 1.2em; line-height: 1.7; color: var(--text-2); }
+#coachDialog .coach-close { width: 100%; min-height: 44px; }
+
+/* ロビー参加者リスト: 席バッジ＋オンライン点＋デッキ名でスキャンしやすく。 */
+.lobby-roster { display: grid; gap: 6px; margin: 8px 0; }
+.lobby-member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: rgb(var(--panel-rgb) / 0.6);
+  font-size: 0.85rem;
+}
+
+/* ロビーの行: 名前は伸ばし、キックボタンは右端に寄せる。 */
+.lobby-member-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* ホストだけに出る「退出させる」。取り消せない操作なので危険色にする。 */
+.lobby-kick {
+  flex: 0 0 auto;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--danger, #d05);
+  font-size: 0.76rem;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.lobby-kick:hover:not(:disabled) {
+  background: rgb(var(--panel-rgb) / 0.9);
+  border-color: var(--danger, #d05);
+}
+.lobby-kick:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ---- アカウントバー (user-api.js: ユーザー登録＋マイデッキ) ---- */
+/* builder.html/play.html の #accountBar コンテナに userMountAccountBar() が innerHTML で描画する。 */
+.account-bar-slot {
+  grid-column: 1 / -1;
+}
+.account-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgb(var(--panel-rgb) / 0.9);
+  box-shadow: var(--shadow);
+  font-size: 0.85rem;
+}
+.account-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.account-input {
+  width: 140px;
+  min-height: 34px;
+}
+.account-bar button {
+  min-height: 34px;
+  padding: 0 10px;
+}
+.account-name {
+  font-weight: 700;
+  color: var(--text);
+}
+.account-label {
+  color: var(--muted);
+}
+.account-error {
+  color: #ff5d6c;
+  font-size: 0.78rem;
+}
+.account-error:empty {
+  display: none;
+}
+.account-link-button {
+  background: none;
+  border: none;
+  color: var(--primary);
+  text-decoration: underline;
+  min-width: 0;
+  min-height: auto;
+  padding: 0;
+}
+.account-admin-panel {
+  width: 100%;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line-soft);
+}
+.account-admin-panel select {
+  min-width: 220px;
+}
+
+/* 攻撃対象選択中のハイライト: 攻撃可能な相手の対象（モンスターのいるエリア／センター空時は本体＝装備枠）を強調。 */
+.attack-target-highlight {
+  outline: 3px solid #ff5d6c;
+  outline-offset: -3px;
+  box-shadow: 0 0 0 2px rgba(255, 93, 108, 0.35), 0 0 16px rgba(255, 93, 108, 0.5);
+  animation: attackTargetPulse 1.1s ease-in-out infinite;
+}
+@keyframes attackTargetPulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(255, 93, 108, 0.30), 0 0 10px rgba(255, 93, 108, 0.40); }
+  50% { box-shadow: 0 0 0 2px rgba(255, 93, 108, 0.55), 0 0 22px rgba(255, 93, 108, 0.78); }
+}
+
+/* ---- デッキ選択モーダル (deck-picker.js) ---- */
+/* 既存の <select> は値置き場として残して隠す（HANDOFFの隠しselect流儀） */
+.dp-hidden-select {
+  display: none !important;
+}
+.dp-open-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: min(46vw, 280px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid var(--card-line);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--text);
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.dp-open-button::before {
+  content: "▤";
+  color: var(--muted);
+}
+.dp-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  background: rgb(0 0 0 / 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+.dp-backdrop[hidden] {
+  display: none; /* display:flex が hidden 属性のUAスタイルを上書きするのを防ぐ */
+}
+.dp-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(680px, 100%);
+  max-height: min(86vh, 720px);
+  border: 1px solid var(--card-line);
+  border-radius: 12px;
+  background: var(--panel, var(--card-bg));
+  color: var(--text);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.35);
+}
+.dp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--card-line);
+}
+.dp-close {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 8px;
+}
+.dp-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--card-line);
+}
+.dp-search {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--card-line);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+.dp-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dp-chip {
+  border: 1px solid var(--card-line);
+  border-radius: 999px;
+  background: var(--card-bg);
+  color: var(--muted);
+  padding: 3px 12px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.dp-chip-on {
+  color: var(--text);
+  border-color: var(--accent, #6aa9ff);
+  box-shadow: inset 0 0 0 1px var(--accent, #6aa9ff);
+}
+.dp-select-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.dp-select-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dp-select-row select {
+  border: 1px solid var(--card-line);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--text);
+  padding: 4px 6px;
+  font-size: 0.82rem;
+}
+.dp-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 10px;
+  overscroll-behavior: contain;
+}
+.dp-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: left;
+  padding: 8px 4px 4px;
+  cursor: pointer;
+  position: sticky;
+  top: 0;
+  background: var(--panel, var(--card-bg));
+  z-index: 1;
+}
+.dp-caret {
+  font-size: 0.65rem;
+}
+.dp-group-count {
+  margin-left: auto;
+  font-weight: 400;
+}
+.dp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  padding: 5px 6px;
+  cursor: pointer;
+}
+.dp-row:hover {
+  background: var(--sheen);
+}
+.dp-row-selected {
+  border-color: var(--accent, #6aa9ff);
+}
+.dp-thumb {
+  width: 34px;
+  height: 48px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 4px;
+  background: var(--card-bg);
+}
+.dp-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.dp-row-name {
+  font-size: 0.88rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dp-row-sub {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.dp-row-special {
+  font-size: 0.85rem;
+  padding: 3px 0;
+}
+.dp-empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 24px 0;
+}
+.dp-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-top: 1px solid var(--card-line);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.dp-foot .dp-cancel,
+.dp-foot .dp-random {
+  border: 1px solid var(--card-line);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--text);
+  padding: 5px 16px;
+  cursor: pointer;
+}
+/* 「この一覧からランダム」は件数表示と閉じるの間。件数を左に押し出して2ボタンを右へ寄せる。 */
+.dp-foot .dp-count {
+  margin-right: auto;
+}
+.dp-foot .dp-random {
+  margin-right: 8px;
+  white-space: nowrap;
+}
+.dp-foot .dp-random:hover {
+  border-color: var(--accent, var(--card-line));
+}
+@media (max-width: 640px) {
+  .dp-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .dp-modal {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 12px 12px 0 0;
+  }
+  .dp-open-button {
+    max-width: 58vw;
+  }
+  /* ③ スマホでフィルタ群(検索/チップ/セレクト)が縦に長くリストが1件しか見えない問題の対策:
+     ツール群をコンパクト化し、max-height＋内部スクロールで頭打ちにして、
+     デッキリスト(.dp-list flex:1)に常に画面の半分以上を確保する。 */
+  .dp-tools {
+    gap: 5px;
+    padding: 8px 12px;
+    max-height: 42vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .dp-search { padding: 6px 9px; font-size: 0.85rem; }
+  .dp-chip-row { gap: 4px; }
+  .dp-chip { padding: 2px 9px; font-size: 0.72rem; }
+  .dp-select-row { gap: 6px 10px; }
+  .dp-select-row select { font-size: 0.78rem; padding: 3px 5px; }
+  /* ツールは自身の高さ(≤42vh)を保持し、余りをリストへ。リストは flex:1 で残り全部を取る。 */
+  .dp-tools { flex: 0 0 auto; }
+  .dp-list { flex: 1 1 auto; }
+}
+
+/* ---- 共通アカウントコンポーネント (user-api.js §2) ---- */
+/* compact: 👤ボタン（ツールバー内） */
+.account-control-slot {
+  display: inline-flex;
+  align-items: center;
+}
+.account-compact-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: min(40vw, 200px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid var(--card-line);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--text);
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+/* inline: ロビーのバー variant */
+.account-bar.account-inline {
+  width: 100%;
+}
+/* アカウントモーダル（deck-picker と同じ backdrop 帯・[hidden]{display:none} 併記が必須） */
+.acc-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 241;
+  background: rgb(0 0 0 / 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+.acc-backdrop[hidden] {
+  display: none; /* display:flex が hidden 属性のUAスタイルを上書きするのを防ぐ（既知の罠） */
+}
+.acc-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(520px, 100%);
+  max-height: min(86vh, 700px);
+  border: 1px solid var(--card-line);
+  border-radius: 12px;
+  background: var(--panel, var(--card-bg));
+  color: var(--text);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.35);
+}
+.acc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--card-line);
+}
+.acc-close {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 8px;
+}
+.acc-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+  overscroll-behavior: contain;
+}
+.acc-section {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--line-soft, var(--card-line));
+}
+.acc-section:last-child {
+  border-bottom: none;
+}
+.acc-section .account-input {
+  flex: 1 1 140px;
+  min-width: 120px;
+}
+.acc-login-buttons {
+  display: flex;
+  gap: 8px;
+  flex: 1 1 100%;
+}
+.acc-me {
+  justify-content: space-between;
+}
+.acc-subhead {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.acc-empty {
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.acc-deck-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.acc-deck-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  border: 1px solid var(--card-line);
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: var(--card-bg);
+}
+.acc-deck-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.acc-deck-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.acc-deck-sub {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.acc-deck-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.acc-deck-actions button {
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 0.76rem;
+}
+.acc-danger {
+  color: #ff5d6c;
+}
+.acc-confirm {
+  font-size: 0.78rem;
+  color: #ff5d6c;
+}
+.acc-conn-result {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.acc-error {
+  flex: 1 1 100%;
+}
+@media (max-width: 640px) {
+  .acc-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .acc-modal {
+    width: 100%;
+    max-height: 88vh;
+    border-radius: 12px 12px 0 0;
+  }
+}
+
+/* ソウルバッジ（カード左下の「ソウル N」）はタップでソウル一覧を開くので、押せることを見せる。 */
+.card-stack-peek[data-soul-peek] {
+  cursor: pointer;
+}
+.card-stack-peek[data-soul-peek]:hover,
+.card-stack-peek[data-soul-peek]:focus-visible {
+  filter: brightness(1.35);
+  outline: none;
+}
+
+.soul-dialog-lead {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  color: var(--muted, #9aa4b2);
+}
+
+/* ===== 対抗窓改修: 誘発/ライフリンクの【対抗】窓（非モーダルの小バー・盤面を塞がない） =====
+   独立レビュー L6: 盤面上部（相手のライフ・手札枚数）を隠さないよう画面下部に置き、1〜2行に収める。
+   1行目=見出し＋発生源(ⓘで効果文)＋パス/このターンはパス、2行目=使える【対抗】チップ（横スクロール）。 */
+.counter-window-bar {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 72; /* targeting-banner(70) より上・ダイアログ(::backdrop)より下 */
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: max-content;
+  max-width: min(96vw, 640px);
+  padding: 6px 8px;
+  border: 1px solid rgb(var(--c-flag-rgb) / 0.85);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: 0.8rem;
+}
+.counter-window-bar .cwb-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.counter-window-bar .cwb-title {
+  flex: 0 0 auto;
+  color: rgb(var(--c-flag-rgb));
+  font-weight: 800;
+  white-space: nowrap;
+}
+.counter-window-bar .cwb-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  border: 0;
+  background: transparent;
+  color: var(--text-2);
+  text-align: left;
+  padding: 2px 4px;
+}
+.counter-window-bar button {
+  min-height: 30px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.counter-window-bar .cwb-source-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.counter-window-bar .cwb-source-icon {
+  flex: 0 0 auto;
+  color: rgb(var(--c-flag-rgb));
+}
+.counter-window-bar .cwb-pass {
+  flex: 0 0 auto;
+  background: var(--btn-bg);
+}
+.counter-window-bar .cwb-pass-turn {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text-2);
+}
+.counter-window-bar .cwb-options {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  white-space: nowrap;
+}
+.counter-window-bar .cwb-options:empty {
+  display: none;
+}
+.counter-window-bar .cwb-use {
+  flex: 0 0 auto;
+  border: 1px solid rgb(var(--c-flag-rgb) / 0.85);
+  background: rgb(var(--c-flag-rgb) / 0.16);
+  color: var(--text);
+}
+.counter-window-bar.is-waiting {
+  flex-direction: row;
+  border-color: var(--seat-line);
+  color: var(--text-2);
+  font-weight: 700;
+  padding: 6px 14px;
+}
+/* 窓で今使える札（手札・場）の強調。既存の「打てる手」と同系色＋脈動で、どれを触ればよいかを示す。 */
+.card.counter-window-usable,
+.zone.counter-window-usable {
+  box-shadow: inset 0 0 0 2px rgb(var(--c-flag-rgb) / 0.95), 0 0 0 2px rgb(var(--c-flag-rgb) / 0.35);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .card.counter-window-usable,
+  .zone.counter-window-usable {
+    animation: cwb-pulse 1.6s ease-in-out infinite;
+  }
+}
+@keyframes cwb-pulse {
+  50% {
+    box-shadow: inset 0 0 0 2px rgb(var(--c-flag-rgb) / 0.95), 0 0 0 5px rgb(var(--c-flag-rgb) / 0.12);
+  }
+}
+@media (max-width: 640px) {
+  /* モバイル: 下部の操作バー(56px)の上・左右8px。高さは2行（約76px）まで。 */
+  .counter-window-bar {
+    left: 8px;
+    right: 8px;
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    transform: none;
+    width: auto;
+    max-width: none;
+  }
+  .counter-window-bar.is-waiting {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: max-content;
+  }
+}
+
+/* =====================================================================================
+   スマホ対戦画面「ナイトドック」（2026-10-14）。index/play/replay の body.bf-game だけ・幅640px以下だけに効く。
+   PC 幅のレイアウトは一切変えない（ここより上の規則と、PC で display:none のスマホ専用要素だけで構成）。
+   押す操作は画面の下3分の1（手札＋ドック）、主役ボタンは右下・キャンセルは左下。1ターンをスクロールなしで回す。
+   ===================================================================================== */
+.rotate-notice { display: none; }
+
+@media (max-width: 640px) {
+  /* --- トークン（既存のライト/ダークのトークンに追随。主役色だけスマホ専用の金） --- */
+  body.bf-game {
+    --m-accent: #f5b83d;
+    --m-on-accent: #1a1305;
+    --m-font: "BIZ UDPGothic", system-ui, -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", Meiryo, sans-serif;
+    --m-num: "Oxanium", var(--m-font);
+    --m-gutter: 12px;
+    --m-gap: 6px;
+    --m-dock-h: 64px;
+    --m-tile-bg: rgb(var(--panel-soft-rgb) / 0.92);
+    font-family: var(--m-font);
+    background: var(--bg);
+    overflow-x: clip;
+  }
+  /* html/body の overflow-x:hidden は body をスクロールコンテナにして sticky/fixed を壊す → clip に置換。 */
+  html:has(> body.bf-game) { overflow-x: clip; }
+
+  /* --- 1画面シェル: 対戦中（index/replay は常時・play は開始後）は 100dvh の縦グリッド。ページはスクロールしない --- */
+  body.bf-game:not(.thin-client),
+  body.bf-game.thin-client.game-started {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+  body.bf-game:not(.thin-client) .app-shell,
+  body.bf-game.thin-client.game-started .app-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr) auto auto auto;
+    grid-template-areas: "top" "band" "bottom" "hand" "slot" "dock";
+    align-items: stretch;
+    gap: 0;
+    width: 100%;
+    max-width: 100%;
+    height: 100dvh;
+    margin: 0;
+    padding: 0 0 env(safe-area-inset-bottom, 0px);
+    overflow: hidden;
+  }
+  body.bf-game #player2Zone { grid-area: top; order: 0; }
+  body.bf-game #player1Zone { grid-area: bottom; order: 0; }
+  body.bf-game.seat-flip #player2Zone { grid-area: bottom; }
+  body.bf-game.seat-flip #player1Zone { grid-area: top; }
+  body.bf-game .status-strip { grid-area: band; order: 0; }
+  body.bf-game .hand-dock { grid-area: hand; order: 0; }
+  body.bf-game .action-panel,
+  body.bf-game .replay-controls { grid-area: dock; order: 0; }
+
+  /* ヘッダー(topbar)は対戦中は出さない（☰メニュー/ログはドックへ移した）。メニューはドックの上に出るシート。 */
+  body.bf-game:not(.thin-client) .topbar,
+  body.bf-game.thin-client.game-started .topbar {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 60;
+    display: block;
+    height: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    overflow: visible;
+  }
+  body.bf-game:not(.thin-client) .topbar > div:first-child,
+  body.bf-game.thin-client.game-started .topbar > div:first-child,
+  body.bf-game:not(.thin-client) .topbar .toolbar,
+  body.bf-game.thin-client.game-started .topbar .toolbar,
+  body.bf-game .topbar .nav-toggle,
+  body.bf-game .topbar .log-toggle { display: none; }
+  body.bf-game.thin-client:not(.game-started) .topbar .nav-toggle { display: inline-flex; }
+  body.bf-game.nav-open:not(.thin-client) .topbar .toolbar,
+  body.bf-game.nav-open.thin-client.game-started .topbar .toolbar {
+    position: fixed;
+    top: auto;
+    right: 8px;
+    left: 8px;
+    bottom: calc(var(--m-dock-offset, calc(var(--m-dock-h) + env(safe-area-inset-bottom, 0px))) + 8px);
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    max-width: none;
+    max-height: calc(100dvh - var(--m-dock-h) - 24px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 12px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+  }
+  body.bf-game.nav-open .topbar .toolbar { flex-wrap: nowrap; }
+  body.bf-game.nav-open .toolbar > * { flex: none; min-height: 44px; max-width: 100%; min-width: 0; align-items: center; justify-content: flex-start; text-align: left; }
+  body.bf-game.nav-open .toolbar .theme-toggle::after { content: "テーマ（ライト／ダーク）"; margin-left: 10px; font-size: 14px; }
+  body.bf-game.nav-open .toolbar .deck-picker { display: flex; gap: 8px; }
+  body.bf-game.nav-open .toolbar .deck-picker > span { flex: none; width: 3em; }
+  body.bf-game.nav-open .toolbar .deck-picker select,
+  body.bf-game.nav-open .toolbar .deck-picker .dp-open-button { flex: 1 1 auto; min-width: 0; width: auto; max-width: none; }
+  /* 「新規」はメニューの先頭（デッキ/CPU を選んでから押す流れでも、すぐ届く位置） */
+  body.bf-game.nav-open #newGameButton { order: -1; border: 0; background: var(--m-accent); color: var(--m-on-accent); font-weight: 700; justify-content: center; }
+  body.bf-game.nav-open .toolbar .theme-toggle { display: flex; align-items: center; }
+  body.bf-game.nav-open .toolbar .toolbar-link { justify-content: flex-start; }
+  body.bf-game.nav-open .toolbar .deck-picker { justify-content: space-between; }
+
+
+  /* --- アクションドック（親指ゾーン）: [メニュー][ログ1行][…文脈ボタン][主役] --- */
+  body.bf-game .action-panel,
+  body.bf-game .replay-controls {
+    position: relative;
+    bottom: auto;
+    z-index: 40;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    height: auto;
+    min-height: var(--m-dock-h);
+    margin: 0;
+    padding: 6px var(--m-gutter);
+    overflow: hidden;
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    background: var(--panel);
+    box-shadow: none;
+  }
+  body.bf-game .dock-tools {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 8px;
+    order: 0;
+  }
+  body.bf-game .dock-tools button {
+    height: 52px;
+    min-height: 52px;
+    margin: 0;
+    padding: 0 10px;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: var(--btn-bg);
+    color: var(--text);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  body.bf-game .dock-menu {
+    flex: none;
+    width: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 0;
+  }
+  body.bf-game .dock-menu .dock-icon { font-size: 18px; line-height: 1; }
+  body.bf-game .dock-log {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2px;
+    text-align: left;
+  }
+  body.bf-game .dock-log-head { font-size: 11px; color: var(--muted); }
+  body.bf-game .dock-log-line {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+  /* フェイズ進行など: 押せるものだけ（無効は従来どおり隠す）。主役は右下・金。 */
+  body.bf-game .action-panel .action-grid { display: contents; }
+  body.bf-game .action-panel .action-grid button {
+    flex: none;
+    order: 1;
+    max-width: 84px;
+    height: 52px;
+    min-height: 52px;
+    padding: 0 8px;
+    border-radius: 14px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: normal;
+  }
+  body.bf-game .action-panel #drawButton:not(:disabled),
+  body.bf-game .action-panel #mainPhaseButton:not(:disabled),
+  body.bf-game .action-panel #attackPhaseButton:not(:disabled),
+  body.bf-game .action-panel #finalPhaseButton:not(:disabled),
+  body.bf-game .action-panel #endTurnButton:not(:disabled) {
+    order: 3;
+    min-width: 124px;
+    max-width: none;
+    height: 56px;
+    white-space: nowrap;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 16px;
+    background: var(--m-accent);
+    color: var(--m-on-accent);
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.15;
+  }
+  body.bf-game .action-panel #drawButton:not(:disabled)::after { content: "山札から1枚"; }
+  body.bf-game .action-panel #mainPhaseButton:not(:disabled)::after { content: "チャージせず進む"; }
+  body.bf-game .action-panel #attackPhaseButton:not(:disabled)::after { content: "メインを終える"; }
+  body.bf-game .action-panel #finalPhaseButton:not(:disabled)::after { content: "アタックを終える"; }
+  body.bf-game .action-panel #endTurnButton:not(:disabled)::after { content: "相手の番へ"; }
+  body.bf-game .action-panel .action-grid button::after { font-size: 11px; font-weight: 700; opacity: 0.85; }
+  /* 解決（攻撃/行動）も主役として右下に出す（保留中はフェイズ進行が無効なので重ならない）。 */
+  body.bf-game .action-panel #resolveAttackButton:not(:disabled) {
+    order: 3;
+    min-width: 112px;
+    max-width: none;
+    height: 56px;
+    white-space: nowrap;
+    border: 0;
+    border-radius: 16px;
+    background: var(--m-accent);
+    color: var(--m-on-accent);
+    font-size: 16px;
+  }
+  /* 文脈ボタンが出ている間はログ欄を縮める（主役と2つまでなら 360px でも1行に収まる）。 */
+  body.bf-game .action-panel:has(.action-grid button:not(:disabled) ~ button:not(:disabled)) .dock-log { flex-basis: 0; }
+
+  /* --- 盤面の行: 上下の場は残りの高さを等分（はみ出しは各行の中で処理し、ページは伸ばさない） --- */
+  body.bf-game .player-zone {
+    min-height: 0;
+    overflow: hidden;
+    margin: 0;
+    border-radius: 0;
+    border-width: 0;
+    box-shadow: none;
+    opacity: 1;
+  }
+  body.bf-game .player-zone:not(.opponent)::before { content: none; }
+  body.bf-game .status-strip { padding: 0 var(--m-gutter); }
+  body.bf-game .hand-dock { min-width: 0; margin: 0; border-radius: 0; border-width: 1px 0 0; box-shadow: none; }
+  body.bf-game.thin-client.game-started #accountBar { display: none; }
+
+  /* --- ログ: ドック上のドロワー --- */
+  body.bf-game.log-open .log-panel {
+    left: 0;
+    right: 0;
+    bottom: var(--m-dock-offset, calc(var(--m-dock-h) + env(safe-area-inset-bottom, 0px)));
+    max-height: 55dvh;
+    z-index: 70;
+    padding: 12px var(--m-gutter);
+    border-radius: 14px 14px 0 0;
+    font-size: 13px;
+  }
+
+  /* --- ダイアログ: 画面幅に収める（はみ出し・見切れ対策） --- */
+  body.bf-game dialog {
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+    max-height: calc(100dvh - 24px);
+    padding: 12px;
+    overflow: auto;
+  }
+  body.bf-game dialog .dialog-content,
+  body.bf-game .drop-dialog-body,
+  body.bf-game .selection-dialog-body { width: 100%; max-width: 100%; }
+  body.bf-game .dialog-content header { flex-wrap: wrap; }
+  body.bf-game .dialog-content header h2 { flex: 1 1 auto; min-width: 0; font-size: 15px; }
+  body.bf-game .dialog-content header button { min-height: 44px; }
+  body.bf-game .drop-dialog-list { max-height: calc(100dvh - 140px); }
+  body.bf-game .drop-dialog-card { grid-template-columns: 32px minmax(0, 1fr) auto; }
+  body.bf-game .drop-dialog-list li { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  body.bf-game .drop-dialog-list li > .drop-dialog-card { flex: 1 1 200px; }
+  body.bf-game .drop-dialog-activate { min-height: 44px; margin: 0; padding: 0 16px; }
+  body.bf-game #coachDialog { width: min(92vw, 420px); }
+  body.bf-game .confirm-dialog { width: min(calc(100vw - 32px), 420px); }
+
+  /* 下からのシート（カード詳細）はドックを含め全幅。 */
+  body.bf-game #cardSheet {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92dvh;
+    margin: 0;
+    inset: auto 0 0 0;
+    padding: 12px var(--m-gutter) calc(12px + env(safe-area-inset-bottom, 0px));
+    border-radius: 16px 16px 0 0;
+  }
+}
+
+/* スマホ専用の補助表示（PC 幅では出さない）。 */
+.m-tile-part,
+.selection-choice-note,
+.selection-choice-biblio,
+.mini-stats .ms-size,
+.status-strip .phase-steps { display: none; }
+
+@media (max-width: 640px) {
+  /* ===== step2: 盤面＝文字タイル・空パイル＝チップ・位置名・数値 ===== */
+  body.bf-game .player-zone {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-rows: minmax(0, 1fr) auto auto;
+    gap: var(--m-gap);
+    padding: 6px var(--m-gutter);
+    background: none;
+  }
+  body.bf-game .player-zone .board-grid,
+  body.bf-game .player-zone .set-spell-cell,
+  body.bf-game .player-zone .buddyzone-row { display: contents; }
+  body.bf-game .player-zone .hand-preview { display: none; }
+
+  /* 自分（下）: モンスター / 補助ゾーン / ステータス */
+  body.bf-game .player-zone .fighter-panel { grid-column: 1 / -1; grid-row: 3; }
+  body.bf-game .player-zone .zone[data-zone="left"] { grid-column: 1 / span 2; grid-row: 1; }
+  body.bf-game .player-zone .zone[data-zone="center"] { grid-column: 3 / span 2; grid-row: 1; }
+  body.bf-game .player-zone .zone[data-zone="right"] { grid-column: 5 / span 2; grid-row: 1; }
+  body.bf-game .player-zone .zone[data-zone="item"] { grid-column: 1 / span 3; grid-row: 2; }
+  body.bf-game .player-zone .zone[data-zone="buddyzone"] { grid-column: 4; grid-row: 2; }
+  body.bf-game .player-zone .zone[data-zone="setpile"] { grid-column: 5; grid-row: 2; }
+  body.bf-game .player-zone .zone[data-zone="drop"] { grid-column: 6; grid-row: 2; }
+  /* 相手（上）: ヘッダー / 補助ゾーン / モンスター（点対称＝画面左が相手ライト） */
+  body.bf-game:not(.seat-flip) #player2Zone,
+  body.bf-game.seat-flip #player1Zone { grid-template-rows: auto auto minmax(0, 1fr); }
+  body.bf-game:not(.seat-flip) #player2Zone .fighter-panel,
+  body.bf-game.seat-flip #player1Zone .fighter-panel { grid-row: 1; }
+  body.bf-game:not(.seat-flip) #player2Zone .zone[data-zone="drop"],
+  body.bf-game.seat-flip #player1Zone .zone[data-zone="drop"] { grid-column: 1; grid-row: 2; }
+  body.bf-game:not(.seat-flip) #player2Zone .zone[data-zone="setpile"],
+  body.bf-game.seat-flip #player1Zone .zone[data-zone="setpile"] { grid-column: 2; grid-row: 2; }
+  body.bf-game:not(.seat-flip) #player2Zone .zone[data-zone="buddyzone"],
+  body.bf-game.seat-flip #player1Zone .zone[data-zone="buddyzone"] { grid-column: 3; grid-row: 2; }
+  body.bf-game:not(.seat-flip) #player2Zone .zone[data-zone="item"],
+  body.bf-game.seat-flip #player1Zone .zone[data-zone="item"] { grid-column: 4 / span 3; grid-row: 2; }
+  body.bf-game:not(.seat-flip) #player2Zone .zone[data-zone="right"],
+  body.bf-game.seat-flip #player1Zone .zone[data-zone="right"] { grid-column: 1 / span 2; grid-row: 3; }
+  body.bf-game:not(.seat-flip) #player2Zone .zone[data-zone="center"],
+  body.bf-game.seat-flip #player1Zone .zone[data-zone="center"] { grid-column: 3 / span 2; grid-row: 3; }
+  body.bf-game:not(.seat-flip) #player2Zone .zone[data-zone="left"],
+  body.bf-game.seat-flip #player1Zone .zone[data-zone="left"] { grid-column: 5 / span 2; grid-row: 3; }
+
+  /* --- ヘッダー（相手）/ ステータス（自分）: ライフは大きく、手札・ゲージ・山札・サイズは数字 --- */
+  body.bf-game .fighter-panel {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "life world stats";
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 4px 10px;
+    border-radius: 12px;
+  }
+  body.bf-game .fighter-panel .fp-id { display: contents; }
+  body.bf-game .fighter-panel .player-name { display: none; }
+  body.bf-game .fighter-panel .stat-line { grid-area: life; display: flex; align-items: baseline; gap: 4px; margin: 0; }
+  body.bf-game .fighter-panel .stat-line span { font-size: 11px; color: var(--muted); }
+  body.bf-game .fighter-panel .stat-line strong {
+    font-family: var(--m-num);
+    font-variant-numeric: tabular-nums;
+    font-size: 34px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  body.bf-game .fighter-panel .partner-slot {
+    grid-area: world;
+    justify-self: start;
+    max-width: 100%;
+    min-height: 32px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    overflow: hidden;
+  }
+  body.bf-game .fighter-panel .partner-slot .world-tile-label {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+  body.bf-game .fighter-panel .mini-stats {
+    grid-area: stats;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+  body.bf-game .fighter-panel .mini-stats span {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: 0;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+  body.bf-game .fighter-panel .mini-stats span::before {
+    content: attr(data-label);
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--muted);
+  }
+  body.bf-game .fighter-panel .mini-stats span::after {
+    content: attr(data-n);
+    font-family: var(--m-num);
+    font-variant-numeric: tabular-nums;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  body.bf-game .fighter-panel .mini-stats #p1Gauge,
+  body.bf-game .fighter-panel .mini-stats #p2Gauge { font-size: 0; border: 0; }
+  body.bf-game .fighter-panel .mini-stats .ms-size.over::after { color: rgb(var(--c-monster-rgb)); }
+  /* 相手のヘッダーは 山札 を省略（手札・ゲージ・サイズ）。 */
+  body.bf-game:not(.seat-flip) #player2Zone .fighter-panel,
+  body.bf-game.seat-flip #player1Zone .fighter-panel { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "world stats life"; }
+
+  /* --- 補助ゾーン（44px）: ドロップ/配置/バディは「ラベル＋枚数」チップ。0枚は点線 --- */
+  body.bf-game .player-zone .zone.pile,
+  body.bf-game .player-zone .zone.set-pile,
+  body.bf-game .player-zone .zone.buddyzone-pile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    height: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--m-tile-bg);
+    color: var(--muted);
+    font-size: 0;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  body.bf-game .player-zone .zone.set-pile > *,
+  body.bf-game .player-zone .zone.pile > * { display: none; }
+  body.bf-game .player-zone .zone.pile::before { content: "ドロップ"; }
+  body.bf-game .player-zone .zone.set-pile::before { content: "配置"; }
+  body.bf-game .player-zone .zone.buddyzone-pile::before { content: "バディ"; }
+  body.bf-game .player-zone .zone.pile::before,
+  body.bf-game .player-zone .zone.set-pile::before,
+  body.bf-game .player-zone .zone.buddyzone-pile::before { font-size: 11px; }
+  body.bf-game .player-zone .zone.pile::after,
+  body.bf-game .player-zone .zone.set-pile::after,
+  body.bf-game .player-zone .zone.buddyzone-pile::after {
+    content: attr(data-count);
+    font-family: var(--m-num);
+    font-variant-numeric: tabular-nums;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  body.bf-game .player-zone .zone[data-count="0"] {
+    border-style: dashed;
+    background: transparent;
+  }
+  body.bf-game .player-zone .zone[data-count="0"]::after { color: var(--muted); }
+
+  /* --- アイテム枠（フラッグの上）: 横長ボタン。フラッグ名＋装備アイテム（名前・攻/打） --- */
+  body.bf-game .player-zone .zone.flag-item-zone {
+    height: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0 8px;
+    border-radius: 10px;
+    border-style: solid;
+    overflow: hidden;
+  }
+  body.bf-game .flag-item-zone .flag-item-stack {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 100%;
+    min-height: 0;
+  }
+  body.bf-game .flag-item-zone .flag-layer {
+    flex: 0 1 auto;
+    min-width: 0;
+    min-height: 0;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    border-radius: 6px;
+    font-size: 11px;
+  }
+  body.bf-game .flag-item-zone .flag-item-stack.has-item .flag-layer { position: relative; inset: auto; flex: 0 1 34%; transform: none; opacity: 1; }
+  body.bf-game .flag-item-zone .flag-item-stack.has-item .flag-layer.used { opacity: 0.5; }
+  body.bf-game .flag-item-zone .flag-layer.has-flag-img .flag-caption { position: static; background: none; padding: 0; }
+  body.bf-game .flag-item-zone .flag-layer .card-img,
+  body.bf-game .flag-item-zone .flag-layer .flag-img { display: none; }
+  body.bf-game .flag-item-zone .flag-caption { display: block; width: 100%; min-width: 0; position: static; padding: 0; background: none; text-align: left; }
+  body.bf-game .flag-item-zone .flag-caption .stack-layer-label { display: none; }
+  body.bf-game .flag-item-zone .flag-caption .stack-layer-name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+  }
+  body.bf-game .flag-item-zone .item-layer,
+  body.bf-game .flag-item-zone .item-layer-stacked {
+    position: static;
+    flex: 1 1 0;
+    min-width: 0;
+    height: 36px;
+    min-height: 0;
+    margin: 0;
+    padding: 2px 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0;
+    border-width: 1px;
+    border-radius: 8px;
+    box-shadow: none;
+    text-align: left;
+    transform: none;
+  }
+  body.bf-game .flag-item-zone .item-layer > :not(.m-tile-part):not(.card-stack-peek) { display: none; }
+  body.bf-game .flag-item-zone .item-layer .bt-name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  body.bf-game .flag-item-zone .item-layer .bt-stats { display: block; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; }
+  body.bf-game .flag-item-zone .item-layer .bt-stats .bt-row,
+  body.bf-game .flag-item-zone .item-layer .bt-stats .bt-row > span,
+  body.bf-game .flag-item-zone .item-layer .bt-stats .bt-def { display: inline; margin-right: 6px; }
+  body.bf-game .flag-item-zone .item-layer .bt-stats i { font-style: normal; margin-right: 2px; }
+  body.bf-game .flag-item-zone .item-layer .bt-stats b { font-family: var(--m-num); color: var(--text); }
+
+  /* --- モンスター枠: 位置名（相手基準）・名前3行・攻/打（大）防（中）。画像はカードシートだけ --- */
+  body.bf-game .player-zone .zone.field:not(.item) {
+    position: relative;
+    min-height: 0;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border-radius: 12px;
+    border-width: 1px;
+    font-size: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+  }
+  body.bf-game .player-zone .zone.field:not(.item)::before {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: auto;
+    z-index: 3;
+    font-size: 11px;
+    line-height: 1.2;
+    color: var(--muted);
+    filter: none;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  body.bf-game .player-zone .zone[data-zone="left"]::before { content: "レフト"; }
+  body.bf-game .player-zone .zone[data-zone="center"]::before { content: "センター"; }
+  body.bf-game .player-zone .zone[data-zone="right"]::before { content: "ライト"; }
+  body.bf-game:not(.seat-flip) #player2Zone .zone[data-zone="left"]::before,
+  body.bf-game.seat-flip #player1Zone .zone[data-zone="left"]::before { content: "相手レフト"; }
+  body.bf-game:not(.seat-flip) #player2Zone .zone[data-zone="center"]::before,
+  body.bf-game.seat-flip #player1Zone .zone[data-zone="center"]::before { content: "相手センター"; }
+  body.bf-game:not(.seat-flip) #player2Zone .zone[data-zone="right"]::before,
+  body.bf-game.seat-flip #player1Zone .zone[data-zone="right"]::before { content: "相手ライト"; }
+  /* 空き枠: 点線・中央に「位置名／空き」 */
+  body.bf-game .player-zone .zone.field:not(.item):not(:has(.card)) { border-style: dashed; background: transparent; align-items: center; }
+  body.bf-game .player-zone .zone.field:not(.item):not(:has(.card))::before { position: static; font-size: 12px; }
+  body.bf-game .player-zone .zone.field:not(.item):not(:has(.card))::after {
+    content: "空き";
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+  }
+  /* 枠の高さに合わせて名前の行数を変える（途中で切れた行を出さない）。 */
+  body.bf-game .player-zone .zone.field:not(.item) { container-type: size; }
+  @container (max-height: 132px) {
+    body.bf-game .player-zone .zone.field .bt-name { -webkit-line-clamp: 2 !important; max-height: calc(2.6em + 2px) !important; }
+  }
+  @container (max-height: 112px) {
+    body.bf-game .player-zone .zone.field .bt-name { -webkit-line-clamp: 1 !important; max-height: calc(1.3em + 2px) !important; }
+  }
+  /* さらに低い枠（対抗窓や選択が開いた 390x664 など）: 攻/打/防を1行にまとめて名前1行を残す。 */
+  @container (max-height: 100px) {
+    body.bf-game .player-zone .zone.field .card { padding-top: 20px !important; }
+    body.bf-game .player-zone .zone.field .bt-stats { gap: 0 !important; padding: 1px 6px 2px !important; line-height: 1.05 !important; }
+    body.bf-game .player-zone .zone.field .bt-stats b { margin-left: 1px; }
+    body.bf-game .player-zone .zone.field .bt-row b { font-size: 15px !important; }
+    body.bf-game .player-zone .zone.field .bt-def b { font-size: 12px !important; }
+    body.bf-game .player-zone .zone.field .card .card-stack-peek { top: 2px; bottom: auto; right: 28px; padding: 0 6px; }
+    body.bf-game .player-zone .zone.field:has(.card-stack-peek)::before { max-width: calc(100% - 96px); overflow: hidden; text-overflow: ellipsis; }
+  }
+  body.bf-game .player-zone .zone.field:not(.item) > .card {
+    position: relative;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 24px 0 0;
+    gap: 0;
+    border: 0;
+    border-top: 5px solid currentColor;
+    border-radius: 0;
+    background: linear-gradient(180deg, var(--player-soft), transparent 70%), var(--m-tile-bg);
+    text-align: left;
+    font-size: 13px;
+  }
+  body.bf-game .player-zone .zone.field:not(.item) > .card.monster { border-top-color: rgb(var(--c-monster-rgb)); }
+  body.bf-game .player-zone .zone .card .card-img,
+  body.bf-game .player-zone .zone .card .card-img-fallback,
+  body.bf-game .player-zone .zone .card .card-stats-board,
+  body.bf-game .player-zone .zone .card .card-name,
+  body.bf-game .player-zone .zone .card .card-kind,
+  body.bf-game .player-zone .zone .card .card-text { display: none; }
+  body.bf-game .player-zone .zone.field:not(.item) .bt-name {
+    display: -webkit-box;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: calc(3.9em + 2px);
+    padding: 2px 8px 0;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.3;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+  }
+  body.bf-game .player-zone .zone.field:not(.item) .bt-size {
+    display: block;
+    position: absolute;
+    top: 3px;
+    right: 8px;
+    font-family: var(--m-num);
+    font-size: 11px;
+    color: var(--muted);
+  }
+  body.bf-game .player-zone .zone.field:not(.item) .bt-stats {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    gap: 1px;
+    padding: 4px 8px 5px;
+    border-top: 1px solid var(--player-line);
+    background: rgb(var(--surface-deep-rgb) / 0.55);
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+  body.bf-game .bt-stats .bt-row { display: flex; justify-content: space-between; align-items: baseline; }
+  body.bf-game .bt-stats i { font-style: normal; font-size: 11px; color: var(--muted); }
+  body.bf-game .bt-stats b {
+    margin-left: 2px;
+    font-family: var(--m-num);
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    color: var(--text);
+  }
+  body.bf-game .player-zone .zone.field:not(.item) .bt-row b { font-size: 19px; }
+  body.bf-game .player-zone .zone.field:not(.item) .bt-def b { font-size: 14px; font-weight: 700; }
+  body.bf-game .player-zone .zone .card .card-stack-peek {
+    position: absolute;
+    top: auto;
+    bottom: 5px;
+    right: 6px;
+    z-index: 4;
+    margin: 0;
+    padding: 1px 7px;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  /* ソウルバッジは小さいのでタップ領域を枠の上端いっぱいに広げる（44px 相当の当たり判定）。 */
+  body.bf-game .player-zone .zone .card .card-stack-peek::before {
+    content: "";
+    position: absolute;
+    inset: -12px -6px -5px -10px;
+  }
+  body.bf-game .player-zone .zone.center.center-occupied { box-shadow: inset 0 0 0 1px var(--warn); }
+  /* 攻撃対象: 色だけでなく形（二重枠）とラベルで示す（本体＝相手のアイテム枠）。 */
+  body.bf-game .player-zone .zone.attack-target-candidate { outline: 3px double #ff5d6c; outline-offset: -4px; }
+  body.bf-game .player-zone .zone.item.attack-target-candidate::after {
+    content: "攻撃対象：本体";
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 4;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #ff5d6c;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  /* --- ターン/フェイズ帯（40px）: T番号・手番・フェイズの丸（現在だけ全文） --- */
+  body.bf-game .status-strip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 var(--m-gutter);
+    white-space: nowrap;
+  }
+  body.bf-game .status-strip::before {
+    content: attr(data-turn);
+    flex: none;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: var(--btn-bg);
+    color: rgb(var(--p1-rgb));
+    font-family: var(--m-num);
+    font-size: 13px;
+    font-weight: 700;
+  }
+  body.bf-game .status-strip .turn-card {
+    flex: 0 1 auto;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+  body.bf-game .status-strip .turn-card .label,
+  body.bf-game .status-strip .turn-card:nth-of-type(2),
+  body.bf-game .status-strip .turn-card.wide { display: none; }
+  body.bf-game .status-strip .turn-card strong { margin: 0; font-size: 12px; font-weight: 700; color: rgb(var(--p1-rgb)); }
+  body.bf-game .status-strip .turn-card strong::after { content: "のターン"; }
+  body.bf-game .status-strip .phase-steps {
+    display: flex;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 5px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  body.bf-game .phase-steps li {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    font-size: 11px;
+  }
+  body.bf-game .phase-steps li.done { background: var(--btn-bg); color: var(--muted); }
+  body.bf-game .phase-steps li.next { border: 1px solid var(--line); color: var(--text-2); }
+  body.bf-game .phase-steps li.now { padding: 0 12px; background: var(--m-accent); color: var(--m-on-accent); font-size: 12px; font-weight: 700; }
+
+  /* --- 手札: 6列のまっすぐなタイル（96px）。7枚以上は横スクロール＋端のフェード --- */
+  body.bf-game .hand-dock { padding: 4px var(--m-gutter) 6px; background: var(--panel); }
+  body.bf-game .hand-header { height: 22px; margin: 0; }
+  body.bf-game .hand-header h2 { font-size: 11px; font-weight: 400; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body.bf-game #sizeLabel { display: none; }
+  body.bf-game .hand-list {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    grid-auto-columns: calc((100% - 25px) / 6);
+    gap: 5px;
+    max-height: none;
+    padding-top: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  body.bf-game .hand-list::-webkit-scrollbar { display: none; }
+  body.bf-game .hand-list.has-overflow-left.has-overflow {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 28px), transparent);
+  }
+  body.bf-game .hand-list.has-overflow-left:not(.has-overflow) {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 24px);
+    mask-image: linear-gradient(to right, transparent, #000 24px);
+  }
+  body.bf-game .hand-list .card {
+    height: 96px;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    gap: 0;
+    border-width: 5px 1px 1px;
+    border-radius: 9px;
+    background: var(--m-tile-bg);
+    text-align: left;
+    font-size: 11px;
+  }
+  body.bf-game .hand-list .card > :not(.m-tile-part) { display: none; }
+  body.bf-game .hand-list .card .ht-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 16px;
+    padding: 2px 4px 0 5px;
+    white-space: nowrap;
+  }
+  body.bf-game .hand-list .card .ht-cost { font-family: var(--m-num); font-size: 11px; font-weight: 700; color: var(--m-accent); }
+  body.bf-game .hand-list .card .ht-ctr { padding: 0 3px; border-radius: 4px; background: rgb(var(--c-flag-rgb) / 0.2); color: rgb(var(--c-flag-rgb)); font-size: 11px; font-weight: 700; line-height: 1.3; }
+  body.bf-game .hand-list .card .ht-name {
+    display: -webkit-box;
+    flex: 0 1 auto;
+    max-height: calc(2.6em + 2px);
+    min-height: 0;
+    padding: 2px 5px 0;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.3;
+    word-break: break-all;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  body.bf-game .hand-list .card .ht-foot,
+  body.bf-game .hand-list .card .ht-foot2 {
+    display: block;
+    padding: 0 5px;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  body.bf-game .hand-list .card .ht-foot { font-family: var(--m-num); font-weight: 700; color: var(--text-2); }
+  body.bf-game .hand-list .card .ht-foot2 { min-height: 15px; padding-bottom: 4px; color: var(--muted); }
+  body.bf-game .hand-list .card .ht-foot { margin-top: auto; }
+  body.bf-game .hand-list .card.counter-playable { border-color: rgb(var(--c-flag-rgb)); }
+}
+
+/* #dockSlot: PC では箱を作らない（中の対抗窓バーは従来どおり fixed）。 */
+.dock-slot { display: contents; }
+
+@media (max-width: 640px) {
+  /* ===== step3: #dockSlot（手札とドックの間の行）＝対抗窓・待機表示・選択の差し込み先 ===== */
+  body.bf-game .dock-slot {
+    grid-area: slot;
+    display: block;
+    min-width: 0;
+  }
+  body.bf-game .dock-slot:empty { display: none; }
+  /* 対抗窓（2行・高さ100px以内＝盤面と手札は見えたまま）:
+     1行目=見出し・発生源（ⓘで効果文）・このターンはパス／2行目=使える【対抗】（横スクロール）・パス */
+  body.bf-game .dock-slot .counter-window-bar {
+    position: static;
+    inset: auto;
+    transform: none;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "title source passturn"
+      "chips chips pass";
+    align-items: center;
+    gap: 4px 6px;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 4px var(--m-gutter);
+    border: 0;
+    border-radius: 0;
+    box-shadow: inset 0 2px 0 rgb(var(--c-flag-rgb) / 0.85);
+    background: var(--panel);
+    font-size: 13px;
+  }
+  body.bf-game .dock-slot .counter-window-bar .cwb-row { display: contents; }
+  body.bf-game .dock-slot .counter-window-bar .cwb-title { grid-area: title; font-size: 13px; line-height: 1.2; }
+  body.bf-game .dock-slot .counter-window-bar .cwb-source {
+    grid-area: source;
+    min-width: 0;
+    min-height: 44px;
+    padding: 2px 8px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--btn-bg);
+    font-size: 12px;
+    font-weight: 400;
+  }
+  body.bf-game .dock-slot .counter-window-bar .cwb-source-icon { margin-left: auto; padding-left: 4px; font-size: 16px; }
+  body.bf-game .dock-slot .counter-window-bar .cwb-options {
+    grid-area: chips;
+    display: flex;
+    gap: 6px;
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  body.bf-game .dock-slot .counter-window-bar .cwb-options:empty { display: flex; }
+  body.bf-game .dock-slot .counter-window-bar .cwb-options:empty::before {
+    content: "使える【対抗】はありません";
+    align-self: center;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  body.bf-game .dock-slot .counter-window-bar .cwb-use {
+    flex: none;
+    max-width: 78%;
+    min-height: 44px;
+    padding: 2px 12px;
+    border-radius: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+  }
+  body.bf-game .dock-slot .counter-window-bar .cwb-pass,
+  body.bf-game .dock-slot .counter-window-bar .cwb-pass-turn {
+    position: relative;
+    min-height: 44px;
+    padding: 2px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    overflow: hidden;
+  }
+  body.bf-game .dock-slot .counter-window-bar .cwb-pass { grid-area: pass; min-width: 88px; border: 1px solid var(--line); background: var(--btn-bg); color: var(--text); }
+  body.bf-game .dock-slot .counter-window-bar .cwb-pass-turn { grid-area: passturn; font-size: 12px; }
+  /* 開いて0.5秒は押せない: 押せない間は薄く、下端のバーが縮み切ると有効（reduced-motion では動かさない）。 */
+  body.bf-game .counter-window-bar [aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+  body.bf-game .counter-window-bar[data-guard="1"] .cwb-pass::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: var(--m-accent);
+    transform-origin: left;
+    animation: cwb-guard 0.5s linear forwards;
+  }
+  body.bf-game .dock-slot .counter-window-bar.is-waiting {
+    display: flex;
+    grid-template-areas: none;
+    justify-content: center;
+    min-height: 44px;
+    align-items: center;
+    width: auto;
+    font-size: 13px;
+  }
+  /* 保留中（攻撃/行動）: ターン帯のフェイズの丸を「保留中」の案内に差し替える。 */
+  body.bf-game .status-strip.is-pending .phase-steps { display: none; }
+  body.bf-game .status-strip.is-pending::after {
+    content: attr(data-pending);
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgb(var(--c-monster-rgb) / 0.18);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+  }
+}
+@keyframes cwb-guard {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.bf-game .counter-window-bar[data-guard="1"] .cwb-pass::after { animation: none; transform: scaleX(0.5); }
+}
+
+@media (max-width: 640px) {
+  /* ===== step4: カードシート（タップ＝詳細全文＋今できる操作 / 長押し＝見るだけ） ===== */
+  body.bf-game #cardSheet .card-sheet-body { gap: 10px; }
+  body.bf-game #cardSheet .card-sheet-body > header h2 { font-size: 16px; }
+  body.bf-game #cardSheet .card-sheet-detail {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    grid-template-areas:
+      "fig head"
+      "fig rules"
+      "info info"
+      "soul soul";
+    align-content: start;
+    gap: 6px 10px;
+    max-height: min(52dvh, 460px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  body.bf-game #cardSheet .card-sheet-detail > * { min-width: 0; }
+  body.bf-game #cardSheet .card-sheet-figure { grid-area: fig; align-self: start; }
+  body.bf-game #cardSheet .card-sheet-figure .card-img { width: 92px; height: auto; max-height: 132px; object-fit: contain; border-radius: 6px; }
+  body.bf-game #cardSheet .card-sheet-detail:not(:has(.card-sheet-figure)) { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "rules" "info" "soul"; }
+  body.bf-game #cardSheet .card-sheet-detail .tooltip-head { grid-area: head; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+  body.bf-game #cardSheet .card-sheet-detail .tooltip-head strong { font-size: 14px; }
+  body.bf-game #cardSheet .card-sheet-detail .tooltip-head span { font-size: 11px; color: var(--muted); }
+  body.bf-game #cardSheet .card-sheet-detail .tooltip-rules { grid-area: rules; margin: 0; }
+  body.bf-game #cardSheet .card-sheet-detail .tooltip-rules ul { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: var(--text); }
+  body.bf-game #cardSheet .card-sheet-detail .tooltip-soul { grid-area: soul; }
+  body.bf-game #cardSheet .card-sheet-detail dl {
+    grid-area: info;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    margin: 0;
+  }
+  body.bf-game #cardSheet .card-sheet-detail dl div { padding: 3px 6px; }
+  body.bf-game #cardSheet .card-sheet-detail dt { font-size: 11px; }
+  body.bf-game #cardSheet .card-sheet-detail dd { font-size: 12px; }
+  body.bf-game #cardSheet .card-sheet-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  body.bf-game #cardSheet .card-sheet-actions > .card-sheet-empty,
+  body.bf-game #cardSheet .card-sheet-call,
+  body.bf-game #cardSheet .card-sheet-footer { grid-column: 1 / -1; }
+  body.bf-game #cardSheet .card-sheet-action { min-height: 48px; padding: 6px 10px; border-radius: 12px; font-size: 14px; }
+  body.bf-game #cardSheet .card-sheet-action.primary { border: 0; background: var(--m-accent); color: var(--m-on-accent); }
+  body.bf-game #cardSheet .card-sheet-action.primary:disabled { opacity: 0.5; background: var(--btn-bg); color: var(--muted); }
+  body.bf-game .card-sheet-call { display: grid; gap: 6px; }
+  body.bf-game .card-sheet-call-head { font-size: 12px; color: var(--muted); }
+  body.bf-game .card-sheet-call-zones { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  body.bf-game .card-sheet-call-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    min-height: 64px;
+    padding: 6px 8px;
+    border-radius: 12px;
+    text-align: left;
+  }
+  body.bf-game .card-sheet-call-zone[aria-checked="true"] { border: 2px solid var(--m-accent); background: rgb(245 184 61 / 0.14); }
+  body.bf-game .card-sheet-call-zone .cz-name { font-size: 14px; font-weight: 700; }
+  body.bf-game .card-sheet-call-zone .cz-now { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--muted); }
+  body.bf-game .card-sheet-call-zone .cz-size { font-family: var(--m-num); font-size: 12px; }
+  body.bf-game .card-sheet-call-zone .cz-size.over { color: rgb(var(--c-monster-rgb)); font-weight: 700; }
+  body.bf-game .card-sheet-call-note { margin: 0; min-height: 1.4em; font-size: 12px; color: var(--text-2); }
+  body.bf-game .card-sheet-footer { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 8px; }
+  body.bf-game .card-sheet-cancel { min-height: 48px; border-radius: 12px; }
+  /* できない理由がある主要操作（攻撃・バディコール宣言）: 無効表示＋理由1行 */
+  body.bf-game #cardSheet .card-sheet-action.has-reason { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; opacity: 0.75; cursor: not-allowed; }
+  body.bf-game #cardSheet .card-sheet-reason { font-size: 12px; font-weight: 400; color: var(--muted); line-height: 1.35; }
+  body.bf-game .player-zone .zone.buddyzone-pile { cursor: pointer; }
+}
+
+@media (max-width: 640px) {
+  /* ===== step5: 選択＝非モーダルのドック（盤面は見えたまま・候補札を光らせて盤面でも選べる） ===== */
+  body.bf-game #selectionDialog.selection-dock,
+  body.bf-game #selectionDialog.selection-dock.selection-board-peek {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 90;
+    width: 100%;
+    max-width: 100%;
+    max-height: min(58dvh, 440px);
+    margin: 0;
+    padding: 10px var(--m-gutter) calc(8px + env(safe-area-inset-bottom, 0px));
+    border: 0;
+    border-top: 2px solid var(--m-accent);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -8px 24px rgb(0 0 0 / 0.35);
+    overflow: hidden;
+  }
+  body.bf-game #selectionDialog.selection-dock .selection-dialog-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "title title title"
+      "lead lead lead"
+      "list list list"
+      "cancel board confirm";
+    gap: 6px;
+    width: 100%;
+    max-height: calc(min(58dvh, 440px) - 20px);
+  }
+  body.bf-game #selectionDialog.selection-dock header,
+  body.bf-game #selectionDialog.selection-dock .selection-dialog-tools,
+  body.bf-game #selectionDialog.selection-dock .selection-dialog-actions { display: contents; }
+  body.bf-game #selectionDialog.selection-dock #selectionDialogTitle { grid-area: title; font-size: 15px; }
+  body.bf-game #selectionDialog.selection-dock .selection-dialog-lead { grid-area: lead; display: block; font-size: 12px; line-height: 1.4; }
+  body.bf-game #selectionDialog.selection-dock .selection-dialog-preview { display: none; }
+  body.bf-game #selectionDialog.selection-dock .selection-dialog-list {
+    grid-area: list;
+    display: grid;
+    max-height: none;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  body.bf-game #selectionDialog.selection-dock .selection-choice { grid-template-columns: 28px minmax(0, 1fr) auto; min-height: 48px; gap: 8px; }
+  /* 名前は折り返して全文、区別に要る note（行き先・コール先など）は名前の下に太字で必ず出す。書誌情報は最後に1行。 */
+  body.bf-game #selectionDialog.selection-dock .selection-choice-name { display: block; overflow-wrap: anywhere; white-space: normal; line-height: 1.3; }
+  body.bf-game #selectionDialog.selection-dock .selection-choice-note { display: block; margin-top: 2px; overflow-wrap: anywhere; white-space: normal; font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.3; }
+  body.bf-game #selectionDialog.selection-dock .selection-choice-meta { display: none; }
+  body.bf-game #selectionDialog.selection-dock .selection-choice-biblio { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--muted); }
+  body.bf-game #selectionDialog.selection-dock .selection-choice-type[data-type="choice"] { display: none; }
+  body.bf-game #selectionDialog.selection-dock #selectionCancelButton { grid-area: cancel; }
+  body.bf-game #selectionDialog.selection-dock #selectionBoardButton { grid-area: board; }
+  body.bf-game #selectionDialog.selection-dock #selectionConfirmButton { grid-area: confirm; border: 0; background: var(--m-accent); color: var(--m-on-accent); font-weight: 700; }
+  body.bf-game #selectionDialog.selection-dock #selectionConfirmButton:disabled { background: var(--btn-bg); color: var(--muted); }
+  body.bf-game #selectionDialog.selection-dock #selectionCancelButton,
+  body.bf-game #selectionDialog.selection-dock #selectionBoardButton,
+  body.bf-game #selectionDialog.selection-dock #selectionConfirmButton { min-height: 48px; border-radius: 12px; font-size: 14px; }
+  /* 一覧を畳む（盤面で選ぶ）: 見出し・案内・ボタンだけ残す */
+  body.bf-game #selectionDialog.selection-dock.selection-board-peek .selection-dialog-list { display: none; }
+  body.bf-game #selectionDialog.selection-dock.selection-board-peek .selection-dialog-lead,
+  body.bf-game #selectionDialog.selection-dock.selection-board-peek .selection-dialog-actions { display: contents; }
+  /* 盤面の候補札（形＋色）: 点線の金枠、選んだ札は実線＋「選択中」 */
+  body.bf-game .player-zone .zone.selection-candidate { outline: 2px dashed var(--m-accent); outline-offset: -3px; }
+  body.bf-game .player-zone .zone.selection-picked { outline: 3px solid var(--m-accent); }
+  body.bf-game .player-zone .zone.selection-picked::after {
+    content: "選択中";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: var(--m-accent);
+    color: var(--m-on-accent);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  /* 攻撃/効果の対象選択中: 指示帯は下のドックの位置（キャンセル＝左下）。盤面は全部見えたまま */
+  body.bf-game.targeting-active .targeting-banner {
+    position: fixed;
+    inset: auto 0 0 0;
+    transform: none;
+    z-index: 70;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    max-width: none;
+    min-height: calc(var(--m-dock-h) + 4px);
+    padding: 6px var(--m-gutter) calc(6px + env(safe-area-inset-bottom, 0px));
+    border: 0;
+    border-top: 2px solid var(--m-accent);
+    border-radius: 0;
+    background: var(--panel);
+    font-size: 14px;
+  }
+  body.bf-game.targeting-active .targeting-banner #targetingText { flex: 1 1 auto; min-width: 0; line-height: 1.35; }
+  body.bf-game.targeting-active .targeting-banner .targeting-cancel { min-height: 52px; min-width: 112px; border-radius: 14px; font-size: 14px; }
+}
+
+@media (max-width: 640px) {
+  /* ===== QA修正2: 見た目の細部 ===== */
+  /* フラッグのチップ名は左詰め・末尾…（左から切れていた） */
+  body.bf-game .flag-item-zone .flag-layer { justify-content: flex-start; overflow: hidden; }
+  body.bf-game .flag-item-zone .flag-caption { flex: 1 1 auto; overflow: hidden; justify-items: stretch; place-items: stretch; }
+  body.bf-game .flag-item-zone .flag-caption .stack-layer-name { width: 100%; max-width: 100%; justify-self: stretch; }
+  body.bf-game .flag-item-zone .flag-item-stack:not(.has-item) .flag-layer { flex: 1 1 auto; }
+  /* ソウルバッジは常に上段（S表記の左）。防御力・攻撃力の数字に重ねない */
+  body.bf-game .player-zone .zone .card .card-stack-peek { top: 2px !important; bottom: auto !important; right: 28px !important; padding: 0 6px !important; }
+  body.bf-game .player-zone .zone.field:has(.card-stack-peek)::before { max-width: calc(100% - 100px); overflow: hidden; text-overflow: ellipsis; }
+  /* 「選択中」は位置名の段に出す（数字を隠さない） */
+  body.bf-game .player-zone .zone.selection-picked::after { top: 4px; left: 6px; transform: none; padding: 1px 8px; font-size: 11px; }
+  /* 対抗窓・選択ドックの間はフェイズ進行の主役を出さない（窓/ドックのボタンが代わり） */
+  body.bf-game.counter-window-open .action-panel .action-grid button,
+  body.bf-game.selection-dock-open .action-panel .action-grid button { display: none !important; }
+  /* 360px 級でもターン表示の名前を残す: 現在フェイズは短い表記 */
+  body.bf-game .status-strip .turn-card { flex: 1 1 auto; }
+  body.bf-game .status-strip .turn-card strong { overflow: hidden; text-overflow: ellipsis; }
+  body.bf-game .status-strip .phase-steps { flex: 0 0 auto; }
+  /* デッキ選択モーダル: セレクトが右にはみ出さない */
+  body.bf-game .dp-select-row { flex-wrap: wrap; }
+  body.bf-game .dp-select-row label { max-width: 100%; min-width: 0; }
+  body.bf-game .dp-select-row select { max-width: 100%; min-width: 0; flex: 1 1 auto; }
+  body.bf-game .dp-select-row label > span { flex: none; white-space: nowrap; }
+  /* リプレイの再生コントロール（スマホ）: ☰/ログ・再生3ボタン・状態の3段 */
+  body.bf-game .replay-controls { flex-wrap: wrap; row-gap: 6px; height: auto; padding-top: 6px; padding-bottom: 6px; }
+  body.bf-game .replay-controls .dock-tools { flex: 1 1 100%; }
+  body.bf-game .replay-controls > button { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 4px 6px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body.bf-game .replay-controls .replay-status,
+  body.bf-game .replay-controls .replay-meta { flex: 1 1 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+  /* 手札の札名は3行まで（高い画面）。区別できる長さを確保 */
+  body.bf-game .hand-list .card { height: 108px; }
+  body.bf-game .hand-list .card .ht-name { -webkit-line-clamp: 3; max-height: calc(3.9em + 2px); letter-spacing: -0.02em; }
+}
+@media (max-width: 640px) and (max-height: 720px) {
+  body.bf-game .hand-list .card { height: 80px; }
+  body.bf-game .hand-list .card .ht-name { -webkit-line-clamp: 2; max-height: calc(2.6em + 2px); }
+}
+
+/* 幅の狭い端末（360px 級）: 数字と手札の余白を少し詰める。 */
+@media (max-width: 374px) {
+  body.bf-game { --m-gutter: 10px; }
+  body.bf-game .player-zone .zone.field:not(.item) .bt-row b { font-size: 17px; }
+  body.bf-game .player-zone .zone.field:not(.item) .bt-stats { padding-left: 6px; padding-right: 6px; }
+  body.bf-game .hand-list .card .ht-name,
+  body.bf-game .hand-list .card .ht-foot,
+  body.bf-game .hand-list .card .ht-foot2 { padding-left: 3px; padding-right: 3px; }
+  body.bf-game .hand-list .card .ht-foot { letter-spacing: -0.03em; }
+}
+
+/* 低い画面（Safari のツールバー表示時 390x664 など）: 手札タイルを詰め、ヘッダーとステータスを薄くする。 */
+@media (max-width: 640px) and (max-height: 720px) {
+  body.bf-game .hand-list .card { height: 72px; }
+  body.bf-game .hand-list .card .ht-foot2 { display: none; }
+  body.bf-game .hand-list .card .ht-name { -webkit-line-clamp: 2; }
+  body.bf-game .hand-header { height: 18px; }
+  body.bf-game .fighter-panel { min-height: 40px; padding-top: 2px; padding-bottom: 2px; }
+  body.bf-game .fighter-panel .stat-line strong { font-size: 28px; }
+  body.bf-game .status-strip { height: 34px; }
+  body.bf-game .player-zone { padding-top: 4px; padding-bottom: 4px; gap: 4px; }
+  body.bf-game .player-zone .zone.field:not(.item) .bt-name { -webkit-line-clamp: 2; }
+}
+
+/* 横向きのスマホ（タッチ・高さが小さい）: 対戦画面は縦向き専用。崩れたPCレイアウトの代わりに案内を出す。 */
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  body.bf-game .rotate-notice {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px;
+    background: var(--bg);
+    color: var(--text);
+    text-align: center;
+  }
+  body.bf-game .rotate-notice-main { font-size: 1.3rem; font-weight: 800; }
+  body.bf-game .rotate-notice-sub { color: var(--muted); font-size: 0.9rem; }
+  body.bf-game > main { visibility: hidden; }
+}
+
+/* ===== プレイテスト T8 修正（選択ドック・二択確認・ソウルバッジ・無効なコール先） ===== */
+/* 二択の確認（showConfirmChoiceDialog）: 候補タップで即確定するので「決定」「キャンセル」は出さない（PC/スマホ共通）。 */
+#selectionDialog.selection-instant #selectionConfirmButton,
+#selectionDialog.selection-instant #selectionCancelButton,
+#selectionDialog.selection-instant .selection-dialog-preview { display: none; }
+/* PC の選択ダイアログ: 本文（680px）が dialog の既定上限（620px）より広く、右端（キャンセル）が切れて横スクロールしていた。 */
+#selectionDialog:not(.selection-dock) { max-width: min(720px, calc(100vw - 28px)); }
+#selectionDialog:not(.selection-dock) .selection-dialog-body { width: min(680px, calc(100vw - 28px - 2em)); }
+@media (max-width: 640px) {
+  body.bf-game #selectionDialog.selection-dock.selection-instant #selectionBoardButton { grid-column: 1 / -1; }
+  body.bf-game #selectionDialog.selection-dock.selection-instant .selection-choice { min-height: 52px; font-size: 15px; }
+  /* 候補行: 高さを中身で決める（ドックの高さに合わせて行が縮み、3行目＝書誌が次の行に重なっていた）。 */
+  body.bf-game #selectionDialog.selection-dock .selection-dialog-list { grid-auto-rows: max-content; align-content: start; }
+  body.bf-game #selectionDialog.selection-dock .selection-choice { height: auto; overflow: hidden; }
+  body.bf-game #selectionDialog.selection-dock .selection-choice-main { min-width: 0; overflow: hidden; }
+  body.bf-game #selectionDialog.selection-dock .selection-choice-type { align-self: center; max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* ソウルバッジは表示だけ（札のタップ＝カードシート。ソウルはシートの「ソウルを見る」から）。 */
+  body.bf-game .player-zone .zone .card .card-stack-peek { pointer-events: none; }
+  body.bf-game .player-zone .zone .card .card-stack-peek::before { content: none; display: none; }
+  /* コール先: できない枠は無効表示＋理由1行。 */
+  body.bf-game .card-sheet-call-zone:disabled { opacity: 0.55; cursor: not-allowed; }
+  body.bf-game .card-sheet-call-zone .cz-reason { max-width: 100%; font-size: 11px; line-height: 1.3; color: var(--muted); white-space: normal; overflow-wrap: anywhere; }
+}
+
+/* pt-final(5): スマホの盤面のソウル枚数はステータス欄（防の右／アイテムは先頭）に出す。上段のバッジが位置名
+   （レフト/センター）を「レ…」に潰し、アイテム枠では名前に重なっていた。PC は従来のバッジのまま。 */
+@media (max-width: 640px) {
+  body.bf-game .player-zone .zone .card:has(.bt-soul) > .card-stack-peek { display: none !important; }
+  body.bf-game .player-zone .zone.field:not(.item):has(.bt-soul)::before { max-width: calc(100% - 40px); }
+  body.bf-game .player-zone .zone.field:not(.item) .bt-def { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-width: 0; }
+  body.bf-game .bt-soul {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--peek-text);
+    line-height: 1.2;
+  }
+  body.bf-game .player-zone .zone.field .bt-soul i { font-style: normal; font-size: 11px; font-weight: 700; color: var(--peek-text); }
+  body.bf-game .player-zone .zone.field .bt-soul b { margin-left: 1px; font-family: var(--m-num); font-size: 13px !important; font-weight: 800; color: var(--peek-text); }
+  body.bf-game .flag-item-zone .item-layer .bt-stats .bt-soul { display: inline; margin-right: 6px; }
+  body.bf-game .flag-item-zone .item-layer .bt-stats .bt-soul i { font-size: 11px; }
+  body.bf-game .flag-item-zone .item-layer .bt-stats .bt-soul b { font-size: 11px !important; }
+}
+
+/* pt-final(1): 一覧の「使用」（配置魔法）/「発動」（ドロップ）を今使えない時: 無効表示＋理由1行。 */
+.drop-dialog-activate.has-reason {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--btn-bg);
+  color: var(--muted);
+}
+.drop-dialog-activate.has-reason .card-sheet-reason {
+  font-size: 0.72em;
+  font-weight: 400;
+  line-height: 1.3;
+  white-space: normal;
+  text-align: left;
+}
+
+/* ===== phone-art: カードの絵（オーナー要望「カードの見た目を楽しむ」「盤面や手札が画像なしだと寂しい」） =====
+   PC は従来どおり。<img width/height> は読込前の枠取り用で、高さは CSS の auto（:where で詳細度0＝既存の高さ指定が勝つ）。 */
+:where(.card-img) { height: auto; }
+/* カード裏面（伏せ札・裏向きの束）。画像もカード情報も持たない CSS だけの絵。 */
+.card-back {
+  display: block;
+  position: relative;
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 50% 50%, rgb(255 214 128 / 0.95) 0 7%, transparent 7.6%),
+    radial-gradient(circle at 50% 50%, transparent 0 15%, rgb(255 214 128 / 0.6) 15.6% 17.4%, transparent 18%),
+    radial-gradient(circle at 50% 50%, rgb(120 160 255 / 0.28), transparent 46%),
+    repeating-linear-gradient(45deg, rgb(255 255 255 / 0.05) 0 5px, transparent 5px 10px),
+    repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.05) 0 5px, transparent 5px 10px),
+    linear-gradient(160deg, #22377a, #0c1434 58%, #2b1446);
+  box-shadow: inset 0 0 0 2px rgb(255 214 128 / 0.55), inset 0 0 0 4px #0c1434, inset 0 0 0 5px rgb(255 214 128 / 0.28);
+}
+.card > .card-back {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: 160 / 224;
+}
+
+@media (max-width: 640px) {
+  body.bf-game {
+    --art-band-rgb: 7 10 20;
+    --art-band: rgb(var(--art-band-rgb) / 0.84);
+    --art-label: #c9d4ea;
+    --art-text: #ffffff;
+    --art-shadow: 0 1px 2px rgb(0 0 0 / 0.95), 0 0 1px rgb(0 0 0 / 0.9);
+  }
+
+  /* --- 盤面のモンスター枠: 絵を全面に敷き、下端に半透明の濃色帯（攻/打・防/ソ/サイズ）。名前は出さない（絵が担う） --- */
+  body.bf-game .player-zone .zone.field:not(.item) > .card:is(.has-art, .face-hidden) {
+    padding: 0;
+    border-top-width: 3px;
+    background: rgb(var(--art-band-rgb));
+  }
+  body.bf-game .player-zone .zone.field:not(.item) > .card.face-hidden > .card-back {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    border-radius: 0;
+  }
+  /* 絵の切り取り（縦長カード 160x224）: イラスト部分（カードの縦 5〜60%・横 15〜100%＝左のステータス欄と
+     下の効果欄を外す）を枠に合わせて拡大する。画像は枠幅の 150%（縦横比そのまま）・左へ 35% ずらし・上を 5% 切る。
+     枠の高さが足りない時はイラストの上側から見せる（効果欄・フレーバーは帯の下に隠れる位置まで）。 */
+  body.bf-game .player-zone .zone.field:not(.item) > .card.has-art:not(.landscape) > .card-img {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: -35%;
+    z-index: 0;
+    width: 150%;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    aspect-ratio: 160 / 224;
+    object-fit: fill;
+    border-radius: 0;
+    transform: translateY(-5%);
+  }
+  /* 横長カード（必殺モンスター 160x115）: イラストは中央寄り。cover で枠を埋め、中央上寄りを 1.25 倍に。 */
+  body.bf-game .player-zone .zone.field:not(.item) > .card.has-art.landscape > .card-img {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    aspect-ratio: auto;
+    object-fit: cover;
+    object-position: 50% 35%;
+    border-radius: 0;
+    transform: scale(1.25);
+    transform-origin: 50% 35%;
+  }
+  body.bf-game .player-zone .zone.field:not(.item) > .card:is(.has-art, .face-hidden) .bt-name { display: none; }
+  body.bf-game .player-zone .zone.field:not(.item) > .card:is(.has-art, .face-hidden) .bt-stats {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    padding: 3px 7px 4px;
+    border-top: 0;
+    background: var(--art-band);
+    box-shadow: 0 -10px 10px -3px rgb(var(--art-band-rgb) / 0.55);
+    text-shadow: var(--art-shadow);
+  }
+  body.bf-game .player-zone .zone.field:not(.item) > .card:is(.has-art, .face-hidden) .bt-stats i { color: var(--art-label); }
+  body.bf-game .player-zone .zone.field:not(.item) > .card:is(.has-art, .face-hidden) .bt-stats b { color: var(--art-text); }
+  body.bf-game .player-zone .zone.field:not(.item) > .card:is(.has-art, .face-hidden) .bt-soul :is(i, b) { color: #ffd98a; }
+  /* 位置名（相手ライト等）は上端に小さく、絵の上でも読める濃色の札にする。 */
+  body.bf-game .player-zone .zone.field:not(.item):has(> .card:is(.has-art, .face-hidden))::before {
+    top: 5px;
+    left: 5px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgb(var(--art-band-rgb) / 0.74);
+    color: var(--art-text);
+  }
+  /* サイズ（S3）: 帯の防の段の右端に大きく。文字タイル（絵の読込前・絵なし）でも同じ位置。 */
+  body.bf-game .player-zone .zone.field .bt-def-r { display: inline-flex; align-items: baseline; gap: 5px; flex: none; }
+  body.bf-game .player-zone .zone.field .bt-def-r .bt-soul { flex: none; overflow: visible; }
+  body.bf-game .player-zone .zone.field .bt-sz { flex: none; white-space: nowrap; }
+  body.bf-game .player-zone .zone.field:not(.item) .bt-sz b { font-size: min(15px, 12.5cqw); font-weight: 800; }
+  /* 防の段（防・ソ・S）は 360px 級の枠でも右端が切れないよう、枠の幅（cqw）に合わせて縮める。 */
+  body.bf-game .player-zone .zone.field:not(.item) .bt-def b { font-size: min(14px, 11.5cqw); }
+  body.bf-game .player-zone .zone.field:not(.item) .bt-def-r .bt-soul b { font-size: min(13px, 11cqw) !important; }
+  body.bf-game .player-zone .zone.field:not(.item) .bt-def-r { gap: min(5px, 3cqw); }
+  body.bf-game .player-zone .zone.field .bt-soul-only { display: flex; gap: 6px; justify-content: flex-end; }
+
+  /* --- 状態表示は絵の上に重ねる（絵が inset の枠/影を覆うため、枠は ::after の重ね板で描く） --- */
+  body.bf-game .card:is(.has-art, .face-hidden)::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+  body.bf-game .card:is(.has-art, .face-hidden).selected::after { box-shadow: inset 0 0 0 3px var(--warn); }
+  body.bf-game .card:is(.has-art, .face-hidden).linked::after { box-shadow: inset 0 0 0 3px rgb(56 225 198); }
+  body.bf-game .card:is(.has-art, .face-hidden):is(.counter-playable, .counter-window-usable)::after,
+  body.bf-game .zone.counter-window-usable > .card:is(.has-art, .face-hidden)::after {
+    box-shadow: inset 0 0 0 2px #5bd08a, inset 0 0 12px 1px rgb(91 208 138 / 0.85);
+  }
+  /* 枠単位の強調（攻撃対象・効果対象・選択候補/選択中・センター在席）。枠の outline は絵（z-index の付いた子）の下に
+     描かれて見えなくなるため、絵のある札では札の重ね板（::after）に同じ枠を描き直す。 */
+  /* センター在席の細い縁は「何も状態が無い時の既定」。:where で詳細度を 0 にし、選択中・連携・対抗の光（下の規則）に必ず負ける
+     （以前は (0,6,2) でこれらの box-shadow を上書きし、センターの札だけ選択中/連携/対抗の光が出なかった）。 */
+  :where(body.bf-game .player-zone .zone.center-occupied) > :where(.card.has-art, .card.face-hidden)::after { box-shadow: inset 0 0 0 1px var(--warn); }
+  body.bf-game .player-zone .zone:is(.attack-target-candidate, .attack-target-highlight) > .card:is(.has-art, .face-hidden)::after {
+    outline: 3px double #ff5d6c;
+    outline-offset: -4px;
+    box-shadow: inset 0 0 14px rgb(255 93 108 / 0.65);
+  }
+  body.bf-game .player-zone .zone.effect-target-candidate > .card:is(.has-art, .face-hidden)::after {
+    outline: 3px solid rgb(56 225 198);
+    outline-offset: -3px;
+    box-shadow: inset 0 0 14px rgb(56 225 198 / 0.55);
+  }
+  /* 選択候補の金の点線/選択中の実線: 黄・橙の絵の上でも見えるよう、下に暗い縁（inset の影）を敷く。 */
+  body.bf-game .player-zone .zone.selection-candidate > .card:is(.has-art, .face-hidden)::after {
+    outline: 2px dashed var(--m-accent);
+    outline-offset: -3px;
+    box-shadow: inset 0 0 0 5px rgb(var(--art-band-rgb) / 0.8);
+  }
+  body.bf-game .player-zone .zone.selection-picked > .card:is(.has-art, .face-hidden)::after {
+    outline: 3px solid var(--m-accent);
+    outline-offset: -3px;
+    box-shadow: inset 0 0 0 6px rgb(var(--art-band-rgb) / 0.8);
+  }
+  /* 「選択中」ラベルは位置名のピルの下の段へ（重ねない）。 */
+  body.bf-game .player-zone .zone.field:not(.item).selection-picked::after { top: 27px; left: 5px; right: auto; }
+  /* レスト: 絵を暗く・脱色し、絵の中央に「レスト」札（帯の数字は暗くしない）。 */
+  body.bf-game .card.used:is(.has-art, .face-hidden) { opacity: 1; filter: none; }
+  body.bf-game .card.used.has-art > .card-img,
+  body.bf-game .card.used.face-hidden > .card-back { filter: grayscale(0.8) brightness(0.5); }
+  body.bf-game .player-zone .card > .m-rest {
+    display: block;
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    padding: 2px 10px;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.5);
+    border-radius: 999px;
+    background: #f5b83d;
+    color: #1a1205;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.35;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  body.bf-game .flag-item-zone .item-layer { position: relative; overflow: hidden; }
+  body.bf-game .flag-item-zone .item-layer > .m-rest { top: 50%; left: auto; right: 4px; transform: translateY(-50%); padding: 1px 6px; }
+
+  /* --- アイテム枠（フラッグ＋装備）: 細い帯なので絵は背景に敷き、名前とステータスを濃色の板の上に残す --- */
+  body.bf-game .flag-item-zone .flag-layer.has-art { position: relative; overflow: hidden; }
+  body.bf-game .flag-item-zone .flag-layer.has-art > .flag-img {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 50% 40%;
+    border-radius: 0;
+    transform: scale(1.3);
+    transform-origin: 50% 40%;
+  }
+  body.bf-game .flag-item-zone .flag-layer.has-art .flag-caption {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    background: rgb(var(--art-band-rgb) / 0.66);
+  }
+  body.bf-game .flag-item-zone .flag-layer.has-art .stack-layer-name { color: var(--art-text); text-shadow: var(--art-shadow); }
+  body.bf-game .flag-item-zone .item-layer.has-art { background: rgb(var(--art-band-rgb)); }
+  body.bf-game .flag-item-zone .item-layer.has-art > .card-img {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    object-fit: cover;
+    object-position: 50% 28%;
+    border-radius: 0;
+  }
+  body.bf-game .flag-item-zone .item-layer.has-art::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(90deg, rgb(var(--art-band-rgb) / 0.86), rgb(var(--art-band-rgb) / 0.7));
+    pointer-events: none;
+  }
+  body.bf-game .flag-item-zone .item-layer.has-art > .m-tile-part { position: relative; z-index: 2; color: var(--art-text); text-shadow: var(--art-shadow); }
+  body.bf-game .flag-item-zone .item-layer.has-art .bt-stats,
+  body.bf-game .flag-item-zone .item-layer.has-art .bt-stats i { color: var(--art-label); }
+  body.bf-game .flag-item-zone .item-layer.has-art .bt-stats b { color: var(--art-text); }
+  body.bf-game .flag-item-zone .item-layer.has-art .bt-soul :is(i, b) { color: #ffd98a; }
+  /* 装備アイテムの細い帯: 攻・打・防（＋ソ）が 360px 幅でも全部見えるよう、詰めた1行（名前は省略…で縮める）。 */
+  body.bf-game .flag-item-zone .flag-item-stack.has-item .flag-layer { flex: 0 1 28%; }
+  /* 装備中はフラッグを絵だけの小さな札にする（ワールド名はヘッダーのワールド札に常時出ている。名前は読み上げ用に残す）。 */
+  body.bf-game .flag-item-zone .flag-item-stack.has-item .flag-layer.has-art { flex: 0 0 30px; width: 30px; padding: 0; }
+  body.bf-game .flag-item-zone .flag-item-stack.has-item .flag-layer.has-art .flag-caption { background: none; }
+  body.bf-game .flag-item-zone .flag-item-stack.has-item .flag-layer.has-art .stack-layer-name {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  body.bf-game .flag-item-zone .flag-item-stack.has-item { gap: 4px; }
+  body.bf-game .flag-item-zone .item-layer,
+  body.bf-game .flag-item-zone .item-layer-stacked { padding-left: 5px; padding-right: 5px; }
+  body.bf-game .flag-item-zone .item-layer .bt-stats { display: flex; gap: 0 4px; overflow: hidden; white-space: nowrap; letter-spacing: -0.02em; }
+  /* 名前の段の右端にソウル枚数（.bt-isoul）、下の段に攻・打・防。帯の外へはみ出さない（隣のゾーンの当たり判定を奪わない）。 */
+  body.bf-game .flag-item-zone .item-layer:has(> .bt-isoul) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-content: center;
+    column-gap: 4px;
+  }
+  body.bf-game .flag-item-zone .item-layer > .bt-isoul { display: block; grid-column: 2; grid-row: 1; align-self: center; font-size: 11px; line-height: 1.2; white-space: nowrap; }
+  body.bf-game .flag-item-zone .item-layer:has(> .bt-isoul) > .bt-name { grid-column: 1; grid-row: 1; }
+  body.bf-game .flag-item-zone .item-layer:has(> .bt-isoul) > .bt-stats { grid-column: 1 / -1; grid-row: 2; }
+  body.bf-game .flag-item-zone .item-layer > .bt-isoul .bt-soul { display: inline; color: var(--peek-text); }
+  body.bf-game .flag-item-zone .item-layer > .bt-isoul .bt-soul i { font-style: normal; font-size: 11px; font-weight: 700; }
+  body.bf-game .flag-item-zone .item-layer > .bt-isoul .bt-soul b { font-family: var(--m-num); font-size: 11px; font-weight: 800; margin-left: 1px; }
+  body.bf-game .flag-item-zone .item-layer.has-art > .bt-isoul .bt-soul { color: #ffd98a; }
+  body.bf-game .flag-item-zone .item-layer .bt-stats .bt-row { display: contents; }
+  body.bf-game .flag-item-zone .item-layer .bt-stats .bt-row > span,
+  body.bf-game .flag-item-zone .item-layer .bt-stats .bt-def,
+  body.bf-game .flag-item-zone .item-layer .bt-stats .bt-soul { display: inline; flex: none; margin: 0; }
+  body.bf-game .flag-item-zone .item-layer .bt-stats i { margin-right: 1px; }
+
+  /* --- 補助ゾーン（ドロップ=一番上の札・配置魔法=一番上の札/伏せは裏面・バディゾーン=裏面）: 絵の上にラベル＋枚数 --- */
+  body.bf-game .player-zone .zone > .m-pile-art:is(.has-art, .is-back) {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    max-height: none;
+    overflow: hidden;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+  body.bf-game .player-zone .zone > .m-pile-art > :is(.card-img, .card-back) {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    object-fit: cover;
+    object-position: 50% 18%;
+    border-radius: 0;
+  }
+  body.bf-game .player-zone .zone > .m-pile-art.has-art::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgb(var(--art-band-rgb) / 0.62);
+  }
+  body.bf-game .player-zone .zone > .m-pile-art.is-back > .card-back { box-shadow: inset 0 0 0 2px rgb(255 214 128 / 0.45); }
+  body.bf-game .player-zone .zone.pile::before,
+  body.bf-game .player-zone .zone.pile::after,
+  body.bf-game .player-zone .zone.set-pile::before,
+  body.bf-game .player-zone .zone.set-pile::after,
+  body.bf-game .player-zone .zone.buddyzone-pile::before,
+  body.bf-game .player-zone .zone.buddyzone-pile::after { position: relative; z-index: 1; }
+  body.bf-game .player-zone .zone:has(> .m-pile-art:is(.has-art, .is-back)) { border-style: solid; }
+  body.bf-game .player-zone .zone:has(> .m-pile-art:is(.has-art, .is-back))::before,
+  body.bf-game .player-zone .zone:has(> .m-pile-art:is(.has-art, .is-back))::after { color: var(--art-text); text-shadow: var(--art-shadow); }
+  body.bf-game .player-zone .zone:has(> .m-pile-art.is-back)::before,
+  body.bf-game .player-zone .zone:has(> .m-pile-art.is-back)::after {
+    padding: 0 5px;
+    border-radius: 6px;
+    background: rgb(var(--art-band-rgb) / 0.72);
+  }
+
+  /* --- 手札: 実物の絵。左上にゲージコスト（G3）、右上に【対抗】、下端に名前1行。数値は絵とカードシートで見る --- */
+  body.bf-game .hand-list .card.has-art {
+    position: relative;
+    border-width: 3px 1px 1px;
+    background: rgb(var(--art-band-rgb));
+    overflow: hidden;
+  }
+  /* 手札の絵: カード全体を枠幅いっぱいに収めて上寄せ（オーナー要望「手札はアップでなく全体」）。下の余白に名前の帯が乗る。 */
+  body.bf-game .hand-list .card.has-art:not(.landscape) > .card-img {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    max-height: calc(100% - 18px);
+    aspect-ratio: 160 / 224;
+    object-fit: contain;
+    object-position: 50% 0;
+    border-radius: 0;
+    transform: none;
+  }
+  body.bf-game .hand-list .card.has-art.landscape > .card-img {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    width: 100%;
+    height: calc(100% - 18px);
+    max-height: none;
+    aspect-ratio: auto;
+    object-fit: contain;
+    object-position: 50% 50%;
+    border-radius: 0;
+    transform: none;
+  }
+  body.bf-game .hand-list .card.has-art > .m-tile-part { position: relative; z-index: 2; }
+  body.bf-game .hand-list .card.has-art .ht-top { position: absolute; top: 2px; left: 2px; right: 2px; height: auto; padding: 0; }
+  body.bf-game .hand-list .card.has-art .ht-cost {
+    padding: 0 4px;
+    border-radius: 5px;
+    background: rgb(var(--art-band-rgb) / 0.86);
+    color: #ffd27a;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+  body.bf-game .hand-list .card.has-art .ht-cost:empty { visibility: hidden; }
+  body.bf-game .hand-list .card.has-art .ht-ctr { background: #5bd08a; color: #062411; line-height: 1.35; }
+  body.bf-game .hand-list .card.has-art .ht-name {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: block;
+    max-height: none;
+    padding: 2px 4px 3px;
+    background: var(--art-band);
+    color: var(--art-text);
+    text-shadow: var(--art-shadow);
+    font-size: 11px;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: normal;
+    -webkit-line-clamp: none;
+  }
+  body.bf-game .hand-list .card.has-art :is(.ht-foot, .ht-foot2) { display: none; }
+  body.bf-game .hand-list .card.has-art.counter-playable { border-color: #5bd08a; }
+
+  /* --- カードシート: 先頭に大きなカード画像、その下に効果全文・情報・操作 --- */
+  /* 詳細欄の上限は従来どおり（52dvh）。大きな絵はこの中の先頭で、高さは画面の高さに連動（低い画面ほど小さく）。 */
+  body.bf-game #cardSheet .card-sheet-detail {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "fig" "head" "rules" "info" "soul";
+  }
+  body.bf-game #cardSheet .card-sheet-figure { justify-self: center; }
+  body.bf-game #cardSheet .card-sheet-figure .card-img {
+    width: auto;
+    height: clamp(120px, 100dvh - 560px, 236px);
+    max-height: none;
+    aspect-ratio: 160 / 224;
+    object-fit: contain;
+    border-radius: 8px;
+    background: rgb(var(--art-band-rgb) / 0.35);
+    box-shadow: 0 6px 18px rgb(0 0 0 / 0.4);
+  }
+  body.bf-game #cardSheet .card-sheet-figure.is-landscape .card-img { width: min(76vw, 300px, (100dvh - 560px) * 1.39); min-width: 160px; height: auto; aspect-ratio: 160 / 115; }
+}
+/* カードシート（スマホ）: 見出し・詳細・操作の縦並びをシートの高さ（92dvh）に収める。詳細欄だけが縮んでスクロールし、
+   操作ボタン（決定・キャンセル）は常に画面内（シート自体はスクロールしない＝二重スクロールにしない）。 */
+@media (max-width: 640px) {
+  body.bf-game #cardSheet .card-sheet-body {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(92dvh - 24px - env(safe-area-inset-bottom, 0px));
+    min-height: 0;
+  }
+  body.bf-game #cardSheet .card-sheet-body > header,
+  body.bf-game #cardSheet .card-sheet-actions { flex: none; }
+  body.bf-game #cardSheet .card-sheet-detail { flex: 0 1 auto; min-height: 0; }
+}
+/* 見るだけのシート（操作ボタンが無い）: 低い画面でも絵を大きめに。 */
+@media (max-width: 640px) {
+  body.bf-game #cardSheet.sheet-view-only .card-sheet-detail { max-height: min(72dvh, 620px); }
+  body.bf-game #cardSheet.sheet-view-only .card-sheet-figure .card-img { height: clamp(120px, 100dvh - 400px, 236px); }
+}
+/* 低い画面（390x664 など）の操作のあるシート: 絵はサムネ（従来の左 92px＋右に名前・効果）に戻し、操作ボタンを画面内に残す。 */
+@media (max-width: 640px) and (max-height: 740px) {
+  body.bf-game #cardSheet:not(.sheet-view-only) .card-sheet-detail {
+    grid-template-columns: 92px minmax(0, 1fr);
+    grid-template-areas:
+      "fig head"
+      "fig rules"
+      "info info"
+      "soul soul";
+  }
+  body.bf-game #cardSheet:not(.sheet-view-only) .card-sheet-detail:not(:has(.card-sheet-figure)) { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "rules" "info" "soul"; }
+  body.bf-game #cardSheet:not(.sheet-view-only) .card-sheet-figure { justify-self: start; }
+  body.bf-game #cardSheet:not(.sheet-view-only) .card-sheet-figure .card-img { width: 92px; height: auto; max-height: 132px; box-shadow: none; }
+  body.bf-game #cardSheet:not(.sheet-view-only) .card-sheet-figure.is-landscape .card-img { width: 92px; min-width: 0; }
+}
+/* 320px 級: 装備アイテムの攻・打・防を詰める（ラベル字を小さく）。 */
+@media (max-width: 340px) {
+  body.bf-game .flag-item-zone .item-layer .bt-stats { gap: 0 3px; letter-spacing: -0.04em; }
+  body.bf-game .flag-item-zone .item-layer .bt-stats i { font-size: 10px; }
+}
