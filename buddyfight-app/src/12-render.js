@@ -176,6 +176,29 @@ function renderDropZone(zoneButton, player) {
   zoneButton.textContent = `ドロップ ${player.drop.length}`;
   zoneButton.dataset.count = String(player.drop.length);
   zoneButton.title = "クリックして中身を確認";
+  // phone-art: スマホのチップに一番上（最後に置かれた）札の絵を敷く（ドロップは公開情報）。PC は .m-tile-part を出さない。
+  appendPileArt(zoneButton, player.drop[player.drop.length - 1] || null, false);
+}
+
+// phone-art: スマホの補助ゾーン（ドロップ/配置魔法/バディゾーン）のチップに敷く絵。faceDown=true は裏面（中身を出さない）。
+// .m-tile-part なので PC 幅では display:none（PC の見た目は不変）。
+function appendPileArt(zoneButton, card, faceDown) {
+  if ((!card && !faceDown) || !isPhoneLayout()) {
+    return; // PC は作らない（隠れた <img> でも画像パックを取りに行き、PC の取得量が増えるため）
+  }
+  const art = document.createElement("span");
+  art.className = "m-tile-part m-pile-art";
+  if (faceDown || isFaceHiddenCard(card)) {
+    art.classList.add("is-back");
+    art.append(createCardBackElement());
+  } else {
+    const img = createCardImageElement(card);
+    art.append(img);
+    if (img.dataset.art) {
+      art.classList.add("has-art");
+    }
+  }
+  zoneButton.append(art);
 }
 
 // Z2(S-UB-C03/0095他): バディゾーンの裏向きパイル表示。枚数は互いに常時公開（公式裁定Q2630）。
@@ -188,6 +211,8 @@ function renderBuddyZone(zoneButton, player) {
   zoneButton.classList.toggle("has-cards", count > 0);
   zoneButton.dataset.count = String(count);
   zoneButton.title = "裏向きカードの枚数（相手にも公開）";
+  // phone-art: 裏向きの束はカード裏面で見せる（中身は出さない＝持ち主の席でも盤面には裏面）。
+  appendPileArt(zoneButton, null, count > 0);
 }
 
 // rule-call-11: 『設置』の枚数に上限は無い。配置魔法は可変長の set 枠（set1, set2, set3, …）を1パイルに集約表示する
@@ -205,11 +230,18 @@ function renderSetPile(zoneButton, player) {
   const names = entries.map(({ card }) => (card.faceDown ? "（裏向き）" : card.name));
   zoneButton.title = `タップで配置魔法の一覧（${names.join("／")}）`;
   const top = entries[entries.length - 1].card;
-  if (!top.faceDown) {
+  if (!isFaceHiddenCard(top)) {
     const thumb = document.createElement("span");
-    thumb.className = "set-pile-thumb";
-    thumb.append(createCardImageElement(top));
+    // phone-art: スマホではこのサムネイルをチップ全面の絵（.m-pile-art）として使う（PC は従来のサムネイル）。
+    thumb.className = "set-pile-thumb m-pile-art";
+    const img = createCardImageElement(top);
+    thumb.append(img);
+    if (img.dataset.art) {
+      thumb.classList.add("has-art");
+    }
     zoneButton.append(thumb);
+  } else {
+    appendPileArt(zoneButton, null, true); // phone-art: 伏せ札はスマホのチップに裏面（中身は出さない）
   }
   const label = document.createElement("span");
   label.className = "set-pile-label";
@@ -380,6 +412,9 @@ function renderFlagItemZone(zoneButton, player) {
     const flagImg = createCardImageElement(flagImageCard);
     flagImg.classList.add("flag-img");
     flagLayer.classList.add("has-flag-img");
+    if (flagImg.dataset.art) {
+      flagLayer.classList.add("has-art"); // phone-art: スマホのフラッグ枠に絵を敷く（読込済みの時は最初から）
+    }
     flagLayer.append(flagImg);
   }
   const flagCaption = document.createElement("span");
@@ -671,7 +706,10 @@ function createCardElement(card, interactive = false) {
 
   // 必殺技・必殺モンスターは公式カードが横長なので、横長フレームで表示する。
   const landscape = ["impact", "impactMonster"].includes(displayType) ? " landscape" : "";
-  cardElement.className = `card ${displayType} ${interactive ? "hand-card" : "board-card"}${landscape}`;
+  // 裏向きの札は元の種類（モンスター/魔法…）・横長のクラスを付けない（枠の色や形から正体の手掛かりを出さない）。
+  cardElement.className = isFaceHiddenCard(card)
+    ? `card ${interactive ? "hand-card" : "board-card"}`
+    : `card ${displayType} ${interactive ? "hand-card" : "board-card"}${landscape}`;
   if (card.instanceId) {
     cardElement.dataset.instanceId = card.instanceId; // シンクライアント等が識別に使う
   }
@@ -692,8 +730,23 @@ function createCardElement(card, interactive = false) {
     cardElement.classList.add("used");
   }
   const soulNames = stackedCardNames(card);
-  // カード画像（ローカルWebP優先→公式URLフォールバック→プレースホルダ）。
-  cardElement.append(createCardImageElement(card));
+  // phone-art: 裏向き（伏せ設置・裏向きモンスター・伏せ札）は絵を出さずカード裏面にする。画像は card.id で引くため、
+  // 絵を出すと中身（カードの正体）が漏れる（ネット対戦の view は id を伏せたプレースホルダだが、ローカルは実カードのまま）。
+  const faceHidden = isFaceHiddenCard(card);
+  if (faceHidden) {
+    cardElement.classList.add("face-hidden");
+    cardElement.append(createCardBackElement());
+  } else {
+    // カード画像（ローカルWebP優先→公式URLフォールバック→プレースホルダ）。
+    const img = createCardImageElement(card);
+    if (interactive) {
+      img.loading = "eager"; // 手札は横スクロールの先も含めて先にデコード（スクロールした瞬間に空白を見せない。小さな WebP なので軽い）
+    }
+    cardElement.append(img);
+    if (img.dataset.art) {
+      cardElement.classList.add("has-art"); // 読込済みパックの絵＝最初の描画から絵のタイル（文字→絵のちらつき無し）
+    }
+  }
   if (interactive) {
     // 手札: 画像＋カード名（効果/コスト/ステータスはタップ時のポップアップ＝attachTooltip に任せる）。
     const name = document.createElement("span");
@@ -712,7 +765,14 @@ function createCardElement(card, interactive = false) {
       `<span class="st-crit">${statLabel(visibleCritical(card))}</span>`;
     cardElement.append(stats);
   }
-  appendMobileTileParts(cardElement, card, interactive);
+  appendMobileTileParts(cardElement, faceHidden ? { ...card, name: "（裏向き）" } : card, interactive);
+  if (card.used) {
+    // phone-art: スマホの盤面ではレストを札の上の「レスト」バッジでも示す（絵を暗くするだけだと見落とす）。PC は .m-tile-part 非表示。
+    const rest = document.createElement("span");
+    rest.className = "m-tile-part m-rest";
+    rest.textContent = "レスト";
+    cardElement.append(rest);
+  }
   if (soulNames.length) {
     const peek = document.createElement("span");
     peek.className = "card-stack-peek";
@@ -721,12 +781,15 @@ function createCardElement(card, interactive = false) {
     peek.dataset.soulPeek = "1";
     peek.setAttribute("role", "button");
     peek.tabIndex = 0;
-    peek.title = `タップしてソウルを見る: ${soulNames.join(" / ")}`;
+    // 裏向きのソウルは名前を出さない（ローカル対戦でも CPU 席などの伏せ札の正体を title から読めないように）。
+    const peekNames = (card.soul || []).map((soulCard) => (isFaceHiddenCard(soulCard) || !soulCard?.name ? "（裏向き）" : soulCard.name));
+    peek.title = `タップしてソウルを見る: ${peekNames.join(" / ")}`;
     peek.textContent = `ソウル ${soulNames.length}`;
     cardElement.append(peek);
   }
   // 手札カード(interactive=button)のみ、タッチ長押しでプレビュー（盤面のspanは対象外）。
-  attachTooltip(cardElement, card, { touchPreview: interactive });
+  // phone-art: スマホの手札の長押しは大きな絵の閲覧シート（phoneSheet）。PC/タブレット幅は従来のプレビュー。
+  attachTooltip(cardElement, card, { touchPreview: interactive, phoneSheet: interactive });
   return cardElement;
 }
 
@@ -823,24 +886,30 @@ function appendMobileTileParts(cardElement, card, interactive) {
     return;
   }
   part("bt-name", escapeHtml(card.name || ""));
-  if (isMonster && card.size !== undefined && card.size !== null) {
-    part("bt-size", `S${escapeHtml(statLabel(card.size))}`);
-  }
+  // phone-art: サイズはステータス帯（防の段の右端）に大きく出す（旧: 札の右上に小さく）。
+  const hasSize = isMonster && card.size !== undefined && card.size !== null;
+  const sizeChip = hasSize
+    ? `<span class="bt-sz" aria-label="サイズ${escapeHtml(statLabel(card.size))}"><i>S</i><b>${escapeHtml(statLabel(card.size))}</b></span>`
+    : "";
   // pt-final(5): スマホの盤面ではソウル枚数を札の上段（位置名の横）ではなくステータス欄に出す（上段のバッジが
   // 「レフト」等の位置名を「レ…」まで潰し、アイテム枠では名前に重なっていた）。PC は従来のバッジ（.card-stack-peek）。
   const soulCount = (card.soul || []).length;
   const soulChip = soulCount > 0 ? `<span class="bt-soul" title="ソウル${soulCount}枚" aria-label="ソウル${soulCount}枚"><i>ソ</i><b>${soulCount}</b></span>` : "";
   if (cardHasDisplayStats(card)) {
     const isItemTile = effectiveCardType(card) === "item";
+    if (isItemTile && soulChip) {
+      part("bt-isoul", soulChip); // 装備アイテムの細い帯: ソウル枚数は名前の段の右端（攻/打/防の段を圧迫しない）
+    }
     part(
       "bt-stats",
-      (isItemTile ? soulChip : "") +
         `<span class="bt-row"><span><i>攻</i><b>${escapeHtml(statLabel(visiblePower(card)))}</b></span>` +
         `<span><i>打</i><b>${escapeHtml(statLabel(visibleCritical(card)))}</b></span></span>` +
-        `<span class="bt-def"><span><i>防</i><b>${escapeHtml(statLabel(visibleDefense(card)))}</b></span>${isItemTile ? "" : soulChip}</span>`,
+        `<span class="bt-def"><span><i>防</i><b>${escapeHtml(statLabel(visibleDefense(card)))}</b></span>` +
+        (isItemTile ? "" : `<span class="bt-def-r">${soulChip}${sizeChip}</span>`) +
+        `</span>`,
     );
-  } else if (soulChip) {
-    part("bt-stats bt-soul-only", soulChip);
+  } else if (soulChip || sizeChip) {
+    part("bt-stats bt-soul-only", soulChip + sizeChip);
   }
 }
 
@@ -895,6 +964,11 @@ function createCardImageElement(card) {
   img.className = "card-img";
   img.loading = "lazy";
   img.decoding = "async";
+  // phone-art: パックの絵は 160x224（横長カードは 160x115）の小さな WebP。寸法を先に持たせて読込前後で枠が動かないようにする
+  // （CSS .card-img は height:auto のため PC の見た目は従来どおり＝縦横比で高さが決まる）。
+  const landscapeArt = isLandscapeArtCard(card);
+  img.width = 160;
+  img.height = landscapeArt ? 115 : 224;
   img.alt = card?.name || "";
   const remote = officialCardImageUrl(card);
   img.dataset.remote = remote || "";
@@ -902,6 +976,7 @@ function createCardImageElement(card) {
   if (packed) {
     img.src = packed;
     img.addEventListener("error", onCardImageError);
+    img.dataset.art = "1"; // 読込済みパック（data URL）＝すぐ絵が出る
   } else {
     // 製品画像パック未読込: 遅延ロードし、読めたら差し込む。無ければ公式URL→プレースホルダ。
     ensureImagePackLoaded(card).then(() => {
@@ -909,15 +984,50 @@ function createCardImageElement(card) {
       if (url) {
         img.src = url;
         img.addEventListener("error", onCardImageError);
+        markCardArtReady(img);
       } else if (remote) {
         img.src = remote;
         img.addEventListener("error", onCardImageError);
+        img.addEventListener("load", () => markCardArtReady(img), { once: true });
       } else {
         showCardImageFallback(img);
       }
     });
   }
   return img;
+}
+
+// phone-art: 絵が出せる状態になった <img> の持ち主（盤面/手札の .card・補助ゾーンのチップ）へ has-art を付ける。
+// スマホの CSS はこのクラスがある時だけ「絵のタイル」にし、無い間（読込中・パック無し）は従来の文字タイルのまま。
+function markCardArtReady(img) {
+  if (!img) {
+    return;
+  }
+  img.dataset.art = "1";
+  const holder = typeof img.closest === "function" ? img.closest(".card, .m-pile-art, .flag-layer") : null;
+  holder?.classList?.add?.("has-art");
+}
+
+// 横長の絵（必殺技・必殺モンスター）か。card 風オブジェクト（フラッグの代表絵参照など）でも例外を出さない。
+function isLandscapeArtCard(card) {
+  try {
+    return ["impact", "impactMonster"].includes(displayCardType(card));
+  } catch (error) {
+    return false;
+  }
+}
+
+// 中身を見せてはいけない札（伏せ設置・場の裏向きモンスター・ネット対戦の view が伏せた札）。
+function isFaceHiddenCard(card) {
+  return Boolean(card && (card.faceDown || card.faceDownMonster || card.hidden));
+}
+
+// phone-art: カード裏面（CSS で描く。画像もカード情報も持たない）。
+function createCardBackElement() {
+  const back = document.createElement("span");
+  back.className = "card-back";
+  back.setAttribute("aria-label", "裏向きのカード");
+  return back;
 }
 
 // カードの製品画像パック（data/images/{pack}.imgpack.json）を必要時に一度だけ読み込み、
@@ -970,12 +1080,24 @@ function showCardImageFallback(img) {
   const flagHolder = typeof img.closest === "function" ? img.closest(".flag-layer") : null;
   if (flagHolder) {
     flagHolder.classList?.remove?.("has-flag-img");
+    flagHolder.classList?.remove?.("has-art");
     if (typeof img.remove === "function") {
       img.remove();
     }
     return;
   }
+  const pileArt = typeof img.closest === "function" ? img.closest(".m-pile-art") : null;
+  if (pileArt) {
+    // phone-art: 補助ゾーンのチップは絵だけ外す（従来の「ラベル＋枚数」チップへ戻す）。
+    // PC と共用の配置魔法サムネイル（.set-pile-thumb）は従来どおり <img> を残す（has-art を外すだけ）。
+    pileArt.classList?.remove?.("has-art");
+    if (/\bm-tile-part\b/.test(String(pileArt.className || "")) && typeof img.remove === "function") {
+      img.remove();
+    }
+    return;
+  }
   const holder = typeof img.closest === "function" ? img.closest(".card") : null;
+  holder?.classList?.remove?.("has-art");
   if (holder && typeof holder.querySelector === "function" && !holder.querySelector(".card-img-fallback")) {
     holder.classList?.add?.("no-image");
     const fallback = document.createElement("span");
@@ -1029,6 +1151,12 @@ function attachTooltip(element, card, options = {}) {
     holdTimer = setTimeout(() => {
       holdTimer = null;
       element.dataset.tooltipPreview = "1"; // 長押しプレビュー成立→直後の click(=カードシート)は抑止
+      // phone-art: スマホの手札は長押し＝大きな絵の閲覧シート（指を離しても残る。閉じるで戻る）。
+      if (options.phoneSheet && isPhoneLayout() && typeof openReadOnlyCardSheet === "function") {
+        hideCardTooltip();
+        openReadOnlyCardSheet(card);
+        return;
+      }
       // 指の下・画面下部に隠れないよう、長押しプレビューは画面上部中央へアンカー。
       showCardTooltip(card, { clientX: Math.max(10, window.innerWidth / 2 - 130), clientY: 8 });
     }, 300);

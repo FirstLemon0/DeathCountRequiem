@@ -935,15 +935,18 @@ function refreshCardSheet() {
   }
   elements.cardSheetTitle.textContent = cardSheetSoulContext ? `ソウル: ${card.name}` : card.name;
   elements.cardSheetDetail.innerHTML = cardTooltipHtml(card);
-  // スマホ: カード画像はシートにだけ出す（盤面・手札は文字タイル）。PC のシートは従来どおり。
-  if (typeof isPhoneLayout === "function" && isPhoneLayout() && card.name && !card.hidden) {
+  // スマホ: シートの先頭に大きなカード画像（phone-art）。PC のシートは従来どおり。
+  // 裏向き（伏せ設置・裏向きモンスター・伏せ札）は画像を出さない（画像は card.id で引くので正体が漏れる）。
+  if (typeof isPhoneLayout === "function" && isPhoneLayout() && card.name && !isFaceHiddenCard(card)) {
     const figure = document.createElement("div");
-    figure.className = "card-sheet-figure";
+    figure.className = `card-sheet-figure${isLandscapeArtCard(card) ? " is-landscape" : ""}`;
     figure.append(createCardImageElement(card));
     elements.cardSheetDetail.prepend(figure);
   }
   elements.cardSheetActions.innerHTML = "";
   elements.cardSheetActions.classList?.toggle("is-action-sheet", Boolean(cardSheetActionContext));
+  // phone-art: 見るだけのシート（長押し等）は絵を大きく、操作のあるシートは低い画面で絵をサムネに戻す（操作ボタンを画面内に残す）。
+  elements.cardSheet.classList?.toggle("sheet-view-only", Boolean(cardSheetReadOnly && !cardSheetActionContext && !cardSheetSoulContext));
   if (cardSheetActionContext) {
     renderActionSheetButtons(cardSheetActionContext);
     appendSoulPeekSheetButton(card);

@@ -322,6 +322,16 @@ function resolveFirstSeat(preference) {
 
 // options.seed: 乱数シード（省略時は素通し＝従来挙動）。options.firstSeat: 0|1|"random"（省略時 seat0）。
 function newGame(options = {}) {
+  // 前の対戦の画面上の問い合わせ（CPU の【対抗】提案・選択ドック・対抗窓バー）を持ち越さない。
+  // 取り消せない選択ドックは閉じても開き直す作りなので、ここで「選ばない」で確定させて破棄する。
+  if (!globalThis.__BUDDYFIGHT_SERVER__ && typeof document !== "undefined") {
+    try {
+      if (typeof globalThis.__forceSettleSelectionDialog === "function") globalThis.__forceSettleSelectionDialog();
+      if (typeof closeCounterWindowBar === "function") closeCounterWindowBar();
+    } catch (error) {
+      console.error("[newGame] 前の対戦の問い合わせの破棄に失敗", error);
+    }
+  }
   if (typeof aiBeforeNewGame === "function") {
     aiBeforeNewGame(); // CPU対戦(src/22): CPU席の反映・CPUデッキのランダム選択（OFF時は素通り）
   }

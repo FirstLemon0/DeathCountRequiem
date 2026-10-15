@@ -4322,3 +4322,450 @@ body.thin-client:not(.game-started) .hand-dock {
   white-space: normal;
   text-align: left;
 }
+
+/* ===== phone-art: カードの絵（オーナー要望「カードの見た目を楽しむ」「盤面や手札が画像なしだと寂しい」） =====
+   PC は従来どおり。<img width/height> は読込前の枠取り用で、高さは CSS の auto（:where で詳細度0＝既存の高さ指定が勝つ）。 */
+:where(.card-img) { height: auto; }
+/* カード裏面（伏せ札・裏向きの束）。画像もカード情報も持たない CSS だけの絵。 */
+.card-back {
+  display: block;
+  position: relative;
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 50% 50%, rgb(255 214 128 / 0.95) 0 7%, transparent 7.6%),
+    radial-gradient(circle at 50% 50%, transparent 0 15%, rgb(255 214 128 / 0.6) 15.6% 17.4%, transparent 18%),
+    radial-gradient(circle at 50% 50%, rgb(120 160 255 / 0.28), transparent 46%),
+    repeating-linear-gradient(45deg, rgb(255 255 255 / 0.05) 0 5px, transparent 5px 10px),
+    repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.05) 0 5px, transparent 5px 10px),
+    linear-gradient(160deg, #22377a, #0c1434 58%, #2b1446);
+  box-shadow: inset 0 0 0 2px rgb(255 214 128 / 0.55), inset 0 0 0 4px #0c1434, inset 0 0 0 5px rgb(255 214 128 / 0.28);
+}
+.card > .card-back {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: 160 / 224;
+}
+
+@media (max-width: 640px) {
+  body.bf-game {
+    --art-band-rgb: 7 10 20;
+    --art-band: rgb(var(--art-band-rgb) / 0.84);
+    --art-label: #c9d4ea;
+    --art-text: #ffffff;
+    --art-shadow: 0 1px 2px rgb(0 0 0 / 0.95), 0 0 1px rgb(0 0 0 / 0.9);
+  }
+
+  /* --- 盤面のモンスター枠: 絵を全面に敷き、下端に半透明の濃色帯（攻/打・防/ソ/サイズ）。名前は出さない（絵が担う） --- */
+  body.bf-game .player-zone .zone.field:not(.item) > .card:is(.has-art, .face-hidden) {
+    padding: 0;
+    border-top-width: 3px;
+    background: rgb(var(--art-band-rgb));
+  }
+  body.bf-game .player-zone .zone.field:not(.item) > .card.face-hidden > .card-back {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    border-radius: 0;
+  }
+  /* 絵の切り取り（縦長カード 160x224）: イラスト部分（カードの縦 5〜60%・横 15〜100%＝左のステータス欄と
+     下の効果欄を外す）を枠に合わせて拡大する。画像は枠幅の 150%（縦横比そのまま）・左へ 35% ずらし・上を 5% 切る。
+     枠の高さが足りない時はイラストの上側から見せる（効果欄・フレーバーは帯の下に隠れる位置まで）。 */
+  body.bf-game .player-zone .zone.field:not(.item) > .card.has-art:not(.landscape) > .card-img {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: -35%;
+    z-index: 0;
+    width: 150%;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    aspect-ratio: 160 / 224;
+    object-fit: fill;
+    border-radius: 0;
+    transform: translateY(-5%);
+  }
+  /* 横長カード（必殺モンスター 160x115）: イラストは中央寄り。cover で枠を埋め、中央上寄りを 1.25 倍に。 */
+  body.bf-game .player-zone .zone.field:not(.item) > .card.has-art.landscape > .card-img {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    aspect-ratio: auto;
+    object-fit: cover;
+    object-position: 50% 35%;
+    border-radius: 0;
+    transform: scale(1.25);
+    transform-origin: 50% 35%;
+  }
+  body.bf-game .player-zone .zone.field:not(.item) > .card:is(.has-art, .face-hidden) .bt-name { display: none; }
+  body.bf-game .player-zone .zone.field:not(.item) > .card:is(.has-art, .face-hidden) .bt-stats {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    padding: 3px 7px 4px;
+    border-top: 0;
+    background: var(--art-band);
+    box-shadow: 0 -10px 10px -3px rgb(var(--art-band-rgb) / 0.55);
+    text-shadow: var(--art-shadow);
+  }
+  body.bf-game .player-zone .zone.field:not(.item) > .card:is(.has-art, .face-hidden) .bt-stats i { color: var(--art-label); }
+  body.bf-game .player-zone .zone.field:not(.item) > .card:is(.has-art, .face-hidden) .bt-stats b { color: var(--art-text); }
+  body.bf-game .player-zone .zone.field:not(.item) > .card:is(.has-art, .face-hidden) .bt-soul :is(i, b) { color: #ffd98a; }
+  /* 位置名（相手ライト等）は上端に小さく、絵の上でも読める濃色の札にする。 */
+  body.bf-game .player-zone .zone.field:not(.item):has(> .card:is(.has-art, .face-hidden))::before {
+    top: 5px;
+    left: 5px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgb(var(--art-band-rgb) / 0.74);
+    color: var(--art-text);
+  }
+  /* サイズ（S3）: 帯の防の段の右端に大きく。文字タイル（絵の読込前・絵なし）でも同じ位置。 */
+  body.bf-game .player-zone .zone.field .bt-def-r { display: inline-flex; align-items: baseline; gap: 5px; flex: none; }
+  body.bf-game .player-zone .zone.field .bt-def-r .bt-soul { flex: none; overflow: visible; }
+  body.bf-game .player-zone .zone.field .bt-sz { flex: none; white-space: nowrap; }
+  body.bf-game .player-zone .zone.field:not(.item) .bt-sz b { font-size: min(15px, 12.5cqw); font-weight: 800; }
+  /* 防の段（防・ソ・S）は 360px 級の枠でも右端が切れないよう、枠の幅（cqw）に合わせて縮める。 */
+  body.bf-game .player-zone .zone.field:not(.item) .bt-def b { font-size: min(14px, 11.5cqw); }
+  body.bf-game .player-zone .zone.field:not(.item) .bt-def-r .bt-soul b { font-size: min(13px, 11cqw) !important; }
+  body.bf-game .player-zone .zone.field:not(.item) .bt-def-r { gap: min(5px, 3cqw); }
+  body.bf-game .player-zone .zone.field .bt-soul-only { display: flex; gap: 6px; justify-content: flex-end; }
+
+  /* --- 状態表示は絵の上に重ねる（絵が inset の枠/影を覆うため、枠は ::after の重ね板で描く） --- */
+  body.bf-game .card:is(.has-art, .face-hidden)::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+  body.bf-game .card:is(.has-art, .face-hidden).selected::after { box-shadow: inset 0 0 0 3px var(--warn); }
+  body.bf-game .card:is(.has-art, .face-hidden).linked::after { box-shadow: inset 0 0 0 3px rgb(56 225 198); }
+  body.bf-game .card:is(.has-art, .face-hidden):is(.counter-playable, .counter-window-usable)::after,
+  body.bf-game .zone.counter-window-usable > .card:is(.has-art, .face-hidden)::after {
+    box-shadow: inset 0 0 0 2px #5bd08a, inset 0 0 12px 1px rgb(91 208 138 / 0.85);
+  }
+  /* 枠単位の強調（攻撃対象・効果対象・選択候補/選択中・センター在席）。枠の outline は絵（z-index の付いた子）の下に
+     描かれて見えなくなるため、絵のある札では札の重ね板（::after）に同じ枠を描き直す。 */
+  /* センター在席の細い縁は「何も状態が無い時の既定」。:where で詳細度を 0 にし、選択中・連携・対抗の光（下の規則）に必ず負ける
+     （以前は (0,6,2) でこれらの box-shadow を上書きし、センターの札だけ選択中/連携/対抗の光が出なかった）。 */
+  :where(body.bf-game .player-zone .zone.center-occupied) > :where(.card.has-art, .card.face-hidden)::after { box-shadow: inset 0 0 0 1px var(--warn); }
+  body.bf-game .player-zone .zone:is(.attack-target-candidate, .attack-target-highlight) > .card:is(.has-art, .face-hidden)::after {
+    outline: 3px double #ff5d6c;
+    outline-offset: -4px;
+    box-shadow: inset 0 0 14px rgb(255 93 108 / 0.65);
+  }
+  body.bf-game .player-zone .zone.effect-target-candidate > .card:is(.has-art, .face-hidden)::after {
+    outline: 3px solid rgb(56 225 198);
+    outline-offset: -3px;
+    box-shadow: inset 0 0 14px rgb(56 225 198 / 0.55);
+  }
+  /* 選択候補の金の点線/選択中の実線: 黄・橙の絵の上でも見えるよう、下に暗い縁（inset の影）を敷く。 */
+  body.bf-game .player-zone .zone.selection-candidate > .card:is(.has-art, .face-hidden)::after {
+    outline: 2px dashed var(--m-accent);
+    outline-offset: -3px;
+    box-shadow: inset 0 0 0 5px rgb(var(--art-band-rgb) / 0.8);
+  }
+  body.bf-game .player-zone .zone.selection-picked > .card:is(.has-art, .face-hidden)::after {
+    outline: 3px solid var(--m-accent);
+    outline-offset: -3px;
+    box-shadow: inset 0 0 0 6px rgb(var(--art-band-rgb) / 0.8);
+  }
+  /* 「選択中」ラベルは位置名のピルの下の段へ（重ねない）。 */
+  body.bf-game .player-zone .zone.field:not(.item).selection-picked::after { top: 27px; left: 5px; right: auto; }
+  /* レスト: 絵を暗く・脱色し、絵の中央に「レスト」札（帯の数字は暗くしない）。 */
+  body.bf-game .card.used:is(.has-art, .face-hidden) { opacity: 1; filter: none; }
+  body.bf-game .card.used.has-art > .card-img,
+  body.bf-game .card.used.face-hidden > .card-back { filter: grayscale(0.8) brightness(0.5); }
+  body.bf-game .player-zone .card > .m-rest {
+    display: block;
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    padding: 2px 10px;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.5);
+    border-radius: 999px;
+    background: #f5b83d;
+    color: #1a1205;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.35;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  body.bf-game .flag-item-zone .item-layer { position: relative; overflow: hidden; }
+  body.bf-game .flag-item-zone .item-layer > .m-rest { top: 50%; left: auto; right: 4px; transform: translateY(-50%); padding: 1px 6px; }
+
+  /* --- アイテム枠（フラッグ＋装備）: 細い帯なので絵は背景に敷き、名前とステータスを濃色の板の上に残す --- */
+  body.bf-game .flag-item-zone .flag-layer.has-art { position: relative; overflow: hidden; }
+  body.bf-game .flag-item-zone .flag-layer.has-art > .flag-img {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 50% 40%;
+    border-radius: 0;
+    transform: scale(1.3);
+    transform-origin: 50% 40%;
+  }
+  body.bf-game .flag-item-zone .flag-layer.has-art .flag-caption {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    background: rgb(var(--art-band-rgb) / 0.66);
+  }
+  body.bf-game .flag-item-zone .flag-layer.has-art .stack-layer-name { color: var(--art-text); text-shadow: var(--art-shadow); }
+  body.bf-game .flag-item-zone .item-layer.has-art { background: rgb(var(--art-band-rgb)); }
+  body.bf-game .flag-item-zone .item-layer.has-art > .card-img {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    object-fit: cover;
+    object-position: 50% 28%;
+    border-radius: 0;
+  }
+  body.bf-game .flag-item-zone .item-layer.has-art::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(90deg, rgb(var(--art-band-rgb) / 0.86), rgb(var(--art-band-rgb) / 0.7));
+    pointer-events: none;
+  }
+  body.bf-game .flag-item-zone .item-layer.has-art > .m-tile-part { position: relative; z-index: 2; color: var(--art-text); text-shadow: var(--art-shadow); }
+  body.bf-game .flag-item-zone .item-layer.has-art .bt-stats,
+  body.bf-game .flag-item-zone .item-layer.has-art .bt-stats i { color: var(--art-label); }
+  body.bf-game .flag-item-zone .item-layer.has-art .bt-stats b { color: var(--art-text); }
+  body.bf-game .flag-item-zone .item-layer.has-art .bt-soul :is(i, b) { color: #ffd98a; }
+  /* 装備アイテムの細い帯: 攻・打・防（＋ソ）が 360px 幅でも全部見えるよう、詰めた1行（名前は省略…で縮める）。 */
+  body.bf-game .flag-item-zone .flag-item-stack.has-item .flag-layer { flex: 0 1 28%; }
+  /* 装備中はフラッグを絵だけの小さな札にする（ワールド名はヘッダーのワールド札に常時出ている。名前は読み上げ用に残す）。 */
+  body.bf-game .flag-item-zone .flag-item-stack.has-item .flag-layer.has-art { flex: 0 0 30px; width: 30px; padding: 0; }
+  body.bf-game .flag-item-zone .flag-item-stack.has-item .flag-layer.has-art .flag-caption { background: none; }
+  body.bf-game .flag-item-zone .flag-item-stack.has-item .flag-layer.has-art .stack-layer-name {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  body.bf-game .flag-item-zone .flag-item-stack.has-item { gap: 4px; }
+  body.bf-game .flag-item-zone .item-layer,
+  body.bf-game .flag-item-zone .item-layer-stacked { padding-left: 5px; padding-right: 5px; }
+  body.bf-game .flag-item-zone .item-layer .bt-stats { display: flex; gap: 0 4px; overflow: hidden; white-space: nowrap; letter-spacing: -0.02em; }
+  /* 名前の段の右端にソウル枚数（.bt-isoul）、下の段に攻・打・防。帯の外へはみ出さない（隣のゾーンの当たり判定を奪わない）。 */
+  body.bf-game .flag-item-zone .item-layer:has(> .bt-isoul) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-content: center;
+    column-gap: 4px;
+  }
+  body.bf-game .flag-item-zone .item-layer > .bt-isoul { display: block; grid-column: 2; grid-row: 1; align-self: center; font-size: 11px; line-height: 1.2; white-space: nowrap; }
+  body.bf-game .flag-item-zone .item-layer:has(> .bt-isoul) > .bt-name { grid-column: 1; grid-row: 1; }
+  body.bf-game .flag-item-zone .item-layer:has(> .bt-isoul) > .bt-stats { grid-column: 1 / -1; grid-row: 2; }
+  body.bf-game .flag-item-zone .item-layer > .bt-isoul .bt-soul { display: inline; color: var(--peek-text); }
+  body.bf-game .flag-item-zone .item-layer > .bt-isoul .bt-soul i { font-style: normal; font-size: 11px; font-weight: 700; }
+  body.bf-game .flag-item-zone .item-layer > .bt-isoul .bt-soul b { font-family: var(--m-num); font-size: 11px; font-weight: 800; margin-left: 1px; }
+  body.bf-game .flag-item-zone .item-layer.has-art > .bt-isoul .bt-soul { color: #ffd98a; }
+  body.bf-game .flag-item-zone .item-layer .bt-stats .bt-row { display: contents; }
+  body.bf-game .flag-item-zone .item-layer .bt-stats .bt-row > span,
+  body.bf-game .flag-item-zone .item-layer .bt-stats .bt-def,
+  body.bf-game .flag-item-zone .item-layer .bt-stats .bt-soul { display: inline; flex: none; margin: 0; }
+  body.bf-game .flag-item-zone .item-layer .bt-stats i { margin-right: 1px; }
+
+  /* --- 補助ゾーン（ドロップ=一番上の札・配置魔法=一番上の札/伏せは裏面・バディゾーン=裏面）: 絵の上にラベル＋枚数 --- */
+  body.bf-game .player-zone .zone > .m-pile-art:is(.has-art, .is-back) {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    max-height: none;
+    overflow: hidden;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+  body.bf-game .player-zone .zone > .m-pile-art > :is(.card-img, .card-back) {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    object-fit: cover;
+    object-position: 50% 18%;
+    border-radius: 0;
+  }
+  body.bf-game .player-zone .zone > .m-pile-art.has-art::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgb(var(--art-band-rgb) / 0.62);
+  }
+  body.bf-game .player-zone .zone > .m-pile-art.is-back > .card-back { box-shadow: inset 0 0 0 2px rgb(255 214 128 / 0.45); }
+  body.bf-game .player-zone .zone.pile::before,
+  body.bf-game .player-zone .zone.pile::after,
+  body.bf-game .player-zone .zone.set-pile::before,
+  body.bf-game .player-zone .zone.set-pile::after,
+  body.bf-game .player-zone .zone.buddyzone-pile::before,
+  body.bf-game .player-zone .zone.buddyzone-pile::after { position: relative; z-index: 1; }
+  body.bf-game .player-zone .zone:has(> .m-pile-art:is(.has-art, .is-back)) { border-style: solid; }
+  body.bf-game .player-zone .zone:has(> .m-pile-art:is(.has-art, .is-back))::before,
+  body.bf-game .player-zone .zone:has(> .m-pile-art:is(.has-art, .is-back))::after { color: var(--art-text); text-shadow: var(--art-shadow); }
+  body.bf-game .player-zone .zone:has(> .m-pile-art.is-back)::before,
+  body.bf-game .player-zone .zone:has(> .m-pile-art.is-back)::after {
+    padding: 0 5px;
+    border-radius: 6px;
+    background: rgb(var(--art-band-rgb) / 0.72);
+  }
+
+  /* --- 手札: 実物の絵。左上にゲージコスト（G3）、右上に【対抗】、下端に名前1行。数値は絵とカードシートで見る --- */
+  body.bf-game .hand-list .card.has-art {
+    position: relative;
+    border-width: 3px 1px 1px;
+    background: rgb(var(--art-band-rgb));
+    overflow: hidden;
+  }
+  /* 手札の絵の切り取り: 盤面と同じくイラスト中心（細長い枠なので枠幅の 240%・左へ 75%・上を 6% 切る）。 */
+  body.bf-game .hand-list .card.has-art:not(.landscape) > .card-img {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: -75%;
+    z-index: 0;
+    width: 240%;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    aspect-ratio: 160 / 224;
+    object-fit: fill;
+    border-radius: 0;
+    transform: translateY(-6%);
+  }
+  body.bf-game .hand-list .card.has-art.landscape > .card-img {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    aspect-ratio: auto;
+    object-fit: cover;
+    object-position: 50% 35%;
+    border-radius: 0;
+    transform: scale(1.25);
+    transform-origin: 50% 35%;
+  }
+  body.bf-game .hand-list .card.has-art > .m-tile-part { position: relative; z-index: 2; }
+  body.bf-game .hand-list .card.has-art .ht-top { position: absolute; top: 2px; left: 2px; right: 2px; height: auto; padding: 0; }
+  body.bf-game .hand-list .card.has-art .ht-cost {
+    padding: 0 4px;
+    border-radius: 5px;
+    background: rgb(var(--art-band-rgb) / 0.86);
+    color: #ffd27a;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+  body.bf-game .hand-list .card.has-art .ht-cost:empty { visibility: hidden; }
+  body.bf-game .hand-list .card.has-art .ht-ctr { background: #5bd08a; color: #062411; line-height: 1.35; }
+  body.bf-game .hand-list .card.has-art .ht-name {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: block;
+    max-height: none;
+    padding: 2px 4px 3px;
+    background: var(--art-band);
+    color: var(--art-text);
+    text-shadow: var(--art-shadow);
+    font-size: 11px;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: normal;
+    -webkit-line-clamp: none;
+  }
+  body.bf-game .hand-list .card.has-art :is(.ht-foot, .ht-foot2) { display: none; }
+  body.bf-game .hand-list .card.has-art.counter-playable { border-color: #5bd08a; }
+
+  /* --- カードシート: 先頭に大きなカード画像、その下に効果全文・情報・操作 --- */
+  /* 詳細欄の上限は従来どおり（52dvh）。大きな絵はこの中の先頭で、高さは画面の高さに連動（低い画面ほど小さく）。 */
+  body.bf-game #cardSheet .card-sheet-detail {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "fig" "head" "rules" "info" "soul";
+  }
+  body.bf-game #cardSheet .card-sheet-figure { justify-self: center; }
+  body.bf-game #cardSheet .card-sheet-figure .card-img {
+    width: auto;
+    height: clamp(120px, 100dvh - 560px, 236px);
+    max-height: none;
+    aspect-ratio: 160 / 224;
+    object-fit: contain;
+    border-radius: 8px;
+    background: rgb(var(--art-band-rgb) / 0.35);
+    box-shadow: 0 6px 18px rgb(0 0 0 / 0.4);
+  }
+  body.bf-game #cardSheet .card-sheet-figure.is-landscape .card-img { width: min(76vw, 300px, (100dvh - 560px) * 1.39); min-width: 160px; height: auto; aspect-ratio: 160 / 115; }
+}
+/* カードシート（スマホ）: 見出し・詳細・操作の縦並びをシートの高さ（92dvh）に収める。詳細欄だけが縮んでスクロールし、
+   操作ボタン（決定・キャンセル）は常に画面内（シート自体はスクロールしない＝二重スクロールにしない）。 */
+@media (max-width: 640px) {
+  body.bf-game #cardSheet .card-sheet-body {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(92dvh - 24px - env(safe-area-inset-bottom, 0px));
+    min-height: 0;
+  }
+  body.bf-game #cardSheet .card-sheet-body > header,
+  body.bf-game #cardSheet .card-sheet-actions { flex: none; }
+  body.bf-game #cardSheet .card-sheet-detail { flex: 0 1 auto; min-height: 0; }
+}
+/* 見るだけのシート（操作ボタンが無い）: 低い画面でも絵を大きめに。 */
+@media (max-width: 640px) {
+  body.bf-game #cardSheet.sheet-view-only .card-sheet-detail { max-height: min(72dvh, 620px); }
+  body.bf-game #cardSheet.sheet-view-only .card-sheet-figure .card-img { height: clamp(120px, 100dvh - 400px, 236px); }
+}
+/* 低い画面（390x664 など）の操作のあるシート: 絵はサムネ（従来の左 92px＋右に名前・効果）に戻し、操作ボタンを画面内に残す。 */
+@media (max-width: 640px) and (max-height: 740px) {
+  body.bf-game #cardSheet:not(.sheet-view-only) .card-sheet-detail {
+    grid-template-columns: 92px minmax(0, 1fr);
+    grid-template-areas:
+      "fig head"
+      "fig rules"
+      "info info"
+      "soul soul";
+  }
+  body.bf-game #cardSheet:not(.sheet-view-only) .card-sheet-detail:not(:has(.card-sheet-figure)) { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "rules" "info" "soul"; }
+  body.bf-game #cardSheet:not(.sheet-view-only) .card-sheet-figure { justify-self: start; }
+  body.bf-game #cardSheet:not(.sheet-view-only) .card-sheet-figure .card-img { width: 92px; height: auto; max-height: 132px; box-shadow: none; }
+  body.bf-game #cardSheet:not(.sheet-view-only) .card-sheet-figure.is-landscape .card-img { width: 92px; min-width: 0; }
+}
+/* 320px 級: 装備アイテムの攻・打・防を詰める（ラベル字を小さく）。 */
+@media (max-width: 340px) {
+  body.bf-game .flag-item-zone .item-layer .bt-stats { gap: 0 3px; letter-spacing: -0.04em; }
+  body.bf-game .flag-item-zone .item-layer .bt-stats i { font-size: 10px; }
+}
