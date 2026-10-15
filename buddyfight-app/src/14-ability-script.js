@@ -3,11 +3,39 @@
 // 旧 app.js L6487-8025 由来。全モジュールはグローバルスコープを共有し、
 // HTML で番号順に <script> 読み込みする（連結すると旧 app.js とバイト等価）。
 // ==========================================================================
-async function runTriggeredAbilities(card, event, baseContext = {}) {
-  if (isAbilitiesNullified(card)) {
-    return; // 能力無効化(凍てつく星辰)されたカードの誘発能力は発動しない
+// triggerZones に "drop" だけを持つ（"field" を含まない）／fromDropZone の誘発能力＝ドロップでのみ誘発する。
+function isDropOnlyTriggeredAbility(ability) {
+  if (!ability || ability.kind !== "triggered") {
+    return false;
   }
-  let triggeredAbilities = [
+  if (Array.isArray(ability.triggerZones) && ability.triggerZones.length > 0) {
+    return !ability.triggerZones.includes("field");
+  }
+  return Boolean(ability.fromDropZone);
+}
+
+// pt-fix-c T7-8: selectCards の既定案内文。min=0 で「0枚選んでください」と出ていた。
+function defaultSelectLead(min, max, candidateCount) {
+  const upper = Number.isFinite(max) ? Math.min(max, candidateCount) : candidateCount;
+  if (!(min > 0)) {
+    return `${upper}枚まで選んでください（選ばなくてもかまいません）。`;
+  }
+  if (upper > min) {
+    return `${min}～${upper}枚選んでください。`;
+  }
+  return `${min}枚選んでください。`;
+}
+
+async function runTriggeredAbilities(card, event, baseContext = {}) {
+  // 能力無効化(凍てつく星辰)されたカードの誘発能力は発動しない。ただし「この能力は無効化されない」
+  // (ability.cannotBeNullified＝その1能力だけの保護)を持つ印字誘発だけは残す。既存カードは未所持＝従来どおり return。
+  const abilitiesNullified = isAbilitiesNullified(card);
+  if (abilitiesNullified && !(card.abilities || []).some((a) => a?.cannotBeNullified)) {
+    return;
+  }
+  let triggeredAbilities = abilitiesNullified
+    ? (card.abilities || []).filter((ability) => ability.kind === "triggered" && ability.event === event && ability.cannotBeNullified)
+    : [
     ...(card.abilities || []).filter((ability) => ability.kind === "triggered" && ability.event === event),
     // E-PR11(PR/0389 「Brave Soul Fight！」): grantTemporaryTriggeredAbilitySelected で当ターン付与された
     // 一時トリガー能力(card.grantedTempAbilities)も、印字 abilities と同様に走査する。付与情報は素の DSL
@@ -31,7 +59,17 @@ async function runTriggeredAbilities(card, event, baseContext = {}) {
   if (typeof baseContext.__abilityFilter === "function") {
     triggeredAbilities = triggeredAbilities.filter(baseContext.__abilityFilter);
   }
+  // pt-fix-c T7-1: ドロップでのみ誘発する能力（triggerZones:["drop"] / fromDropZone。ドーン伯爵「このカードが
+  // ドロップゾーンにあるなら」・炎竜 バーン等）は、ドロップ以外（場・ソウル等）から配送された事象では誘発しない。
+  // 以前は場の走査（runPhaseStartTriggers/runAllyEnterTriggers 等）がこれらを素通しし、場から発動していた。
+  if (baseContext.zone !== "drop") {
+    triggeredAbilities = triggeredAbilities.filter((ability) => !isDropOnlyTriggeredAbility(ability));
+  }
   for (const ability of triggeredAbilities) {
+    // 対抗窓改修(独立レビュー M1): 1つの自動能力を「選ぶ→窓→解決」している間は待機キューを流さない
+    // （窓で使った【対抗】が起こした誘発は、この能力の解決後に待機キューから解決＝④2.2.3→2.3 の順）。
+    triggerResolutionHold += 1;
+    try {
       const owner = baseContext.owner ?? findFieldCardSlot(card)?.owner;
       if (owner === undefined || owner === null) {
         continue;
@@ -44,7 +82,19 @@ async function runTriggeredAbilities(card, event, baseContext = {}) {
         player: state.players[owner],
         owner,
         zone: baseContext.zone ?? findFieldCardSlot(card)?.zone,
+        __oncePerEvent: undefined, // audit2: 配信ガード用の Set は能力本体の context へ持ち込まない
+        __validateStoredTarget: undefined,
       };
+      // T4: 登場時の事前指定対象（コール宣言時の効果対象欄）は、この能力自身の対象指定に合う時だけ使う。
+      // 合わない（相手の場のモンスターを対象とする能力に自分のカード等）なら破棄して下の通常の選択に任せる。
+      // 対象指定を持たない能力には事前指定を渡さない（無関係な能力へ漏れない）。
+      if (baseContext.__validateStoredTarget && context.target && !context.target.__fromEvent) {
+        const storedTargetValid =
+          ability.target && targetMatchesSpec(context.target, ability.target, owner, { card, ability });
+        if (!storedTargetValid) {
+          context.target = null;
+        }
+      }
       if (
         ability.target &&
         !context.target &&
@@ -53,7 +103,29 @@ async function runTriggeredAbilities(card, event, baseContext = {}) {
       ) {
         continue;
       }
+      // audit2(b055-2): 同じ1つのイベント（連携攻撃のダメージ1回等）を複数の経路で配る呼び出し側が、Set を
+      // __oncePerEvent に渡すと、同一カードの同一能力（damageEventKey 指定時はそのキーを共有する能力群）の発動を1回に限る。
+      // 未指定の呼び出しは従来どおり（後方互換）。
+      const onceKey =
+        baseContext.__oncePerEvent instanceof Set
+          ? `${card.instanceId ?? card.id}:${ability.__fromSoul?.instanceId ?? ""}:${ability.damageEventKey || ability.id}`
+          : null;
+      if (onceKey && baseContext.__oncePerEvent.has(onceKey)) {
+        continue;
+      }
       if (isAbilityLimitUsed(owner, card, ability) || !checkAbilityConditions(ability, owner, context)) {
+        continue;
+      }
+      if (onceKey) {
+        baseContext.__oncePerEvent.add(onceKey);
+      }
+      // 監査 rule-continuous-5: ifConditions＝「〜した時、XならY」の X（解決時に参照する状態条件）。誘発条件
+      // （conditions）と違い、不成立でも能力は発動しており「１ターンに１回」を消費する（ver2.05 ④「１ターンに１回」
+      // Q2/A2: フレアファング・ドラゴンの“フレアギフト”は《太陽竜》の有無に関わらず最初のコールで発動済み）。
+      // 不成立なら記帳だけしてコスト・本体を解決しない。ifConditions 未指定の既存能力は素通り（後方互換）。
+      if (ability.ifConditions?.length && !checkCardConditions(ability.ifConditions, owner, context)) {
+        markAbilityLimit(owner, card, ability);
+        addLog(`${card.name}の能力は発動しましたが、条件を満たしていないため効果は解決されませんでした。`);
         continue;
       }
       const player = state.players[owner];
@@ -64,6 +136,11 @@ async function runTriggeredAbilities(card, event, baseContext = {}) {
       };
       // 誘発能力コストも adjustedCostSteps を通す（costReduction/reduceByFieldCount の適用を統一）。
       const triggeredCostSteps = adjustedCostSteps(player, card, abilityCostPurpose(ability), ability.cost || []);
+      // R5: selectBeforeCost の誘発は、先頭の選択に候補が無ければ（選べるカードが無ければ）コストを提示せず何も起きない。
+      if (ability.selectBeforeCost && !canSatisfyLeadingSelection(card, ability, owner, context)) {
+        addLog(`${card.name}の能力は選べるカードがないため、コストを払えません。`);
+        continue;
+      }
       const canPay = canPayStructuredCost(player, triggeredCostSteps, costContext);
       if (!canPay.ok) {
         if (!ability.optional) {
@@ -76,7 +153,17 @@ async function runTriggeredAbilities(card, event, baseContext = {}) {
         continue;
       }
       if (ability.target && (!context.target || context.target.__fromEvent) && !Array.isArray(ability.script)) {
-        context.target = await chooseAbilityTarget(card, ability, owner);
+        // T2（オーナー裁定 2026-10-14）: 強制の誘発は対象選択をキャンセルできない（候補があれば必ず選ぶ）。
+        // 任意（optional）の誘発だけ、キャンセル＝「使わない」（コスト・使用回数とも未消費）。キャンセルを「対象なし」と
+        // 混同して allowMissingTarget の後段（コスト支払い等）へ進めない（ガイグレンダー４号）。
+        const targetChoice = await chooseAbilityTargetDetailed(card, ability, owner, {
+          allowCancel: Boolean(ability.optional),
+        });
+        if (targetChoice.cancelled) {
+          addLog(`${card.name}の任意能力を使いませんでした。`);
+          continue;
+        }
+        context.target = targetChoice.target;
         if (!context.target && !ability.allowMissingTarget && !ability.target?.allowMissingTarget) {
           addLog(`${card.name}の対象が選ばれなかったため、能力を解決しませんでした。`);
           continue;
@@ -94,8 +181,71 @@ async function runTriggeredAbilities(card, event, baseContext = {}) {
       // markAbilityLimit を本体後に置くと再入時に isAbilityLimitUsed がまだ false で無限再発火→ヒープOOM。
       // 発動時に印字しておけば再入は isAbilityLimitUsed=true で弾かれ、規則通り1回で打ち切られる。
       markAbilityLimit(owner, card, ability);
+      // 対抗窓改修(rule-counter-1): ④2.2 自動能力を選んでいないファイターに【対抗】タイミング（②Q1）。
+      // 相手が今使える【対抗】を持つ時だけ窓を開く（持たなければ await も挟まない＝従来と同じ流れ・テンポ）。
+      const counterOptions = triggerCounterWindowOptions(owner);
+      if (counterOptions) {
+        const activationSlotRaw = findFieldCardSlot(card);
+        const activationSlot =
+          activationSlotRaw && activationSlotRaw.owner === owner ? { owner, zone: activationSlotRaw.zone } : null;
+        const windowResult = await runCounterWindowFor(1 - owner, counterOptions, {
+          kind: "trigger",
+          sourceName: card.name,
+          sourceInstanceId: card.instanceId || null,
+          sourceOwner: owner,
+          abilityLabel: ability.label || "",
+        });
+        if (state.winner) {
+          continue;
+        }
+        // 窓で使われた【対抗】がこのカードの能力を無効化していたら、待機していた能力は解決されない
+        // （無効化フラグを直接見る。独立レビュー L4: コストも移動も無い対抗の無効化を取りこぼさない）。
+        if (isAbilitiesNullified(card) && !ability.cannotBeNullified) {
+          addLog(`${card.name}の能力は無効化されたため、解決されませんでした。`);
+          continue;
+        }
+        // 独立レビュー H2: 窓の間に発生源が場を離れていたら（同じ場所・同じ instanceId に居ない）、『このカード』は
+        // 場に存在しない。能力は解決するが、場の『このカード』を参照する部分は不発（$self は場所を持たない）にし、
+        // 解決後に場外の札に残った一時状態・ソウルを★ルール処理★で片付ける（ソウルはドロップへ）。
+        // 離場を前提とする誘発（破壊された時等）は選んだ時点で既に場外＝activationSlot が無いので対象外。
+        if (activationSlot && !counterWindowSourceStillAt(card, activationSlot)) {
+          addLog(`${card.name}は場を離れたため、『このカード』を参照する効果は解決されません。`);
+          context.zone = null;
+          context.sourceLeftField = true;
+          await executeAbilityBody(context);
+          cleanupOffFieldTriggerSource(card, activationSlot.owner);
+          continue;
+        }
+      }
       await executeAbilityBody(context);
+    } finally {
+      triggerResolutionHold = Math.max(0, triggerResolutionHold - 1);
+      if (triggerResolutionHold === 0 && typeof kickTriggerDriver === "function") {
+        kickTriggerDriver();
+      }
     }
+    }
+}
+
+// 対抗窓改修(独立レビュー M1): 自動能力1つの「選ぶ→窓→解決」中の深さ（待機キューのドライバはこれが 0 の時だけ回る）。
+let triggerResolutionHold = 0;
+
+// H2: 発生源が選んだ時点の場所（owner/zone）に同じ instanceId で残っているか。
+function counterWindowSourceStillAt(card, slot) {
+  return state.players[slot.owner]?.field?.[slot.zone]?.instanceId === card.instanceId;
+}
+
+// H2: 窓の間に場を離れた発生源の後始末（★ルール処理★）。場に戻っていなければ一時状態を消し、ソウルはドロップへ。
+function cleanupOffFieldTriggerSource(card, owner) {
+  if (findFieldCardSlot(card)) {
+    return; // 解決中に場へ戻った（別の場所へ移動した）なら触らない
+  }
+  if ((card.soul || []).length > 0) {
+    state.players[owner].drop.push(...card.soul);
+    card.soul = [];
+    reconcileFaceDownSoulDrops();
+  }
+  resetLeftFieldCardState(card);
 }
 
 // E1(D-BT04/0006 フェイク・ヒーラー・0115 オリジン・ブレイカー): inheritSoulAbilities:{filter} モード。
@@ -161,26 +311,44 @@ function cardHasTriggeredListener(card, event) {
   return inheritedSoulAbilitiesFor(card, event).length > 0;
 }
 
-async function chooseAbilityTarget(card, ability, owner) {
+async function chooseAbilityTarget(card, ability, owner, options = {}) {
+  return (await chooseAbilityTargetDetailed(card, ability, owner, options)).target;
+}
+
+// 対象選択の結果を「選んだ／キャンセルした／候補が無い」で区別して返す（オーナー裁定 2026-10-14・T2）。
+// allowMissingTarget 付き能力でも、キャンセルは「対象なしで続行」ではなく宣言の取りやめ（＝コスト未払いのまま
+// 使用前へ戻す）。候補0件だけが「対象なしで後段を解決」へ進める。options.allowCancel:false は解決中の強制選択。
+async function chooseAbilityTargetDetailed(card, ability, owner, options = {}) {
   const candidates = targetCandidatesFromSpecForOwner(ability.target, owner, { card, ability });
   if (candidates.length === 0) {
-    return null;
+    return { target: null, cancelled: false, noCandidates: true };
   }
+  // R1(2026-10-09 オーナー裁定): target.upTo:true＝「〜１枚までを」＝0枚（選ばない）も選べる。選ばなければ対象なしで
+  // 後続を解決する（能力直下 allowMissingTarget:true と併用する）。CPU: 相手側を含む対象は hostile（相手のカードを選び、
+  // 自分のカードしか無ければ選ばない）、自分側だけの対象は friendly。upTo 無しは従来どおり1枚必須（purpose 未指定）。
+  const upTo = Boolean(ability.target?.upTo);
   const selected = await chooseCardEntries(candidates, {
     title: `${card.name}の対象`,
-    lead: "効果の対象にするカードを選んでください。",
-    min: 1,
+    lead: upTo ? "効果の対象にするカードを選んでください（選ばなくてもよい）。" : "効果の対象にするカードを選んでください。",
+    min: upTo ? 0 : 1,
     max: 1,
     forceDialog: true,
+    ...(upTo ? { purpose: (ability.target?.controller || "any") === "self" ? "friendly" : "hostile" } : {}),
     // 権威サーバ: 能力主体の席へ往復させる（未指定だと inferPromptSeat 任せで
     // 相手誘発・攻撃側誘発の選択が誤配送＝候補名漏れの恐れ）。
     promptSeat: owner,
     // 誤爆防止（ユーザー方針）: 対象選択はキャンセルできる。起動能力ではコスト支払い前に対象を選ぶため
     // （useFieldAbilityAction の targetForAbilityUse）、ここでのキャンセルはコストも使用回数も消費しない
-    // ＝完全に「使用前」へ戻る。誘発能力も markAbilityLimit/コスト支払いより前なので同様。
+    // ＝完全に「使用前」へ戻る。誘発能力は任意（optional）の時だけキャンセル＝「使わない」にできる（呼び出し側が指定）。
+    // 解決中（他の効果の途中）の対象選択は options.allowCancel:false で強制。
+    allowCancel: upTo ? true : options.allowCancel !== false,
   });
   const target = selected?.[0];
-  return target ? { owner: target.owner, zone: target.zone, card: target.card } : null;
+  if (!target) {
+    // upTo（0枚可）の取り消しは「選ばない」と同じ＝対象なしで続行。
+    return { target: null, cancelled: selected === null && !upTo, noCandidates: false };
+  }
+  return { target: { owner: target.owner, zone: target.zone, card: target.card }, cancelled: false, noCandidates: false };
 }
 
 async function shouldUseOptionalAbility(card, ability, owner) {
@@ -224,7 +392,31 @@ async function shouldUseOptionalAbility(card, ability, owner) {
   return selected?.[0]?.key === "use";
 }
 
+// E3: 実行中の能力本体の入れ子深さ（実行時のみの一時値。state には置かない＝部屋保存に乗らない）。
+// 0 に戻った時点＝ある効果の解決が完全に終わった時点で、保留した多回攻撃スタンド(src/10)を処理する。
+let abilityBodyDepth = 0;
+
 async function executeAbilityBody(context) {
+  abilityBodyDepth += 1;
+  // pt-fix-c(b): 直前のコスト支払いで控えた「ドロップに置かれた時」誘発を待機キューへ（本体の解決後に解決）。
+  if (typeof releaseHeldCostDropTriggers === "function") {
+    releaseHeldCostDropTriggers();
+  }
+  try {
+    return await executeAbilityBodyCore(context);
+  } finally {
+    abilityBodyDepth = Math.max(0, abilityBodyDepth - 1);
+    if (abilityBodyDepth === 0) {
+      flushDeferredMultiAttackStands();
+      // 対抗窓改修(rule-counter-8): 本体解決中に待機状態になった誘発を、解決し終えたこの静止点から解決する。
+      if (typeof kickTriggerDriver === "function") {
+        kickTriggerDriver();
+      }
+    }
+  }
+}
+
+async function executeAbilityBodyCore(context) {
   const ability = context.ability || {};
   if (Array.isArray(ability.script) && ability.script.length > 0) {
     return executeAbilityScript(ability.script, context);
@@ -256,6 +448,16 @@ async function executeAbilityBody(context) {
 // これらだけが実行済みの状態で中断したなら、ゲーム状態は宣言直後と同じ＝使用回数を消費せず巻き戻してよい。
 const PURE_SELECTION_SCRIPT_OPS = new Set(["selectCards", "selectZone"]);
 
+// T2（オーナー裁定 2026-10-14）: 解決中に出る必須選択（min≥1）をキャンセル可能にしてよいか。
+// キャンセルしてよいのは「宣言前まで完全に巻き戻せる」時だけ＝宣言でコストを払っておらず（カードの移動も無く）、
+// この script がまだ盤面を変える step を1つも実行していない時。宣言側（useFieldAbilityAction/useHandAbilityAction）が
+// pendingAction.selectionRollbackable を立て、resolvePendingAbility が context.__selectionRollbackable へ渡す。
+// それ以外（魔法・必殺技・誘発・コストを払った起動・効果の途中）は強制選択（allowCancel:false）。
+// 「〜てよい／〜まで」の任意（min 0）は各呼び出し側が従来どおり「選ばない」を許す。
+function resolutionCancelAllowed(context) {
+  return Boolean(context && context.__selectionRollbackable === true && context.__scriptProgressed !== true);
+}
+
 async function executeAbilityScript(script, context) {
   const scriptContext = {
     ...context,
@@ -269,7 +471,9 @@ async function executeAbilityScript(script, context) {
     abilityId: context.ability?.id || "",
     stepCount: script.length,
   });
-  let progressed = false; // 盤面を変える step を1つでも実行したか（キャンセル巻き戻しの可否判定）
+  // 盤面を変える step を1つでも実行したか（キャンセル巻き戻しの可否判定）。入れ子の script（chooseBranch の分岐等）は
+  // 外側の進捗を引き継ぐ（外側で既に盤面を変えていれば、内側の選択もキャンセル不可＝強制）。
+  let progressed = context.__scriptProgressed === true;
   for (const [index, step] of script.entries()) {
     recordDiagnosticEvent("effect_script", {
       stage: "step",
@@ -282,6 +486,7 @@ async function executeAbilityScript(script, context) {
     // CPU対戦(src/22): selectCards の用途推論（消費opの参照）用に現在位置を渡す。エンジン挙動には影響しない。
     scriptContext.__scriptSteps = script;
     scriptContext.__scriptIndex = index;
+    scriptContext.__scriptProgressed = progressed; // resolutionCancelAllowed（解決中の選択のキャンセル可否）が参照
     const result = await executeAbilityScriptStep(step, scriptContext);
     if (result === false || result?.ok === false) {
       recordDiagnosticEvent("effect_script", {
@@ -296,7 +501,8 @@ async function executeAbilityScript(script, context) {
       if (scriptContext.cardMoved) context.cardMoved = true; // レビュー修正(D-BT01/0027/0034): script内の自己移動を外側へ伝播
       // 誤爆防止（ユーザー方針）: ここまでに盤面を変える step を1つも実行していない中断なら、
       // ゲーム状態は宣言直後と同じ＝呼び出し側が使用回数を消費せず「使用前」に戻せる。
-      context.__abilityProgressed = progressed;
+      // 入れ子の script（chooseBranch 分岐等）が盤面を変えてから中断した進捗も外側へ持ち上げる。
+      context.__abilityProgressed = progressed || scriptContext.__abilityProgressed === true;
       return false;
     }
     if (!PURE_SELECTION_SCRIPT_OPS.has(step.op)) {
@@ -314,6 +520,10 @@ async function executeAbilityScript(script, context) {
 }
 
 function canSatisfyAbilityScript(card, ability, owner, baseContext = {}) {
+  // R5: selectBeforeCost の起動/手札/ソウル能力も、先頭の選択に候補が無ければ使えない（effects 先頭の強制 moveMatchingDropToHand を含む）。
+  if (ability?.selectBeforeCost && !canSatisfyLeadingSelection(card, ability, owner, baseContext)) {
+    return false;
+  }
   const script = Array.isArray(ability?.script) && ability.script.length > 0
     ? ability.script
     : legacyAbilityScriptDefinition(ability?.handler);
@@ -332,21 +542,50 @@ function canSatisfyAbilityScript(card, ability, owner, baseContext = {}) {
 }
 
 function canSatisfyScriptSteps(script, context) {
-  return (script || []).every((step) => {
+  return (script || []).every((step, index) => {
     if (step.op === "selectCards") {
       // E-XB6: from:"var" の候補は先行ステップの選択で実行時に確定する。事前充足チェックの時点では
       // 未確定（vars 空）なので楽観的に満たせる扱いにする（過小評価でアビリティが不発になるのを防ぐ）。
       if (step.from === "var") {
         return true;
       }
-      const candidates = groupScriptCandidates(scriptCardSelectionCandidates(step, context), step);
+      const candidates = groupScriptCandidates(
+        scriptCardSelectionCandidates(step, { ...context, __scriptSteps: script, __scriptIndex: index }),
+        step,
+      );
       const amount = step.amount ?? 1;
       const allowEmpty = Boolean(step.allowEmpty && candidates.length === 0);
       const min = allowEmpty ? 0 : step.min ?? (step.require === false ? 0 : amount);
-      return candidates.length >= min;
+      // clampMinToCandidates: 下限は候補数で切り下げる（候補不足でも「ある分だけ」選ぶ）＝事前充足も常に満たす。
+      return step.clampMinToCandidates || candidates.length >= min;
     }
     return true;
   });
+}
+
+// R5(2026-10-09 オーナー裁定)「〜を選び、…を払ってよい。払ったら」: 選べるカードが無いならコストを払えない（何も起きない）。
+// 能力フラグ selectBeforeCost:true（その原文の能力にだけ付けるオプトイン）を持つ能力の「先頭の選択」（script 先頭に連続する
+// selectCards／先頭の強制 moveMatchingDropToHand）が今の局面で成立するかを、コスト提示・支払いの前に確かめる。
+// 先頭以外の選択は前段の解決で候補が生まれ得るため見ない（偽陰性防止）。「払ってよい。払ったら、〜を手札に加える」のように
+// 『選び』の無い原文は、対象が無くてもコストだけ払える（公式どおり）ので対象外＝フラグを付けない。
+function canSatisfyLeadingSelection(card, ability, owner, baseContext = {}) {
+  const steps = Array.isArray(ability?.script) && ability.script.length > 0 ? ability.script : ability?.effects || [];
+  const context = { ...baseContext, card, ability, player: state.players[owner], owner, vars: {} };
+  const leading = [];
+  for (const step of steps) {
+    if (step?.op !== "selectCards") {
+      break;
+    }
+    leading.push(step);
+  }
+  if (leading.length > 0) {
+    return canSatisfyScriptSteps(leading, context);
+  }
+  const first = steps[0];
+  if (first?.op === "moveMatchingDropToHand" && !first.optional && state.players[owner]) {
+    return state.players[owner].drop.some((dropCard) => matchesCardFilter(dropCard, first.filter || {}, { owner }));
+  }
+  return true;
 }
 
 async function executeAbilityScriptStep(step, context) {
@@ -361,6 +600,9 @@ async function executeAbilityScriptStep(step, context) {
   }
   if (step.op === "ifSelection") {
     return ifSelectionForScript(step, context);
+  }
+  if (step.op === "repeat") {
+    return repeatForScript(step, context);
   }
   if (step.op === "ifTargetController") {
     return ifTargetControllerForScript(step, context);
@@ -437,6 +679,9 @@ async function executeAbilityScriptStep(step, context) {
     for (const entry of scriptSelection(step, context)) {
       if (entry.card) {
         entry.card.cannotAttackThisTurn = true;
+        // 禁止の発生源名を記録（canDeclareAttack が ignoreAttackForbidden=「グレイプニル」等の無視対象だけを除外する）。
+        entry.card.cannotAttackThisTurnSources ||= [];
+        entry.card.cannotAttackThisTurnSources.push(step.source || context.card?.name || "不明");
       }
     }
     return true;
@@ -545,7 +790,11 @@ async function executeAbilityScriptStep(step, context) {
     return true;
   }
   if (isScriptEffectStep(step)) {
-    await executeAbilityEffect(step, context);
+    const effectResult = await executeAbilityEffect(step, context);
+    // effect op が明示的に不成立を返した場合（returnSelfToHand{require:true} 等）は script を打ち切る。
+    if (effectResult?.ok === false) {
+      return effectResult;
+    }
     return true;
   }
   addLog(`未実装のscript命令です: ${step.op}`);
@@ -570,6 +819,11 @@ async function selectCardsForScript(step, context) {
     // 選択下限も amountFrom で動的決定（「対象のサイズの数値以上」払う等。H-BT04/0006）。
     min = resolveAmountFrom(step.minFrom, context);
     max = Math.max(max, min);
+  }
+  if (step.clampMinToCandidates) {
+    // 「N枚分破壊する」型の強制選択: 下限 N を候補数で切り下げ、候補が N 未満でも not_enough_candidates に
+    // せず「ある分だけ」強制で選ばせる（PR/0328・TD07/0001）。未指定＝従来どおり（後方互換）。
+    min = Math.min(min, candidates.length);
   }
   if (max <= 0) {
     // 選択上限が0（maxFrom:buddyZoneCount が0 / maxByEmptyFieldZones が0 等）なら、候補が
@@ -602,6 +856,19 @@ async function selectCardsForScript(step, context) {
     }
     return true;
   }
+  // selectAll:true＝「〜全て」「AとBとC」型の強制一括適用。該当候補を全て（max まで）選び、選択プロンプトを出さない
+  // （以前は任意の 0〜N 枚選択で、CPU は常に1枚しか選ばなかった）。未指定＝従来どおり（後方互換）。
+  if (step.selectAll) {
+    context.vars[step.var] = candidates.slice(0, Number.isFinite(max) ? max : candidates.length);
+    return true;
+  }
+  // プレイテスト T8: 下限が候補数以上（「場のカード全て」等＝minFrom/maxFrom が候補数と一致）の選択は、
+  // 選び方が1通りしかないので選択プロンプトを出さずに全候補を確定する（暗技 鬼哭啾啾の「全て」で
+  // 決定するだけの選択が出ていた）。並べ替え・伏せ札の提示（shuffle/faceDown）は従来どおりプロンプトを出す。
+  if (step.minFrom && candidates.length > 0 && min >= candidates.length && max >= candidates.length && !step.shuffle && !step.faceDown) {
+    context.vars[step.var] = candidates.slice();
+    return true;
+  }
   // E-XB6(X-SS03/0012 カリスマジック): chooser:"opponent" は選択プロンプトを相手席へ往復させる
   // （opponentMayCallFromHandForScript の promptSeat=相手席と同じ配管・リプレイ/room 復元/権威サーバ決定的）。
   // 未指定＝従来どおり能力主体（context.owner）席＝完全後方互換。
@@ -611,7 +878,7 @@ async function selectCardsForScript(step, context) {
   const presentCandidates = step.shuffle ? shuffle(candidates) : candidates;
   const selected = await chooseCardEntries(presentCandidates, {
     title: step.title || `${context.card.name}の選択`,
-    lead: step.lead || `${min}枚選んでください。`,
+    lead: step.lead || defaultSelectLead(min, max, presentCandidates.length),
     min,
     max,
     forceDialog: step.forceDialog !== false,
@@ -627,17 +894,40 @@ async function selectCardsForScript(step, context) {
       step.purpose ||
       step.role ||
       (typeof aiInferScriptSelectPurpose === "function" ? aiInferScriptSelectPurpose(step, context) : undefined),
-    // 誤爆防止（ユーザー方針）: 選択はキャンセルできる。キャンセルすると script は中断するが、
-    // まだ盤面を変えていない中断（executeAbilityScript の __abilityProgressed=false）なら
-    // 解決側(src/07 resolvePendingAbility)が使用回数を消費せず「使用前」に戻す。
+    // 誤爆防止（ユーザー方針）: 宣言前まで完全に巻き戻せる時（resolutionCancelAllowed）だけキャンセルできる。
+    // キャンセルすると script は中断し、解決側(src/07 resolvePendingAbility)が使用回数を消費せず「使用前」に戻す。
+    // T2（オーナー裁定 2026-10-14）: コスト支払い後・カード移動後・効果の途中の必須選択は強制（キャンセル不可）。
+    // min 0（「〜まで」）は「選ばない」を従来どおり許す。
+    allowCancel: min === 0 || resolutionCancelAllowed(context),
   });
+  if (selected === null && min === 0) {
+    context.vars[step.var] = []; // 任意選択の取り消し＝0枚選択（後続は空の var で続行）
+    markScriptSelectionDeclined(context, step.var);
+    return true;
+  }
   if (!selected || selected.length < min) {
     context.vars[step.var] = [];
     addLog(step.cancelMessage || `${context.card.name}のカードを選んでください。`);
     return step.require === false ? true : { ok: false, reason: "selection_cancelled" };
   }
   context.vars[step.var] = selected;
+  if (selected.length === 0) {
+    markScriptSelectionDeclined(context, step.var);
+  }
   return true;
+}
+
+// pt-final(5): 候補はあったが「選ばない」を選んだ var を覚える（後続の moveSelected が「動かすカードがありません」
+// と候補なしのような文言を出さないため）。context.vars と同じ寿命（vars の別名キー）。
+function markScriptSelectionDeclined(context, varName) {
+  if (varName && context?.vars) {
+    context.vars[`__declined:${varName}`] = true;
+  }
+}
+
+function scriptSelectionDeclined(step, context) {
+  const name = step?.var || step?.selection;
+  return Boolean(name && context?.vars?.[`__declined:${name}`]);
 }
 
 function groupScriptCandidates(candidates, step) {
@@ -674,7 +964,62 @@ function scriptGroupKey(card, groupBy) {
   return card[groupBy];
 }
 
+// pt-final(6): 選んだカードの能力をその場で使う（useSelectedCardAbility＝忍び巻物「ソウルの《忍法》を使う」・
+// 秘剣 絶命陣 等）選択は、今使える能力を持つカードだけを候補にする。以前は今使えない《忍法》（タイミング外・
+// コスト不足・対象なし）も候補に出し、事前充足（canSatisfyScriptSteps）も通ってしまうため、使えないのに
+// 「ソウルの《忍法》を使う」が出て、選ぶと「現在のタイミングで使える能力がありません」で終わっていた。
 function scriptCardSelectionCandidates(step, context) {
+  const entries = scriptCardSelectionCandidatesBase(step, context);
+  if (!step?.var || !scriptVarLaterUsedAsAbility(context, step.var)) {
+    return entries;
+  }
+  return entries.filter((entry) => scriptSelectionHasUsableAbility(entry, context));
+}
+
+function scriptVarLaterUsedAsAbility(context, varName) {
+  const steps = context?.__scriptSteps;
+  if (!Array.isArray(steps)) {
+    return false;
+  }
+  const start = Number.isInteger(context.__scriptIndex) ? context.__scriptIndex + 1 : 0;
+  for (const later of steps.slice(start)) {
+    if (later?.op === "selectCards" && later.var === varName) {
+      return false;
+    }
+    if (later?.op === "useSelectedCardAbility" && (later.var || later.selection) === varName) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// useSelectedCardAbilityForScript が使う能力の判定（タイミング・使用条件）に、対象の有無とコストの支払い可否を足したもの。
+function scriptSelectionHasUsableAbility(entry, context) {
+  if (!entry?.card) {
+    return false;
+  }
+  const player = context.player || state.players[context.owner];
+  const timing = state.pendingAttack || state.pendingAction ? "counter" : state.phase;
+  return (entry.card.abilities || []).some((ability) => {
+    try {
+      if (!canUseAbilityFromScriptSelection(ability, entry) || !abilityTimingIncludes(ability, timing)) {
+        return false;
+      }
+      if (!checkAbilityConditions(ability, context.owner, { ...context, card: entry.card, hostCard: context.card, ability })) {
+        return false;
+      }
+      if (ability.target && targetCandidatesFromSpec(ability.target, context.owner, { card: entry.card, ability }).length === 0) {
+        return false;
+      }
+      const costSteps = adjustedAbilityCostSteps(player, entry.card, ability);
+      return canPayStructuredCost(player, costSteps, { sourceCard: entry.card, selectedCard: entry.card, allowInteractiveSelection: true }).ok;
+    } catch (error) {
+      return true; // 判定不能は従来どおり候補に残す
+    }
+  });
+}
+
+function scriptCardSelectionCandidatesBase(step, context) {
   const from = step.from || "field";
   if (from === "var") {
     // E-XB6(X-SS03/0012 カリスマジック): 直前の選択(var)のエントリを候補にする（「君が選んだ2枚から
@@ -732,9 +1077,12 @@ function scriptCardSelectionCandidates(step, context) {
       .filter((entry) => entry && scriptCardMatches(entry.card, entry.owner, null, step, context));
   }
   if (from === "field") {
+    // rule-zones-5: 選んだカードを後続の moveSelected{to:"hand"} で手札に戻す選択なら、「手札に戻せない」カードは選べない。
+    const returnsToHand = scriptVarLaterMovedToHand(context, step.var);
     return allFieldTargets((card, owner, zone) =>
       scriptControllerMatches(step.controller, owner, context.owner) &&
-        scriptCardMatches(card, owner, zone, step, context),
+        scriptCardMatches(card, owner, zone, step, context) &&
+        !(returnsToHand && cannotReturnToHand(card, makeEffectCause(context, owner))),
     ).map((entry) => ({
       ...entry,
       source: "field",
@@ -749,17 +1097,26 @@ function scriptCardSelectionCandidates(step, context) {
       if (!pile) {
         continue;
       }
+      const hostEntry = pileKey === "soul" && step.hostVar
+        ? scriptSelection({ var: step.hostVar }, context)[0]
+        : null;
       const soulHost = pileKey === "soul" && step.hostVar
-        ? scriptSelection({ var: step.hostVar }, context)[0]?.card || context.card
+        ? hostEntry?.card || context.card
         : context.card;
+      // hostVar で選んだ場カードのソウルは、そのホストの持ち主（ホストを選んだ席）のカードとして扱う
+      // （相手の場のカードのソウルは相手のドロップへ・誘発も相手側。X-BT04/0058）。未選択時は従来どおり。
+      const soulOwner = hostEntry?.card && Number.isInteger(hostEntry.owner) ? hostEntry.owner : owner;
+      if (hostEntry?.card && candidates.some((entry) => entry.source === "soul" && entry.sourceCard === soulHost)) {
+        continue; // controller:"any" 等で同じホストのソウルを席ごとに二重列挙しない
+      }
       pile.forEach((card, index) => {
-        if (!scriptCardMatches(card, owner, null, step, context)) {
+        if (!scriptCardMatches(card, soulOwner, null, step, context)) {
           return;
         }
         candidates.push({
           card,
           index,
-          owner,
+          owner: soulOwner,
           source: pileKey,
           sourceCard: pileKey === "soul" ? soulHost : null,
           note: step.note || scriptSourceLabel(pileKey),
@@ -768,6 +1125,35 @@ function scriptCardSelectionCandidates(step, context) {
     }
   }
   return candidates;
+}
+
+// rule-zones-5: 実行中の script（context.__scriptSteps / __scriptIndex）で、varName の選択が後続の
+// moveSelected{to:"hand"} で無条件に動かされるか（同じ並びか、「選んだら」の ifSelection.then の中のみ。
+// ifCondition/chooseBranch 等の条件分岐の先は、手札以外へ動かす分岐もあり得るので数えない）。同名 var の再選択で打ち切る。
+function scriptVarLaterMovedToHand(context, varName) {
+  const steps = context?.__scriptSteps;
+  if (!varName || !Array.isArray(steps)) {
+    return false;
+  }
+  const visit = (list) => {
+    for (const step of list || []) {
+      if (!step || typeof step !== "object") {
+        continue;
+      }
+      if (step.op === "selectCards" && step.var === varName) {
+        return false;
+      }
+      if (step.op === "moveSelected" && step.to === "hand" && (step.var || step.selection) === varName) {
+        return true;
+      }
+      if (step.op === "ifSelection" && Array.isArray(step.then) && visit(step.then)) {
+        return true;
+      }
+    }
+    return false;
+  };
+  const start = Number.isInteger(context.__scriptIndex) ? context.__scriptIndex + 1 : 0;
+  return visit(steps.slice(start));
 }
 
 function scriptCardMatches(card, owner, zone, step, context) {
@@ -788,7 +1174,7 @@ function scriptCardMatches(card, owner, zone, step, context) {
   }
   // X20(D-BT01/0028): 場からの選択をゾーンで絞る（「相手のセンターのモンスター」等。filter.zone は
   // matchesCardFilter が解釈しないため、step.zones で明示する）。
-  if (Array.isArray(step.zones) && zone && !step.zones.includes(zone)) {
+  if (Array.isArray(step.zones) && zone && !zoneListIncludes(step.zones, zone)) {
     return false;
   }
   // E-PR3(PR/0175 バディ・リコール / PR/0106 / 出荷済み bf-h-eb01-0013): selectCards の候補判定にも
@@ -969,6 +1355,7 @@ function moveAllOwnFieldToDropForScript(step, context) {
     if (zone === "item" && player.arrivalCardId === card.instanceId) {
       player.arrivalCardId = null; // 着任アイテムを流す場合は着任フラグをクリア
     }
+    recordLeftFieldEventWindow(card, context.owner, zone); // 離場窓（lastLeftFieldCardMatches）
     moved.push(card);
   });
   if (moved.length > 0) {
@@ -990,14 +1377,19 @@ function dealDamageBySelectedStatSumForScript(step, context) {
   });
   const seat = step.player === "opponent" ? 1 - context.owner : context.owner;
   if (sum > 0) {
-    const dealt = applyDamageToPlayer(seat, sum, {
+    const finish = (dealt) => {
+      addLog(`${context.card?.name || "効果"}の効果で${state.players[seat].name}に${dealt}ダメージ！`);
+      return true;
+    };
+    const dealt = applyDamageToPlayerAsk(seat, sum, {
       sourceName: context.card?.name,
       sourceCard: context.card,
       sourceOwner: context.owner, // preventOpponentEffectDamage（相手効果ダメ無効）の判定に必要
       ignorePrevention: Boolean(step.ignorePrevention),
       byEffect: true,
     });
-    addLog(`${context.card?.name || "効果"}の効果で${state.players[seat].name}に${dealt}ダメージ！`);
+    // 任意コストの軽減（メラク等）を本人に問う時だけ非同期（呼び出し元の step 分岐は Promise をそのまま返す）。
+    return dealt?.then ? dealt.then(finish) : finish(dealt);
   }
   return true;
 }
@@ -1070,9 +1462,55 @@ function gainSelectedCardAbilitiesForTurnForScript(step, context) {
       host.turnKeywords ||= [];
       host.turnKeywords.push(keyword);
     });
+    copyCardLevelAbilityFieldsForTurn(host, source);
     addLog(`${host.name}はそのターン中、${source.name}に書かれている能力全てを得ました。`);
   }
   return true;
+}
+
+// 「書かれている能力全てを得る」: カード単位のフィールドで表した能力（効果で破壊されない＝destroyImmunity、
+// 「場から離れる場合〜場に残す」＝destroyReplacement/leaveFieldReplacement 等、攻撃耐性、手札に戻せない）も得る。
+// 元の値を host.turnCopySavedFields に退避し、clearTurnModifiers（restoreTurnCopiedCardFields）で戻す。
+// 配列形は連結、単一オブジェクト形は host が未所持の時だけ得る（同種の置換を2つ持てないエンジン制約）。
+const TURN_COPY_ARRAY_FIELDS = ["destroyImmunity", "attackResistances", "allyLeaveFieldReplacement"];
+const TURN_COPY_OBJECT_FIELDS = ["destroyReplacement", "leaveFieldReplacement", "allyDestroyReplacement", "lifeZeroReplacement"];
+function copyCardLevelAbilityFieldsForTurn(host, source) {
+  const save = (field) => {
+    host.turnCopySavedFields ||= {};
+    if (!Object.prototype.hasOwnProperty.call(host.turnCopySavedFields, field)) {
+      host.turnCopySavedFields[field] = host[field] === undefined ? null : deepClone(host[field]);
+    }
+  };
+  TURN_COPY_ARRAY_FIELDS.forEach((field) => {
+    if (!source[field]) return;
+    const add = (Array.isArray(source[field]) ? source[field] : [source[field]]).map((entry) => deepClone(entry));
+    if (!add.length) return;
+    save(field);
+    const current = host[field] ? (Array.isArray(host[field]) ? host[field] : [host[field]]) : [];
+    host[field] = [...current, ...add];
+  });
+  TURN_COPY_OBJECT_FIELDS.forEach((field) => {
+    if (!source[field] || host[field]) return;
+    save(field);
+    host[field] = deepClone(source[field]);
+  });
+  if (source.cannotReturnToHand && !host.cannotReturnToHand) {
+    save("cannotReturnToHand");
+    host.cannotReturnToHand = true;
+  }
+}
+
+function restoreTurnCopiedCardFields(card) {
+  const saved = card?.turnCopySavedFields;
+  if (!saved) return;
+  Object.keys(saved).forEach((field) => {
+    if (saved[field] === null) {
+      delete card[field];
+    } else {
+      card[field] = saved[field];
+    }
+  });
+  card.turnCopySavedFields = null;
 }
 
 function gainNameAsSelectedForScript(step, context) {
@@ -1102,9 +1540,10 @@ function takeScriptSelectionCards(selection) {
   const movedCards = [];
   for (const entry of [...selection].sort((left, right) => (right.index ?? 0) - (left.index ?? 0))) {
     if (entry.source === "field") {
+      const typeAtLeave = entry.card ? effectiveCardType(entry.card) : null; // 離場時点の型（detach で印字の型へ戻る）
       const card = detachFieldCardForMove(entry.owner, entry.zone, entry.card);
       if (card) {
-        movedCards.unshift({ ...entry, card });
+        movedCards.unshift({ ...entry, card, typeAtLeave });
       }
       continue;
     }
@@ -1130,6 +1569,7 @@ function detachFieldCardForMove(owner, zone, expectedCard = null) {
     return null;
   }
   const lifeLinkNullifiedAtLeave = isAbilitiesNullified(card); // 離場直前に捕捉（能力無効化中はライフリンク無し）
+  const typeAtLeave = effectiveCardType(card); // rule-zones-3: 場離れ誘発はこの時点の型で照合
   player.drop.push(...(card.soul || []));
   card.soul = [];
   // ホストが移動(場外)＝ソウル札がドロップへ落ちる。破壊経路(destroyFieldCard:505)と同様、裏向き奇襲札の公開・
@@ -1143,27 +1583,85 @@ function detachFieldCardForMove(owner, zone, expectedCard = null) {
   // 「場から離れた時」誘発(allyLeaveField/opponentLeaveField)は破壊だけでなく非破壊離場(手札戻し/ゲージ/デッキ/
   // ソウル等)でも発火する。ライフリンク(applyLifeLink)と同じ離場サイトで queueLeaveFieldTriggers を鳴らす
   // （destroyFieldCard は 511 で既に鳴らすので、破壊経由と二重にはならない＝各離場は単一経路）。
-  queueLeaveFieldTriggers(card, owner, zone);
+  queueLeaveFieldTriggers(card, owner, zone, { eventCardTypeAtLeave: typeAtLeave });
   // r3 L4(S-UB-C03/0066): script経由の場外移動(selectCards/moveSelected等)でも印字値を復元する。
   restoreFaceDownMonsterPrint(card);
+  // rule-zones-3: ver2.05『変身』『搭乗』『着任』は「装備されている間は」アイテム扱い＝場を離れたら印字の型へ戻す
+  // （移動先で装備し直す経路は装備処理側で改めて item にする）。
+  card.currentType = card.baseType || card.type;
   return card;
 }
 
-function moveSelectedForScript(step, context) {
+// rule-zones-5: 場のカードを（持ち主の）手札へ戻す moveSelected は、効果 returnToHand と同じ正規の単体手札戻し経路
+// （手札に戻せない・Z9・X9/E2/E4 離場置換・ソウルガード・状態リセット・ライフリンク・「場から離れた時」・
+// 「場のモンスターが手札に戻った時」・自身の「手札に戻った時」）を通す。戻らなかったカードは移動したカードに数えない。
+async function returnSelectedFieldEntriesToHandForScript(entries, context) {
+  const returned = [];
+  for (const entry of entries) {
+    const card = state.players[entry.owner]?.field?.[entry.zone];
+    if (!card || (entry.card && card.instanceId !== entry.card.instanceId)) {
+      continue;
+    }
+    const leaveCause = makeEffectCause(context, entry.owner);
+    if (
+      (fieldHasLeaveFieldReplacer(entry.owner) && (await applyAllyLeaveFieldReplacement(card, entry.owner, leaveCause))) ||
+      (soulHasLeaveFieldReplacer(card) && (await applySoulLeaveFieldReplacement(card, entry.owner, leaveCause)))
+    ) {
+      continue;
+    }
+    const moved = await returnFieldTargetToHandAsync({ owner: entry.owner, zone: entry.zone }, context.card?.name || "効果", {
+      returnCause: leaveCause,
+    });
+    if (moved) {
+      returned.push({ ...entry, card: moved });
+    }
+  }
+  return returned;
+}
+
+async function moveSelectedForScript(step, context) {
   if (step.to === "deckBottom" && step.order === "choose") {
     return moveSelectedToDeckBottomOrderedForScript(step, context);
   }
-  const movedEntries = takeScriptSelectionCards(scriptSelection(step, context));
-  if (movedEntries.length === 0) {
-    addLog(step.emptyMessage || `${context.card.name}で動かすカードがありません。`);
+  const selection = scriptSelection(step, context);
+  const fieldToHand = step.to === "hand"
+    ? selection.filter((entry) => entry.source === "field" && scriptMoveDestinationOwner(step, entry, context) === entry.owner)
+    : [];
+  const returnedEntries = fieldToHand.length > 0 ? await returnSelectedFieldEntriesToHandForScript(fieldToHand, context) : [];
+  const movedEntries = takeScriptSelectionCards(selection.filter((entry) => !fieldToHand.includes(entry)));
+  if (movedEntries.length === 0 && returnedEntries.length === 0) {
+    addLog(
+      step.emptyMessage ||
+        (scriptSelectionDeclined(step, context)
+          ? `${context.card.name}: カードを選ばなかったため、移動はありません。`
+          : `${context.card.name}で動かすカードがありません。`),
+    );
     return step.require === false ? true : { ok: false, reason: "no_selected_cards" };
   }
+  // step.discard: 手札→ドロップを「捨てる」として扱う（公式テキストが「捨て」の札だけデータで指定）。
+  // 手札→ドロップの唯一合流点 discardHandCardsToDrop を通し、「手札からドロップに置かれた時」(discardedFromHand)・
+  // 場の ally/opponentHandDiscarded・turnHandDiscardedByEffect を発火させる。席ごとに1回のバッチで渡す。
+  const discardBySeat = new Map();
   for (const entry of movedEntries) {
     const destinationOwner = scriptMoveDestinationOwner(step, entry, context);
+    if (step.discard && entry.source === "hand" && (step.to || "drop") === "drop") {
+      const group = discardBySeat.get(destinationOwner) || [];
+      group.push(entry.card);
+      discardBySeat.set(destinationOwner, group);
+      continue;
+    }
     moveScriptCardToDestination(entry.card, step.to, destinationOwner, context);
     // 「場かデッキからドロップに置かれた時」誘発（movedToDrop）。宛先がドロップ（未指定既定含む）の時のみ。
     // 移動自体は moveScriptCardToDestination 済みのため alreadyPlaced で誘発の queue のみ行う。
     const destKind = step.to || "drop";
+    if (entry.source === "field" && (destKind === "deck" || destKind === "deckBottom")) {
+      // rule-zones-7: 場→デッキも「場のモンスターが手札かデッキに戻った時」(returnedToZones に deck を含むリスナー)を発火。
+      resetLeftFieldCardState(entry.card);
+      queueMonsterReturnedTriggers(entry.card, entry.owner, entry.zone, {
+        ...(entry.typeAtLeave ? { eventCardTypeAtLeave: entry.typeAtLeave } : {}),
+        returnedTo: "deck",
+      });
+    }
     if (destKind === "drop") {
       // E5: entry.source==="deck" のときは deckMilled ブロードキャストも飛ぶ（cause=この効果の起因）。
       putCardsToDropWithTrigger(state.players[destinationOwner], destinationOwner, [entry.card], entry.source, { alreadyPlaced: true, cause: makeEffectCause(context, destinationOwner) });
@@ -1177,10 +1675,14 @@ function moveSelectedForScript(step, context) {
       }
     }
   }
+  discardBySeat.forEach((cards, seat) => {
+    discardHandCardsToDrop(state.players[seat], cards, makeEffectCause(context, seat));
+  });
+  const loggedEntries = [...returnedEntries, ...movedEntries];
   if (step.log === "discard") {
-    addLog(`${context.player.name}は${context.card.name}の効果で${movedEntries.map((entry) => entry.card.name).join("、")}を捨てました。`);
+    addLog(`${context.player.name}は${context.card.name}の効果で${loggedEntries.map((entry) => entry.card.name).join("、")}を捨てました。`);
   } else if (step.log) {
-    addLog(step.log.replace("{cards}", movedEntries.map((entry) => entry.card.name).join("、")));
+    addLog(step.log.replace("{cards}", loggedEntries.map((entry) => entry.card.name).join("、")));
   }
   return true;
 }
@@ -1198,6 +1700,7 @@ async function moveSelectedGroupForScript(step, context) {
         title: step.title || context.card.name,
         lead: step.chooseLead || `動かすカードを${amount}枚まで選んでください。`,
         min: step.require === false ? 0 : Math.min(1, amount),
+        allowCancel: step.require === false, // T2: 必須の「どれを動かすか」は強制（キャンセル不可）
         max: amount,
         forceDialog: true,
         promptSeat: context.owner,
@@ -1216,6 +1719,14 @@ async function moveSelectedGroupForScript(step, context) {
     // 「場かデッキからドロップに置かれた時」誘発（movedToDrop）。宛先がドロップ（未指定既定含む）の時のみ。
     // 移動自体は moveScriptCardToDestination 済みのため alreadyPlaced で誘発の queue のみ行う。
     const destKind = step.to || "drop";
+    if (entry.source === "field" && (destKind === "deck" || destKind === "deckBottom")) {
+      // rule-zones-7: 場→デッキも「場のモンスターが手札かデッキに戻った時」(returnedToZones に deck を含むリスナー)を発火。
+      resetLeftFieldCardState(entry.card);
+      queueMonsterReturnedTriggers(entry.card, entry.owner, entry.zone, {
+        ...(entry.typeAtLeave ? { eventCardTypeAtLeave: entry.typeAtLeave } : {}),
+        returnedTo: "deck",
+      });
+    }
     if (destKind === "drop") {
       // E5: entry.source==="deck" のときは deckMilled ブロードキャストも飛ぶ（cause=この効果の起因）。
       putCardsToDropWithTrigger(state.players[destinationOwner], destinationOwner, [entry.card], entry.source, { alreadyPlaced: true, cause: makeEffectCause(context, destinationOwner) });
@@ -1244,6 +1755,31 @@ async function ifSelectionForScript(step, context) {
   return executeAbilityScript(branch, context);
 }
 
+// repeat{times | timesFrom(amountFrom 仕様), steps:[…], stopWhenNoCandidates}: steps を N 回くり返す汎用 op。
+// 「置いた枚数分破壊する（同じカードを選べる）」＝ repeat{timesFrom:selectedCount, steps:[selectCards{1枚・強制}, destroySelected]}
+// （毎回選び直すので、ソウルガード等で場に残ったカードを再度選べる）。回数は開始時に1度だけ解決する。
+// stopWhenNoCandidates:true は steps 先頭の selectCards の候補が尽きた時点で残りの回を打ち切る（強制選択の空振り中断を防ぐ）。
+async function repeatForScript(step, context) {
+  const steps = Array.isArray(step.steps) ? step.steps : [];
+  const times = step.timesFrom
+    ? resolveAmountFrom(step.timesFrom, context)
+    : Math.max(0, Math.floor(Number(step.times) || 0));
+  const firstSelect = steps.find((inner) => inner?.op === "selectCards");
+  for (let index = 0; index < times && steps.length > 0; index += 1) {
+    if (step.stopWhenNoCandidates && firstSelect) {
+      const remaining = groupScriptCandidates(scriptCardSelectionCandidates(firstSelect, context), firstSelect);
+      if (remaining.length === 0) {
+        break;
+      }
+    }
+    const result = await executeAbilityScript(steps, context);
+    if (result === false || result?.ok === false) {
+      return false;
+    }
+  }
+  return true;
+}
+
 async function ifTargetControllerForScript(step, context) {
   const targetOwner = context.target?.owner;
   const matches =
@@ -1258,12 +1794,30 @@ async function ifTargetControllerForScript(step, context) {
 }
 
 async function ifConditionForScript(step, context) {
-  const matches = checkCondition(step.condition || {}, context.owner, context);
+  // 統合 follow-up: 権威サーバでも本人へ往復で問う（以前はサーバだけ同期判定＝既定値で確定していた）。
+  const matches =
+    step.condition?.op === "confirmPrompt"
+      ? await confirmPromptForScript(step.condition, context.owner)
+      : checkCondition(step.condition || {}, context.owner, context);
   const branch = matches ? step.then : step.else;
   if (!Array.isArray(branch) || branch.length === 0) {
     return true;
   }
   return executeAbilityScript(branch, context);
+}
+
+// プレイテスト T8: script の ifCondition{confirmPrompt}（「〜しますか？」「君が小学生なら」等の自己申告）は、
+// ローカル対戦では非同期の確認（confirmChoiceAsync＝アプリ内の確認UI・CPU 席は AI・リプレイ記録/順序配信）で問う。
+// 同期の checkCondition 経路はネイティブ window.confirm しか出せなかった。権威サーバも confirmChoiceAsync の往復で本人に問う。
+async function confirmPromptForScript(condition, owner) {
+  return Boolean(
+    await confirmChoiceAsync(owner, condition.prompt || "この効果を使いますか？", {
+      purpose: "confirmPrompt",
+      yesLabel: "はい",
+      noLabel: "いいえ",
+      defaultAnswer: Boolean(condition.default),
+    }),
+  );
 }
 
 // 宣言可能なカード名の一覧（重複排除）。カード名宣言プロンプト(検索付き)の候補に使う。
@@ -1328,12 +1882,31 @@ async function chooseBranchForScript(step, context) {
     }
     return true;
   }
+  // 「〜を払ってよい。払わなければ〜」型（支払い条件 canPayCost を持つ選択肢と、持たない＝払わない選択肢がちょうど1つ）
+  // は、キャンセル＝「払わない」を選んだのと同じ（急襲のファルゴレム等ゴレム16種・破岩流 豪血壊震撃！）。
+  const declineOptions = options.filter((option) => !(Array.isArray(option.canPayCost) && option.canPayCost.length > 0));
+  const declineOption =
+    declineOptions.length === 1 && declineOptions.length < (Array.isArray(step.options) ? step.options : []).length &&
+    (step.options || []).some((option) => Array.isArray(option.canPayCost) && option.canPayCost.length > 0)
+      ? declineOptions[0]
+      : null;
+  // プレイテスト T8: 今選べる分岐が1つだけなら、1択の選択ダイアログは出さずにその分岐を解決する
+  // （暗技 鬼哭啾啾を【対抗】で使った時、使える「場のカード全てのソウルを…」だけの1択を毎回確認させていた）。
+  // 統合（pt-fix-b T2 と合わせる）: 「払わない」(declineOption) しか残っていない1択はそれを解決する（キャンセルと同じ結果）。
+  // 巻き戻し可能（resolutionCancelAllowed）な起動でも分岐の解決自体は盤面を変えないため、後続の最初の選択で引き続き
+  // 取りやめられる（ベンジョーはかせ: 1択の分岐を飛ばし、4枚の選択がキャンセル可のまま）。
+  if (options.length === 1 && !step.alwaysAsk) {
+    const only = options[0].script;
+    return Array.isArray(only) && only.length > 0 ? executeAbilityScript(only, context) : true;
+  }
   const selected = await chooseCardEntries(
     options.map((option) => ({
       option,
       card: {
-        name: option.label || option.key,
-        rules: option.description ? [option.description] : [],
+        // pt-fix-c T7-8: label の無い分岐（ジャックナイフ・ギフト/斬魔滅葬陣 等）で内部キー(recover/draw)が出ていた
+        // ＝効果文(description)を名前に使う。
+        name: option.label || option.description || option.key,
+        rules: option.description && option.label ? [option.description] : [],
         type: "choice",
       },
       note: option.note || "",
@@ -1347,11 +1920,19 @@ async function chooseBranchForScript(step, context) {
       // 権威サーバ: 分岐選択は能力の主体(context.owner)へ往復させる（未指定だと inferPromptSeat が state.active に誤配送）。
       promptSeat: context.owner,
       purpose: "branch", // CPU対戦(src/22): 効果分岐の選択
+      // T2（オーナー裁定 2026-10-14）: 分岐の選択は必須。宣言前まで巻き戻せる時だけキャンセル（＝使用の取りやめ）、
+      // それ以外は強制（以前はキャンセルで何も選ばず成功扱い＝コストを払って効果なし／急襲のファルゴレムは払わず破壊もされない）。
+      allowCancel: Boolean(declineOption) || resolutionCancelAllowed(context),
     },
   );
-  const branch = selected?.[0]?.option?.script;
+  const chosenOption = selected?.[0]?.option || (selected === null ? declineOption : null);
+  if (!chosenOption) {
+    addLog(`${context.card?.name || "効果"}の効果を選んでください。`);
+    return { ok: false, reason: "branch_cancelled" };
+  }
+  const branch = chosenOption.script;
   if (!Array.isArray(branch) || branch.length === 0) {
-    return true;
+    return true; // 何もしない選択肢（script 無し）は正規の選択
   }
   return executeAbilityScript(branch, context);
 }
@@ -1391,6 +1972,8 @@ async function payCostForScript(step, context) {
   const payment = await payStructuredCostWithSelection(context.player, costSteps, {
     sourceCard: context.card,
     selectedCard: context.card,
+    // T2: 効果の途中で払うコストの選択は、宣言前まで巻き戻せる時以外はキャンセル不可（強制）。
+    forceSelection: !resolutionCancelAllowed(context),
   });
   if (!payment.ok) {
     addLog(payment.reason);
@@ -1426,6 +2009,7 @@ async function payLifeChooseForScript(step, context) {
     title: step.title || `${context.card?.name || "効果"}：支払うライフ`,
     lead: step.lead || `払うライフの数値を選んでください（0〜${cap}）。`,
     min: 1,
+    allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
     max: 1,
     forceDialog: true,
     promptSeat: owner, // 能力主体の席へ（権威サーバ/CPU の誤配送防止）
@@ -1438,6 +2022,20 @@ async function payLifeChooseForScript(step, context) {
     addLog(`${player.name}は${context.card?.name || "効果"}でライフを${paid}払いました。`);
   }
   return true;
+}
+
+// 順序付きでデッキへ置いた選択のうち、場から来たカードについて「場のモンスターが手札かデッキに戻った時」
+// (returnedTo:"deck"＝returnedToZones に "deck" を持つリスナーのみ)を発火する（moveSelected to:deck と同じ規約）。
+function queueFieldEntriesReturnedToDeck(entries) {
+  entries
+    .filter((entry) => entry.source === "field")
+    .forEach((entry) => {
+      resetLeftFieldCardState(entry.card);
+      queueMonsterReturnedTriggers(entry.card, entry.owner, entry.zone, {
+        ...(entry.typeAtLeave ? { eventCardTypeAtLeave: entry.typeAtLeave } : {}),
+        returnedTo: "deck",
+      });
+    });
 }
 
 async function moveSelectedToDeckBottomOrderedForScript(step, context) {
@@ -1460,6 +2058,7 @@ async function moveSelectedToDeckBottomOrderedForScript(step, context) {
       title: step.title || `${context.card.name}のデッキ下順序`,
       lead: `デッキの下から${ordered.length + 1}番目に置くカードを選んでください。`,
       min: 1,
+      allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
       max: 1,
       forceDialog: true,
       promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
@@ -1476,6 +2075,7 @@ async function moveSelectedToDeckBottomOrderedForScript(step, context) {
   }
   player.deck.unshift(...ordered);
   queueDeckBottomPlacedTriggers(owner, ordered); // E-XB18: 選択カードをデッキ下（順序付き）
+  queueFieldEntriesReturnedToDeck(movedEntries); // 場→デッキも「場のモンスターが手札かデッキに戻った時」
   if (step.log) {
     addLog(step.log.replace("{cards}", ordered.map((card) => card.name).join("、")));
   }
@@ -1506,6 +2106,7 @@ async function moveSelectedToDeckTopOrderedForScript(step, context) {
       title: step.title || `${context.card.name}のデッキ上順序`,
       lead: `デッキの上から${ordered.length + 1}番目に置くカードを選んでください。`,
       min: 1,
+      allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
       max: 1,
       forceDialog: true,
       promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
@@ -1531,6 +2132,7 @@ async function moveSelectedToDeckTopOrderedForScript(step, context) {
   for (let i = ordered.length - 1; i >= 0; i -= 1) {
     player.deck.push(ordered[i]);
   }
+  queueFieldEntriesReturnedToDeck(movedEntries); // 場→デッキも「場のモンスターが手札かデッキに戻った時」
   if (step.log) {
     addLog(step.log.replace("{cards}", ordered.map((card) => card.name).join("、")));
   } else {
@@ -1557,7 +2159,15 @@ async function reorderTopOrderedForScript(step, context) {
     deckOwner = context.owner;
   }
   const player = state.players[deckOwner];
-  const count = step.count || 3;
+  let count = step.count || 3;
+  if (step.upTo) {
+    // R1(2026-10-09): 「デッキの上からN枚までを見て」＝見る枚数 0〜N（デッキ枚数が上限）を能力の主体が選ぶ（CPU 既定=N）。
+    count = await chooseUpToAmount(Math.min(count, player.deck.length), {
+      title: step.title || `${context.card?.name || "効果"}：見る枚数`,
+      lead: `${player.name}のデッキの上から見る枚数を選んでください（0〜${Math.min(count, player.deck.length)}）。`,
+      promptSeat: context.owner,
+    });
+  }
   const revealed = [];
   for (let i = 0; i < count && player.deck.length > 0; i += 1) {
     revealed.push(player.deck.pop()); // top = 末尾（drawCards/moveTopDeckToDrop と同規約）
@@ -1574,6 +2184,7 @@ async function reorderTopOrderedForScript(step, context) {
       title: step.title || `${context.card?.name || "効果"}のデッキ上順序`,
       lead: `デッキの上から${ordered.length + 1}番目に置くカードを選んでください。`,
       min: 1,
+      allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
       max: 1,
       forceDialog: true,
       promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
@@ -1652,10 +2263,18 @@ async function destroySelectedForScript(step, context) {
     }
     const destroyedName = targetCard.name;
     // 効果破壊として発生源(sourceOwner)を伝播（「君のカードで破壊された時」0030・破壊耐性判定と整合）。
-    const destroyed = await destroyFieldCard(entry.owner, entry.zone, { cause: makeEffectCause(context, entry.owner) });
+    // asCost:true＝印字の【使用コスト】の破壊を script で書いたもの（百鬼魔導 デスサクリファイス）。コストは効果ではない
+    // （公式Q&A No.850/1007/1000/1933）＝byCost の原因で破壊し、「カードの効果で破壊された時」を誘発させない。
+    const cause = step.asCost
+      ? makeCostDestroyCause(context.owner, context.card || null, entry.owner)
+      : makeEffectCause(context, entry.owner);
+    const destroyed = await destroyFieldCard(entry.owner, entry.zone, { cause });
     if (destroyed) {
       destroyedCount += 1;
-      addLog(`${context.card.name}の効果で${destroyedName}を破壊しました。`);
+      addDestroyLog(
+        step.asCost ? `${context.card.name}のコストで${destroyedName}を破壊しました。` : `${context.card.name}の効果で${destroyedName}を破壊しました。`,
+        destroyedName,
+      );
     }
   }
   // 実際に破壊した枚数を context へ露出（dealDamage の amountFrom:destroyedCount が参照。破壊耐性で免れた分は除外）。
@@ -1663,7 +2282,8 @@ async function destroySelectedForScript(step, context) {
   context.destroyedCounts[step.var] = destroyedCount;
   // 後続 ifCondition(lastDestroySucceeded) の「破壊したら〜」報酬ゲート用に破壊成立フラグを立てる
   // （effect版 destroy の src/15:1089/1097 と同じ定義＝destroyFieldCard が実カードを返した＝破壊成立。
-  //  ソウルガード/破壊耐性で場に残った分は destroyedCount に数えない＝false のまま）。
+  //  破壊耐性で場に残った分は destroyedCount に数えない＝false のまま。2026-10-09 オーナー裁定: ソウルガード等で
+  //  場に残った分は破壊成功として数える＝src/11 destroyedInPlace がカードを返す）。
   // これが無いと lastDestroySucceeded が常に false になり「破壊したら」報酬が不発だった（F1 恒久FIX）。
   context.lastDestroyed = destroyedCount > 0;
   if (destroyedCount === 0 && step.require !== false) {
@@ -1877,6 +2497,9 @@ function putSelectedToGaugeForScript(step, context) {
 }
 
 function dropSelectedSoulForScript(step, context) {
+  if (step.upTo) {
+    return dropSelectedSoulUpToForScript(step, context);
+  }
   const selected = scriptSelection(step, context);
   selected.forEach((entry) => {
     const owner = entry.owner ?? context.owner;
@@ -1908,6 +2531,51 @@ function dropSelectedSoulForScript(step, context) {
   return true;
 }
 
+// R1(2026-10-09 オーナー裁定): dropSelectedSoul{upTo:true}＝「選んだカードのソウルN枚までを捨てる／置く」。
+// 0〜N（対象ソウル枚数が上限）のどれを置くかを能力の主体が選ぶ（CPU: 相手のカードのソウルは hostile＝最大枚数、自分の
+// カードのソウルは cost＝0枚）。upTo 無しは上の同期版（先頭から amount 枚・従来挙動＝既存記録の再生互換）。
+async function dropSelectedSoulUpToForScript(step, context) {
+  for (const entry of scriptSelection(step, context)) {
+    const owner = entry.owner ?? context.owner;
+    const soul = entry.card?.soul || [];
+    const cause = { byEffect: true, byOpponent: owner !== context.owner };
+    let eligible = soul.filter((soulCard) => !soulCardSelfProtectedFrom(soulCard, "soulDrop", cause));
+    if (step.faceDown) {
+      eligible = eligible.filter((soulCard) => soulCard?.faceDown);
+    }
+    const amount = Math.min(step.amount ?? eligible.length, eligible.length);
+    let picks = [];
+    if (amount > 0) {
+      const chosen = await chooseCardEntries(
+        eligible.map((soulCard) => ({ card: soulCard, owner, source: "soul", note: `${entry.card.name}のソウル` })),
+        {
+          title: step.title || `${context.card?.name || "効果"}のソウル選択`,
+          lead: step.lead || `${entry.card.name}のソウルからドロップゾーンに置くカードを${amount}枚まで選んでください。`,
+          min: 0,
+          max: amount,
+          forceDialog: true,
+          promptSeat: context.owner,
+          purpose: owner === context.owner ? "cost" : "hostile",
+        },
+      );
+      picks = (chosen || []).map((choice) => choice.card);
+    }
+    const movedCards = [];
+    for (const pick of picks) {
+      const idx = soul.indexOf(pick);
+      if (idx >= 0) {
+        movedCards.push(soul.splice(idx, 1)[0]);
+      }
+    }
+    state.players[owner].drop.push(...movedCards);
+    if (movedCards.length > 0 && step.log !== false) {
+      addLog(`${entry.card.name}のソウルから${movedCards.map((card) => card.name).join("、")}をドロップゾーンに置きました。`);
+    }
+    queueSoulCardDroppedTriggers(entry.card, owner, movedCards.length);
+  }
+  return true;
+}
+
 async function discardSelfSoulForScript(step, context) {
   const amount = Math.min(step.amount || 1, context.card?.soul?.length || 0);
   if (amount <= 0) {
@@ -1927,6 +2595,7 @@ async function discardSelfSoulForScript(step, context) {
           title: `${context.card.name}のソウル選択`,
           lead: `ドロップゾーンに置くソウルを${amount}枚選んでください。`,
           min: amount,
+          allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
           max: amount,
           forceDialog: true,
           promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
@@ -2054,6 +2723,7 @@ function putTopDeckToSelectedSoulForScript(step, context) {
     }
   }
   if (moved.length > 0) {
+    moved.forEach((card) => queueEnteredSoulTriggers(card, state.players.indexOf(player), "deck", host)); // enteredSoul（デッキから）
     queueSoulCardAddedTriggers(host, state.players.indexOf(player), moved.length, moved[0]); // E-XB24
   }
   if (step.faceDown) {
@@ -2104,6 +2774,7 @@ async function lookTopSelectToSelectedSoulRestToBottomForScript(step, context) {
     if (toSoul.length > 0) {
       host.soul ||= [];
       host.soul.push(...toSoul);
+      toSoul.forEach((card) => queueEnteredSoulTriggers(card, owner, "deck", host)); // enteredSoul（デッキから）
       queueSoulCardAddedTriggers(host, owner, toSoul.length, toSoul[0]); // E-XB24
       if (step.faceDown) {
         markSoulCardsFaceDown(toSoul, host); // E-Y1(奇襲): 「裏向きで」（秘匿・名前を伏せる）
@@ -2161,6 +2832,7 @@ async function lookTopSelectToSelectedSoulRestForScript(step, context) {
         // 既定は min:0（「N枚まで」＝任意・0018）。minAmount 指定時のみ強制選択（「N枚を…入れ」＝0030）。
         // 候補（見た枚数）が minAmount 未満なら wantMax でクランプ＝候補0なら上の if(revealed.length>0) で本ブロック自体に入らず空許可。
         min: step.minAmount ? Math.min(step.minAmount, wantMax) : 0,
+      allowCancel: !step.minAmount, // T2: 「N枚を…入れ」（minAmount）は強制。「まで」は選ばなくてよい
         max: wantMax,
         forceDialog: true,
         promptSeat: owner, // 「見る」＝能力主体の席のみへ開示（秘匿・誤配送防止）
@@ -2225,6 +2897,7 @@ async function searchDeckToSelectedSoulForScript(step, context) {
       title: `${context.card?.name || "効果"}のデッキサーチ`,
       lead: `${host.name}のソウルに入れるカードを${wanted}枚まで選んでください。`,
       min: step.require === true ? Math.min(wanted, candidates.length) : 0,
+      allowCancel: step.require !== true, // T2: 必須サーチは強制（キャンセル不可）
       max: wanted,
       forceDialog: true,
       promptSeat: owner,
@@ -2236,6 +2909,7 @@ async function searchDeckToSelectedSoulForScript(step, context) {
       if (deckIndex >= 0) {
         player.deck.splice(deckIndex, 1);
         host.soul.push(entry.card);
+        queueEnteredSoulTriggers(entry.card, state.players.indexOf(player), "deck", host); // enteredSoul（デッキから）
         queueSoulCardAddedTriggers(host, state.players.indexOf(player), 1, entry.card); // E-XB24
         if (step.faceDown) {
           markSoulCardsFaceDown([entry.card], host); // E-Y1(奇襲): 「裏向きで」
@@ -2382,6 +3056,16 @@ async function equipSelectedAsItemForScript(step, context) {
   const owner = entry.owner ?? context.owner;
   const player = state.players[owner];
   const card = entry.card;
+  // カードフラグ equipOnlyViaSource:[カード名…]: 「このカードは「X」の【起動】以外で『変身』できない／場に出せない」。
+  // 他カードの効果でこのカードを変身/搭乗させる経路では、発生源(context.card)の名前がリストに無ければ装備しない
+  // （バンテージ仮面 D-EB02/0004 の破壊時変身で鉄の守護神 カーディアン等を出せない）。フラグ無しは従来どおり。
+  if (
+    Array.isArray(card.equipOnlyViaSource) &&
+    !card.equipOnlyViaSource.some((name) => context.card && matchesCardFilter(context.card, { name }))
+  ) {
+    addLog(`${card.name}は「${card.equipOnlyViaSource.join("」か「")}」の【起動】以外で『変身』『搭乗』できません。`);
+    return step.require === false ? true : { ok: false, reason: "equip_source_restricted" };
+  }
   // payCost:true の『変身』(EB01/0060 エマージェンシー・トランス！): 選んだカードの『変身』能力のコストを払ってから装備する。
   // step.payCost 未指定(既定)は搭乗/ライドアウト(BT01/0037 カードバーン等)としてコスト無支払いで従来通り。
   if (step.payCost) {
@@ -2403,9 +3087,16 @@ async function equipSelectedAsItemForScript(step, context) {
       }
     }
   }
+  // stackOnVar: 選んだ『搭乗』中のカード（変数）の上に重ねて搭乗する（旧アイテムとそのソウルはこのカードのソウルへ。
+  // 獣神 エレファルシオン X-UB02/0024）。重ね先が自分の装備枠に居なければ装備しない。
+  const stackOn = step.stackOnVar ? scriptSelection({ var: step.stackOnVar }, context)[0]?.card : null;
+  if (step.stackOnVar && !(stackOn && itemZones.some((zone) => player.field[zone]?.instanceId === stackOn.instanceId))) {
+    addLog(`${card.name}を重ねる『搭乗』しているカードが場にありません。`);
+    return step.require === false ? true : { ok: false, reason: "missing_stack_on_item" };
+  }
   takeScriptSelectionCards([entry]); // ソース(デッキ/手札/場)から取り除く
   // E-XB53: step.allowExtra は主枠を奪わず追加枠へ並存装備（0062 の《英雄》2枚同時装備）。既定は従来どおり主枠装備。
-  await equipCardDirect(player, card, { byEffect: true, allowExtra: Boolean(step.allowExtra) }); // currentType="item" 化して装備（装備変更/装備時誘発も通る）
+  await equipCardDirect(player, card, { byEffect: true, allowExtra: Boolean(step.allowExtra), stackOn }); // currentType="item" 化して装備（装備変更/装備時誘発も通る）
   return true;
 }
 
@@ -2447,16 +3138,15 @@ async function useSelectedCardForScript(step, context) {
     return true;
   }
   if ((type === "spell" || type === "impact") && hasKeyword(card, "set")) {
-    const zone = setZones.find((candidate) => !player.field[candidate]);
-    if (!zone) {
-      addLog("配置魔法ゾーンが空いていません。");
-      return { ok: false, reason: "no_set_zone" };
-    }
+    const zone = firstEmptySetZone(player); // rule-call-11: 設置の枚数に上限なし
     if (card.uniqueSet && setZones.some((candidate) => player.field[candidate]?.name === card.name)) { // レビュー修正(D-BT01/0066): 同名制限
       addLog(`${card.name}はすでに配置されています。`);
       return { ok: false, reason: "already_set" };
     }
-    if ((player.setLockedIdsThisTurn || []).includes(card.id)) {
+    if (
+      (player.setLockedIdsThisTurn || []).includes(card.id) ||
+      (player.setLockedNamesThisTurn || []).includes(card.name) // audit2(b010-2): 名前単位ロック
+    ) {
       addLog(`${card.name}はそのターン中は設置できません。`);
       return { ok: false, reason: "set_locked_this_turn" };
     }
@@ -2505,16 +3195,11 @@ async function useSelectedCardAbilityForScript(step, context) {
     addLog(`${entry.card.name}は現在のタイミングで使える能力がありません。`);
     return { ok: false, reason: "selected_card_ability_unusable" };
   }
-  const target = usedAbility.target ? await chooseAbilityTarget(entry.card, usedAbility, context.owner) : null;
+  const target = usedAbility.target ? await chooseAbilityTarget(entry.card, usedAbility, context.owner, { allowCancel: false }) : null; // T2: 効果の途中＝強制
   if (usedAbility.target && !target) {
     return { ok: false, reason: "selected_card_ability_missing_target" };
   }
-  const costSteps = adjustedCostSteps(
-    context.player,
-    entry.card,
-    abilityCostPurpose(usedAbility),
-    abilityCostSteps(entry.card, usedAbility),
-  );
+  const costSteps = adjustedAbilityCostSteps(context.player, entry.card, usedAbility);
   const payment = await payStructuredCostWithSelection(context.player, costSteps, {
     sourceCard: entry.card,
     selectedCard: entry.card,
@@ -2601,7 +3286,7 @@ async function useTopDeckCardIfMatchesElseBottomForScript(step, context) {
       return true;
     }
   }
-  const target = ability.target ? await chooseAbilityTarget(topCard, ability, owner) : null;
+  const target = ability.target ? await chooseAbilityTarget(topCard, ability, owner, { allowCancel: false }) : null; // T2: 効果の途中＝強制
   if (ability.target && !target) {
     player.deck.unshift(topCard);
     queueDeckBottomPlacedTriggers(owner, [topCard]); // E-XB18: トップ確認→デッキ下戻し
@@ -2625,13 +3310,41 @@ async function useTopDeckCardIfMatchesElseBottomForScript(step, context) {
   return true;
 }
 
+// pt-fix-d: 上書きコール（overwriteWhenFull）の候補エリアから、発生源のエリア（excludeSourceZone）・
+// 先に選んだエリア（excludeZoneVars）・このステップで既にコールしたエリア（usedZones）を除く。
+function filterOverwriteCallZones(zoneList, step, context, zoneOwner, usedZones = null) {
+  const excluded = new Set(usedZones || []);
+  if (step.excludeSourceZone) {
+    const slot = findFieldCardSlot(context.card);
+    if (slot && slot.owner === zoneOwner) {
+      excluded.add(slot.zone);
+    }
+  }
+  (step.excludeZoneVars || []).forEach((name) => {
+    const value = context.vars?.[name];
+    if (typeof value === "string") {
+      excluded.add(value);
+    }
+  });
+  return excluded.size > 0 ? zoneList.filter((zone) => !excluded.has(zone)) : zoneList;
+}
+
 async function selectZoneForScript(step, context) {
   const cardEntry = scriptSelection({ var: step.cardVar }, context)[0];
   const card = cardEntry?.card || context.card;
   const zoneOwner = step.controller === "opponent" ? 1 - context.owner : context.owner;
-  const zonesToOffer = (step.zones || fieldZones).filter(
+  let zonesToOffer = (step.zones || fieldZones).filter(
     (zone) => !step.emptyOnly || !state.players[zoneOwner].field[zone],
   );
+  // overwriteWhenFull: emptyOnly で空きが無いときは使用中のエリアも候補にする（後続 callSelected が元のモンスターを
+  // ルール処理でドロップへ置いてコールする＝ver2.05 コールの流れ Q3）。未指定は従来どおり。
+  if (zonesToOffer.length === 0 && step.overwriteWhenFull) {
+    zonesToOffer = [...(step.zones || fieldZones)];
+  }
+  // pt-fix-d（オーナー裁定 2026-10-14 (2)・上書きコール）: 使用中のエリアを候補にする時の除外。
+  // excludeSourceZone＝発生源カードがいるエリア（「このカードがいるエリア以外に」）、excludeZoneVars＝同じ script で
+  // 先に選んだエリア（「別々のエリアに」）。空きエリアだけの候補には元から入らない（使用中のため）。
+  zonesToOffer = filterOverwriteCallZones(zonesToOffer, step, context, zoneOwner);
   const selected = await chooseCardEntries(
     zonesToOffer.map((zone) => ({
       card,
@@ -2647,6 +3360,8 @@ async function selectZoneForScript(step, context) {
       forceDialog: step.forceDialog !== false,
       // 権威サーバ: コール先の選択はコール主体(context.owner)へ往復させる（未指定だと state.active に誤配送）。
       promptSeat: context.owner,
+      // T2: 宣言前まで巻き戻せる時だけキャンセル可（selectCards と同基準）。それ以外は強制。
+      allowCancel: resolutionCancelAllowed(context),
     },
   );
   const choice = selected?.[0];
@@ -2762,7 +3477,7 @@ function canCallCardNow(owner, card, options = {}) {
   if (!card) {
     return false;
   }
-  if (!impactMonsterCallAllowed(owner, card, { specialCall: Boolean(options.specialCall), stackCall: Boolean(options.stackCall) })) {
+  if (!impactMonsterCallAllowed(owner, card, { byEffect: true, specialCall: Boolean(options.specialCall), stackCall: Boolean(options.stackCall) })) {
     return false;
   }
   if (turnCallRestrictionBlocks(owner, card)) {
@@ -2785,7 +3500,7 @@ async function callSelectedForScript(step, context) {
     return { ok: false, reason: "call_from_zone_restricted" };
   }
   // 必殺モンスターの共通ゲート: 効果によるコールも「1ターンに1枚・自分のファイナルフェイズのみ」に服する。
-  if (!impactMonsterCallAllowed(entry.owner ?? context.owner, entry.card, { specialCall: Boolean(step.specialCall) })) {
+  if (!impactMonsterCallAllowed(entry.owner ?? context.owner, entry.card, { byEffect: true, specialCall: Boolean(step.specialCall) })) {
     addLog(`${entry.card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
     return { ok: false, reason: "impact_monster_call_restricted" };
   }
@@ -2843,7 +3558,7 @@ async function callSelectedForScript(step, context) {
   }
   resetEnteringFieldCardState(calledCard); // 前回場に居た時の一時状態(レスト/バフ/攻撃履歴)を持ち込まない（第13回メカレビュー）
   player.field[zone] = calledCard;
-  recordImpactMonsterCall(entry.owner ?? context.owner, calledCard);
+  recordImpactMonsterCall(entry.owner ?? context.owner, calledCard, { byEffect: true });
   recordCardCalledThisTurn(entry.owner ?? context.owner, calledCard); // 同名1ターンN枚上限の計上（第11回メカレビュー）
   applyScriptGrantedKeywords(calledCard, step.grantKeywords || []);
   // 再コール時は前回付与のサイズ上書き(conditionalSize)を必ずリセットしてから、必要な時だけ新たに付与する。
@@ -2868,6 +3583,7 @@ async function callSelectedForScript(step, context) {
     state.pendingAttack.targetOwner = entry.owner ?? context.owner;
     state.pendingAttack.targetZone = zone;
     state.pendingAttack.targetType = "monster";
+    bindPendingAttackTarget(); // E2: 変更後の攻撃対象の同一性を控え直す
   }
   addLog(`${context.card.name}で${calledCard.name}を${zoneLabel(zone)}にコールしました。`);
   if (step.redirectPendingAttack && state.pendingAttack) {
@@ -2902,7 +3618,7 @@ async function opponentMayCallFromHandForScript(step, context) {
     if (!matchesCardFilter(card, step.filter || {})) {
       return false;
     }
-    if (!impactMonsterCallAllowed(oppOwner, card, { specialCall: Boolean(step.specialCall) })) {
+    if (!impactMonsterCallAllowed(oppOwner, card, { byEffect: true, specialCall: Boolean(step.specialCall) })) {
       return false; // 必殺モンスターは「1ターン1枚・自ファイナルのみ」＝相手ターンのこの窓では不可
     }
     if (turnCallRestrictionBlocks(oppOwner, card)) {
@@ -3000,7 +3716,7 @@ async function opponentMayCallFromHandForScript(step, context) {
   }
   resetEnteringFieldCardState(calledCard); // 前回場に居た時の一時状態を持ち込まない（第13回メカレビュー）
   opp.field[zone] = calledCard;
-  recordImpactMonsterCall(oppOwner, calledCard);
+  recordImpactMonsterCall(oppOwner, calledCard, { byEffect: true });
   recordCardCalledThisTurn(oppOwner, calledCard); // 同名1ターンN枚上限の計上（第13回メカレビュー: 残り経路）
   calledCard.enteredFromZone = "hand";
   await enforceSizeLimit(opp, zone);
@@ -3025,7 +3741,7 @@ async function callSelfFromHandForScript(step, context) {
     return { ok: false, reason: "missing_call_zone" };
   }
   // 必殺モンスターの共通ゲート（効果による自己コールも制限に服する）。
-  if (!impactMonsterCallAllowed(context.owner, card, { specialCall: Boolean(step.specialCall) })) {
+  if (!impactMonsterCallAllowed(context.owner, card, { byEffect: true, specialCall: Boolean(step.specialCall) })) {
     addLog(`${card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
     return { ok: false, reason: "impact_monster_call_restricted" };
   }
@@ -3033,11 +3749,29 @@ async function callSelfFromHandForScript(step, context) {
     addLog(`${card.name}はこのターン、コール制限によりコールできません。`);
     return { ok: false, reason: "turn_call_restricted" };
   }
+  // 登場元: 手札起動(fromHandOnly)は useHandAbilityAction/resolvePendingAbility が本体を先にドロップへ仮置きしてから
+  // 解決するため、ドロップに居ても「手札から」のコール。それ以外でドロップに居れば真のドロップ発（紅猩々・ネバッド等）。
+  const callOrigin =
+    !context.ability?.fromHandOnly && player.drop.some((c) => c.instanceId === card.instanceId) ? "drop" : "hand";
+  // ゲート・オブ・ドラゴン(preventCallFromZone)はドロップからの自己コールにも及ぶ（callSelected と同基準）。
+  if (callOrigin === "drop" && isCallFromZoneRestricted(context.owner, card, "drop")) {
+    addLog(`効果により、ドロップゾーンから${card.name}をコールできません。`);
+    return { ok: false, reason: "call_from_zone_restricted" };
+  }
   const cost = card.costs?.call || [];
   const adjustedSelfCallCost = adjustedCostSteps(player, card, "call", cost);
   if (adjustedSelfCallCost.length && !canPayStructuredCost(player, adjustedSelfCallCost, { sourceCard: card }).ok) {
     addLog(`${card.name}のコールコストを支払えません。`);
     return { ok: false, reason: "cannot_pay_call_cost" };
+  }
+  if (adjustedSelfCallCost.length) {
+    // 【コールコスト】は通常コールと同じ対話式で払う（「場のモンスター1枚以上好きな枚数をソウルに入れる」等の
+    // 枚数・対象を選べる。満月丸 X-CBT01/0013）。カードを元の場所から抜く前に払う＝不成立なら何も動かさず中断。
+    const payment = await payStructuredCostWithSelection(player, adjustedSelfCallCost, { sourceCard: card, selectedCard: card });
+    if (!payment.ok) {
+      addLog(payment.reason || `${card.name}のコールコストを支払えません。`);
+      return { ok: false, reason: "call_cost_unpaid" };
+    }
   }
   const removeSelf = (pile) => {
     const index = pile.findIndex((c) => c.instanceId === card.instanceId);
@@ -3052,18 +3786,14 @@ async function callSelfFromHandForScript(step, context) {
     addLog(`${card.name}はコールできる場所にありません。`);
     return { ok: false, reason: "self_not_found" };
   }
-  card.enteredFromZone = fromDrop ? "drop" : "hand"; // 発生元ゾーン記録（enteredFromZoneIn 用）
-  if (adjustedSelfCallCost.length) {
-    payStructuredCost(player, adjustedSelfCallCost, { sourceCard: card });
-  }
+  card.enteredFromZone = callOrigin; // 発生元ゾーン記録（enteredFromZoneIn 用。前回登場元の残留も上書きで防ぐ）
   if (player.field[zone]) {
     dropFieldCardByRule(player, zone);
   }
   resetEnteringFieldCardState(card); // 前回場に居た時の一時状態を持ち込まない（第13回メカレビュー）
   player.field[zone] = card;
-  recordImpactMonsterCall(context.owner, card);
+  recordImpactMonsterCall(context.owner, card, { byEffect: true });
   recordCardCalledThisTurn(context.owner, card); // 同名1ターンN枚上限の計上（第13回メカレビュー: 残り経路）
-  card.enteredFromZone = "hand"; // 手札発コール＝enteredFromZoneIn 用スタンプ（前回登場元の残留を防ぐ）
   card.conditionalSize = null; // 再コール時は前回のサイズ上書き(アンノウン0029等)をリセット
   applyScriptGrantedKeywords(card, step.grantKeywords || []);
   await enforceSizeLimit(player, zone);
@@ -3105,7 +3835,7 @@ async function callSelfFromSoulForScript(step, context) {
     return { ok: false, reason: "missing_call_zone" };
   }
   // 必殺モンスターの共通ゲート（ソウルからの自己コールも制限に服する）。
-  if (!impactMonsterCallAllowed(context.owner, card, { specialCall: Boolean(step.specialCall) })) {
+  if (!impactMonsterCallAllowed(context.owner, card, { byEffect: true, specialCall: Boolean(step.specialCall) })) {
     addLog(`${card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
     return { ok: false, reason: "impact_monster_call_restricted" };
   }
@@ -3121,7 +3851,7 @@ async function callSelfFromSoulForScript(step, context) {
   removed.conditionalSize = null; // 再コール時は前回のサイズ上書きをリセット
   resetEnteringFieldCardState(removed); // 前回場に居た時の一時状態を持ち込まない（第13回メカレビュー）
   player.field[zone] = removed;
-  recordImpactMonsterCall(context.owner, removed);
+  recordImpactMonsterCall(context.owner, removed, { byEffect: true });
   recordCardCalledThisTurn(context.owner, removed); // 同名1ターンN枚上限の計上（第13回メカレビュー: 残り経路）
   // ソウル発コールの登場元スタンプ。以前は未代入で、直前の登場元(例 "drop")が残り
   // 『ドロップから登場した時』が誤発火していた（第13回メカレビュー #8）。
@@ -3172,6 +3902,11 @@ function swapFieldPositionsForScript(step, context) {
       if (pending.attackerZone === zoneA) pending.attackerZone = zoneB;
       else if (pending.attackerZone === zoneB) pending.attackerZone = zoneA;
     }
+    // E2: 入れ替えで攻撃対象は同じカードのままエリアだけ変わる＝控えを付け替える（控えが現エリアと一致していた場合のみ）。
+    const ref = pending.targetRef;
+    if (ref && ref.owner === owner && (ref.zone === zoneA || ref.zone === zoneB)) {
+      ref.zone = ref.zone === zoneA ? zoneB : zoneA;
+    }
   }
   addLog(`${context.card?.name || "効果"}の効果で${zoneLabel(zoneA)}と${zoneLabel(zoneB)}のカードを入れ替えました。`);
   return true;
@@ -3207,6 +3942,7 @@ async function callTopDeckAsMonsterForScript(step, context) {
         title: `${context.card?.name || "効果"}のコール先`,
         lead: "コールするエリアを選んでください。",
         min: 1,
+        allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
         max: 1,
         forceDialog: true,
         promptSeat: context.owner,
@@ -3333,11 +4069,17 @@ async function callSelectedAsMonsterForScript(step, context) {
   });
   player.field[zone] = calledCard;
   await enforceSizeLimit(player, zone);
-  addLog(`${context.card.name}の効果で手札のカードを${zoneLabel(zone)}にモンスターとして置きました。`);
+  // pt-fix-c T7-8: 出所は選択元（ビリ・キナータ＝相手のドロップ）。以前は「手札のカード」固定だった。
+  const sourceLabel = scriptSourceLabel(entry.source || step.from || "hand") || "手札";
+  const whose = (entry.owner ?? context.owner) === context.owner ? "" : "相手の";
+  addLog(`${context.card.name}の効果で${whose}${sourceLabel}のカードを${whose}${zoneLabel(zone)}に裏向きのモンスターとして置きました。`);
   return true;
 }
 
 async function callSelectedToEmptyZonesForScript(step, context) {
+  if (step.simultaneous) {
+    return callSelectedSimultaneouslyForScript(step, context);
+  }
   const selected = scriptSelection(step, context);
   if (selected.length === 0) {
     return step.require === false ? true : { ok: false, reason: "missing_call_cards" };
@@ -3345,9 +4087,10 @@ async function callSelectedToEmptyZonesForScript(step, context) {
   const player = context.player;
   // step.zones でコール先を限定できる（0010「レフトかライトにコール」）。既定は全フィールドゾーン。
   const allowedZones = Array.isArray(step.zones) ? step.zones : fieldZones;
+  const calledZones = []; // pt-fix-d: このステップでコールしたエリア（上書きコールで自分の直前のコールを潰さない）
   for (const entry of selected) {
     // 必殺モンスターの共通ゲート: 効果によるコールも「1ターンに1枚・自分のファイナルフェイズのみ」に服する。
-    if (!impactMonsterCallAllowed(entry.owner ?? context.owner, entry.card, { specialCall: Boolean(step.specialCall) })) {
+    if (!impactMonsterCallAllowed(entry.owner ?? context.owner, entry.card, { byEffect: true, specialCall: Boolean(step.specialCall) })) {
       addLog(`${entry.card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
       continue;
     }
@@ -3360,15 +4103,30 @@ async function callSelectedToEmptyZonesForScript(step, context) {
       addLog(`${entry.card.name}はこのターン、これ以上コールできません。`);
       continue;
     }
+    // ゲート・オブ・ドラゴン(preventCallFromZone)はこの経路のドロップ発コールにも及ぶ（callSelected と同基準）。
+    if ((entry.source || step.from) === "drop" && isCallFromZoneRestricted(entry.owner ?? context.owner, entry.card, "drop")) {
+      addLog(`効果により、ドロップゾーンから${entry.card.name}をコールできません。`);
+      continue;
+    }
     // コール先ゾーン制限(センター禁止/cannotCallZones/callZones)に服す＝禁止ゾーンは候補から除外（第11回メカレビュー）。
-    const emptyZones = allowedZones.filter(
-      (zone) => fieldZones.includes(zone) && !player.field[zone] && !isCallZoneBlocked(entry.owner ?? context.owner, entry.card, zone),
+    const callableZones = allowedZones.filter(
+      (zone) => fieldZones.includes(zone) && !isCallZoneBlocked(entry.owner ?? context.owner, entry.card, zone),
     );
+    let emptyZones = callableZones.filter((zone) => !player.field[zone]);
+    // step.overwriteWhenFull: 空きが無ければ使用中のエリアにもコールできる（元のモンスターはルール処理でドロップへ。
+    // ver2.05 コールの流れ Q3・lookTopSelectToCall と同方式）。未指定は従来どおり空きエリアのみ。
+    let overwriting = false;
+    if (emptyZones.length === 0 && step.overwriteWhenFull) {
+      // pt-fix-d: 発生源のエリア（excludeSourceZone）とこのステップで先にコールしたエリアは上書き先にしない。
+      emptyZones = filterOverwriteCallZones(callableZones, step, context, entry.owner ?? context.owner, calledZones);
+      overwriting = true;
+    }
     if (emptyZones.length === 0) {
       continue;
     }
     let zone = emptyZones[0];
-    if (step.chooseZones && emptyZones.length > 1) {
+    // pt-fix-d: 上書きコールのエリアは自動で決めない（どのモンスターをドロップに置くかはプレイヤーが選ぶ）。
+    if ((step.chooseZones || overwriting) && emptyZones.length > 1) {
       const selectedZone = await chooseCardEntries(
         emptyZones.map((candidateZone) => ({
           card: entry.card,
@@ -3380,6 +4138,7 @@ async function callSelectedToEmptyZonesForScript(step, context) {
           title: `${entry.card.name}のコール先`,
           lead: "コールするエリアを選んでください。",
           min: 1,
+          allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
           max: 1,
           forceDialog: true,
           promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
@@ -3406,13 +4165,17 @@ async function callSelectedToEmptyZonesForScript(step, context) {
     if (!calledCard) {
       continue;
     }
+    if (player.field[zone]) {
+      dropFieldCardByRule(player, zone); // overwriteWhenFull の上書きコール（空きエリアのみの既定では起きない）
+    }
     resetEnteringFieldCardState(calledCard); // 前回場に居た時の一時状態を持ち込まない（第13回メカレビュー）
     player.field[zone] = calledCard;
+    calledZones.push(zone);
     // 発生元ゾーン記録（enteredFromZoneIn 用＝『ドロップからコールされた/登場した時』誘発。飛雲丸0056/デアデビル等）。
     // callSelectedForScript(:2752)と同じスタンプ。この空きエリアコール経路だけ刻み忘れており、ドロップからの
     // 登場時誘発が全て不発になっていた（コール経路の違いで登場時誘発の可否が変わるのは仕様外）。
     calledCard.enteredFromZone = entry.source || step.from || null;
-    recordImpactMonsterCall(entry.owner ?? context.owner, calledCard);
+    recordImpactMonsterCall(entry.owner ?? context.owner, calledCard, { byEffect: true });
     recordCardCalledThisTurn(entry.owner ?? context.owner, calledCard); // 同名1ターンN枚上限の計上（第11回メカレビュー）
     // G5(D-EB01/0023): 「そのカードは場から離れるまでサイズ0になり、ファイナル攻撃可」。
     // enforceSizeLimit より前に conditionalSize を付与しないと元サイズでサイズ超過と誤判定される。
@@ -3439,6 +4202,172 @@ async function callSelectedToEmptyZonesForScript(step, context) {
   return true;
 }
 
+// rulings-f（真・迅雷フォーメーション BT03/0028・Q1148/Q851）: 選んだカードを「同時に」コールする。
+// - コール先は全カード分を先に決める。使用中のエリア・このコールで先に選んだエリアも選べる（Q851: 重なったら
+//   ★ルール処理★＝そのエリアの最後に置かれたもの以外をドロップ。同時に置いたもの同士は持ち主が残す1枚を選ぶ）。
+// - 【コールコスト】はまとめて払う（Q1148）。支払いの間、コールするカードは移動元から取り出して保持する＝
+//   同時にコールする他のカードをコストに使えない（場にもドロップにも無い）。払えなかったカードは移動元へ戻す。
+// - 全カードを置いてから、重なり・サイズ超過の★ルール処理★（今回置いたカードは「最後に置かれた」側）→登場時誘発。
+// 既存の逐次版（simultaneous 未指定）は無改変。
+async function callSelectedSimultaneouslyForScript(step, context) {
+  const selected = scriptSelection(step, context);
+  if (selected.length === 0) {
+    return step.require === false ? true : { ok: false, reason: "missing_call_cards" };
+  }
+  const player = context.player;
+  const allowedZones = Array.isArray(step.zones) ? step.zones : fieldZones;
+  const plans = [];
+  for (const entry of selected) {
+    const seat = entry.owner ?? context.owner;
+    if (!impactMonsterCallAllowed(seat, entry.card, { byEffect: true, specialCall: Boolean(step.specialCall) })) {
+      addLog(`${entry.card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
+      continue;
+    }
+    if (turnCallRestrictionBlocks(seat, entry.card)) {
+      addLog(`${entry.card.name}はこのターン、コール制限によりコールできません。`);
+      continue;
+    }
+    if (isCallCountLimitedThisTurn(seat, entry.card)) {
+      addLog(`${entry.card.name}はこのターン、これ以上コールできません。`);
+      continue;
+    }
+    if ((entry.source || step.from) === "drop" && isCallFromZoneRestricted(seat, entry.card, "drop")) {
+      addLog(`効果により、ドロップゾーンから${entry.card.name}をコールできません。`);
+      continue;
+    }
+    const callableZones = allowedZones.filter((zone) => fieldZones.includes(zone) && !isCallZoneBlocked(seat, entry.card, zone));
+    if (callableZones.length === 0) {
+      continue;
+    }
+    const claimed = new Set(plans.map((plan) => plan.zone));
+    const isBusy = (zone) => Boolean(player.field[zone]) || claimed.has(zone);
+    // 空いているエリアを先に並べる（使用中/このコールで選択済みのエリアは後ろ。CPU は occupied の無い方を選ぶ）。
+    const ordered = [...callableZones.filter((zone) => !isBusy(zone)), ...callableZones.filter(isBusy)];
+    let zone = ordered[0];
+    if (step.chooseZones && ordered.length > 1) {
+      const picked = await chooseCardEntries(
+        ordered.map((candidateZone) => ({
+          card: entry.card,
+          owner: seat,
+          zone: candidateZone,
+          occupied: isBusy(candidateZone),
+          note: isBusy(candidateZone) ? `${zoneLabel(candidateZone)}（使用中：重なるとルール処理でドロップ）` : zoneLabel(candidateZone),
+        })),
+        {
+          title: `${entry.card.name}のコール先`,
+          lead: "コールするエリアを選んでください（同時にコールします）。",
+          min: 1,
+          allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
+          max: 1,
+          forceDialog: true,
+          promptSeat: context.owner,
+          purpose: "move",
+        },
+      );
+      zone = picked?.[0]?.zone;
+    }
+    if (!zone) {
+      continue;
+    }
+    plans.push({ entry, zone });
+  }
+  if (plans.length === 0) {
+    return true;
+  }
+  // 移動元から取り出して保持し、コストをまとめて払う。
+  const taken = takeScriptSelectionCards(plans.map((plan) => plan.entry));
+  const takenById = new Map(taken.map((moved) => [moved.card.instanceId, moved]));
+  const paid = [];
+  for (const plan of plans) {
+    const moved = takenById.get(plan.entry.card.instanceId);
+    if (!moved) {
+      continue;
+    }
+    if (step.payCost) {
+      const payment = await payCardCostWithSelection(player, moved.card, step.payCost, moved.card, {
+        sourceCard: moved.card,
+        callFromZone: plan.entry.source,
+      });
+      if (!payment.ok) {
+        addLog(payment.reason);
+        const pile = scriptPileForSource(moved.owner ?? context.owner, moved.source, { card: moved.sourceCard });
+        (pile || player.drop).push(moved.card);
+        continue;
+      }
+    }
+    paid.push({ ...plan, card: moved.card });
+  }
+  if (paid.length === 0) {
+    return true;
+  }
+  // 同じエリアへ同時に置くカードが複数なら、持ち主が残す1枚を選ぶ（他はルール処理でドロップ）。
+  const byZone = new Map();
+  for (const plan of paid) {
+    if (!byZone.has(plan.zone)) byZone.set(plan.zone, []);
+    byZone.get(plan.zone).push(plan);
+  }
+  const placed = [];
+  for (const [zone, group] of byZone) {
+    let keep = group[group.length - 1];
+    if (group.length > 1) {
+      const picked = await chooseCardEntries(
+        group.map((plan) => ({ card: plan.card, owner: context.owner, zone })),
+        {
+          title: `${zoneLabel(zone)}に残すカード`,
+          lead: "同じエリアに同時にコールしました。残す1枚を選んでください（他はルール処理でドロップに置きます）。",
+          min: 1,
+          max: 1,
+          forceDialog: true,
+          allowCancel: false,
+          promptSeat: context.owner,
+        },
+      );
+      keep = group.find((plan) => plan.card.instanceId === picked?.[0]?.card?.instanceId) || keep;
+    }
+    if (player.field[zone]) {
+      const old = player.field[zone];
+      dropFieldCardByRule(player, zone);
+      addLog(`${zoneLabel(zone)}に重なったため、${old.name}をルール処理でドロップに置きました。`);
+    }
+    for (const plan of group) {
+      const calledCard = plan.card;
+      resetEnteringFieldCardState(calledCard);
+      calledCard.enteredFromZone = plan.entry.source || step.from || null;
+      recordImpactMonsterCall(context.owner, calledCard, { byEffect: true });
+      recordCardCalledThisTurn(context.owner, calledCard);
+      if (plan !== keep) {
+        player.drop.push(calledCard);
+        addLog(`${context.card.name}の効果で${calledCard.name}を${zoneLabel(zone)}にコールしましたが、重なったためルール処理でドロップに置きました。`);
+        continue;
+      }
+      calledCard.conditionalSize = step.grantConditionalSize
+        ? {
+            size: step.grantConditionalSize.size ?? 0,
+            granterInstanceId: context.card?.instanceId,
+            granterName: context.card?.name,
+            unconditional: Boolean(step.grantConditionalSize.unconditional),
+          }
+        : null;
+      if (step.grantFinalPhaseAttack) {
+        calledCard.grantedFinalPhaseAttack = true;
+      }
+      applyScriptGrantedKeywords(calledCard, step.grantKeywords || []);
+      player.field[zone] = calledCard;
+      placed.push({ card: calledCard, zone });
+      addLog(`${context.card.name}の効果で${calledCard.name}を${zoneLabel(zone)}にコールしました。`);
+    }
+  }
+  await enforceSizeLimit(player, placed.map((entry) => entry.zone));
+  if (step.resolveOnEnter !== false) {
+    for (const { card: calledCard } of placed) {
+      if (findFieldCardSlot(calledCard)) {
+        await resolveOnEnter(calledCard, player, null, { byEffect: true, enterCauseCard: context.card });
+      }
+    }
+  }
+  return true;
+}
+
 async function stackCallSelectedForScript(step, context) {
   const entry = scriptSelection(step, context)[0];
   // X16(D-BT01/0020): zoneVar 指定時は「事前に選択した場カード」のゾーンへ重ねる（既定は発生源の場所＝後方互換）。
@@ -3450,9 +4379,9 @@ async function stackCallSelectedForScript(step, context) {
     addLog(`${context.card.name}で重ねてコールするカードを選んでください。`);
     return { ok: false, reason: "missing_stack_call_card" };
   }
-  // 必殺モンスターの共通ゲート: 効果による重ねコールも「1ターンに1枚・自分のファイナルフェイズのみ」に服する。
+  // 必殺モンスターの共通ゲート（byEffect: 効果による重ねコールは⑤により1ターン1枚・ファイナル限定に服さない）。
   // F1: 重ねコール判定なので stackCall:true を渡し、raiseImpactCallCap{stackOnly:true}（ジェムクローン）の cap 解放を算入する。
-  if (!impactMonsterCallAllowed(entry.owner ?? context.owner, entry.card, { stackCall: true, specialCall: Boolean(step.specialCall) })) {
+  if (!impactMonsterCallAllowed(entry.owner ?? context.owner, entry.card, { byEffect: true, stackCall: true, specialCall: Boolean(step.specialCall) })) {
     addLog(`${entry.card.name}は必殺モンスターのため、今はコールできません（1ターンに1枚・自分のファイナルフェイズのみ）。`);
     return { ok: false, reason: "impact_monster_call_restricted" };
   }
@@ -3491,7 +4420,7 @@ async function stackCallSelectedForScript(step, context) {
   stackFieldCardAsSoul(player, zone, calledCard);
   // 発生元ゾーン記録（重ねコールも『ドロップからコールされた時』の対象。callSelectedForScript:2752 と同じスタンプ）。
   calledCard.enteredFromZone = entry.source || step.from || null;
-  recordImpactMonsterCall(entry.owner ?? context.owner, calledCard);
+  recordImpactMonsterCall(entry.owner ?? context.owner, calledCard, { byEffect: true });
   recordCardCalledThisTurn(entry.owner ?? context.owner, calledCard); // 同名1ターンN枚上限の計上（第11回メカレビュー）
   await enforceSizeLimit(player, zone);
   addLog(`${context.card.name}の効果で${calledCard.name}を${zoneLabel(zone)}に重ねてコールしました。`);
@@ -3534,7 +4463,7 @@ function placeSelectedForScript(step, context) {
 
 function resolveScriptPlaceZone(step, player) {
   if (step.zone === "firstEmptySet") {
-    return setZones.find((zone) => !player.field[zone]);
+    return firstEmptySetZone(player); // rule-call-11: 設置の枚数に上限なし
   }
   if (step.zone === "firstEmptyField") {
     return fieldZones.find((zone) => !player.field[zone]);
@@ -3592,6 +4521,7 @@ function isScriptEffectStep(step) {
     "lookTopDistribute", // E-XB40(X-BT04/0008 天晶の祝福): 動的count(countFrom)の非破壊look→ゲージ/手札/デッキ下の3方向振り分け（effect版 src/15 へ委譲）
     "setConditionalSizeScope", // X11b(D-BT01/0131)
     "addTurnContinuous", // X19(D-BT01/0131)
+    "grantPhaseCallRight", // X-CBT01/0008 サツキG 逆天: フェイズ中のソウル無償コール権（effect版 src/15 へ委譲）
     "stackOnFlag", // E-XB67(X2-BT01/0003 ダ・エーワ後段): 「手札/デッキ横断で1枚選び→フラッグの上に重ね→ライフ+5」を
     //   両立させるための script 許可。効果版 src/15-ability-effects.js:1461 stackOnFlag（stackPlayerFlag で player.flag を
     //   flagId 定義へ差し替え）へ委譲する。選択(selectCards)→重ね(stackOnFlag)→ライフ(gainLife)の script を1本で組める。

@@ -24,18 +24,24 @@ const MATCH_LIMIT_PER_USER = 1000;
 // 戦績レコードの許可フィールドのみを通す（seed / token 等が万一渡っても保存されないための防御）。
 // 【セキュリティ】戦績は一覧APIで他人にも見え得るため、seed（進行中対戦の先読みに使える）と
 // member.token は絶対に保存しない。source は "server"(権威判定) / "client"(自己申告) のみ。
+// F9: 戦績の文字列項目は長さを丸める（クライアント申告 POST /auth/matches 経由で巨大文字列を溜めさせない）。
+const MATCH_STR_MAX = 128;
+function clampStr(value, max = MATCH_STR_MAX) {
+  const s = String(value);
+  return s.length > max ? s.slice(0, max) : s;
+}
 function sanitizeMatchRecord(record) {
   const rec = record || {};
   return {
-    fightId: rec.fightId != null ? String(rec.fightId) : null,
+    fightId: rec.fightId != null ? clampStr(rec.fightId) : null,
     finishedAt: Number.isFinite(Number(rec.finishedAt)) ? Number(rec.finishedAt) : Date.now(),
     outcome: rec.outcome === "win" ? "win" : "loss",
-    reason: typeof rec.reason === "string" ? rec.reason : "unknown",
+    reason: typeof rec.reason === "string" ? clampStr(rec.reason, 64) : "unknown",
     firstSeat: rec.firstSeat === 0 || rec.firstSeat === 1 ? rec.firstSeat : null,
-    turnCount: Number.isFinite(Number(rec.turnCount)) ? Number(rec.turnCount) : 0,
-    deckId: rec.deckId != null ? String(rec.deckId) : null,
-    opponentDeckId: rec.opponentDeckId != null ? String(rec.opponentDeckId) : null,
-    replayId: rec.replayId != null ? String(rec.replayId) : null,
+    turnCount: Number.isFinite(Number(rec.turnCount)) ? Math.max(0, Math.min(100000, Math.floor(Number(rec.turnCount)))) : 0,
+    deckId: rec.deckId != null ? clampStr(rec.deckId) : null,
+    opponentDeckId: rec.opponentDeckId != null ? clampStr(rec.opponentDeckId) : null,
+    replayId: rec.replayId != null ? clampStr(rec.replayId) : null,
     source: rec.source === "server" ? "server" : "client",
   };
 }
@@ -378,6 +384,12 @@ function tursoRows(result) {
   });
 }
 
+// F12: Turso fetch のタイムアウト(ms)。タイムアウトはネットワーク失敗扱い＝既存のリトライ1回の対象。
+function tursoFetchTimeoutMs() {
+  const v = Number(process.env.TURSO_FETCH_TIMEOUT_MS);
+  return Number.isFinite(v) && v > 0 ? v : 10000;
+}
+
 // statements: [{sql, args}] を1パイプラインで送る。ネットワーク/5xx失敗はリトライ1回→失敗は例外。
 async function tursoPipeline(statements) {
   const url = `${normalizeTursoUrl(tursoUrl)}/v2/pipeline`;
@@ -389,7 +401,13 @@ async function tursoPipeline(statements) {
   };
   const headers = { Authorization: `Bearer ${tursoToken}`, "Content-Type": "application/json" };
   const attempt = async () => {
-    const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      // F12: 応答しない Turso に永久待ちしない（既定10秒・env TURSO_FETCH_TIMEOUT_MS で変更可）。
+      signal: AbortSignal.timeout(tursoFetchTimeoutMs()),
+    });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       const error = new Error(`turso http ${res.status}: ${text.slice(0, 300)}`);

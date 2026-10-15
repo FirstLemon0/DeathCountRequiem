@@ -9,6 +9,7 @@ if (globalThis.__BUDDYFIGHT_THIN__) {
   globalThis.__buddyfightThin = {
     applyView: (view) => {
       state = view;
+      syncSetZonesWithState(state); // rule-call-11: 復元した setN 枠を走査対象へ
       if (state) {
         state.selected = state.selected ?? null;
         state.linkAttackers = state.linkAttackers ?? [];
@@ -19,6 +20,7 @@ if (globalThis.__BUDDYFIGHT_THIN__) {
     getState: () => state,
     setState: (next) => {
       state = next;
+      syncSetZonesWithState(state); // rule-call-11: 復元した setN 枠を走査対象へ
     },
     elements,
     loadGameData, // デッキ一覧のクライアント側フォールバック用
@@ -37,8 +39,14 @@ document.querySelectorAll(".zone.field").forEach((zoneButton) => {
     const owner = Number(zoneButton.dataset.owner);
     const zone = zoneButton.dataset.zone;
     // 「ソウル N」バッジのタップ＝ソウル一覧（対象選択中は邪魔しないので通常時のみ）。
-    if (!uiTargeting && event.target?.closest?.("[data-soul-peek]")) {
+    // スマホはバッジが小さな札（特にアイテム枠）の中央に重なりタップを奪っていた（プレイテスト T8）ため、
+    // バッジは表示だけにして札のタップ＝カードシート、ソウルはシートの「ソウルを見る」から開く。
+    if (!uiTargeting && !(typeof isPhoneLayout === "function" && isPhoneLayout()) && event.target?.closest?.("[data-soul-peek]")) {
       showSoulDialog(owner, resolveClickedItemZone(event, owner, zone));
+      return;
+    }
+    // スマホの選択ドック: 光っている候補札のタップ＝その候補を選ぶ/外す（src/16 selectionDockPick）。
+    if (selectionDockPick(owner, resolveClickedItemZone(event, owner, zone))) {
       return;
     }
     // 選択ダイアログの「盤面確認」中は、盤面カードの詳細を見るだけ（盤面操作・選択はしない）。
@@ -77,6 +85,9 @@ document.querySelectorAll(".zone.field").forEach((zoneButton) => {
       const resolvedEffZone = resolveClickedItemZone(event, owner, zone);
       if (isEffectCandidateZone(owner, resolvedEffZone)) {
         pickEffectTarget(owner, resolvedEffZone);
+      } else if (zone === "item") {
+        // pt-final(4): 追加アイテム（item2..）が候補で、タップ位置から札を特定できない時は一覧から選ぶ。
+        pickGroupedZoneCandidate(owner, "item", uiTargeting.candidates, (picked) => pickEffectTarget(owner, picked));
       }
       return; // 候補外タップは無視（権威版と同じ。キャンセルはバナーのボタン）
     }
@@ -98,6 +109,9 @@ document.querySelectorAll(".zone.field").forEach((zoneButton) => {
     const card = state.players[owner]?.field?.[resolvedZone];
     if (card && !fieldCardMenuLocal(owner, resolvedZone)) {
       openReadOnlyCardSheet(card);
+    } else if (!card && zone === "item" && event.target?.closest?.(".flag-layer") && state.players[owner]?.flag) {
+      // フラッグ絵（アイテム無し）のタップ＝フラッグの詳細（閲覧専用）。従来は無反応で、スマホではフラッグの効果文を見る手段が無かった。
+      openReadOnlyCardSheet(state.players[owner].flag);
     }
   });
   attachZoneLongPress(zoneButton);
@@ -109,10 +123,27 @@ document.querySelectorAll(".drop-zone").forEach((zoneButton) => {
   });
 });
 
+// バディゾーン（裏向き）: 持ち主には一覧、それ以外は枚数だけ。
+document.querySelectorAll(".buddyzone-pile").forEach((pile) => {
+  pile.addEventListener("click", () => {
+    showBuddyZoneDialog(Number(pile.dataset.owner));
+  });
+});
+
 // 配置魔法パイル: タップで一覧ダイアログ（自分の配置魔法は選択/使用、相手のは裏向き閲覧）。
 document.querySelectorAll(".set-pile").forEach((pile) => {
   pile.addEventListener("click", () => {
-    showSetSpellDialog(Number(pile.dataset.owner));
+    const owner = Number(pile.dataset.owner);
+    // pt-final(4): 効果対象の選択中に光っている配置魔法パイルをタップ＝その中の候補から選ぶ（1つなら即確定）。
+    if (uiTargeting?.mode === "effect") {
+      pickGroupedZoneCandidate(owner, "set", uiTargeting.candidates, (picked) => pickEffectTarget(owner, picked));
+      return;
+    }
+    // 選択ドック（スマホ）で設置魔法が候補の時も同じ（候補の札をタップしたのと同じ扱い）。
+    if (typeof selectionDockPickSet === "function" && selectionDockPickSet(owner)) {
+      return;
+    }
+    showSetSpellDialog(owner);
   });
 });
 
@@ -123,12 +154,14 @@ document.querySelector("#targetingCancelButton")?.addEventListener("click", () =
   render();
 });
 
-document.querySelectorAll("[data-call-zone]").forEach((button) => {
-  button.addEventListener("click", async () => {
-    // 権威版仕様: 確認なしで即コール（メニューのコール項目と同じ）。
-    await runNetworkMutation("コール", () => callMonster(button.dataset.callZone));
+if (!globalThis.__BUDDYFIGHT_REPLAY__) {
+  document.querySelectorAll("[data-call-zone]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      // 権威版仕様: 確認なしで即コール（メニューのコール項目と同じ）。
+      await runNetworkMutation("コール", () => callMonster(button.dataset.callZone));
+    });
   });
-});
+}
 
 // B2: ワールドタイル → デッキ情報ポップアップ
 document.querySelectorAll(".buddy-cell").forEach((tile) => {
@@ -158,45 +191,49 @@ document.querySelectorAll(".fighter-panel[data-fighter-owner]").forEach((panel) 
   });
 });
 
-// ローカル実プレイ: 記録用シードを生成し、先攻はシード乱数で決める（P1固定を廃止。B1）。
-// ネット対戦は権威サーバが newGame を駆動するため、この経路はローカル対戦専用。
-elements.newGameButton.addEventListener("click", () =>
-  runNetworkMutation("新規ゲーム", () => newGame({ seed: generateRngSeed(), firstSeat: "random" })),
-);
 elements.exportLogButton?.addEventListener("click", downloadBattleLog);
 elements.rulesButton.addEventListener("click", () => elements.rulesDialog.showModal());
 elements.closeRulesButton.addEventListener("click", () => elements.rulesDialog.close());
 elements.closeDropDialogButton?.addEventListener("click", () => elements.dropDialog?.close());
 elements.closeSoulDialogButton?.addEventListener("click", () => elements.soulDialog?.close());
 elements.dropDialog?.addEventListener("close", hideCardTooltip);
-elements.drawButton.addEventListener("click", () => runNetworkMutation("ドロー", drawAction));
-elements.chargeButton.addEventListener("click", () => runNetworkMutation("チャージ&ドロー", chargeAction));
-elements.mainPhaseButton.addEventListener("click", () => runNetworkMutation("メインフェイズ", goMainPhase));
-elements.castButton.addEventListener("click", () => runNetworkMutation("カード使用", useCardAction));
-elements.resolveAttackButton.addEventListener("click", () => runNetworkMutation("解決", resolvePendingResolution));
-// B3: ローカル記録の step 境界は src/23 がグローバル束縛を包んで実現するため、遅延束縛にする
-// （直接 fn を渡すと登録時の未包み参照を握り、包み後を呼ばない）。挙動は不変。
-elements.counterHandButton.addEventListener("click", () => toggleCounterHand());
-elements.attackPhaseButton.addEventListener("click", () => runNetworkMutation("アタックフェイズ", goAttackPhase));
-elements.linkToggleButton.addEventListener("click", () => toggleLinkAttacker());
-elements.finalPhaseButton.addEventListener("click", () => runNetworkMutation("ファイナルフェイズ", goFinalPhase));
-elements.attackButton.addEventListener("click", () => {
-  // B2: 対象未指定なら対象選択モードへ。値があれば従来どおり宣言。
-  if (!elements.attackTarget.value) {
-    startAttackTargeting();
-    return;
-  }
-  runNetworkMutation("攻撃宣言", attackAction);
-});
-elements.endTurnButton.addEventListener("click", () => {
-  // 権威版仕様: 確認なしで即ターン終了。
-  runNetworkMutation("ターン終了", endTurn);
-});
-elements.partnerCallButton.addEventListener("click", () => partnerCall()); // B3: 遅延束縛（記録ラッパを拾うため）
-elements.attackTarget.addEventListener("change", renderActions);
-elements.effectTarget.addEventListener("change", renderActions);
-elements.p1DeckSelect.addEventListener("change", () => syncNetworkDeckChoice(0));
-elements.p2DeckSelect.addEventListener("change", () => syncNetworkDeckChoice(1));
+// U3: リプレイ再生ページ（replay.html）では対局を進める操作ハンドラを登録しない（再生中の盤面を
+// 新規/ドロー/ターン終了等で書き換えられないように。閲覧系＝ルール/ログ保存/カードシートは従来どおり）。
+if (!globalThis.__BUDDYFIGHT_REPLAY__) {
+  // ローカル実プレイ: 記録用シードを生成し、先攻はシード乱数で決める（P1固定を廃止。B1）。
+  // ネット対戦は権威サーバが newGame を駆動するため、この経路はローカル対戦専用。
+  elements.newGameButton?.addEventListener("click", () =>
+    runNetworkMutation("新規ゲーム", () => newGame({ seed: generateRngSeed(), firstSeat: "random" })),
+  );
+  elements.drawButton.addEventListener("click", () => runNetworkMutation("ドロー", drawAction));
+  elements.chargeButton.addEventListener("click", () => runNetworkMutation("チャージ&ドロー", chargeAction));
+  elements.mainPhaseButton.addEventListener("click", () => runNetworkMutation("メインフェイズ", goMainPhase));
+  elements.castButton.addEventListener("click", () => runNetworkMutation("カード使用", useCardAction));
+  elements.resolveAttackButton.addEventListener("click", () => runNetworkMutation("解決", resolvePendingResolution));
+  // B3: ローカル記録の step 境界は src/23 がグローバル束縛を包んで実現するため、遅延束縛にする
+  // （直接 fn を渡すと登録時の未包み参照を握り、包み後を呼ばない）。挙動は不変。
+  elements.counterHandButton.addEventListener("click", () => counterWindowInterceptLocal("対抗手札") || toggleCounterHand());
+  elements.attackPhaseButton.addEventListener("click", () => runNetworkMutation("アタックフェイズ", goAttackPhase));
+  elements.linkToggleButton.addEventListener("click", () => counterWindowInterceptLocal("連携") || toggleLinkAttacker());
+  elements.finalPhaseButton.addEventListener("click", () => runNetworkMutation("ファイナルフェイズ", goFinalPhase));
+  elements.attackButton.addEventListener("click", () => {
+    // B2: 対象未指定なら対象選択モードへ。値があれば従来どおり宣言。
+    if (!elements.attackTarget.value) {
+      startAttackTargeting();
+      return;
+    }
+    runNetworkMutation("攻撃宣言", attackAction);
+  });
+  elements.endTurnButton.addEventListener("click", () => {
+    // 権威版仕様: 確認なしで即ターン終了。
+    runNetworkMutation("ターン終了", endTurn);
+  });
+  elements.partnerCallButton.addEventListener("click", () => counterWindowInterceptLocal("バディコール") || partnerCall()); // B3: 遅延束縛（記録ラッパを拾うため）
+  elements.attackTarget.addEventListener("change", renderActions);
+  elements.effectTarget.addEventListener("change", renderActions);
+  elements.p1DeckSelect.addEventListener("change", () => syncNetworkDeckChoice(0));
+  elements.p2DeckSelect.addEventListener("change", () => syncNetworkDeckChoice(1));
+}
 elements.createRoomButton?.addEventListener("click", createNetworkRoom);
 elements.joinRoomButton?.addEventListener("click", joinNetworkRoom);
 elements.copyRoomButton?.addEventListener("click", copyRoomId);
@@ -206,8 +243,10 @@ elements.closeCardSheetButton?.addEventListener("click", closeCardSheet);
 elements.cardSheet?.addEventListener("close", () => {
   cardSheetReadOnly = false;
   cardSheetReadOnlyCard = null;
+  cardSheetSoulContext = null; // Esc 閉じ(closeCardSheet を経由しない)でもソウル詳細文脈を残さない
   suppressNextZoneClick = false;
   hideCardTooltip();
+  onCardSheetClosed(); // スマホの操作シートをキャンセルで閉じた＝選択解除（操作ボタン経由は解除しない）
 });
 // 背景（バックドロップ）クリックでカードシートを閉じる
 elements.cardSheet?.addEventListener("click", (event) => {
@@ -239,11 +278,13 @@ if (typeof document.addEventListener === "function") {
   document.addEventListener("click", (event) => {
     if (!document.body.classList.contains("nav-open")) return;
     if (event.target.closest(".nav-toggle")) return;
+    // デッキ選択/アカウントのモーダル（メニューから開く）の中の操作ではメニューを閉じない（選んだ後に「新規」を押せるように）。
+    if (event.target.closest(".dp-backdrop, .acc-backdrop")) return;
     const item = event.target.closest(".toolbar a, .toolbar button");
     const outside = !event.target.closest(".toolbar");
-    if (outside || (item && !item.closest(".log-toggle, .theme-toggle"))) {
+    if (outside || (item && !item.closest(".log-toggle, .theme-toggle, .dp-open-button, .account-control-slot"))) {
       document.body.classList.remove("nav-open");
-      document.querySelector(".nav-toggle")?.setAttribute("aria-expanded", "false");
+      document.querySelectorAll(".nav-toggle").forEach((el) => el.setAttribute("aria-expanded", "false")); // ヘッダー＋スマホのドック
     }
   });
 }
@@ -278,6 +319,7 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     getState: () => state,
     setState: (nextState) => {
       state = nextState;
+      syncSetZonesWithState(state); // rule-call-11: 復元した setN 枠を走査対象へ
     },
     getDeckProfiles: () => deckProfiles,
     elements,
@@ -486,6 +528,7 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
     damageReceivedReductionFor,
     setState: (nextState) => {
       state = nextState;
+      syncSetZonesWithState(state); // rule-call-11: 復元した setN 枠を走査対象へ
     },
     setNetworkSession: (values) => {
       networkSession = {
@@ -564,7 +607,15 @@ if (globalThis.__BUDDYFIGHT_SERVER__) {
   globalThis.__buddyfightReplay = {
     loadGameData,
     initializeDeckSelectors,
+    // U1: カスタムデッキ注入→デッキ <select> 再構築（createPlayer より前に呼ぶ。reset 内の注入は重複スキップ）。
+    prepareRecordingDecks: (recording) => {
+      replayInjectCustomDecks(recording?.customDecks);
+      initializeDeckSelectors();
+    },
     createPlayer: (recording) => replayCreatePlayer(recording),
+    // 2026-10-09 オーナー裁定: 旧エンジン版（または版の無い旧形式）の記録は再生しない。replay.html が
+    // createPlayer の前に呼び、偽なら「このリプレイは旧バージョンのため再生できません」を出す。
+    isCompatible: (recording) => replayRecordingCompatible(recording),
     getState: () => state,
     render,
     elements,

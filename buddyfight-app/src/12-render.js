@@ -4,8 +4,11 @@
 // HTML で番号順に <script> 読み込みする（連結すると旧 app.js とバイト等価）。
 // ==========================================================================
 function render() {
+  syncSetZonesWithState(state); // rule-call-11: 設置枠は可変長（直置き・復元直後でも一覧に載せる）
+  noteDeckCountsForRuleProcessing(); // ★ルール処理★のデッキ0枚判定用の観測（src/07 runDeckZeroRuleProcessing）
   hideCardTooltip();
   renderNetworkChrome();
+  syncLocalSeatFlip();
   renderPlayerStats();
   renderZones();
   renderHand();
@@ -15,12 +18,27 @@ function render() {
   if (elements.cardSheet?.open) {
     refreshCardSheet(); // B2: 開いているカードシートを最新状態へ
   }
+  syncCounterWindowBar(); // 対抗窓改修: 窓が閉じた/別の窓になったらバーを閉じ、使える札を強調する
   if (typeof aiOnRender === "function") {
     aiOnRender(); // CPU対戦(src/22): 状態変化のたびにCPUの手番/応答を駆動（OFF時は即return）
   }
   if (typeof matchRecordCheckpoint === "function") {
     matchRecordCheckpoint(); // D5(戦績): 決着済み・整合局面で一度だけ戦績を確定（未決着/pending 中は即 return）
   }
+}
+
+// プレイテスト T8: ローカルの CPU 対戦で人間が席1（P2）の時は、権威版 play.html の後手席と同じく盤面を
+// 人間視点に反転する（自分の場＝下段・相手＝上段・位置名も相手側に「相手」）。styles.css の body.seat-flip 規則を
+// 使う。シンクライアントは play.js、リプレイ再生は対象外（それぞれ自分で管理/固定）。
+function syncLocalSeatFlip() {
+  if (globalThis.__BUDDYFIGHT_THIN__ || globalThis.__BUDDYFIGHT_SERVER__ || typeof document === "undefined" || !document.body?.classList || isReplayViewOnly()) {
+    return;
+  }
+  if (typeof isNetworkConnected === "function" && isNetworkConnected()) {
+    return;
+  }
+  const flip = typeof aiEnabled === "function" && aiEnabled() && aiHumanSeat() === 1;
+  document.body.classList.toggle("seat-flip", Boolean(flip));
 }
 
 function renderNetworkChrome() {
@@ -36,7 +54,7 @@ function renderNetworkChrome() {
   });
   elements.p1DeckSelect.disabled = isNetworkConnected() && networkSession.seat !== 0;
   elements.p2DeckSelect.disabled = isNetworkConnected() && networkSession.seat !== 1;
-  elements.newGameButton.disabled = isNetworkConnected() && networkSession.seat !== 0;
+  if (elements.newGameButton) elements.newGameButton.disabled = isNetworkConnected() && networkSession.seat !== 0;
   elements.copyRoomButton.disabled = !networkSession.roomId;
 }
 
@@ -53,13 +71,17 @@ function renderPlayerStats() {
     const gaugeCounter = document.querySelector(`#p${playerNumber}Gauge`);
     if (deckCounter) {
       deckCounter.textContent = `山${player.deck.length}`;
+      setMobileCounter(deckCounter, "山札", player.deck.length);
     }
     if (handCounter) {
       handCounter.textContent = `手${player.hand.length}`;
+      setMobileCounter(handCounter, "手札", player.hand.length);
     }
     if (gaugeCounter) {
       gaugeCounter.textContent = `ゲ${player.gauge.length}`;
+      setMobileCounter(gaugeCounter, "ゲージ", player.gauge.length);
     }
+    renderMobileSeatSize(index, player);
     // B2: バディ専用スロットを廃し、ワールド名タイル化（タップでデッキ情報ポップアップ）。
     const partner = document.querySelector(`#p${index + 1}Partner`);
     if (partner) {
@@ -76,6 +98,7 @@ function renderPlayerStats() {
     renderHandPreview(index);
   });
 
+  renderMobilePhaseSteps();
   const current = activePlayer();
   elements.turnLabel.textContent = state.winner ? `${state.winner} 勝利` : current.name;
   elements.phaseLabel.textContent = phaseLabels[state.phase] || state.phase;
@@ -151,6 +174,7 @@ function renderZones() {
 
 function renderDropZone(zoneButton, player) {
   zoneButton.textContent = `ドロップ ${player.drop.length}`;
+  zoneButton.dataset.count = String(player.drop.length);
   zoneButton.title = "クリックして中身を確認";
 }
 
@@ -162,28 +186,48 @@ function renderBuddyZone(zoneButton, player) {
   const count = (player.buddyZoneFaceDown || []).length;
   zoneButton.textContent = count > 0 ? `バディゾーン ${count}` : "バディゾーン";
   zoneButton.classList.toggle("has-cards", count > 0);
+  zoneButton.dataset.count = String(count);
   zoneButton.title = "裏向きカードの枚数（相手にも公開）";
 }
 
-// 配置魔法は2スロットを1パイルに集約表示（複数設置に対応）。中身はタップ一覧で確認。
+// rule-call-11: 『設置』の枚数に上限は無い。配置魔法は可変長の set 枠（set1, set2, set3, …）を1パイルに集約表示する
+// （デッキ/ドロップと同じ「枚数＋タップで一覧」）。枚数があれば末尾の1枚のサムネイルを添える（伏せ札は出さない）。
 function renderSetPile(zoneButton, player) {
-  const count = setZones.reduce((total, zone) => total + (player.field[zone] ? 1 : 0), 0);
-  zoneButton.textContent = count > 0 ? `配置魔法 ${count}` : "配置魔法";
+  const entries = setSpellEntries(player);
+  const count = entries.length;
   zoneButton.classList.toggle("has-cards", count > 0);
-  zoneButton.title = "タップで配置魔法の一覧";
+  zoneButton.dataset.count = String(count);
+  if (count === 0) {
+    zoneButton.textContent = "配置魔法";
+    zoneButton.title = "タップで配置魔法の一覧";
+    return;
+  }
+  const names = entries.map(({ card }) => (card.faceDown ? "（裏向き）" : card.name));
+  zoneButton.title = `タップで配置魔法の一覧（${names.join("／")}）`;
+  const top = entries[entries.length - 1].card;
+  if (!top.faceDown) {
+    const thumb = document.createElement("span");
+    thumb.className = "set-pile-thumb";
+    thumb.append(createCardImageElement(top));
+    zoneButton.append(thumb);
+  }
+  const label = document.createElement("span");
+  label.className = "set-pile-label";
+  label.textContent = `配置魔法 ${count}`;
+  zoneButton.append(label);
 }
 
-// 配置魔法の一覧（ドロップダイアログのDOMを流用）。自分の配置魔法は名前＋効果を表示しタップで使用、
-// 相手の伏せ配置魔法(faceDown)は「裏向き」で非公開・操作不可。
+// 配置魔法の一覧（ドロップダイアログのDOMを流用＝デッキ/ドロップ閲覧と同じ見た目）。両者とも開ける（設置魔法は公開情報）。
+// 各行: 名前＋効果ラベル（ホバー/タップで詳細）。行タップ＝従来どおり選択メニュー/閲覧シート。
+// 今使える能力を持つ自分の設置魔法には「使用」ボタン（ドロップの「発動」と同じ規約＝確認なしで即実行・対象は選択ダイアログ）。
+// 伏せ配置魔法(faceDown)は「裏向き」で非公開・操作不可。
 function showSetSpellDialog(owner) {
   const player = state.players[owner];
   if (!player || !elements.dropDialog || !elements.dropDialogTitle || !elements.dropDialogList) {
     return;
   }
   hideCardTooltip();
-  const entries = setZones
-    .map((zone) => ({ zone, card: player.field[zone] }))
-    .filter((entry) => entry.card);
+  const entries = setSpellEntries(player);
   elements.dropDialogTitle.textContent = `${player.name}の配置魔法（${entries.length}枚）`;
   elements.dropDialogList.innerHTML = "";
   if (entries.length === 0) {
@@ -198,29 +242,107 @@ function showSetSpellDialog(owner) {
   }
   entries.forEach(({ zone, card }, index) => {
     const item = document.createElement("li");
+    item.dataset.zone = zone;
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "drop-dialog-card";
+    button.className = "drop-dialog-card set-dialog-card";
     if (card.faceDown) {
       button.disabled = true;
       button.innerHTML = `
         <span class="drop-dialog-order">${index + 1}</span>
         <span class="drop-dialog-name">（裏向きの配置魔法）</span>
       `;
+      item.append(button);
     } else {
       button.innerHTML = `
         <span class="drop-dialog-order">${index + 1}</span>
         <span class="drop-dialog-name">${escapeHtml(card.name)}<small class="set-effect">${escapeHtml(effectImplementationLabel(card))}</small></span>
       `;
-      attachTooltip(button, card);
+      attachTooltip(button, card, { touchPreview: true });
       button.addEventListener("click", () => activateSetSpellFromPile(owner, zone, card));
+      item.append(button);
+      if (setSpellHasUsableAbility(owner, card)) {
+        const useButton = document.createElement("button");
+        useButton.type = "button";
+        useButton.className = "drop-dialog-activate set-dialog-use";
+        useButton.textContent = "使用";
+        // pt-final(1): 能力はあってもコストを払えない等の時は無効＋理由1行（押して「ゲージが足りません」で止まっていた）。
+        const reason = typeof fieldUseBlockedReason === "function"
+          ? safeBlockedReason(() => fieldUseBlockedReason({ source: "field", owner, zone, instanceId: card.instanceId }))
+          : null;
+        if (reason) {
+          markButtonBlocked(useButton, reason);
+        } else {
+          useButton.addEventListener("click", () => useSetSpellFromPile(owner, zone, card));
+        }
+        item.append(useButton);
+      }
     }
-    item.append(button);
     elements.dropDialogList.append(item);
   });
   if (!elements.dropDialog.open) {
     elements.dropDialog.showModal();
   }
+}
+
+// pt-final(1): 一覧のボタン（配置魔法の「使用」・ドロップの「発動」）を無効＋理由1行にする。
+function markButtonBlocked(button, reason) {
+  button.disabled = true;
+  button.classList.add("has-reason");
+  button.title = reason;
+  const note = document.createElement("span");
+  note.className = "card-sheet-reason";
+  note.textContent = reason;
+  button.append(note);
+  button.setAttribute("aria-label", `${button.textContent.replace(reason, "")}（できません: ${reason}）`);
+}
+
+function safeBlockedReason(compute) {
+  try {
+    return compute() || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+// 一覧の「使用」ボタンを出すか。ドロップ起動と同じ手番/応答者ガード＋今使える場の能力があるか（閲覧専用リプレイでは出さない）。
+function setSpellHasUsableAbility(owner, card) {
+  if (typeof isReplayViewOnly === "function" && isReplayViewOnly()) return false;
+  if (globalThis.__BUDDYFIGHT_THIN__ && Number.isInteger(thinViewerSeat) && thinViewerSeat !== owner) {
+    return false; // ネット対戦: 自席の設置魔法だけ
+  }
+  if (typeof isAiSeat === "function" && isAiSeat(owner)) return false; // CPU席の設置魔法は人間が使えない
+  if (typeof aiShouldLockHumanControls === "function" && aiShouldLockHumanControls()) return false;
+  const mayAct = state.pendingAttack
+    ? [state.pendingAttack.attackerOwner, state.pendingAttack.defender].includes(owner)
+    : state.pendingAction
+      ? owner === state.pendingAction.responder
+      : owner === state.active || findUsableFieldAbilities(card, owner).some((ability) => isCounterAbility(ability));
+  if (!mayAct) return false;
+  try {
+    return findUsableFieldAbilities(card, owner).length > 0;
+  } catch (error) {
+    return false;
+  }
+}
+
+// 一覧の「使用」: 設置魔法の能力を即実行（能力が複数なら選択ダイアログ・対象は選択ダイアログ＝既存の場カード使用経路）。
+// thin client は globalThis.__onSetSpellUse で "use" アクション（source:"field"）を送る。
+function useSetSpellFromPile(owner, zone, card) {
+  if (elements.dropDialog?.open) {
+    elements.dropDialog.close();
+  }
+  if (typeof globalThis.__onSetSpellUse === "function") {
+    globalThis.__onSetSpellUse(owner, zone, card);
+    return;
+  }
+  uiTargeting = null;
+  if (elements.effectTarget) elements.effectTarget.value = "";
+  if (!selectFieldCard(owner, zone)) {
+    openReadOnlyCardSheet(card);
+    return;
+  }
+  runNetworkMutation("カード使用", useCardAction);
 }
 
 // 一覧から配置魔法をタップ→選択/使用へ。thin client は globalThis.__onSetSpellActivate で fieldCardMenu に橋渡し。
@@ -321,7 +443,13 @@ function showDropDialog(owner) {
         useButton.type = "button";
         useButton.className = "drop-dialog-activate";
         useButton.textContent = "発動";
-        useButton.addEventListener("click", () => activateDropAbilityFromPile(owner, card));
+        // pt-final(1): コストを払えない時は無効＋理由1行。
+        const reason = typeof dropUseBlockedReason === "function" ? safeBlockedReason(() => dropUseBlockedReason(owner, card)) : null;
+        if (reason) {
+          markButtonBlocked(useButton, reason);
+        } else {
+          useButton.addEventListener("click", () => activateDropAbilityFromPile(owner, card));
+        }
         item.append(useButton);
       }
       elements.dropDialogList.append(item);
@@ -404,6 +532,10 @@ function activateDropAbilityFromPile(owner, card) {
     globalThis.__onDropAbilityActivate(owner, card);
     return;
   }
+  // 対抗窓改修: 窓が開いていれば、このドロップ札が候補なら窓への応答にする。
+  if (counterWindowInterceptLocal("カード使用", { source: "drop", owner, instanceId: card.instanceId })) {
+    return;
+  }
   // ローカル/中継対戦: 他の全操作と同様に runNetworkMutation 経由で実行し、盤面変化を相手へ snapshot 送信する
   // （素の直接実行だと中継版 netplay.html でドロップ起動が相手に同期されず、相手の次snapshotで巻き戻る）。
   runNetworkMutation("カード使用", () => useDropAbilityAction(owner, card));
@@ -425,9 +557,13 @@ function renderHand() {
   elements.handList.innerHTML = "";
   player.hand.forEach((card) => {
     const cardButton = createCardElement(card, true);
-    if (counterWindow && handCardHasCounterOption(card)) {
+    if (counterWindow && handCardHasCounterOption(card) && handCounterStillAvailable(card)) {
       cardButton.classList.add("counter-playable");
       counterPlayable += 1;
+    }
+    // 対抗窓改修: 誘発/ライフリンクの対抗窓で今使える手札を強調（バーの候補と同じ札）。
+    if (counterWindowUiUsable("hand", handOwnerIndex(), card.instanceId)) {
+      cardButton.classList.add("counter-playable", "counter-window-usable");
     }
     if (!globalThis.__BUDDYFIGHT_THIN__) {
       // 通常モードのみローカル選択＋下部アクションメニュー（権威版と同一操作）。シンクライアントは play.js が配線。
@@ -455,6 +591,60 @@ function renderHand() {
   updateHandScrollHint();
 }
 
+// 攻撃/行動の対抗ウィンドウで、この席がまだ【対抗】を使えるか（各ファイター1回まで等）。判定できなければ従来どおり true。
+function handCounterStillAvailable(card) {
+  try {
+    return canUseCounterEffect(handOwnerIndex(), selectedCounterKind(card));
+  } catch (error) {
+    return true;
+  }
+}
+
+// S-UB-C03: バディゾーンの裏向き札は持ち主だけが表を見られる（公式裁定 Q2629/Q2630）。持ち主には一覧を出す。
+// ローカル: CPU 席以外は持ち主として扱う（同じ画面の対戦）。ネット対戦: view が自席の分だけ表を届ける。
+function canViewBuddyZone(owner) {
+  if (globalThis.__BUDDYFIGHT_THIN__) {
+    return Number.isInteger(thinViewerSeat) && thinViewerSeat === owner;
+  }
+  if (typeof isReplayViewOnly === "function" && isReplayViewOnly()) return true;
+  return !(typeof isAiSeat === "function" && isAiSeat(owner));
+}
+
+function showBuddyZoneDialog(owner) {
+  const player = state.players?.[owner];
+  if (!player || !elements.dropDialog) return;
+  const cards = player.buddyZoneFaceDown || [];
+  if (!canViewBuddyZone(owner) || cards.some((card) => card?.hidden || !card?.name)) {
+    showToast(`バディゾーン ${cards.length}枚（裏向き。中身は持ち主だけが見られます）`);
+    return;
+  }
+  hideCardTooltip();
+  elements.dropDialogTitle.textContent = `${player.name}のバディゾーン（裏向き・${cards.length}枚・持ち主だけ表を見られます）`;
+  elements.dropDialogList.innerHTML = "";
+  if (cards.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "drop-dialog-empty";
+    empty.textContent = "なし";
+    elements.dropDialogList.append(empty);
+  }
+  cards.forEach((card, index) => {
+    const item = document.createElement("li");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "drop-dialog-card";
+    button.innerHTML = `
+      <span class="drop-dialog-order">${index + 1}</span>
+      <span class="drop-dialog-name">${escapeHtml(card.name)}</span>
+      <span class="drop-dialog-type">${escapeHtml(typeLabels[displayCardType(card)] || "")}</span>
+    `;
+    attachTooltip(button, card, { touchPreview: true });
+    button.addEventListener("click", () => openReadOnlyCardSheet(card));
+    item.append(button);
+    elements.dropDialogList.append(item);
+  });
+  if (!elements.dropDialog.open) elements.dropDialog.showModal();
+}
+
 // .has-overflow を「横にオーバーフローしていて、かつ末尾までスクロールしていない」時のみ付与。
 // モバイルはスクロールバーが出ないため、続きがある手掛かりにする（CSS側 .hand-list.has-overflow）。
 function applyHandScrollHint(list) {
@@ -462,6 +652,8 @@ function applyHandScrollHint(list) {
     list.scrollWidth > list.clientWidth + 2 &&
     list.scrollLeft + list.clientWidth < list.scrollWidth - 2;
   list.classList.toggle("has-overflow", more);
+  // スマホの手札（7枚以上）: 左にも隠れた札がある時は左端もフェード（CSS .has-overflow-left）。
+  list.classList.toggle("has-overflow-left", list.scrollLeft > 2);
 }
 function updateHandScrollHint() {
   const list = elements.handList;
@@ -520,6 +712,7 @@ function createCardElement(card, interactive = false) {
       `<span class="st-crit">${statLabel(visibleCritical(card))}</span>`;
     cardElement.append(stats);
   }
+  appendMobileTileParts(cardElement, card, interactive);
   if (soulNames.length) {
     const peek = document.createElement("span");
     peek.className = "card-stack-peek";
@@ -535,6 +728,120 @@ function createCardElement(card, interactive = false) {
   // 手札カード(interactive=button)のみ、タッチ長押しでプレビュー（盤面のspanは対象外）。
   attachTooltip(cardElement, card, { touchPreview: interactive });
   return cardElement;
+}
+
+// ---- スマホ対戦画面（styles.css の body.bf-game・幅640px以下）だけで見せる補助表示 ----
+// PC 幅では .m-tile-part / .ms-size / .phase-steps を CSS で display:none にしているので見た目は変わらない。
+function setMobileCounter(element, label, count) {
+  element.dataset.label = label;
+  element.dataset.n = String(count);
+}
+
+// 両者のサイズ（場のサイズ合計／上限）。相手ヘッダーにも常時出す（スマホのみ表示）。
+function renderMobileSeatSize(index, player) {
+  const mini = document.querySelector(`#player${index + 1}Zone .mini-stats`);
+  if (!mini || typeof mini.querySelector !== "function") {
+    return;
+  }
+  let size = mini.querySelector(".ms-size");
+  if (!size) {
+    size = document.createElement("span");
+    size.className = "ms-size";
+    mini.append(size);
+  }
+  const used = getFieldSize(player);
+  const limit = fieldSizeLimit(player);
+  size.textContent = `サイズ ${used}/${limit}`;
+  setMobileCounter(size, "サイズ", `${used}/${limit}`);
+  size.classList.toggle("over", used > limit);
+}
+
+// ターン帯: 現在のフェイズだけ全文、他は1字（aria-label に全文）。
+const MOBILE_PHASE_STEPS = [
+  ["draw", "ド", "ドロー"],
+  ["charge", "チ", "チャージ＆ドロー", "チャージ"],
+  ["main", "メ", "メイン"],
+  ["attack", "ア", "アタック"],
+  ["final", "フ", "ファイナル"],
+];
+function renderMobilePhaseSteps() {
+  const strip = document.querySelector(".status-strip");
+  if (!strip || typeof strip.querySelector !== "function") {
+    return;
+  }
+  let steps = strip.querySelector(".phase-steps");
+  if (!steps) {
+    steps = document.createElement("ol");
+    steps.className = "phase-steps";
+    steps.setAttribute("aria-label", "フェイズ");
+    strip.append(steps);
+  }
+  const currentIndex = MOBILE_PHASE_STEPS.findIndex(([key]) => key === state.phase);
+  steps.innerHTML = MOBILE_PHASE_STEPS.map(([key, short, full, label], index) => {
+    const now = index === currentIndex;
+    const cls = now ? "now" : index < currentIndex ? "done" : "next";
+    return `<li class="${cls}"${now ? ' aria-current="step"' : ""} aria-label="${escapeHtml(full)}${now ? "（現在）" : ""}">${escapeHtml(now ? label || full : short)}</li>`;
+  }).join("");
+  strip.dataset.turn = `T${state.turnCount || 1}`;
+  // 攻撃/行動の保留中（対抗の確認中）は、帯のフェイズ表示を「保留中」の案内に差し替える。
+  const pending = state.pendingAttack ? "攻撃は保留中（対抗・解決待ち）" : state.pendingAction ? "行動は保留中（対抗・解決待ち）" : "";
+  strip.dataset.pending = pending;
+  strip.classList.toggle("is-pending", Boolean(pending));
+}
+
+function mobileCostShort(card) {
+  const steps = (typeof primaryStructuredCost === "function" && primaryStructuredCost(card)) || [];
+  let gauge = steps.filter((step) => step.op === "payGauge").reduce((sum, step) => sum + (Number(step.amount) || 1), 0);
+  if (!gauge && typeof primaryCost === "function") {
+    gauge = primaryCost(card)?.gauge || 0;
+  }
+  return gauge > 0 ? `G${gauge}` : "";
+}
+
+// 盤面＝名前＋サイズ＋「攻/打（大）・防（中）」の文字タイル、手札＝コスト・対抗・名前・攻/打 または種類。
+function appendMobileTileParts(cardElement, card, interactive) {
+  const part = (className, html) => {
+    const element = document.createElement("span");
+    element.className = `m-tile-part ${className}`;
+    element.innerHTML = html;
+    cardElement.append(element);
+    return element;
+  };
+  const isMonster = effectiveCardType(card) === "monster";
+  const typeName = typeLabels[displayCardType(card)] || "";
+  if (interactive) {
+    const counter = typeof handCardHasCounterOption === "function" && handCardHasCounterOption(card);
+    part("ht-top", `<span class="ht-cost">${escapeHtml(mobileCostShort(card))}</span>${counter ? '<span class="ht-ctr">対抗</span>' : ""}`);
+    part("ht-name", escapeHtml(card.name || ""));
+    if (isMonster) {
+      part("ht-foot", `攻${escapeHtml(statLabel(visiblePower(card)))}`);
+      part("ht-foot2", `打${escapeHtml(statLabel(visibleCritical(card)))}・S${escapeHtml(statLabel(card.size))}`);
+    } else {
+      part("ht-foot", escapeHtml(typeName));
+      part("ht-foot2", "");
+    }
+    return;
+  }
+  part("bt-name", escapeHtml(card.name || ""));
+  if (isMonster && card.size !== undefined && card.size !== null) {
+    part("bt-size", `S${escapeHtml(statLabel(card.size))}`);
+  }
+  // pt-final(5): スマホの盤面ではソウル枚数を札の上段（位置名の横）ではなくステータス欄に出す（上段のバッジが
+  // 「レフト」等の位置名を「レ…」まで潰し、アイテム枠では名前に重なっていた）。PC は従来のバッジ（.card-stack-peek）。
+  const soulCount = (card.soul || []).length;
+  const soulChip = soulCount > 0 ? `<span class="bt-soul" title="ソウル${soulCount}枚" aria-label="ソウル${soulCount}枚"><i>ソ</i><b>${soulCount}</b></span>` : "";
+  if (cardHasDisplayStats(card)) {
+    const isItemTile = effectiveCardType(card) === "item";
+    part(
+      "bt-stats",
+      (isItemTile ? soulChip : "") +
+        `<span class="bt-row"><span><i>攻</i><b>${escapeHtml(statLabel(visiblePower(card)))}</b></span>` +
+        `<span><i>打</i><b>${escapeHtml(statLabel(visibleCritical(card)))}</b></span></span>` +
+        `<span class="bt-def"><span><i>防</i><b>${escapeHtml(statLabel(visibleDefense(card)))}</b></span>${isItemTile ? "" : soulChip}</span>`,
+    );
+  } else if (soulChip) {
+    part("bt-stats bt-soul-only", soulChip);
+  }
 }
 
 // 盤面でステータス（攻/防/クリ）を表示するカードか。モンスター・必殺モンスター・アイテム(武器)は表示、
@@ -690,8 +997,14 @@ function stackedCardNames(card) {
 }
 
 function attachTooltip(element, card, options = {}) {
-  // デスクトップ: ホバーで表示。
-  element.addEventListener("mouseenter", (event) => showCardTooltip(card, event));
+  // デスクトップ: ホバーで表示。タップ後の互換マウスイベント（mouseenter）では出さない
+  //（スマホでタップのたびに詳細が候補一覧やボタンを覆っていた。タッチの詳細は長押し／カードシートで見る）。
+  let lastTouchAt = 0;
+  const justTouched = () => Date.now() - lastTouchAt < 1000;
+  element.addEventListener("mouseenter", (event) => {
+    if (justTouched()) return;
+    showCardTooltip(card, event);
+  });
   element.addEventListener("mousemove", moveCardTooltip);
   element.addEventListener("mouseleave", hideCardTooltip);
   // フォーカス表示はキーボード操作用。タッチ由来のフォーカスでは出さない
@@ -699,7 +1012,7 @@ function attachTooltip(element, card, options = {}) {
   let touchActive = false;
   let holdTimer = null;
   element.addEventListener("focus", (event) => {
-    if (!touchActive) showCardTooltip(card, event);
+    if (!touchActive && !justTouched()) showCardTooltip(card, event);
   });
   element.addEventListener("blur", hideCardTooltip);
   // タッチ: touchPreview 指定要素（手札カード）だけ、長押し(約300ms)でプレビュー表示。
@@ -709,6 +1022,7 @@ function attachTooltip(element, card, options = {}) {
     // 場合の残留で“次タップを飲む”のを防ぐ。長押し成立時はこの後また立て直す）。
     delete element.dataset.tooltipPreview;
     if (event.pointerType === "mouse") return;
+    lastTouchAt = Date.now();
     touchActive = true;
     if (!options.touchPreview) return;
     clearTimeout(holdTimer);
@@ -721,6 +1035,7 @@ function attachTooltip(element, card, options = {}) {
   });
   const endTouch = () => {
     if (!touchActive && holdTimer === null) return;
+    lastTouchAt = Date.now();
     touchActive = false;
     if (holdTimer) {
       clearTimeout(holdTimer);
@@ -750,14 +1065,7 @@ function renderActions() {
   elements.drawButton.disabled = Boolean(
     state.winner || inBattle || state.drewThisTurn || state.phase !== "draw",
   );
-  elements.chargeButton.disabled = Boolean(
-    state.winner ||
-      inBattle ||
-      state.phase !== "charge" ||
-      state.chargedThisTurn ||
-      state.selected?.source !== "hand" ||
-      state.selected.owner !== state.active,
-  );
+  elements.chargeButton.disabled = isChargeBlocked();
   elements.mainPhaseButton.disabled = Boolean(state.winner || inBattle || state.phase !== "charge");
   // 「使用 / 装備」は効果対象ドロップダウン未選択でも押せる（ユーザー方針: 場の【起動】がダイアログで対象を
   // 聞くのに、手札の使用/装備だけ先にドロップダウンで選ばないと押せないのは分かりづらい＝導線を揃える）。
@@ -783,29 +1091,11 @@ function renderActions() {
     state.winner || inBattle || state.phase !== "attack",
   );
   elements.linkToggleButton.textContent = selectedLinked ? "連携から外す" : "連携に追加";
-  elements.linkToggleButton.disabled = Boolean(
-      state.winner ||
-      inBattle ||
-      !["attack", "final"].includes(state.phase) ||
-      (state.phase === "final" && !canDeclareAttackInFinal(selectedCard)) || // ファイナルは必殺モンスターのみ
-      state.selected?.source !== "field" ||
-      state.selected.owner !== state.active ||
-      !selectedCard ||
-      selectedCard.used,
-  );
+  elements.linkToggleButton.disabled = isLinkToggleBlocked(selectedCard);
   elements.partnerCallButton.textContent =
     state.buddyCallDeclared === selectedCard?.instanceId ? "バディ宣言中" : "バディコール宣言";
   elements.partnerCallButton.disabled = !canDeclareBuddyCall(activePlayer(), selectedCard);
-  elements.attackButton.disabled = Boolean(
-      state.winner ||
-      inBattle ||
-      !["attack", "final"].includes(state.phase) ||
-      (state.phase === "final" && attackingCards.some((attacker) => !canDeclareAttackInFinal(attacker.card))) ||
-      (state.turnCount === 1 && state.attacksThisTurn >= 1) ||
-      attackingCards.length === 0 ||
-      // B2: 対象未指定でも候補があれば押下可（押下で対象選択モードへ）。値があれば従来どおり宣言。
-      (!elements.attackTarget.value && computeAttackTargetCandidates().length === 0),
-  );
+  elements.attackButton.disabled = isAttackDeclareBlocked(attackingCards, Boolean(elements.attackTarget.value));
   elements.endTurnButton.disabled = Boolean(state.winner || inBattle || state.phase !== "final");
 
   // CPU対戦(src/22): CPUの手番/思考中は人間の操作ボタンを一括ロック（人間宛プロンプトと対抗応答は通す）。
@@ -831,24 +1121,73 @@ function renderActions() {
   }
 
   document.querySelectorAll("[data-call-zone]").forEach((button) => {
-    const canSpecialCall = specialCallOpportunityForCard(state.selected?.owner, selectedCard);
-    // E-Y1(奇襲): 奇襲コールはドロップから行う（選択中の本人カードをコール）。
-    const isAmbushCall = state.selected?.source === "drop" && canSpecialCall?.reason === "ambush";
-    // 必殺モンスターは自分のファイナルフェイズにのみコール可（通常モンスターは従来通りメインのみ）。
-    const callPhase = selectedCard?.type === "impactMonster" ? "final" : "main";
-    button.disabled = Boolean(
-        (typeof aiShouldLockHumanControls === "function" && aiShouldLockHumanControls()) ||
-        (state.winner && !canSpecialCall) ||
-        (inBattle && !canSpecialCall) ||
-        (state.phase !== callPhase && !canSpecialCall) ||
-        (state.selected?.source !== "hand" && !isAmbushCall) ||
-        (!canSpecialCall && state.selected.owner !== state.active) ||
-        !selectedCard ||
-        !canUseCardForFlag(state.players[state.selected?.owner ?? state.active], selectedCard) ||
-        !isCallableMonster(selectedCard) ||
-        missingRequiredEffectTarget,
-    );
+    button.disabled = isCallBlocked(selectedCard) || missingRequiredEffectTarget;
   });
+}
+
+// ---- 操作の可否（PC の操作パネルの disabled と、カードタップのメニュー/スマホのカードシートで共有する規則）----
+// いずれも state.selected（いま選んでいる札）を前提に判定する。
+
+function isChargeBlocked() {
+  return Boolean(
+    state.winner ||
+      hasPendingResolution() ||
+      state.phase !== "charge" ||
+      state.chargedThisTurn ||
+      state.selected?.source !== "hand" ||
+      state.selected.owner !== state.active,
+  );
+}
+
+function isLinkToggleBlocked(selectedCard) {
+  return Boolean(
+    state.winner ||
+      hasPendingResolution() ||
+      !["attack", "final"].includes(state.phase) ||
+      (state.phase === "final" && !canDeclareAttackInFinal(selectedCard)) || // ファイナルは必殺モンスターのみ
+      state.selected?.source !== "field" ||
+      state.selected.owner !== state.active ||
+      !selectedCard ||
+      selectedCard.used ||
+      // pt-final(1): 先攻1ターン目は攻撃1回だけ＝連携攻撃は宣言できない（「連携に追加」を出さない）。
+      state.turnCount === 1,
+  );
+}
+
+// hasTargetValue: 攻撃対象が既に指定済み（隠し select に値あり）なら候補の有無を問わない。
+function isAttackDeclareBlocked(attackingCards, hasTargetValue = false) {
+  return Boolean(
+    state.winner ||
+      hasPendingResolution() ||
+      !["attack", "final"].includes(state.phase) ||
+      (state.phase === "final" && attackingCards.some((attacker) => !canDeclareAttackInFinal(attacker.card))) ||
+      (state.turnCount === 1 && state.attacksThisTurn >= 1) ||
+      attackingCards.length === 0 ||
+      // B2: 対象未指定でも候補があれば押下可（押下で対象選択モードへ）。値があれば従来どおり宣言。
+      (!hasTargetValue && computeAttackTargetCandidates().length === 0),
+  );
+}
+
+// コール（レフト/センター/ライト共通）の可否。効果対象の事前指定が必要な札（missingRequiredEffectTarget）は
+// 呼び出し側で別に扱う（メニューは「重ねてコール」等で対象選択へ進めるため）。
+function isCallBlocked(selectedCard) {
+  const inBattle = hasPendingResolution();
+  const canSpecialCall = specialCallOpportunityForCard(state.selected?.owner, selectedCard);
+  // E-Y1(奇襲): 奇襲コールはドロップから行う（選択中の本人カードをコール）。
+  const isAmbushCall = state.selected?.source === "drop" && canSpecialCall?.reason === "ambush";
+  // 必殺モンスターは自分のファイナルフェイズにのみコール可（通常モンスターは従来通りメインのみ）。
+  const callPhase = selectedCard?.type === "impactMonster" ? "final" : "main";
+  return Boolean(
+    (typeof aiShouldLockHumanControls === "function" && aiShouldLockHumanControls()) ||
+      (state.winner && !canSpecialCall) ||
+      (inBattle && !canSpecialCall) ||
+      (state.phase !== callPhase && !canSpecialCall) ||
+      (state.selected?.source !== "hand" && !isAmbushCall) ||
+      (!canSpecialCall && state.selected.owner !== state.active) ||
+      !selectedCard ||
+      !canUseCardForFlag(state.players[state.selected?.owner ?? state.active], selectedCard) ||
+      !isCallableMonster(selectedCard),
+  );
 }
 
 function requiresExplicitEffectTarget(card) {
@@ -899,6 +1238,10 @@ function canUseSelectedCard(selectedCard) {
     return false;
   }
   if (!canUseCardForFlag(state.players[state.selected.owner], selectedCard)) {
+    return false;
+  }
+  // pt-fix-c T7-7: ソウルからだけ使えるカード（秘剣 流星/月牙 等）は手札の「使用」を出さない。
+  if (isSoulOnlyUseCard(selectedCard)) {
     return false;
   }
   if (state.pendingAction) {
@@ -1043,11 +1386,13 @@ function isAttackTargetRestricted(attacker, targetValue) {
   return state.players.some((player) =>
     zones.some((zone) => {
       const sourceCard = player.field[zone];
-      return (sourceCard?.continuous || []).some((effect) => {
+      // E15: 印字 continuous だけでなく turnContinuous（addTurnContinuous で付与したターン限定継続）も合流する
+      // activeContinuousEffects で読む（他の継続スキャナと同じ入口。能力無効化の除外も同関数が担う）。
+      return activeContinuousEffects(sourceCard).some((effect) => {
         if (effect.op !== "restrictAttackTargets") {
           return false;
         }
-        if (effect.zones && !effect.zones.includes(targetValue)) {
+        if (effect.zones && !zoneListIncludes(effect.zones, targetValue)) {
           return false;
         }
         if (!continuousEffectApplies(effect, attacker.card, sourceCard)) {
@@ -1062,11 +1407,16 @@ function isAttackTargetRestricted(attacker, targetValue) {
 }
 
 function attackAllMonsterTargetZones(attackers, targetOwner, targetValue) {
-  if (targetValue === "fighter" || attackers.length !== 1) {
+  if (attackers.length !== 1) {
     return [];
   }
   const attacker = attackers[0];
   if (!attacker.card.attackAllMonstersOnMonsterAttack) {
+    return [];
+  }
+  // 「攻撃した時、かわりに相手のモンスター全てと相手に攻撃する」（attackAllIncludesFighter）は攻撃対象に関わらず
+  // 置き換わる。ファイター宣言でも相手のモンスター全てを対象に含める（以前はモンスター宣言時だけだった）。
+  if (targetValue === "fighter" && !attacker.card.attackAllIncludesFighter) {
     return [];
   }
   return fieldZones.filter((zone) => {
@@ -1101,4 +1451,316 @@ function showToast(message, ms = 2600) {
     el.classList.remove("show");
     el.setAttribute("aria-hidden", "true");
   }, ms);
+}
+
+
+// ==========================================================================
+// 対抗窓改修: 誘発/ライフリンクの【対抗】窓の非モーダルバー（index.html / play.html 共通）。
+// 設計: docs/対抗窓改修_設計_2026-10-08.md。盤面を塞がない小さなバー（上部固定）で「パス」「このターンはパス」と
+// 使える【対抗】のチップを出す。使える札は手札/場で強調し、通常の「使用」操作でもそのまま窓への応答になる
+// （ローカル=src/19 runNetworkMutation・src/20 のドロップ/ソウル起動、シン=play.js sendAction が横取りする）。
+// 答えは候補 index（0=パス, 1=このターンはパス, 2..=対抗候補）。CPU 席の窓はバーを出さない（src/22 が即答）。
+// ==========================================================================
+let counterWindowUi = null; // { mode:"local"|"remote", entries, onAnswer, windowId, element }
+
+function counterWindowBarAvailable() {
+  return Boolean(
+    typeof document !== "undefined" &&
+      document.body &&
+      typeof document.body.appendChild === "function" &&
+      typeof document.createElement === "function" &&
+      !globalThis.__BUDDYFIGHT_SERVER__,
+  );
+}
+
+// スマホ対戦画面: 対抗窓バー・待つ側の表示・選択ドックは #dockSlot（手札とドックの間の行）へ差し込む。
+// PC 幅では #dockSlot は display:contents で、バーは従来どおり画面下中央の fixed 表示（見た目不変）。
+// #dockSlot の無い画面（netplay 等）やスタブ環境では document.body に追加する（従来どおり）。
+function dockSlotElement() {
+  const slot = typeof document.getElementById === "function" ? document.getElementById("dockSlot") : null;
+  return slot && typeof slot.appendChild === "function" ? slot : document.body;
+}
+
+// スマホ幅（styles.css のスマホ対戦画面と同じ境界）か。matchMedia の無い環境（テスト/サーバ）は false。
+function isPhoneLayout() {
+  try {
+    return Boolean(
+      typeof window !== "undefined" &&
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(max-width: 640px)").matches &&
+        document.body?.classList?.contains("bf-game"),
+    );
+  } catch (error) {
+    return false;
+  }
+}
+
+// 対抗窓を開いてから誤パスを防ぐ待ち時間（スマホのみ。オーナー裁定: 0.5秒）。
+const COUNTER_WINDOW_PASS_GUARD_MS = 500;
+
+// 候補 entry（ローカル: option 付き／シン: サーバの compact 候補）から札の所在を取り出す。
+function counterWindowEntryRef(entry) {
+  const option = entry?.option || null;
+  return {
+    source: entry?.counterSource || option?.source || null,
+    owner: entry?.owner ?? option?.owner ?? null,
+    zone: entry?.zone ?? option?.zone ?? null,
+    instanceId: entry?.card?.instanceId || option?.instanceId || null,
+  };
+}
+
+// 盤面の札（source/owner/instanceId[/zone]）が今の窓の候補なら、その候補 index を返す。
+function counterWindowAnswerFor(ref) {
+  if (!counterWindowUi || !ref) {
+    return null;
+  }
+  const entry = counterWindowUi.entries.find((candidate) => {
+    if (candidate.counterWindowAnswer !== "use") {
+      return false;
+    }
+    const own = counterWindowEntryRef(candidate);
+    if (own.source !== ref.source || Number(own.owner) !== Number(ref.owner)) {
+      return false;
+    }
+    if (ref.source === "field" && ref.zone && own.zone && own.zone !== ref.zone) {
+      return false;
+    }
+    return !ref.instanceId || own.instanceId === ref.instanceId;
+  });
+  return entry ? entry.choiceIndex : null;
+}
+
+function counterWindowUiUsable(source, owner, instanceId) {
+  return counterWindowAnswerFor({ source, owner, instanceId }) !== null;
+}
+
+function answerCounterWindow(choiceIndex) {
+  const ui = counterWindowUi;
+  if (!ui) {
+    return;
+  }
+  closeCounterWindowBar();
+  try {
+    ui.onAnswer(choiceIndex);
+  } finally {
+    if (typeof render === "function" && Array.isArray(state?.players)) {
+      render();
+    }
+  }
+}
+
+// 窓の発生源カード（公開ゾーン＝場・ソウル・ドロップ・自分の手札）を instanceId で探す。見つからなければ null。
+function findCounterWindowSourceCard(instanceId) {
+  if (!instanceId || !Array.isArray(state?.players)) {
+    return null;
+  }
+  for (const player of state.players) {
+    for (const card of Object.values(player.field || {})) {
+      if (!card) continue;
+      if (card.instanceId === instanceId) return card;
+      const inSoul = (card.soul || []).find((soulCard) => soulCard?.instanceId === instanceId);
+      if (inSoul) return inSoul;
+    }
+    const pile = [...(player.drop || []), ...(player.hand || []), ...(player.flag ? [player.flag] : [])];
+    const hit = pile.find((card) => card?.instanceId === instanceId && card.name);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+// バーを開く。entries は choiceIndex 付きの候補（0=パス,1=このターンはパス,2..=使う）。
+// 独立レビュー L6: 盤面上部（相手のライフ等）を隠さないよう画面下部（手札/操作バーの上）に、1〜2行のコンパクトな帯で出す。
+// 1行目=見出し＋発生源（タップで効果文）＋パス/このターンはパス、2行目=使える【対抗】のチップ（横スクロール）。
+function openCounterWindowBar({ entries, title, lead, onAnswer, mode = "local", windowId = null, sourceInstanceId = null, sourceName = "" }) {
+  closeCounterWindowBar();
+  if (!counterWindowBarAvailable()) {
+    onAnswer(0);
+    return;
+  }
+  const bar = document.createElement("div");
+  bar.className = "counter-window-bar";
+  bar.id = "counterWindowBar";
+  bar.setAttribute("role", "region");
+  bar.setAttribute("aria-live", "polite");
+  bar.setAttribute("aria-label", "対抗の確認");
+  const row = document.createElement("div");
+  row.className = "cwb-row";
+  const head = document.createElement("strong");
+  head.className = "cwb-title";
+  head.textContent = title || "【対抗】できます";
+  const source = document.createElement("button");
+  source.type = "button";
+  source.className = "cwb-source";
+  const sourceLabel = document.createElement("span");
+  sourceLabel.className = "cwb-source-name";
+  sourceLabel.textContent = sourceName || "能力";
+  const sourceIcon = document.createElement("span");
+  sourceIcon.className = "cwb-source-icon";
+  sourceIcon.textContent = "ⓘ";
+  source.append(sourceLabel, sourceIcon);
+  source.title = lead || "発生源の効果文を見る";
+  source.setAttribute("aria-label", `${lead || sourceName}（タップで効果文）`);
+  source.addEventListener("click", () => {
+    const card = findCounterWindowSourceCard(sourceInstanceId);
+    if (card && typeof openReadOnlyCardSheet === "function") {
+      openReadOnlyCardSheet(card);
+    } else if (typeof addLog === "function" && lead) {
+      addLog(lead);
+      render();
+    }
+  });
+  // スマホ: 窓が開いてから0.5秒はパス系を押せない（右下の連打で誤ってパスしない）。PC は従来どおり即押せる。
+  const guarded = isPhoneLayout();
+  const guardedAnswer = (index) => () => {
+    if (bar.dataset.guard === "1") {
+      return;
+    }
+    answerCounterWindow(index);
+  };
+  const pass = document.createElement("button");
+  pass.type = "button";
+  pass.className = "cwb-pass";
+  pass.textContent = "パス";
+  pass.addEventListener("click", guardedAnswer(0));
+  const passTurn = document.createElement("button");
+  passTurn.type = "button";
+  passTurn.className = "cwb-pass-turn";
+  passTurn.textContent = "このターンはパス";
+  passTurn.title = "このターンの終わりまで、誘発・ライフリンクへの対抗確認を出しません";
+  passTurn.addEventListener("click", guardedAnswer(1));
+  if (guarded) {
+    bar.dataset.guard = "1";
+    [pass, passTurn].forEach((button) => button.setAttribute("aria-disabled", "true"));
+    setTimeout(() => {
+      delete bar.dataset.guard;
+      [pass, passTurn].forEach((button) => button.removeAttribute("aria-disabled"));
+    }, COUNTER_WINDOW_PASS_GUARD_MS);
+  }
+  row.append(head, source, pass, passTurn);
+  const chips = document.createElement("div");
+  chips.className = "cwb-options";
+  (entries || [])
+    .filter((entry) => entry.counterWindowAnswer === "use")
+    .forEach((entry) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "cwb-use";
+      const where = entry.note || entry.zoneLabel || "";
+      chip.textContent = `${entry.card?.name || "対抗"}${where ? `（${where}）` : ""}`;
+      chip.title = "この【対抗】を使う";
+      chip.addEventListener("click", () => answerCounterWindow(entry.choiceIndex));
+      chips.append(chip);
+    });
+  bar.append(row, chips);
+  dockSlotElement().appendChild(bar);
+  document.body.classList?.add("counter-window-open");
+  counterWindowUi = { mode, entries: entries || [], onAnswer, windowId, element: bar };
+  if (typeof render === "function" && Array.isArray(state?.players)) {
+    render(); // 使える札の強調を反映
+  }
+}
+
+function closeCounterWindowBar() {
+  const ui = counterWindowUi;
+  counterWindowUi = null;
+  if (ui?.element?.remove) {
+    ui.element.remove();
+  }
+  if (typeof document !== "undefined") {
+    document.body?.classList?.remove("counter-window-open");
+    document.querySelectorAll?.(".counter-window-usable").forEach((el) => el.classList.remove("counter-window-usable"));
+  }
+}
+
+// ローカル（index.html）の窓: バーを出して答えを待つ（src/16 answerCounterWindowLocally から）。
+function showCounterWindowBar(presented, options = {}) {
+  return new Promise((resolve) => {
+    openCounterWindowBar({
+      entries: presented,
+      title: options.title,
+      lead: options.lead,
+      mode: "local",
+      windowId: options.counterWindowInfo?.windowId || null,
+      sourceInstanceId: options.counterWindowInfo?.sourceInstanceId || null,
+      sourceName: options.counterWindowInfo?.sourceName || "",
+      onAnswer: (choiceIndex) => {
+        const entry = presented.find((candidate) => candidate.choiceIndex === choiceIndex) || presented[0];
+        resolve([entry]);
+      },
+    });
+  });
+}
+
+// 相手の窓を待つ側の表示（シンクライアント）。text が空なら消す。
+function showCounterWindowWaiting(text) {
+  if (!counterWindowBarAvailable()) {
+    return;
+  }
+  let note = document.getElementById?.("counterWindowWaiting");
+  if (!text) {
+    note?.remove?.();
+    return;
+  }
+  if (!note) {
+    note = document.createElement("div");
+    note.id = "counterWindowWaiting";
+    note.className = "counter-window-bar is-waiting";
+    note.setAttribute("role", "status");
+    note.setAttribute("aria-live", "polite");
+    dockSlotElement().appendChild(note);
+  }
+  note.textContent = text;
+}
+
+// render のたびに: 窓が閉じた（タイムアウト・再接続・新規対戦等）ならバーを閉じ、場の候補を強調し直す。
+function syncCounterWindowBar() {
+  if (typeof document === "undefined" || !document.querySelectorAll) {
+    return;
+  }
+  const open = state?.counterWindow || null;
+  if (counterWindowUi && (!open || (counterWindowUi.windowId && open.id !== counterWindowUi.windowId))) {
+    const ui = counterWindowUi;
+    closeCounterWindowBar();
+    if (ui.mode === "local") {
+      ui.onAnswer(0); // 取り残された窓はパス扱いで閉じる
+    }
+  }
+  // 待つ側の表示は view（state.counterWindow）から毎回復元する（再接続・再読込でも消えない。独立レビュー L6）。
+  // シンクライアントで、窓が自席宛てでない（相手の窓・観戦）時だけ出す。ローカルは応答席のバーがあるので出さない。
+  const viewer = globalThis.__BUDDYFIGHT_THIN__ && Number.isInteger(thinViewerSeat) ? thinViewerSeat : null;
+  if (open && globalThis.__BUDDYFIGHT_THIN__ && open.responder !== viewer) {
+    showCounterWindowWaiting(viewer === null ? "対抗を検討中…" : "相手が対抗を検討中…");
+  } else if (!open || open.responder === viewer) {
+    showCounterWindowWaiting("");
+  }
+  document.querySelectorAll(".zone.counter-window-usable").forEach((el) => el.classList.remove("counter-window-usable"));
+  if (!counterWindowUi) {
+    return;
+  }
+  counterWindowUi.entries
+    .filter((entry) => entry.counterWindowAnswer === "use")
+    .map(counterWindowEntryRef)
+    .filter((ref) => ref.source === "field" && ref.zone)
+    .forEach((ref) => {
+      document
+        .querySelector?.(`.zone[data-owner="${ref.owner}"][data-zone="${ref.zone}"]`)
+        ?.classList.add("counter-window-usable");
+    });
+}
+
+// ローカルの操作を窓が横取りする（src/19 runNetworkMutation から）。true を返したら元の操作は行わない。
+// 「カード使用」は選択中の札が候補なら窓への応答に変換、それ以外の操作は窓の間は受け付けない。
+function counterWindowInterceptLocal(label, ref = null) {
+  if (!counterWindowUi || counterWindowUi.mode !== "local") {
+    return false;
+  }
+  const target = ref || (state?.selected ? { ...state.selected } : null);
+  const index = label === "カード使用" ? counterWindowAnswerFor(target) : null;
+  if (index !== null) {
+    answerCounterWindow(index);
+    return true;
+  }
+  addLog("【対抗】の確認中です。強調された【対抗】を使うか、「パス」を選んでください。");
+  render();
+  return true;
 }

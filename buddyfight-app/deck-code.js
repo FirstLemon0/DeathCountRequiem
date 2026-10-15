@@ -82,6 +82,12 @@ function validateDeckCodePayload(payload, opts) {
   // フラッグ非依存の粗い構造ゲートで deckAnyFlag のホーム/非ホーム上限も課さないため、グループも4で統一）。
   const limitGroups =
     options.limitGroups && typeof options.limitGroups === "object" ? options.limitGroups : null;
+  // audit2(b080-10 俺のバディ！): id→deckLimitUnlessBuddyCount{buddyGte,limit,group} の写像と id→カード名の写像。
+  // 未指定＝制約を課さない（完全後方互換）。バディ（payload.buddy と同名のカード）の合計が buddyGte 未満なら、
+  // 同じ group のカード合計を limit 枚までに制限する。
+  const buddyCountRules =
+    options.buddyCountRules && typeof options.buddyCountRules === "object" ? options.buddyCountRules : null;
+  const cardNames = options.cardNames && typeof options.cardNames === "object" ? options.cardNames : {};
 
   if (!payload || typeof payload !== "object") {
     return { ok: false, reason: "invalid payload" };
@@ -146,6 +152,27 @@ function validateDeckCodePayload(payload, opts) {
     for (const [key, sum] of groupTotals) {
       if (sum > 4) {
         return { ok: false, reason: `『${key}』グループは合わせて4枚までです（${sum}枚）` };
+      }
+    }
+  }
+  if (buddyCountRules) {
+    const buddyName = buddy ? cardNames[buddy] : undefined;
+    let buddyCopies = 0;
+    const groupTotals = new Map();
+    for (const [id, count] of normalizedRecipe) {
+      if (buddy && (id === buddy || (buddyName !== undefined && cardNames[id] === buddyName))) buddyCopies += count;
+      const rule = buddyCountRules[id];
+      if (!rule) continue;
+      const key = rule.group || cardNames[id] || id;
+      const entry = groupTotals.get(key) || { sum: 0, rule };
+      entry.sum += count;
+      groupTotals.set(key, entry);
+    }
+    for (const [key, entry] of groupTotals) {
+      const limit = entry.rule.limit ?? 1;
+      const buddyGte = entry.rule.buddyGte ?? 4;
+      if (buddyCopies < buddyGte && entry.sum > limit) {
+        return { ok: false, reason: `バディが${buddyGte}枚入っていないので『${key}』は${limit}枚までです（${entry.sum}枚）` };
       }
     }
   }

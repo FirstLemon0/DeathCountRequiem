@@ -147,6 +147,7 @@ function applyNetworkSnapshot(snapshot) {
   }
   networkSession.applyingSnapshot = true;
   state = deepClone(snapshot);
+  syncSetZonesWithState(state); // rule-call-11: 設置枠(set3以降)を走査対象へ
   state.selected = null;
   state.linkAttackers = [];
   networkSession.applyingSnapshot = false;
@@ -270,6 +271,11 @@ async function sendNetworkMessage(type, payload) {
 }
 
 async function runNetworkMutation(label, callback) {
+  // 対抗窓改修: ローカルの対抗窓（非モーダルバー）が開いている間は、候補の札の「使用」を窓への応答に変換し、
+  // それ以外の操作は受け付けない（src/12 counterWindowInterceptLocal）。窓が無ければ素通し。
+  if (typeof counterWindowInterceptLocal === "function" && counterWindowInterceptLocal(label)) {
+    return;
+  }
   const beforeSummary = compactFightStateForLog({ includeDeckOrder: false });
   if (!isNetworkConnected() || networkSession.applyingSnapshot) {
     await callback();

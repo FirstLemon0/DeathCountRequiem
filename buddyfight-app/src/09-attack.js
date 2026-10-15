@@ -17,6 +17,98 @@ function attackerCardAt(owner, zone) {
   return state.players[owner]?.field?.[zone] || null;
 }
 
+// E1: 攻撃宣言の対象値が正当か（"fighter" か、防御側のモンスターエリアにカードがある値）。
+function isValidAttackTargetValue(targetOwner, targetValue) {
+  if (targetValue === "fighter") {
+    return true;
+  }
+  return fieldZones.includes(targetValue) && Boolean(state.players[targetOwner]?.field?.[targetValue]);
+}
+
+// E2: 進行中の攻撃の「攻撃対象」の同一性(instanceId)を控える。攻撃対象が場を離れ、別のカードが同じエリアに
+// 入っても、そのカードは攻撃対象ではない（ver2.05 アタックフェイズの流れ 2.6「攻撃対象がなくなったり…3.3.に
+// 進みます」）。対象を変更する効果（リダイレクト/入れ替え等）は対象を書き換えた直後にこれを呼び直す。
+// 控えと現在の targetOwner/targetZone が食い違う（呼び直しの無い書き換え・旧 state）場合はエリア基準の従来挙動。
+function bindPendingAttackTarget(pending = state.pendingAttack) {
+  if (!pending) {
+    return;
+  }
+  const card =
+    pending.targetType !== "fighter" && pending.targetZone
+      ? state.players[pending.targetOwner]?.field?.[pending.targetZone]
+      : null;
+  pending.targetRef = card
+    ? { owner: pending.targetOwner, zone: pending.targetZone, instanceId: card.instanceId ?? null }
+    : null;
+}
+
+// E2: 攻撃対象エリアのカードを、控えた同一性が保たれている時だけ返す（差し替わっていれば null）。
+function pendingAttackTargetCard(pending = state.pendingAttack) {
+  if (!pending || !pending.targetZone) {
+    return null;
+  }
+  const card = state.players[pending.targetOwner]?.field?.[pending.targetZone] || null;
+  const ref = pending.targetRef;
+  if (!card || !ref || ref.owner !== pending.targetOwner || ref.zone !== pending.targetZone || ref.instanceId == null) {
+    return card;
+  }
+  return card.instanceId === ref.instanceId ? card : null;
+}
+
+// E2: 攻撃者スロットのカードを、宣言時の同一性が保たれている時だけ返す（旧 state の instanceId 無しスロットは従来どおり）。
+function pendingAttackerCardAt(slot) {
+  const card = attackerCardAt(slot.owner, slot.zone);
+  if (!card || slot.instanceId == null) {
+    return card;
+  }
+  return card.instanceId === slot.instanceId ? card : null;
+}
+
+// 場の中でエリアを移動したカード（moveFieldCard）が進行中の攻撃の攻撃者／攻撃対象なら、控えたスロットのエリアを
+// 移動先へ書き換えて同一性を保つ。ver2.05 アタックフェイズの流れ 2.6「攻撃しているカードまたは攻撃対象がなくなったり…」
+// は場から無くなった場合の話で、場に残ったまま移動しただけのカードは攻撃者／攻撃対象のまま（同 Q4/A4: 攻撃対象は
+// 決定後に変更されない）。以前は宣言時の『エリア＋instanceId』照合のため移動した瞬間に「場を離れた」扱いで攻撃が終了した。
+// instanceId を控えていない旧 state のスロットは同一性を判定できないので従来どおり触らない（後方互換）。
+function followPendingAttackCardMove(owner, fromZone, toZone, card) {
+  const pending = state.pendingAttack;
+  const instanceId = card?.instanceId;
+  if (!pending || instanceId == null || fromZone === toZone) {
+    return;
+  }
+  (pending.attackers || []).forEach((slot) => {
+    if (slot.owner === owner && slot.zone === fromZone && slot.instanceId === instanceId) {
+      slot.zone = toZone;
+    }
+  });
+  if (
+    pending.attackerOwner === owner &&
+    pending.attackerZone === fromZone &&
+    (pending.attackers || []).some((slot) => slot.owner === owner && slot.zone === toZone && slot.instanceId === instanceId)
+  ) {
+    pending.attackerZone = toZone;
+  }
+  const ref = pending.targetRef;
+  if (
+    ref &&
+    ref.owner === owner &&
+    ref.zone === fromZone &&
+    ref.instanceId === instanceId &&
+    pending.targetOwner === owner &&
+    pending.targetZone === fromZone
+  ) {
+    ref.zone = toZone;
+    pending.targetZone = toZone;
+  }
+  (pending.attackAllTargetRefs || []).forEach((targetRef, index) => {
+    if (targetRef.owner === owner && targetRef.zone === fromZone && targetRef.instanceId === instanceId) {
+      targetRef.zone = toZone;
+      if (Array.isArray(pending.attackAllTargetZones) && pending.attackAllTargetZones[index] === fromZone) {
+        pending.attackAllTargetZones[index] = toZone;
+      }
+    }
+  });
+}
+
 // このフラッグが「攻撃するフラッグ」か（印字 canAttackAsFlag＝flags.json infinity-the-chaos のみ真）。
 // 裏フラッグ(flagFaceDown)は機能停止＝攻撃できない。未設定の全既存フラッグは false＝フラッグ攻撃経路に一切乗らない。
 function canAttackAsFlag(player) {
@@ -109,7 +201,7 @@ function grantsFinalPhaseAttack(card) {
         if (effect.controller === "self" && targetSlot.owner !== sourceOwner) return false;
         if (effect.controller === "opponent" && targetSlot.owner === sourceOwner) return false;
         if (effect.excludeSource && source.instanceId === card.instanceId) return false;
-        if (effect.zoneIn && !effect.zoneIn.includes(targetSlot.zone)) return false;
+        if (effect.zoneIn && !zoneListIncludes(effect.zoneIn, targetSlot.zone)) return false;
         if (effect.filter && !matchesCardFilter(card, effect.filter)) return false;
         // 条件付き付与への備え: continuousEffectApplies(src/05) と同じく effect.conditions を発生源基準で評価する
         //（引数形は checkCardConditions(conditions, sourceOwner, {card:発生源, zone, targetCard})）。
@@ -125,6 +217,25 @@ function grantsFinalPhaseAttack(card) {
     }),
   );
   if (fromField) {
+    return true;
+  }
+  // 監査 rule-continuous-1: 発生源から切り離したターン限定 grantFinalPhaseAttack（バルドラゴン“バルウェポン・コンビネーション！”
+  // 「そのターン中、そのアイテムはファイナルフェイズ中にも攻撃できる」等）。発生源が場を離れても続く。
+  if (
+    turnSourcedContinuousEntries("grantFinalPhaseAttack").some(({ entry, seat }) =>
+      turnSourcedContinuousApplies(entry, seat, card),
+    )
+  ) {
+    return true;
+  }
+  // 発生源が場を離れた後も残る「そのターン中」の付与（D-EB01/0027 シルフ等）。
+  if (
+    detachedTurnContinuousSources().some((entry) =>
+      entry.turnContinuous.some(
+        (effect) => effect.op === "grantFinalPhaseAttack" && detachedTurnEffectApplies(effect, card, entry),
+      ),
+    )
+  ) {
     return true;
   }
   // ソウル内カードの soulContinuous grantFinalPhaseAttack（host==target=武器 も許容。soulContinuousGrantsOp が
@@ -170,22 +281,35 @@ function toggleLinkAttacker() {
   render();
 }
 
+// T7(プレイテスト 2026-10): 攻撃宣言の拒否時は、組みかけの連携（state.linkAttackers）を必ず解く。
+// 残すと getAttackDeclarationAttackers が以後も連携を優先し、先攻1ターン目の連携拒否の後に単独攻撃まで
+// 「連携攻撃できません」で拒否され続けた（対象選択の表示も連携のまま残る）。拒否は副作用なし＝選び直しから。
+function refuseAttackDeclaration(message) {
+  if (message) {
+    addLog(message);
+  }
+  if (Array.isArray(state.linkAttackers) && state.linkAttackers.length > 0) {
+    state.linkAttackers = [];
+  }
+  return false;
+}
+
 async function attackAction() {
   if (state.winner || hasPendingResolution()) {
     return;
   }
   if (!["attack", "final"].includes(state.phase)) {
-    addLog("攻撃はアタックフェイズまたはファイナルフェイズで行えます。");
+    refuseAttackDeclaration("攻撃はアタックフェイズまたはファイナルフェイズで行えます。");
     return;
   }
   if (state.turnCount === 1 && state.attacksThisTurn >= 1) {
-    addLog("2018年6月以前ルールでは、先攻1ターン目に行える攻撃は1回までです。");
+    refuseAttackDeclaration("2018年6月以前ルールでは、先攻1ターン目に行える攻撃は1回までです。");
     return;
   }
   const attackers = getAttackDeclarationAttackers();
   // ver2.05: ファイナルフェイズに攻撃宣言できるのは必殺モンスター等の例外持ちのみ（連携相手も同様）。
   if (state.phase === "final" && attackers.some((attacker) => !canDeclareAttackInFinal(attacker.card))) {
-    addLog("ファイナルフェイズに攻撃できるのは必殺モンスターだけです。");
+    refuseAttackDeclaration("ファイナルフェイズに攻撃できるのは必殺モンスターだけです。");
     return;
   }
   if (attackers.length === 0) {
@@ -195,16 +319,17 @@ async function attackAction() {
         addLog("センターにモンスターがいるため、武器では攻撃できません。");
       }
     }
+    refuseAttackDeclaration();
     return;
   }
   if (state.turnCount === 1 && attackers.length > 1) {
-    addLog("先攻1ターン目は連携攻撃できません。");
+    refuseAttackDeclaration("先攻1ターン目は連携攻撃できません。");
     return;
   }
   expireTransientResponseWindows();
   const targetValue = elements.attackTarget.value;
   if (!targetValue) {
-    return;
+    return; // 対象未選択（PC の対象セレクト待ち）。連携の組み立て中なので解かない
   }
   await performAttackDeclaration(attackers, targetValue);
 }
@@ -216,8 +341,7 @@ async function performAttackDeclaration(attackers, targetValue, options = {}) {
   // declareAttackWithFieldCard:352)は手前で既にブロック済＝ここは効果コール経路のバックストップ（二重でも無害）。
   // forceSelfAttack の単体1回攻撃(attacksThisTurn=0・attackers.length=1)は温存される。
   if (state.turnCount === 1 && (state.attacksThisTurn >= 1 || attackers.length > 1)) {
-    addLog("先攻1ターン目は攻撃1回まで・連携攻撃はできません。");
-    return false;
+    return refuseAttackDeclaration("先攻1ターン目は攻撃1回まで・連携攻撃はできません。");
   }
   // forceSelfAttack: そのモンスターが自分の持ち主（＝使用者の相手）を攻撃する（ナイトメア・ディスペアー 0020）。
   // 防御側＝そのモンスターの持ち主自身。通常攻撃は opponentIndex()（手番側の相手）。
@@ -233,25 +357,33 @@ async function performAttackDeclaration(attackers, targetValue, options = {}) {
       targetValue = redirectZone; // 生存する敵モンスターへ対象を差し替え
     }
   }
+  // E1: 攻撃対象の値を許可リストで検証する（ver2.05 攻撃の選択 2.2「攻撃対象を選びます」＝相手ファイターか相手の場の
+  // モンスター）。権威サーバでは client の params.attackTarget がそのまま elements.attackTarget に入るため、
+  // 以前は "item"/"set1"/空きエリアでも宣言が成立し、アイテムや設置魔法を戦闘破壊できた／空振りでレストした。
+  // 許可: "fighter" か、相手のモンスターエリア(left/center/right)にカードがある値（UI候補 computeAttackTargetCandidates
+  // と同じ基準）。拒否時は副作用なし（レスト/攻撃回数/pending 生成の前）。
+  if (!isValidAttackTargetValue(targetOwner, targetValue)) {
+    return refuseAttackDeclaration("この攻撃対象には攻撃できません。");
+  }
   if (!attackers.every((attacker) => canAttackTargetValue(attacker, targetValue))) {
-    addLog("この攻撃対象には攻撃できません。");
-    return false;
+    return refuseAttackDeclaration("この攻撃対象には攻撃できません。");
   }
   if (targetValue === "fighter" && !options.forceSelfAttack && opponent.field.center) {
     if (!canAttackFighterThroughCenter(attackers)) {
-      addLog(`${opponent.name}のセンターにモンスターがいるため、ファイターを攻撃できません。`);
-      return false;
+      return refuseAttackDeclaration(`${opponent.name}のセンターにモンスターがいるため、ファイターを攻撃できません。`);
     }
   }
-  const targetZone = targetValue === "fighter" ? null : targetValue;
   const attackAllTargetZones = attackAllMonsterTargetZones(attackers, targetOwner, targetValue);
+  // 「かわりに相手のモンスター全てと相手に攻撃する」をファイター宣言で使った場合は、モンスター宣言時と同じ形
+  // （先頭の対象モンスターを targetZone にした全体攻撃）へ置き換える（攻撃された時の誘発等も同じ経路で処理する）。
+  const attackAllReplacesFighter = targetValue === "fighter" && attackAllTargetZones.length > 0;
+  const targetZone = targetValue === "fighter" ? (attackAllReplacesFighter ? attackAllTargetZones[0] : null) : targetValue;
   if (
     targetZone &&
     attackers.length > 1 &&
     hasKeyword(state.players[targetOwner].field[targetZone], "cannotBeLinkAttacked")
   ) {
-    addLog(`${state.players[targetOwner].field[targetZone].name}は連携攻撃されません。`);
-    return false;
+    return refuseAttackDeclaration(`${state.players[targetOwner].field[targetZone].name}は連携攻撃されません。`);
   }
   if (
     targetValue === "fighter" &&
@@ -265,8 +397,7 @@ async function performAttackDeclaration(attackers, targetValue, options = {}) {
       );
     })
   ) {
-    addLog(`${state.players[targetOwner].name}は連携攻撃されません。`);
-    return false;
+    return refuseAttackDeclaration(`${state.players[targetOwner].name}は連携攻撃されません。`);
   }
   // E-PR1(PR/0075 アーマナイト・ハティー): 「相手の場のカードは連携攻撃できない」（攻撃側の抑止）。
   // 連携(攻撃者2枚以上)に restrictLinkAttack を受ける攻撃者が含まれるなら宣言を拒否する（単独攻撃は不変）。
@@ -275,21 +406,31 @@ async function performAttackDeclaration(attackers, targetValue, options = {}) {
   if (attackers.length > 1) {
     const blockedAttacker = attackers.find((attacker) => linkAttackRestricted(attacker.card));
     if (blockedAttacker) {
-      addLog(`${blockedAttacker.card.name}は連携攻撃できません。`);
-      return false;
+      return refuseAttackDeclaration(`${blockedAttacker.card.name}は連携攻撃できません。`);
     }
   }
   const firstAttacker = attackers[0];
   state.pendingAttack = {
     phase: state.phase,
-    attackers: attackers.map((attacker) => ({ owner: attacker.owner, zone: attacker.zone })),
+    // E2: 攻撃者は宣言時の instanceId も控える（場を離れ別カードが同エリアに入っても攻撃者として扱わない）。
+    attackers: attackers.map((attacker) => ({
+      owner: attacker.owner,
+      zone: attacker.zone,
+      instanceId: attacker.card?.instanceId ?? null,
+    })),
     attackerOwner: firstAttacker.owner,
     attackerZone: firstAttacker.zone,
     defender: targetOwner,
     targetOwner,
     targetZone,
-    targetType: targetValue === "fighter" ? "fighter" : "monster",
+    targetType: targetValue === "fighter" && !attackAllReplacesFighter ? "fighter" : "monster",
     attackAllTargetZones,
+    // E2: 全体攻撃の各対象も宣言時の instanceId で控える（resolveMultiMonsterAttack が同一性を確認）。
+    attackAllTargetRefs: attackAllTargetZones.map((zone) => ({
+      owner: targetOwner,
+      zone,
+      instanceId: state.players[targetOwner]?.field?.[zone]?.instanceId ?? null,
+    })),
     // 「相手のモンスター全てと相手（ファイター）に攻撃する」フラグ（アジ・ダハーカ）。
     attackAllIncludesFighter:
       attackAllTargetZones.length > 0 && Boolean(firstAttacker.card.attackAllIncludesFighter),
@@ -300,6 +441,7 @@ async function performAttackDeclaration(attackers, targetValue, options = {}) {
       [targetOwner]: null,
     },
   };
+  bindPendingAttackTarget(state.pendingAttack); // E2: 攻撃対象の instanceId を控える
   state.counterHandOwner = targetOwner;
   state.attacksThisTurn += 1;
   // E-XB40(X-BT04/0008 天晶の祝福): 席別の攻撃宣言回数（攻撃者席で加算）。攻撃はターンプレイヤーのみが行うため
@@ -328,7 +470,7 @@ async function performAttackDeclaration(attackers, targetValue, options = {}) {
   if (attackAllTargetZones.length > 0) {
     addLog(`${attackerNames}の効果で相手のモンスター全てに攻撃します。`);
   }
-  applyAttackRedirectContinuous();
+  await applyAttackRedirectContinuous();
   await runAttackDeclarationTriggers(attackers);
   await runAttackedTriggers(attackers);
   await runFighterAttackedTriggers(attackers);
@@ -418,12 +560,16 @@ async function declareAttackWithFieldCard(owner, zone, options = {}) {
 
 // 「攻撃の対象をこのモンスターに変更する」継続効果（闘神竜 デモンゴドル・アーク）。
 // 攻撃宣言直後、防御側の場に redirectAttackToSelf を持つカードがあれば攻撃対象をそのカードへ移す。
-function applyAttackRedirectContinuous() {
+// 候補（redirectAttackToSelf を持つ防御側カード）が2枚以上なら、どの変更を最後に解決するか＝最終的な対象を
+// 防御側が選ぶ（ver2.05 ★ルール処理★2.1.2「非ターンファイターは、待機状態になっている自分の自動能力を1つ選びます」）。
+// 候補が1枚以下なら従来どおり同期で確定する（await を挟まない＝既存の同期呼び出しと挙動不変）。
+async function applyAttackRedirectContinuous() {
   const pending = state.pendingAttack;
   if (!pending) {
     return;
   }
   const defenderOwner = pending.targetOwner;
+  const redirectCandidates = [];
   for (const zone of zones) {
     const card = state.players[defenderOwner]?.field?.[zone];
     if (!card) {
@@ -435,14 +581,39 @@ function applyAttackRedirectContinuous() {
         checkCardConditions(effect.conditions || [], defenderOwner, { card, zone }),
     );
     if (redirects) {
-      if (pending.targetZone === zone) {
+      redirectCandidates.push({ card, zone, owner: defenderOwner });
+    }
+  }
+  if (redirectCandidates.length > 0) {
+    let chosen = redirectCandidates[0];
+    if (redirectCandidates.length > 1) {
+      const picked = await chooseCardEntries(
+        redirectCandidates.map((entry) => ({ card: entry.card, owner: entry.owner, zone: entry.zone })),
+        {
+          title: "攻撃対象の変更",
+          lead: "攻撃対象をどのカードに変更するか選んでください。",
+          min: 1,
+          max: 1,
+          forceDialog: true,
+          allowCancel: false,
+          promptSeat: defenderOwner,
+        },
+      );
+      const pickedZone = picked?.[0]?.zone;
+      chosen = redirectCandidates.find((entry) => entry.zone === pickedZone) || chosen;
+      if (state.pendingAttack !== pending || state.players[defenderOwner]?.field?.[chosen.zone] !== chosen.card) {
         return;
       }
-      pending.targetZone = zone;
-      pending.targetType = effectiveCardType(card) === "monster" ? "monster" : "fieldCard";
-      addLog(`${card.name}の効果で攻撃対象が${card.name}に変更されました。`);
-      return;
     }
+    if (pending.targetZone === chosen.zone) {
+      return; // 既にその対象（従来どおり）
+    }
+    const card = chosen.card;
+    pending.targetZone = chosen.zone;
+    pending.targetType = effectiveCardType(card) === "monster" ? "monster" : "fieldCard";
+    bindPendingAttackTarget(pending);
+    addLog(`${card.name}の効果で攻撃対象が${card.name}に変更されました。`);
+    return;
   }
   // Z12(a)(S-UB-C03/0009): redirectAttackToFilter — 攻撃対象を、条件に一致する防御側の自陣カードへ変更する
   // （redirectAttackToSelfの一般化。対象は継続の発生源自身とは限らない。一致ゼロなら変更なし）。
@@ -459,7 +630,7 @@ function applyAttackRedirectContinuous() {
     if (!redirectEffect) {
       continue;
     }
-    const allowedZones = Array.isArray(redirectEffect.zones) ? redirectEffect.zones : zones;
+    const allowedZones = Array.isArray(redirectEffect.zones) ? expandZoneList(redirectEffect.zones) : zones;
     const newZone = allowedZones.find((z) => {
       const candidate = state.players[defenderOwner]?.field?.[z];
       return candidate && matchesCardFilter(candidate, redirectEffect.filter || {});
@@ -472,6 +643,7 @@ function applyAttackRedirectContinuous() {
     const newCard = state.players[defenderOwner].field[newZone];
     pending.targetZone = newZone;
     pending.targetType = effectiveCardType(newCard) === "monster" ? "monster" : "fieldCard";
+    bindPendingAttackTarget(pending);
     addLog(`${newCard.name}の効果で攻撃対象が${newCard.name}に変更されました。`);
     return;
   }
@@ -567,6 +739,7 @@ async function runAttackDeclarationTriggers(attackers) {
       title: `${attacker.card.name}の効果`,
       lead: "ソウルをドロップゾーンに置く相手モンスターを1枚選んでください。",
       min: 1,
+      allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
       max: 1,
       forceDialog: true,
       promptSeat: attacker.owner, // 効果の持ち主の席へ（CPU対戦/権威サーバの誤配送防止）
@@ -627,11 +800,21 @@ async function runAttackDeclarationTriggers(attackers) {
   // 予約者(entry.owner)の味方攻撃カードが attackerFilter に一致したら、その予約を1件消費して effects を
   // 実行する（対象選択は発火時＝R5近似(a)・promptSeat=予約者）。複数予約が同時に一致すれば各予約とも
   // 発火する（各エントリ1回ずつのワンショット。0110 を2枚使えばそれぞれ独立に誘発する原文semantics）。
+  // persistent エントリ（「そのターン中、君の～が攻撃した時」）は消費せず、この攻撃宣言で1回だけ発火する。
   if (Array.isArray(state.nextAllyAttackTriggers) && state.nextAllyAttackTriggers.length > 0) {
+    const firedPersistent = new Set();
     for (const attacker of attackers) {
       const queue = state.nextAllyAttackTriggers;
       for (let index = 0; index < queue.length; ) {
         const entry = queue[index];
+        if (entry.persistent) {
+          index += 1;
+          if (!firedPersistent.has(entry) && entry.owner === attacker.owner && matchesCardFilter(attacker.card, entry.attackerFilter || {})) {
+            firedPersistent.add(entry);
+            await fireNextAllyAttackTrigger(entry, attacker, attackers);
+          }
+          continue;
+        }
         if (entry.owner === attacker.owner && matchesCardFilter(attacker.card, entry.attackerFilter || {})) {
           queue.splice(index, 1); // 先に消費（effects 中の再帰的攻撃や例外でも二重発火しない）
           await fireNextAllyAttackTrigger(entry, attacker, attackers);
@@ -659,12 +842,15 @@ async function fireNextAllyAttackTrigger(entry, attacker, attackers) {
   };
   addLog(`${sourceCard.name}の効果が${attacker.card.name}の攻撃により発動しました。`);
   if (entry.chooseTarget) {
-    const chosen = await chooseAbilityTarget(sourceCard, { target: entry.chooseTarget }, owner);
+    const chosen = await chooseAbilityTarget(sourceCard, { target: entry.chooseTarget }, owner, { allowCancel: false }); // T2: 予約効果の発火＝強制
     if (!chosen) {
-      addLog(`${sourceCard.name}の効果の対象がないため、解決されませんでした。`);
-      return;
+      if (!entry.allowMissingTarget) {
+        addLog(`${sourceCard.name}の効果の対象がないため、解決されませんでした。`);
+        return;
+      }
+    } else {
+      context.target = chosen;
     }
-    context.target = chosen;
   }
   await executeAbilityEffects(entry.effects || [], context);
 }
@@ -684,7 +870,7 @@ function attackTaxApplies(tax, sourceOwner, sourceZone, pending, target) {
     return false;
   }
   const sourcePosition = tax.sourcePosition || "any";
-  if (sourcePosition === "set" && !setZones.includes(sourceZone)) {
+  if (sourcePosition === "set" && !isSetZone(sourceZone)) {
     return false;
   }
   const controller = tax.controller || "any";
@@ -753,8 +939,11 @@ async function goAttackPhase() {
   state.linkAttackers = [];
   state.buddyCallDeclared = null;
   addLog(`${activePlayer().name}はアタックフェイズに入りました。`);
-  await runPhaseStartTriggers("attackStart", state.active);
+  // E7: 詳細ルール ver2.05「アタックフェイズの流れ」1.1『移動』→1.2★ルール処理★→1.3 プレイタイミング
+  // （「アタックフェイズ開始時」に発動する能力もここで解決）の順。以前は開始時誘発を『移動』より先に解決していた。
   await runMoveKeywordsAtAttackPhaseStart();
+  await runSizeRuleProcessing(); // E5: 1.2 ★ルール処理★
+  await runPhaseStartTriggers("attackStart", state.active);
   render();
 }
 
@@ -819,6 +1008,7 @@ async function goFinalPhase() {
   state.linkAttackers = [];
   state.buddyCallDeclared = null;
   addLog(`${activePlayer().name}はファイナルフェイズに入りました。`);
+  await runSizeRuleProcessing(); // E5: フェイズ開始の★ルール処理★
   await runPhaseStartTriggers("finalStart", state.active);
   render();
 }

@@ -136,6 +136,13 @@ function cardWorlds(card) {
   return merged;
 }
 
+// audit2(b007-6/b046-2/b060-2/b071-3): 「ワールド名の種類」集計用。cardWorlds() の結果から、ワールド名を持たない
+// カードの仮値 "-"・空文字・フラッグの区分値 "ワールド" を除く。cardWorlds() 自体はフラッグ判定等でも使うので不変。
+// "ジェネリック" は従来どおり1種類として数える（裁定未確認の論点）。
+function worldNamesForDistinct(card) {
+  return cardWorlds(card).filter((world) => world && world !== "-" && world !== "ワールド");
+}
+
 function canUseCardForFlag(player, card) {
   if (!player || !card || effectiveCardType(card) === "flag") {
     return true;
@@ -321,6 +328,9 @@ function newGame(options = {}) {
   // シードは最初のシャッフル（createPlayer→makeDeck→shuffle は rngNext→state.rngSeed を読む）より
   // 前に state へ確立する必要がある。そのため骨格 state を先に代入してから players を埋める（順序が命）。
   const seed = normalizeRngSeed(options.seed);
+  if (typeof resetTriggerDriver === "function") {
+    resetTriggerDriver(); // 対抗窓改修: 前の対戦の待機誘発を持ち越さない
+  }
   state = {
     players: [],
     active: 0,
@@ -341,6 +351,10 @@ function newGame(options = {}) {
     pendingAction: null,
     resolvingPending: false,
     counterHandOwner: null,
+    // 対抗窓改修（docs/対抗窓改修_設計_2026-10-08.md）: 開いている誘発/ライフリンクの対抗窓（公開情報のみ。静止点では null）と、
+    // 席別「このターンはパス」（turnCount と一致する間だけ有効・ターン境界で null）。JSON 往復のみで部屋復元に乗る。
+    counterWindow: null,
+    counterWindowPass: [null, null],
     turnCount: 1,
     impactMonsterCallsThisTurn: [0, 0], // 必殺モンスター(DDD)の「1ターンに1枚」コール数（席別）
     callsThisTurn: [0, 0], // E-XB7(X-SS03/0060): ターン内の総コール枚数（席別・restrictCallCountPerTurn が参照）
@@ -353,6 +367,8 @@ function newGame(options = {}) {
     nextAllyAttackTriggers: [], // E10(D-CBT/0110): 「そのターン中、次の味方攻撃時」ワンショット予約キュー
 
     fightLimits: [{}, {}],
+    // audit2(b029-2): このファイト中に破壊されたカードのスナップショット（被破壊カードの所有者席別）。ターン境界でクリアしない。
+    fightDestroyed: [[], []],
     monsterAttackForbidden: [false, false],
     monsterAttackForbiddenSources: [[], []],
     // E-XB28(X-BT03/0102 逆天の黒死竜 アビゲール 逆天③): 席別のターンスキップ予約（消費型ワンショット）。
@@ -463,6 +479,10 @@ function handOwnerIndex() {
     if (Number.isInteger(humanSeat)) {
       return humanSeat; // CPU対戦: 手札表示は常に人間席（相互非公開=Q7。CPU手札は裏向きプレビュー）
     }
+  }
+  // 対抗窓改修: 誘発/ライフリンクの対抗窓が開いている間は、応答席の手札を見せる（ローカル2人対戦）。
+  if (state.counterWindow && (state.counterWindow.responder === 0 || state.counterWindow.responder === 1)) {
+    return state.counterWindow.responder;
   }
   return state.pendingAttack || state.pendingAction
     ? state.counterHandOwner ?? pendingResponderOwner()

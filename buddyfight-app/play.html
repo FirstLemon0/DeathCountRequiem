@@ -4,7 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>バディファイト ネット対戦（権威版）</title>
-    <link rel="stylesheet" href="styles.css?v=20260814e" />
+    <link rel="stylesheet" href="styles.css?v=20261016a" />
+    <!-- スマホ対戦画面の書体（数字=Oxanium・本文=BIZ UDPゴシック）。PC幅では使わない（media で限定・swap）。 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" media="(max-width: 640px)" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&amp;family=Oxanium:wght@600;700;800&amp;display=swap" />
     <script>
       // テーマbootstrap(描画前にdata-themeを確定しFOUC回避)。3画面共通。
       (function () {
@@ -12,8 +16,23 @@
           var saved = localStorage.getItem("bf-theme");
           if (saved === "light" || saved === "dark") {
             document.documentElement.setAttribute("data-theme", saved);
+          } else if (window.matchMedia && window.matchMedia("(max-width: 640px)").matches) {
+            // スマホの対戦画面は既定ダーク（保存はしない＝テーマ切替で明示選択した時だけ保存）。
+            document.documentElement.setAttribute("data-theme", "dark");
           }
         } catch (e) {}
+        // スマホのドック（☰メニュー/ログ）と従来のヘッダーのトグルで body のクラスと aria-expanded を同期する。
+        window.bfToggleBodyClass = function (cls, selector) {
+          // ドロワー/メニューはドックの真上に出す（リプレイはドックが高いので実測して CSS 変数へ）。
+          var dock = document.querySelector(".replay-controls") || document.querySelector(".action-panel");
+          if (dock && dock.getBoundingClientRect().height > 0) {
+            document.body.style.setProperty("--m-dock-offset", Math.max(0, window.innerHeight - dock.getBoundingClientRect().top) + "px");
+          }
+          var on = document.body.classList.toggle(cls);
+          document.querySelectorAll(selector).forEach(function (el) {
+            el.setAttribute("aria-expanded", on ? "true" : "false");
+          });
+        };
         function effective() {
           return (
             document.documentElement.getAttribute("data-theme") ||
@@ -42,7 +61,11 @@
       window.__BUDDYFIGHT_THIN__ = true;
     </script>
   </head>
-  <body class="thin-client">
+  <body class="thin-client bf-game">
+    <div class="rotate-notice" role="alert">
+      <p class="rotate-notice-main">縦向きにしてください</p>
+      <p class="rotate-notice-sub">スマホの対戦画面は縦向き専用です</p>
+    </div>
     <main class="app-shell">
       <header class="topbar">
         <div>
@@ -51,8 +74,8 @@
         </div>
         <div class="toolbar" aria-label="ゲーム操作">
           <button type="button" id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="テーマ切替">☀️</button>
-          <button type="button" class="mobile-only nav-toggle" aria-expanded="false" onclick="document.body.classList.toggle('nav-open'); this.setAttribute('aria-expanded', document.body.classList.contains('nav-open'))" aria-label="メニュー">☰</button>
-          <button type="button" class="mobile-only log-toggle" aria-expanded="false" onclick="document.body.classList.toggle('log-open'); this.setAttribute('aria-expanded', document.body.classList.contains('log-open'))" aria-label="ログ">📜</button>
+          <button type="button" class="mobile-only nav-toggle" aria-expanded="false" onclick="bfToggleBodyClass('nav-open', '.nav-toggle')" aria-label="メニュー">☰</button>
+          <button type="button" class="mobile-only log-toggle" aria-expanded="false" onclick="bfToggleBodyClass('log-open', '.log-toggle')" aria-label="ログ">📜</button>
           <label class="deck-picker">
             <span>1P</span>
             <select id="p1DeckSelect" aria-label="プレイヤー1のデッキ"></select>
@@ -171,6 +194,10 @@
         </section>
 
         <section class="action-panel" aria-label="操作">
+          <div class="dock-tools mobile-only">
+            <button type="button" class="nav-toggle dock-menu" aria-expanded="false" aria-label="メニュー" onclick="bfToggleBodyClass('nav-open', '.nav-toggle')"><span class="dock-icon" aria-hidden="true">☰</span><span class="dock-tool-label">メニュー</span></button>
+            <button type="button" class="log-toggle dock-log" aria-expanded="false" aria-label="ログを開く" onclick="bfToggleBodyClass('log-open', '.log-toggle')"><span class="dock-log-head">ログ ・ 直前</span><span class="dock-log-line" id="dockLogLine"></span></button>
+          </div>
           <div class="action-grid">
             <button id="drawButton" type="button">ドロー</button>
             <button id="chargeButton" type="button">チャージ&ドロー</button>
@@ -233,6 +260,9 @@
         </div>
         <div class="hand-list" id="handList"></div>
       </section>
+
+      <!-- スマホ: 対抗窓・選択はこの行（手札とドックの間）に差し込む。PC では display:contents（従来の固定表示のまま）。 -->
+      <div id="dockSlot" class="dock-slot"></div>
 
       <section class="log-panel" aria-label="対戦ログ">
         <h2>ログ</h2>
@@ -336,9 +366,11 @@
       // src モジュールは番号順の同期ロードが必須（同一グローバル共有）。document.write の classic script は
       // 順序・同期実行が保証される。バージョンはこの1定数だけを更新する（play.js も同じ定数を共有）。
       (function () {
-        var ENGINE_VERSION = "20260817b";
+        var ENGINE_VERSION = "20261016a";
         // データJSON(loadJson)を ?v= 付きURL＋ブラウザキャッシュに載せる（初期ロード最適化 D2）。
         window.__BUDDYFIGHT_DATA_VERSION = ENGINE_VERSION;
+        // リプレイ記録へ刻むエンジン版（src/23）。旧版の記録は再生不可（2026-10-09 オーナー裁定）。
+        window.__BUDDYFIGHT_ENGINE_VERSION = ENGINE_VERSION;
         var modules = [
           "src/01-foundation.js",
           "src/02-data-load.js",

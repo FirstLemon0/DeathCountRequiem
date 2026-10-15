@@ -18,7 +18,35 @@
 // オフ時（session も playback も無い）は真偽値2つを見るだけで素通しする＝オーバーヘッド実質ゼロ。
 // ==========================================================================
 
-const REPLAY_VERSION = 1;
+// 記録形式の版。2(2026-10-09): 機能フラグ features を廃止し、エンジン版 engineVersion を刻む形式。
+const REPLAY_VERSION = 2;
+
+// 2026-10-09 オーナー裁定「リプレイについてはバージョンアップ時に前のは消していい」:
+// 記録には作成時のエンジン版（ローダの ENGINE_VERSION＝globalThis.__BUDDYFIGHT_ENGINE_VERSION。権威サーバは
+// server/engine-version.js が index.html から読んで engine-host の vm へ渡す）を engineVersion として刻み、
+// 版が違う記録は再生しない（サーバは削除/410、replay.html は「旧バージョンのため再生できません」）。
+// そのため再生は常に現行セマンティクスだけを持つ（旧記録を旧セマンティクスで流す互換分岐＝旧 features
+// "ordered-delivery"/"sync-cost"/"counter-windows"/"destroy-in-place" は撤去済み）。
+// 記録・再生の規律（現行）:
+// - 順序配信: 応答は「要求された時点で開いていた step」に要求順で枠を確保して記録し、配信（エンジンへ答えを
+//   返す）は要求順(FIFO)・macrotask 境界で行う。step は誘発チェーンが静止するまで閉じない。
+// - 同期のコスト選択（chooseCostEntriesSync）も応答として記録・再生する。
+function replayCurrentEngineVersion() {
+  const version = globalThis.__BUDDYFIGHT_ENGINE_VERSION;
+  return typeof version === "string" && version ? version : null;
+}
+
+// 記録が現行エンジンで再生できるか（形式版と エンジン版の一致）。current 省略時は実行中ローダの版。
+// 版が不明（ローダ外のテスト文脈など current=null）の時は形式版だけを見る。
+function replayRecordingCompatible(recording, current = replayCurrentEngineVersion()) {
+  if (!recording || typeof recording !== "object" || recording.version !== REPLAY_VERSION) {
+    return false;
+  }
+  if (current == null) {
+    return true;
+  }
+  return recording.engineVersion === current;
+}
 
 // 記録セッション（null の間は記録オフ＝完全素通し）。
 let replaySession = null;
@@ -26,6 +54,11 @@ let replaySession = null;
 let replayCurrentStep = null;
 // 再生キュー（null=再生オフ / 配列=再生中。空配列でも「再生中」であり、次の選択要求で不足エラーを投げる）。
 let replayPlaybackQueue = null;
+// R1: 順序配信の追跡状態（記録中 or 再生中だけ動く。オフ時は一切触らない）。
+let replayOutstandingPrompts = 0; // 要求済み・未配信のプロンプト数
+let replayDeliveryTail = null; // 直近に要求されたプロンプトの配信完了 Promise（FIFO の鎖）
+let replayQuietWaiters = []; // 未配信数が減った時に起こす待機者（replayWaitQuiescent）
+const replayPendingSlots = new Set(); // 記録上の確保済み・未記入の応答枠（スナップショットから除外する）
 
 function replayIsRecording() {
   return replaySession !== null;
@@ -48,8 +81,11 @@ function replayStartRecording(meta = {}) {
     // アクション境界の外（newGame の配牌中など）で起きた選択の受け皿。通常は空。
     setupResponses: [],
     steps: [],
+    // 作成時のエンジン版。版が違う記録は再生しない（2026-10-09 オーナー裁定）。
+    engineVersion: meta.engineVersion != null ? meta.engineVersion : replayCurrentEngineVersion(),
   };
   replayCurrentStep = null;
+  replayResetTracking();
   return replaySession;
 }
 
@@ -62,8 +98,20 @@ function replayStopRecording() {
 }
 
 // 記録中セッションのスナップショット（deep clone）。B3（保存・共有URL）はこれを持ち回る。
+// R1: 要求済み・未応答の枠（まだ答えが来ていないプロンプト）はスナップショットに含めない。
 function replayGetRecording() {
-  return replaySession ? deepClone(replaySession) : null;
+  if (!replaySession) {
+    return null;
+  }
+  if (replayPendingSlots.size === 0) {
+    return deepClone(replaySession);
+  }
+  const answered = (list) => (list || []).filter((entry) => !replayPendingSlots.has(entry));
+  return deepClone({
+    ...replaySession,
+    setupResponses: answered(replaySession.setupResponses),
+    steps: replaySession.steps.map((step) => ({ ...step, promptResponses: answered(step.promptResponses) })),
+  });
 }
 
 // アクション境界の開始。type/params は engine-host.applyAction／ローカル実操作経路の入口で渡す。
@@ -82,9 +130,14 @@ function replayBeginStep(seat, type, params) {
 }
 
 // アクション境界の終了。ここで初めて step をセッションへ積む（例外時も呼ぶ＝engine-host 側は finally で確定）。
-function replayEndStep() {
+// R3: options.threw=true の時は「記録時に例外で終わった操作」として印を付ける。再生器は印付きの step の
+// 例外だけを許容する（印の無い step が投げたら従来どおり明確に失敗＝黙って別の対戦にしない）。
+function replayEndStep(options = {}) {
   if (!replaySession || !replayCurrentStep) {
     return;
+  }
+  if (options && options.threw) {
+    replayCurrentStep.threw = true;
   }
   replaySession.steps.push(replayCurrentStep);
   replayCurrentStep = null;
@@ -109,6 +162,164 @@ function replayRecordSelection(result) {
 // 再生キューを差し替える（step 単位・setup 単位で入れ替える運用）。null で再生オフ。
 function replaySetPlaybackQueue(responses) {
   replayPlaybackQueue = Array.isArray(responses) ? responses.slice() : null;
+}
+
+// 再生の開始（再生器が reset/replayGame 冒頭で呼ぶ）。順序配信の追跡状態を初期化する。
+function replayBeginPlayback() {
+  replayResetTracking();
+}
+
+// ==========================================================================
+// R1: 順序配信
+// 誘発チェーン（battleEnd 等）は Promise.resolve().then で遅延実行され、操作本体と並行にプロンプトを出す。
+// 旧方式は「答えが返った時点で開いている step」に応答を積んでいたため、応答が遅い（ネットワーク往復・
+// setTimeout 越しの CPU）と次の step や setupResponses に紛れ込み、再生で「記録過多/不足」や黙った
+// 分岐ズレを起こした（CPU 300戦で17%・非同期応答で30%）。
+// 新方式の規律（記録・再生で同一）:
+//  1) 応答枠は要求時に、その時点で開いている step へ要求順に確保する（replayReservePrompt）。
+//  2) エンジンへの配信は要求順(FIFO)で、しかも macrotask 境界（＝その時点までの microtask が全て
+//     走り切った静止点）で行う（replayDeliverPrompt）。人間/ネットワーク/CPU の応答速度差を吸収する。
+//  3) step は、本体の Promise 解決後に「未配信プロンプト 0 かつ microtask 静止」になるまで閉じない
+//     （replayWaitQuiescent。engine-host.applyAction・ローカル step ラッパ・再生器が呼ぶ）。
+// 記録も順序配信の再生もしていない時は replayReservePrompt が null を返し、全経路が従来の素通し。
+// ==========================================================================
+
+function replayTrackingActive() {
+  return replaySession !== null || replayPlaybackQueue !== null;
+}
+
+function replayResetTracking() {
+  replayOutstandingPrompts = 0;
+  replayDeliveryTail = null;
+  const waiters = replayQuietWaiters;
+  replayQuietWaiters = [];
+  waiters.forEach((resolve) => resolve());
+  replayPendingSlots.clear();
+}
+
+// microtask を全て走らせ切った後に解決する（macrotask 1回ぶん譲る）。
+function replayMacrotask() {
+  return new Promise((resolve) => {
+    if (typeof setImmediate === "function") {
+      setImmediate(resolve);
+    } else if (typeof MessageChannel === "function") {
+      const channel = new MessageChannel();
+      channel.port1.onmessage = () => {
+        channel.port1.close();
+        resolve();
+      };
+      channel.port2.postMessage(0);
+    } else {
+      setTimeout(resolve, 0);
+    }
+  });
+}
+
+// プロンプト要求時に呼ぶ。追跡オフなら null（呼び出し側は従来経路）。
+// 記録中は「いま開いている step」（無ければ setupResponses）に応答枠を要求順で確保する。
+function replayReservePrompt() {
+  if (!replayTrackingActive()) {
+    return null;
+  }
+  const ticket = { slot: null, prev: replayDeliveryTail || Promise.resolve(), release: null, settled: false };
+  if (replaySession && replayPlaybackQueue === null) {
+    const list = replayCurrentStep ? replayCurrentStep.promptResponses : replaySession.setupResponses;
+    const slot = {};
+    list.push(slot);
+    replayPendingSlots.add(slot);
+    ticket.slot = slot;
+  }
+  replayDeliveryTail = new Promise((resolve) => {
+    ticket.release = resolve;
+  });
+  replayOutstandingPrompts += 1;
+  return ticket;
+}
+
+function replaySettleTicket(ticket) {
+  if (!ticket || ticket.settled) {
+    return;
+  }
+  ticket.settled = true;
+  replayOutstandingPrompts = Math.max(0, replayOutstandingPrompts - 1);
+  const waiters = replayQuietWaiters;
+  replayQuietWaiters = [];
+  waiters.forEach((resolve) => resolve());
+}
+
+// 答え（値 or Promise）を受け、FIFO 順・macrotask 境界でエンジンへ返す。記録中は確保済みの枠へ記入する。
+// toResponse(answer) は記録形（{selectedIndexes} / {confirm}）を返す（再生時は null で記入しない）。
+async function replayDeliverPrompt(ticket, value, toResponse) {
+  if (!ticket) {
+    return value;
+  }
+  let delivered = false;
+  try {
+    const answer = await value;
+    await ticket.prev;
+    await replayMacrotask();
+    if (ticket.slot && typeof toResponse === "function") {
+      Object.assign(ticket.slot, toResponse(answer));
+      replayPendingSlots.delete(ticket.slot);
+    }
+    delivered = true;
+    return answer;
+  } finally {
+    if (delivered) {
+      ticket.release();
+    } else {
+      // 失敗時も後続の FIFO を崩さない（先行の配信が済んでから後続を通す）。
+      Promise.resolve(ticket.prev).then(ticket.release, ticket.release);
+    }
+    replaySettleTicket(ticket);
+  }
+}
+
+// 応答取得そのものが例外で失敗した時（配信しない）。FIFO と未配信数だけ整える（枠は未記入のまま除外される）。
+function replayAbandonPrompt(ticket) {
+  if (!ticket || ticket.settled) {
+    return;
+  }
+  Promise.resolve(ticket.prev).then(ticket.release, ticket.release);
+  replaySettleTicket(ticket);
+}
+
+// chooseCardEntries の戻り値を記録形へ（replayRecordSelection と同じ正規化）。
+function replaySelectionResponse(result) {
+  return {
+    selectedIndexes: result === null || result === undefined ? null : result.map((entry) => entry.choiceIndex),
+  };
+}
+
+function replayConfirmResponse(answer) {
+  return { confirm: Boolean(answer) };
+}
+
+// 誘発チェーンが静止する（未配信プロンプト 0・microtask 静止）まで待つ。追跡オフなら即 return。
+// 未配信プロンプトがある間は、その配信（人間/ネットワーク/CPU の応答）を待ってから再判定する。
+async function replayWaitQuiescent() {
+  if (!replayTrackingActive()) {
+    return;
+  }
+  for (;;) {
+    await replayMacrotask();
+    if (replayOutstandingPrompts === 0) {
+      return;
+    }
+    await new Promise((resolve) => replayQuietWaiters.push(resolve));
+  }
+}
+
+// 再生（順序配信）中の確認: 記録済みの真偽値を要求時に消費し、配信だけ FIFO・macrotask 境界へ揃える。
+function replayPlaybackConfirmAsync() {
+  const answer = replayNextConfirm();
+  return replayDeliverPrompt(replayReservePrompt(), answer, null);
+}
+
+// 再生（順序配信）中の選択: 同上（chooseCardEntries から呼ぶ）。
+function replayPlaybackSelectionAsync(candidates) {
+  const picked = replayNextSelection(candidates);
+  return replayDeliverPrompt(replayReservePrompt(), picked, null);
 }
 
 function replayClearPlayback() {
@@ -270,17 +481,20 @@ function replayWrapLocalAction(name, fn) {
     try {
       result = fn.apply(this, args);
     } catch (error) {
-      replayEndStep();
+      replayEndStep({ threw: true });
       throw error;
     }
     if (result && typeof result.then === "function") {
+      // R1: 本体の解決後も、誘発チェーン（battleEnd 等の遅延能力）が静止するまで step を閉じない。
       return result.then(
-        (value) => {
+        async (value) => {
+          await replayWaitQuiescent();
           replayEndStep();
           return value;
         },
-        (error) => {
-          replayEndStep();
+        async (error) => {
+          await replayWaitQuiescent();
+          replayEndStep({ threw: true });
           throw error;
         },
       );
@@ -326,9 +540,53 @@ function replayInjectCustomDecks(customDecks) {
   }
 }
 
+// R3: 操作入力(params)の形を検査する。不正なら理由文字列、正常なら null。
+// engine-host.applyAction（受理前）とブラウザ再生器が共用する。state.players[7] のような範囲外参照で
+// エンジン内部が TypeError を投げ、その「投げた step」が記録に残って再生が必ず失敗する事故を入口で断つ。
+const REPLAY_SELECT_SOURCES = ["hand", "field", "drop", "soul", "flag", "deck", "gauge", "buddy"];
+function replayValidateActionParams(params) {
+  if (params == null) {
+    return null;
+  }
+  if (typeof params !== "object" || Array.isArray(params)) {
+    return "params が不正です";
+  }
+  const selected = params.selected;
+  if (selected != null) {
+    if (typeof selected !== "object" || Array.isArray(selected)) {
+      return "selected が不正です";
+    }
+    if (selected.owner !== 0 && selected.owner !== 1) {
+      return `selected.owner が不正です: ${String(selected.owner).slice(0, 20)}`;
+    }
+    if (!REPLAY_SELECT_SOURCES.includes(selected.source)) {
+      return `selected.source が不正です: ${String(selected.source).slice(0, 20)}`;
+    }
+    if (selected.zone != null && !(zones.includes(selected.zone) || isSetZone(selected.zone) || isItemZone(selected.zone) || selected.zone === "flag")) { // rule-call-11: set3 以降は再生中に作られる
+      return `selected.zone が不正です: ${String(selected.zone).slice(0, 20)}`;
+    }
+    if (selected.instanceId != null && typeof selected.instanceId !== "string") {
+      return "selected.instanceId が不正です";
+    }
+  }
+  if (params.callZone != null && !zones.includes(params.callZone)) {
+    return `callZone が不正です: ${String(params.callZone).slice(0, 20)}`;
+  }
+  for (const key of ["attackTarget", "effectTarget"]) {
+    if (params[key] != null && typeof params[key] !== "string") {
+      return `${key} が不正です`;
+    }
+  }
+  return null;
+}
+
 // 1 step を再生適用する（engine-host.applyAction の dispatch と同形。params を live state/DOM へ再注入）。
 async function replayApplyStep(step) {
   const params = step.params || {};
+  const invalid = replayValidateActionParams(params);
+  if (invalid) {
+    throw new Error(`リプレイ: ${invalid}`);
+  }
   if (Object.prototype.hasOwnProperty.call(params, "selected")) {
     state.selected = params.selected ?? null;
   }
@@ -383,6 +641,9 @@ function replayCreatePlayer(recording) {
   const steps = Array.isArray(recording.steps) ? recording.steps : [];
   let index = 0;
   let started = false;
+  // R3: 再生が一度失敗したら以降の step は進めない（壊れた局面の上で黙って続けない）。atEnd が true を返すので
+  // replay.html の「1ステップ」「最後まで」ボタンは setProgress で自動的に無効化される。「最初から」で解除。
+  let failedError = null;
 
   const drain = (label) => {
     const remaining = replayPlaybackRemaining();
@@ -392,14 +653,22 @@ function replayCreatePlayer(recording) {
   };
 
   async function reset() {
+    failedError = null;
     // 記録が持ち回るカスタムデッキを注入 → デッキ選択を記録どおりに合わせる。
     replayInjectCustomDecks(recording.customDecks);
     applyDeckValues(recording.deckIds || []);
+    replayBeginPlayback();
     // newGame(配牌)中の選択（通常空）も監視して想定外の選択要求を即検出する。
     replaySetPlaybackQueue(recording.setupResponses || []);
-    newGame({ seed: recording.seed, firstSeat: recording.firstSeat });
-    drain("newGame(setup)");
-    replayClearPlayback();
+    try {
+      newGame({ seed: recording.seed, firstSeat: recording.firstSeat });
+      drain("newGame(setup)");
+    } catch (error) {
+      failedError = error;
+      throw error;
+    } finally {
+      replayClearPlayback();
+    }
     index = 0;
     started = true;
     render();
@@ -409,14 +678,29 @@ function replayCreatePlayer(recording) {
     if (!started) {
       await reset();
     }
+    if (failedError) {
+      throw new Error(`リプレイ: 再生エラーのため停止中です（${failedError.message}）。「最初から」でやり直せます`);
+    }
     if (index >= steps.length) {
       return false;
     }
     const step = steps[index];
     replaySetPlaybackQueue(step.promptResponses || []);
     try {
-      await replayApplyStep(step);
+      try {
+        await replayApplyStep(step);
+      } catch (error) {
+        // R3: 記録時にも例外で終わった step（threw 印）は同じく投げるのが正しい再現。それ以外は失敗。
+        if (!step.threw) {
+          throw error;
+        }
+      }
+      // R1: 誘発チェーンが静止してから応答の過不足を判定する（記録側と同じ step 境界）。
+      await replayWaitQuiescent();
       drain(`step#${index}(${step.type})`);
+    } catch (error) {
+      failedError = error;
+      throw error;
     } finally {
       replayClearPlayback();
     }
@@ -441,7 +725,9 @@ function replayCreatePlayer(recording) {
     stepOnce,
     runToEnd,
     total: steps.length,
-    atEnd: () => index >= steps.length,
+    // R3: 失敗後は「終端」扱い（replay.html の setProgress がステップ/最後までボタンを無効化する）。
+    atEnd: () => failedError !== null || index >= steps.length,
+    failed: () => failedError,
     currentIndex: () => index,
   };
 }

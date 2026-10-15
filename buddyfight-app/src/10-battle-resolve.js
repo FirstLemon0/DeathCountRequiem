@@ -16,8 +16,7 @@ async function resolvePendingAttack() {
   }
   const attackers = getPendingAttackers();
   if (attackers.length === 0) {
-    addLog("攻撃カードが場を離れたため、攻撃は終了しました。");
-    clearPendingAttack();
+    endPendingAttackWithoutBattle("攻撃カードが場を離れたため、攻撃は終了しました。");
     render();
     return;
   }
@@ -32,54 +31,78 @@ async function resolvePendingAttack() {
   }
   const target = getPendingTarget();
   if (!target) {
-    addLog("攻撃対象が場を離れたため、攻撃は終了しました。");
-    // 対象が戦闘前に離場しても、多回攻撃(2/3/4/6回)の攻撃者は残りの攻撃のため再スタンドする（無効化経路
-    // nullifyPendingAttack:771 と同型。攻撃宣言でレスト＝攻撃は成立しており追加攻撃の権利は失われない。
-    // doubleAttackUsed/tripleAttackStandCount の既存ガードで規定回数を超えてスタンドしない）。
-    attackers.forEach((attacker) => standAttackerForMultiAttack(attacker.card));
-    clearPendingAttack();
+    // 対象が戦闘前に離場しても、多回攻撃(2/3/4/6回)の攻撃者は残りの攻撃のため再スタンドする（無効化経路と同型。
+    // 攻撃宣言でレスト＝攻撃は成立しており追加攻撃の権利は失われない。『Ｎ回攻撃』の N 別使用回数(multiAttackUses)の
+    // 既存ガードで規定回数を超えてスタンドしない）。E6: 『バトルの終了時』も解決する（endPendingAttackWithoutBattle）。
+    endPendingAttackWithoutBattle("攻撃対象が場を離れたため、攻撃は終了しました。");
     render();
     return;
   }
   const attackPower = attackers.reduce((total, attacker) => total + visiblePower(attacker.card), 0);
+  let destroyedInPlace = false; // 2026-10-09 オーナー裁定: ソウルガード等で場に残ったが破壊は成功
   if (attackPower >= visibleDefense(target)) {
     const destroyedName = target.name;
-    const destroyed = await destroyFieldCard(pending.targetOwner, pending.targetZone, {
-      cause: { byBattle: true, byOpponent: true, sourceOwner: attackers[0]?.owner, sourceCard: attackers[0]?.card },
-    });
+    // ver2.05 p.13: 3.1 破壊 → 3.2.1『貫通』→ 3.3 ★ルール処理★ → 3.4 プレイタイミング（「破壊された時」
+    // 「モンスターを破壊した時」「ダメージを与えた時」の能力はここで解決）。破壊〜貫通の間に queue された誘発は
+    // battleTriggerHold に溜め、貫通（resolvePenetrateDamage 内の checkWinner＝ルール処理）の後で解決する。
+    const previousHold = holdBattleTriggers();
+    let destroyed = null;
+    try {
+      // R11（2026-10-09 オーナー裁定）: センターのモンスターがソウルガード等の置換で場に残っても、攻撃はヒットし破壊は
+      // 成功している（場に残るだけ）ので『貫通』のダメージは通る。置換の成立は outcome.replaced で受け取る。
+      // 2026-10-09 オーナー裁定（追加）: 場に残る置換（ソウルガード等）は destroyFieldCard が場に残ったカードを返す＝
+      // 「攻撃で破壊した時」誘発・破壊数も数える（outcome.destroyedInPlace）。ゲージ/手札等へ移る置換は従来どおり null。
+      const destroyOutcome = {};
+      destroyed = await destroyFieldCard(pending.targetOwner, pending.targetZone, {
+        cause: { byBattle: true, byOpponent: true, sourceOwner: attackers[0]?.owner, sourceCard: attackers[0]?.card },
+        outcome: destroyOutcome,
+      });
+      if (destroyed) {
+        addDestroyLog(`${attackerNames}は${destroyedName}を破壊しました。`, destroyedName);
+      }
+      destroyedInPlace = Boolean(destroyed && destroyOutcome.destroyedInPlace);
+      if (destroyed || destroyOutcome.replaced) {
+        await resolvePenetrateDamage(attackers, pending);
+      }
+    } finally {
+      await releaseBattleTriggers(previousHold);
+    }
     if (destroyed) {
-      addLog(`${attackerNames}は${destroyedName}を破壊しました。`);
       await runAttackDestroyedTriggers(attackers, pending, destroyed);
-      resolveLinkDestroyedMonsterTriggers(pending, attackers);
-      await resolvePenetrateDamage(attackers, pending);
+      const linkTriggers = resolveLinkDestroyedMonsterTriggers(pending, attackers);
+      if (linkTriggers?.then) await linkTriggers;
     }
   } else {
     addLog(`${target.name}は攻撃を耐えました。`);
   }
 
-  await resolveCounterattack({ owner: pending.targetOwner, zone: pending.targetZone }, attackers);
-  finishPendingAttack({ destroyedTarget: pending.targetType === "monster" && !getPendingTarget() });
+  await resolveCounterattack({ owner: pending.targetOwner, zone: pending.targetZone, instanceId: target.instanceId }, attackers);
+  finishPendingAttack({ destroyedTarget: pending.targetType === "monster" && (destroyedInPlace || !getPendingTarget()) }, { attackedCard: target });
   render();
 }
 
 async function resolveMultiMonsterAttack(pending, attackers, attackerNames) {
+  // E2: 宣言時に控えた各対象の instanceId と一致するカードだけを対象にする（離場後に同エリアへ入った別カードは対象外）。
+  const targetRefIds = new Map((pending.attackAllTargetRefs || []).map((ref) => [ref.zone, ref.instanceId]));
   const targets = uniqueTargetEntries(
     (pending.attackAllTargetZones || [])
       .map((zone) => getFieldTarget(pending.targetOwner, zone))
-      .filter((target) => target?.card && effectiveCardType(target.card) === "monster"),
+      .filter((target) => target?.card && effectiveCardType(target.card) === "monster")
+      .filter((target) => {
+        const refId = targetRefIds.get(target.zone);
+        return refId == null || target.card.instanceId === refId;
+      }),
   );
   if (targets.length === 0 && !pending.attackAllIncludesFighter) {
     // 全体攻撃(相手に攻撃を含む)は、対象モンスターが全て居なくなっても本体への攻撃は続行する。
-    addLog("攻撃対象が場を離れたため、攻撃は終了しました。");
-    // 対象が全て離場しても多回攻撃の攻撃者は再スタンドする（単体対象経路と同型・nullify:771 と対称）。
-    attackers.forEach((attacker) => standAttackerForMultiAttack(attacker.card));
-    clearPendingAttack();
+    // 対象が全て離場しても多回攻撃の攻撃者は再スタンドする（単体対象経路と同型・無効化経路と対称）。
+    endPendingAttackWithoutBattle("攻撃対象が場を離れたため、攻撃は終了しました。");
     render();
     return;
   }
   const attackPower = attackers.reduce((total, attacker) => total + visiblePower(attacker.card), 0);
   let destroyedCount = 0;
-  let centerDestroyed = false; // 貫通判定用: この全体攻撃で相手センターのモンスターを破壊したか
+  let centerDestroyed = false; // 貫通判定用: この全体攻撃で相手センターのモンスターを破壊したか（R11: 置換で場に残った場合も含む）
   for (const target of targets) {
     const current = state.players[target.owner]?.field?.[target.zone];
     if (!current || current.instanceId !== target.card.instanceId) {
@@ -87,15 +110,20 @@ async function resolveMultiMonsterAttack(pending, attackers, attackerNames) {
     }
     if (attackPower >= visibleDefense(current)) {
       const destroyedName = current.name;
+      const destroyOutcome = {}; // R11: 置換で場に残っても貫通判定（centerDestroyed）には数える
       const destroyed = await destroyFieldCard(target.owner, target.zone, {
         cause: { byBattle: true, byOpponent: true, sourceOwner: attackers[0]?.owner, sourceCard: attackers[0]?.card },
+        outcome: destroyOutcome,
       });
+      if (!destroyed && destroyOutcome.replaced && target.zone === "center") {
+        centerDestroyed = true;
+      }
       if (destroyed) {
         destroyedCount += 1;
         if (target.zone === "center") {
           centerDestroyed = true;
         }
-        addLog(`${attackerNames}は${destroyedName}を破壊しました。`);
+        addDestroyLog(`${attackerNames}は${destroyedName}を破壊しました。`, destroyedName);
         await runAttackDestroyedTriggers(
           attackers,
           {
@@ -112,7 +140,7 @@ async function resolveMultiMonsterAttack(pending, attackers, attackerNames) {
     }
   }
   for (const target of targets) {
-    await resolveCounterattack({ owner: target.owner, zone: target.zone }, attackers);
+    await resolveCounterattack({ owner: target.owner, zone: target.zone, instanceId: target.card?.instanceId }, attackers);
   }
   // 貫通: 全体攻撃(『相手のモンスター全て(と相手)に攻撃』)でも、この攻撃で相手センターのモンスターを破壊し攻撃側に
   // 貫通保持者がいれば、単体攻撃と同じく相手ライフへ打撃力ぶんのダメージを与える。resolveMultiMonsterAttack は
@@ -126,20 +154,17 @@ async function resolveMultiMonsterAttack(pending, attackers, attackerNames) {
     // 「相手のモンスター全てと相手に攻撃する」の本体打撃（アジ・ダハーカ）。本体へ合計クリティカルぶんのダメージ。
     // 単体ファイター攻撃(resolveFighterAttack)と同じ算出（連携キャップ/攻撃キャップ/軽減耐性/減らないダメージ）。
     let damage = attackers.reduce((total, attacker) => total + visibleCritical(attacker.card), 0);
-    // damageCannotBeReduced は被ダメ上限も貫通する（resolveFighterAttack と同基準・第10回メカレビュー是正）。
-    if (attackers.length > 1 && !pending.damageCannotBeReduced) {
-      const cap = linkAttackDamageCapFor(pending.defender);
-      if (cap !== null && damage > cap) damage = cap;
-    }
-    const attackCap = pending.damageCannotBeReduced ? null : attackDamageCapFor(pending.defender);
-    if (attackCap !== null && damage > attackCap) damage = attackCap;
+    const reduceResist = applicableAttackResistances(attackers).filter((e) => (e.effects || []).includes("reduce"));
+    // 裁定 rulings-d: ゴルドリッター「Nになる」(b)は『減らない』でも適用、ディジエム「Nに減らす」(c)は貫通される。
+    damage = applyAttackDamageReceivedCaps(pending, attackers, damage, reduceResist);
     const damageOptions = { log: false, byAttack: true };
     if (pending.damageCannotBeReduced) damageOptions.ignorePrevention = true;
-    const reduceResist = applicableAttackResistances(attackers).filter((e) => (e.effects || []).includes("reduce"));
     if (reduceResist.length > 0) damageOptions.resistEntries = reduceResist;
     const fighterDefender = state.players[pending.defender];
-    fighterDamageDealt = applyDamageToPlayer(pending.defender, damage, damageOptions);
-    addLog(`${fighterDefender.name}は${attackerNames}の攻撃で${fighterDamageDealt}ダメージを受けました。`);
+    const winnerBeforeDamage = state.winner;
+    fighterDamageDealt = applyDamageToPlayerAsk(pending.defender, damage, damageOptions); // 任意コストの軽減は本人に問う
+    if (fighterDamageDealt?.then) fighterDamageDealt = await fighterDamageDealt;
+    addDamageLog(`${fighterDefender.name}は${attackerNames}の攻撃で${fighterDamageDealt}ダメージを受けました。`, winnerBeforeDamage);
     await runDamageDealtTriggers(attackers, pending, fighterDamageDealt);
   }
   finishPendingAttack({
@@ -241,9 +266,9 @@ async function runAttackDestroyedTriggers(attackers, pending, destroyedCard) {
 
 function resolveLinkDestroyedMonsterTriggers(pending, attackers) {
   if (!pending || pending.targetType !== "monster" || (attackers?.length || 0) <= 1) {
-    return;
+    return undefined;
   }
-  let dealtDamage = false;
+  const jobs = [];
   state.players.forEach((player, owner) => {
     setZones.forEach((zone) => {
       const setCard = player.field[zone];
@@ -251,23 +276,41 @@ function resolveLinkDestroyedMonsterTriggers(pending, attackers) {
       if (!trigger || pending.targetOwner === owner) {
         return;
       }
-      const receiver = state.players[pending.targetOwner];
-      const damage = trigger.damage || 1;
-      const appliedDamage = applyDamageToPlayer(pending.targetOwner, damage, {
+      jobs.push({ owner, setCard, damage: trigger.damage || 1 });
+    });
+  });
+  let dealtDamage = false;
+  const receiver = state.players[pending.targetOwner];
+  const note = (setCard, appliedDamage) => {
+    // 累積（上書きだと2枚目の設置が0ダメージ=効果ダメ無効等の時、1枚目の致死ダメージ後の checkWinner が飛ぶ）。
+    dealtDamage = dealtDamage || appliedDamage > 0;
+    if (appliedDamage > 0) {
+      addLog(`${setCard.name}の効果で${receiver.name}に${appliedDamage}ダメージを与えました。`);
+    }
+  };
+  // 任意コストの軽減（メラク等）を本人に問う時だけ非同期に切り替える（Promise を返す＝呼び出し側が await）。
+  const runFrom = (index) => {
+    for (let i = index; i < jobs.length; i += 1) {
+      const { owner, setCard, damage } = jobs[i];
+      const applied = applyDamageToPlayerAsk(pending.targetOwner, damage, {
         log: false,
         sourceCard: setCard,
         sourceOwner: owner, // preventOpponentEffectDamage（相手効果ダメ無効）の判定に必要
       });
-      // 累積（上書きだと2枚目の設置が0ダメージ=効果ダメ無効等の時、1枚目の致死ダメージ後の checkWinner が飛ぶ）。
-      dealtDamage = dealtDamage || appliedDamage > 0;
-      if (appliedDamage > 0) {
-        addLog(`${setCard.name}の効果で${receiver.name}に${appliedDamage}ダメージを与えました。`);
+      if (applied?.then) {
+        return applied.then((value) => {
+          note(setCard, value);
+          return runFrom(i + 1);
+        });
       }
-    });
-  });
-  if (dealtDamage) {
-    checkWinner();
-  }
+      note(setCard, applied);
+    }
+    if (dealtDamage) {
+      checkWinner();
+    }
+    return undefined;
+  };
+  return runFrom(0);
 }
 
 // このカードが1枚で攻撃しているなら、攻撃はカード名に「ドラゴンシールド」を含む
@@ -402,28 +445,51 @@ function attackDamageCapFor(defenderOwner) {
   return cap;
 }
 
-async function resolveFighterAttack(pending, attackers, attackerNames) {
-  const defender = state.players[pending.defender];
-  const defenseItemInfo = getPendingBattleTargetInfo(pending);
-  let damage = attackers.reduce((total, attacker) => total + visibleCritical(attacker.card), 0);
-  // damageCannotBeReduced(『そのダメージは減らない』ドラム)は被ダメ上限(attackDamageReceivedTo=ディジエム『減らす』)も
-  // 貫通する。以前は cap を funnel(ignorePrevention)の前で確定させ cap だけ貫通できなかった(第10回メカレビュー是正・
-  // 継続 damageReceivedReduction を貫通するのと同基準＝『減らない』は『減らす』全般に優先)。
-  if (attackers.length > 1 && !pending.damageCannotBeReduced) {
-    const cap = linkAttackDamageCapFor(pending.defender);
+// 裁定 rulings-d: 攻撃で受けるダメージの「上限/変更」2種を分類どおりに掛ける（ファイター攻撃・全体攻撃の本体打撃で共通）。
+//   ゴルドリッター「君が連携攻撃によって受けるダメージは２になる」＝分類(b) 変更。『減らない』（ドラム・ザ・フューチャー、
+//     ∞）でも２になり（Q553・Q1604）、打撃力が１以下でも２になる（Q323）。
+//   ディジエム「攻撃によって受けるダメージが４以上なら、３に減らす」＝分類(c) 軽減。damageCannotBeReduced と、発生源
+//     一致の reduce 耐性（「このカードが相手に与えるダメージは減らない」）に貫通される。
+function applyAttackDamageReceivedCaps(pending, attackers, damage, reduceResist = []) {
+  if (attackers.length > 1) {
+    const linkTo = linkAttackDamageCapFor(pending.defender);
+    if (linkTo !== null) {
+      damage = linkTo;
+    }
+  }
+  const cannotReduce = Boolean(pending.damageCannotBeReduced || state.pendingAttack?.damageCannotBeReduced);
+  if (!cannotReduce) {
+    const player = state.players[pending.defender];
+    let cap = null;
+    zones.forEach((zone) => {
+      const card = player?.field?.[zone];
+      if (!card || typeof card.attackDamageReceivedTo !== "number") {
+        return;
+      }
+      if (reduceResist.some((e) => resistanceFilterMatches(e.filter, card, card.name))) {
+        return;
+      }
+      cap = cap === null ? card.attackDamageReceivedTo : Math.min(cap, card.attackDamageReceivedTo);
+    });
     if (cap !== null && damage > cap) {
       damage = cap;
     }
   }
-  const attackCap = pending.damageCannotBeReduced ? null : attackDamageCapFor(pending.defender);
-  if (attackCap !== null && damage > attackCap) {
-    damage = attackCap;
-  }
+  return damage;
+}
+
+async function resolveFighterAttack(pending, attackers, attackerNames) {
+  const defender = state.players[pending.defender];
+  const defenseItemInfo = getPendingBattleTargetInfo(pending);
+  let damage = attackers.reduce((total, attacker) => total + visibleCritical(attacker.card), 0);
+  const reduceResist = applicableAttackResistances(attackers).filter((e) => (e.effects || []).includes("reduce"));
+  // damageCannotBeReduced(『そのダメージは減らない』ドラム)は被ダメ上限(attackDamageReceivedTo=ディジエム『３に減らす』)
+  // を貫通する（第10回メカレビュー是正）。裁定 rulings-d: ゴルドリッター「２になる」は減らす効果ではない＝貫通しない（Q553）。
+  damage = applyAttackDamageReceivedCaps(pending, attackers, damage, reduceResist);
   const damageOptions = { log: false, byAttack: true };
   if (state.pendingAttack?.damageCannotBeReduced) {
     damageOptions.ignorePrevention = true; // 「そのダメージは減らない」(ドラム・ザ・フューチャー等)
   }
-  const reduceResist = applicableAttackResistances(attackers).filter((e) => (e.effects || []).includes("reduce"));
   if (reduceResist.length > 0) {
     damageOptions.resistEntries = reduceResist;
   }
@@ -439,9 +505,12 @@ async function resolveFighterAttack(pending, attackers, attackerNames) {
       render();
       return;
     }
-    const dealtDamage = applyDamageToPlayer(pending.defender, damage, damageOptions);
-    addLog(
+    const winnerBeforeItemDamage = state.winner;
+    let dealtDamage = applyDamageToPlayerAsk(pending.defender, damage, damageOptions); // 任意コストの軽減は本人に問う
+    if (dealtDamage?.then) dealtDamage = await dealtDamage;
+    addDamageLog(
       `${attackerNames}の攻撃力${attackPower}が${defenseItemInfo.card.name}の防御力${itemDefense}以上のため、${defender.name}は${dealtDamage}ダメージを受けました。`,
+      winnerBeforeItemDamage,
     );
     await runDamageDealtTriggers(attackers, pending, dealtDamage);
     applyWinOnFighterDamage(pending, dealtDamage);
@@ -451,8 +520,10 @@ async function resolveFighterAttack(pending, attackers, attackerNames) {
     return;
   }
 
-  const dealtDamage = applyDamageToPlayer(pending.defender, damage, damageOptions);
-  addLog(`${defender.name}は${attackerNames}の攻撃で${dealtDamage}ダメージを受けました。`);
+  const winnerBeforeDamage = state.winner;
+  let dealtDamage = applyDamageToPlayerAsk(pending.defender, damage, damageOptions); // 任意コストの軽減は本人に問う
+  if (dealtDamage?.then) dealtDamage = await dealtDamage;
+  addDamageLog(`${defender.name}は${attackerNames}の攻撃で${dealtDamage}ダメージを受けました。`, winnerBeforeDamage);
   await runDamageDealtTriggers(attackers, pending, dealtDamage);
   applyWinOnFighterDamage(pending, dealtDamage);
   finishPendingAttack({ dealtDamage });
@@ -475,6 +546,15 @@ function applyWinOnFighterDamage(pending, dealtDamage) {
 
 async function resolveCounterattack(targetSlot, attackers) {
   const targetAfterBattle = state.players[targetSlot.owner]?.field[targetSlot.zone];
+  // E2: 攻撃されたモンスター本人だけが『反撃』する（バトル中に場を離れ、同エリアへ別のカードが入った場合は反撃しない）。
+  if (targetSlot.instanceId != null && targetAfterBattle?.instanceId !== targetSlot.instanceId) {
+    return;
+  }
+  // 反撃で破壊する攻撃者も、まだ場に居る本人に限る（反撃までの間に入れ替わった別カードを破壊しない）。
+  attackers = attackers.filter((attacker) => {
+    const now = attackerCardAt(attacker.owner, attacker.zone);
+    return now && now.instanceId === attacker.card?.instanceId;
+  });
   if (!hasKeyword(targetAfterBattle, "counterattack") || effectiveCardType(targetAfterBattle) !== "monster") {
     return;
   }
@@ -492,6 +572,7 @@ async function resolveCounterattack(targetSlot, attackers) {
       title: `${targetAfterBattle.name}の『反撃』`,
       lead: "『反撃』で破壊する攻撃モンスター1枚を選んでください。",
       min: 1,
+      allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
       max: 1,
       forceDialog: true,
       promptSeat: targetSlot.owner, // 反撃するモンスターの持ち主の席へ（CPU対戦/権威サーバの誤配送防止）
@@ -508,7 +589,7 @@ async function resolveCounterattack(targetSlot, attackers) {
     cause: { byBattle: true, byOpponent: true, sourceOwner: targetSlot.owner, sourceCard: targetAfterBattle },
   });
   if (destroyed) {
-    addLog(`${targetAfterBattle.name}の反撃で${attackerName}を破壊しました。`);
+    addDestroyLog(`${targetAfterBattle.name}の反撃で${attackerName}を破壊しました。`, attackerName);
     // E-XB14(X-CP03/0013 蠱惑の剣鬼 ヴィオローザ): 『反撃』でモンスターを破壊した時のフックを発火する。
     // 既存 event:"destroyByAttack"（DB全76枚が「このカードの"攻撃で"破壊した時」＝攻撃限定・generic『破壊した時』は
     // grep 実証で0枚）へ反撃を混ぜると76枚全てが反撃時に誤爆するため、別イベント名 "destroyByCounterattack" を新設する
@@ -537,7 +618,9 @@ async function resolveCounterattack(targetSlot, attackers) {
   }
 }
 
-function finishPendingAttack(outcome = {}) {
+// audit2(b053-4): 第2引数 extras.attackedCard＝戦闘で破壊される前の被攻撃カード実体（単体モンスター攻撃の経路が渡す）。
+// state には積まず、allyBattleEnd 系の配信（queueBattleEndFieldTriggers）にだけ使う。
+function finishPendingAttack(outcome = {}, extras = {}) {
   const pending = state.pendingAttack;
   if (!pending) {
     return;
@@ -546,6 +629,7 @@ function finishPendingAttack(outcome = {}) {
     ...outcome,
     nullified: Boolean(outcome.nullified || pending.nullified),
     attackers: getPendingAttackerSlots(pending),
+    ...lastAttackOutcomeAttackerInfo(pending),
     targetOwner: pending.targetOwner,
     targetZone: pending.targetZone,
     targetType: pending.targetType,
@@ -566,7 +650,12 @@ function finishPendingAttack(outcome = {}) {
     // 上の attacker-only bare "battleEnd" とは別イベント名で非衝突・既存挙動不変）。fighter 攻撃（モンスター非対象）は
     // 放送しない。被攻撃札は現在の場から取り直す（戦闘を耐えて場に残ったモンスターのみ＝破壊済みは null で放送しない）。
     if (pending.targetType !== "fighter") {
-      const attackedCard = state.players[pending.targetOwner]?.field?.[pending.targetZone];
+      // audit2(b053-4): 被攻撃モンスターが戦闘で破壊されて場に無い（または別カードに入れ替わった）なら、
+      // 呼び出し側が渡した破壊前のカード実体で配信する（「攻撃されたバトルの終了時」は破壊されても成立する）。
+      const liveAttacked = state.players[pending.targetOwner]?.field?.[pending.targetZone];
+      const frozenAttacked = extras.attackedCard || null;
+      const attackedCard =
+        frozenAttacked && liveAttacked?.instanceId !== frozenAttacked.instanceId ? frozenAttacked : liveAttacked;
       queueBattleEndFieldTriggers(pending.targetOwner, attackedCard, pending.targetZone, {
         nullified: false,
         attackerOwner: pending.attackerOwner,
@@ -607,32 +696,29 @@ function queueBattleEndTriggers(attackerSlots, defenderSlot = null) {
       return;
     }
     const attackerInstanceId = card.instanceId;
-    Promise.resolve()
-      .then(async () => {
+    scheduleTriggerJob(async () => {
         await runTriggeredAbilities(card, "battleEnd", { card, player: state.players[slot.owner], owner: slot.owner, zone: slot.zone });
         // 「このカードが攻撃したバトルの終了時、…このカードは『２回攻撃』を得る」型(フォーマルフリル 0008 等)は、
         // 上の battleEnd 誘発でキーワードが後付けされる。runAfterAttackTriggers(同期)はこの付与より前に走るため
         // スタンド判定に間に合わない。付与後のこの時点で、まだ場に残り(instanceId一致)レスト中(used)の攻撃カードを
-        // 再判定してスタンドさせる。既存の doubleAttackUsed/tripleAttackStandCount ガードで二重スタンドは防がれる。
+        // 再判定してスタンドさせる。『Ｎ回攻撃』の N 別使用回数(multiAttackUses)のガードで二重スタンドは防がれる。
         // battleEnd 中に場を離れたカード(0012 の自己戻し等)は現在の場札と instanceId が不一致でスキップされる。
         const attackerNow = state.players[slot.owner]?.field?.[slot.zone];
         if (attackerNow && attackerNow.instanceId === attackerInstanceId && attackerNow.used) {
-          standAttackerForMultiAttack(attackerNow);
+          requestMultiAttackStand({ owner: slot.owner, zone: slot.zone, card: attackerNow }); // E3: 解決中なら保留
         }
         render();
-      })
-      .catch((error) => {
+      }, (error) => {
         console.error(error);
         addLog(`${card.name}のバトル終了時能力の処理中にエラーが発生しました。`);
         render();
-      });
+      }, slot.owner);
   });
   // F3: 被攻撃（防御）側 battleEnd の配信（includeDefender:true のみ）。
   if (defenderSlot) {
     const card = state.players[defenderSlot.owner]?.field?.[defenderSlot.zone];
     if (card && cardHasIncludeDefenderBattleEnd(card)) {
-      Promise.resolve()
-        .then(async () => {
+      scheduleTriggerJob(async () => {
           await runTriggeredAbilities(card, "battleEnd", {
             card,
             player: state.players[defenderSlot.owner],
@@ -642,12 +728,11 @@ function queueBattleEndTriggers(attackerSlots, defenderSlot = null) {
             __abilityFilter: (ability) => ability.includeDefender === true,
           });
           render();
-        })
-        .catch((error) => {
+        }, (error) => {
           console.error(error);
           addLog(`${card.name}のバトル終了時能力の処理中にエラーが発生しました。`);
           render();
-        });
+        }, defenderSlot.owner);
     }
   }
 }
@@ -676,8 +761,9 @@ function cardHasIncludeDefenderBattleEnd(card) {
 // !nullified 経路からのみ呼ぶ（＝既存 bare battleEnd と同一タイミング。無効化された攻撃は『バトル』が成立しないため
 // 放送しない）。hasListener ゲート＋microtask（queueDeckMilledTriggers 同型）。defenderCard は呼び出し時点の場札
 // （戦闘を耐えて場に残った被攻撃モンスター）をクロージャで凍結する（state には積まない＝room 復元での二重参照を避ける）。
-// 戦闘で破壊された被攻撃モンスターは呼び出し側で defenderCard=null となり放送しない（それがセンター札なら『君の
-// センターに《プリズムドラゴン》がいるなら』条件も同時に外れ実害なし・非センターの被破壊のみ取りこぼす近似）。
+// audit2(b053-4): 戦闘で破壊された被攻撃モンスターも、finishPendingAttack が呼び出し側から受け取った破壊前の
+// カード実体（と元の defenderZone）で放送する（旧実装は null で打ち切り、非センターの被破壊を取りこぼしていた）。
+// defenderCard が null になるのは、破壊前の実体も持たない経路（全体攻撃・防御アイテム等）だけ。
 function queueBattleEndFieldTriggers(defenderOwner, defenderCard, defenderZone, details = {}) {
   if (!defenderCard) {
     return;
@@ -693,12 +779,10 @@ function queueBattleEndFieldTriggers(defenderOwner, defenderCard, defenderZone, 
   if (!hasListener) {
     return;
   }
-  Promise.resolve()
-    .then(async () => {
+  scheduleTriggerJob(async () => {
       await runFieldEventTriggers("battleEnd", defenderOwner, defenderCard, defenderZone, details);
       render();
-    })
-    .catch((error) => {
+    }, (error) => {
       console.error(error);
       render();
     });
@@ -734,15 +818,13 @@ function queueAttackerBattleEndFieldTriggers(attackerSlots, details = {}) {
   if (frozen.length === 0) {
     return;
   }
-  Promise.resolve()
-    .then(async () => {
+  scheduleTriggerJob(async () => {
       // 逐次 await（連携攻撃の複数配信で limit 記帳が並列に抜けないように＝runTriggeredAbilities の作法）。
       for (const slot of frozen) {
         await runFieldEventTriggers("attackerBattleEnd", slot.owner, slot.card, slot.zone, { ...details });
       }
       render();
-    })
-    .catch((error) => {
+    }, (error) => {
       console.error(error);
       render();
     });
@@ -785,14 +867,18 @@ function nullifyPendingAttack(sourceName = "効果", sourceCard = null) {
     // 多回攻撃(2回/3回/4回/6回攻撃)のモンスターは、攻撃が無効化(ドラゴンシールド等)されても、残りの攻撃の
     // ために再スタンドする。無効化はその1回の攻撃を止めるだけで、多回攻撃による追加攻撃の権利は失われない。
     // 通常解決(finishPendingAttack→runAfterAttackTriggers)と同じ standAttackerForMultiAttack を通し、
-    // doubleAttackUsed/tripleAttackStandCount の既存ガードで規定回数を超えてスタンドしないようにする。
+    // 『Ｎ回攻撃』の N 別使用回数(multiAttackUses)の既存ガードで規定回数を超えてスタンドしないようにする。
     // 無効化パスは finishPendingAttack を経由せず自前で clearPendingAttack するため、ここで明示的に再判定する。
-    standAttackerForMultiAttack(attacker.card);
+    // E3: ver2.05 では『Ｎ回攻撃』は 4.1（無効化した【対抗】の解決が終わった後）。無効化を含む効果の解決中に
+    // 即スタンドすると、同じ効果の後半「そのターン中スタンドできない」(影縫いの術 X-BT03/0062)が間に合わない。
+    // requestMultiAttackStand は能力本体の実行中なら解決し終わるまで保留し、それ以外（直接呼び出し等）は即時。
+    requestMultiAttackStand(attacker);
   });
   state.lastAttackOutcome = {
     nullified: true,
     nullifiedBy: sourceName,
     attackers: getPendingAttackerSlots(pending),
+    ...lastAttackOutcomeAttackerInfo(pending),
     targetOwner: pending.targetOwner,
     targetZone: pending.targetZone,
     targetType: pending.targetType,
@@ -858,44 +944,37 @@ async function resolvePenetrateDamage(attackers, pending) {
   if (pending.targetZone !== "center") {
     return;
   }
-  let penetrateDamage = attackers
-    .filter((attacker) => hasKeyword(attacker.card, "penetrate"))
-    .reduce((total, attacker) => total + visibleCritical(attacker.card), 0);
-  if (penetrateDamage <= 0) {
-    return;
-  }
-  // 貫通ダメージは「攻撃/連携攻撃によって相手が受けるダメージ」＝合体戦士ディジエム(attackDamageReceivedTo)や
-  // ジャックナイフ ゴルドリッター(linkAttackDamageReceivedTo)の被ダメージ上限の対象。resolveFighterAttack /
-  // resolveMultiMonsterAttack の本体打撃は両キャップを適用しているのに、貫通だけ素通りしていた（ignorePrevention と
-  // reduce耐性は下で適用済み＝貫通を軽減可能な攻撃ダメージとしてモデル化しているのと整合させる）。単体本体攻撃と同じ順で適用する。
-  // damageCannotBeReduced は貫通ダメージの被ダメ上限も貫通する（本体打撃と同基準・第10回メカレビュー是正）。
-  if (attackers.length > 1 && !pending.damageCannotBeReduced) {
-    const linkCap = linkAttackDamageCapFor(pending.defender);
-    if (linkCap !== null && penetrateDamage > linkCap) {
-      penetrateDamage = linkCap;
-    }
-  }
-  const penetrateAttackCap = pending.damageCannotBeReduced ? null : attackDamageCapFor(pending.defender);
-  if (penetrateAttackCap !== null && penetrateDamage > penetrateAttackCap) {
-    penetrateDamage = penetrateAttackCap;
-  }
+  // ver2.05 アタックフェイズの流れ 3.2.1「連携攻撃の場合、攻撃に参加したカードのうち、『貫通』を持っているカード
+  // すべてが、それぞれ1回ずつ『貫通』を発動させます」＝貫通持ちごとに1回ずつダメージを与える（以前は打撃力を合算して
+  // 1回で与えていたため、1回ごとの軽減やしきい値＝竜装 ドラゴキーパー/竜王剣 ドラゴエンペラー等の結果が狂っていた）。
+  // 貫通ダメージは「攻撃以外のダメージ」（竜装 ドラゴキーパー H-SS01/0016 公式テキスト「攻撃以外の君が受けるダメージを
+  // １減らす。（『貫通』のダメージも減るぞ！）」）。よって「攻撃/連携攻撃によって受けるダメージ」の上限
+  // （attackDamageCapFor＝合体戦士 ディジエム／linkAttackDamageCapFor＝ゴルドリッター）は掛けない
+  // （byAttack を渡さない＝グラップルソウルの「攻撃によるダメージ0」が貫通に効かないのと同じ扱いに統一）。
+  const penetrators = attackers.filter((attacker) => hasKeyword(attacker.card, "penetrate"));
   const defender = state.players[pending.defender];
-  const penetrateOptions = { log: false };
-  if (state.pendingAttack?.damageCannotBeReduced) {
-    penetrateOptions.ignorePrevention = true;
+  for (const attacker of penetrators) {
+    if (state.winner !== null && state.winner !== undefined) {
+      break; // 前の貫通で決着したら以降は与えない（engine-continuous 由来）
+    }
+    const penetrateDamage = visibleCritical(attacker.card);
+    if (penetrateDamage <= 0) {
+      continue;
+    }
+    const penetrateOptions = { log: false };
+    if (state.pendingAttack?.damageCannotBeReduced || pending.damageCannotBeReduced) {
+      penetrateOptions.ignorePrevention = true;
+    }
+    const reducePenetrateResist = applicableAttackResistances([attacker]).filter((e) => (e.effects || []).includes("reduce"));
+    if (reducePenetrateResist.length > 0) {
+      penetrateOptions.resistEntries = reducePenetrateResist;
+    }
+    let dealtDamage = applyDamageToPlayerAsk(pending.defender, penetrateDamage, penetrateOptions); // 任意コストの軽減は本人に問う
+    if (dealtDamage?.then) dealtDamage = await dealtDamage;
+    addLog(`貫通により${defender.name}に${dealtDamage}ダメージを与えました。`);
+    await runDamageDealtTriggers([attacker], pending, dealtDamage);
+    checkWinner();
   }
-  const reducePenetrateResist = applicableAttackResistances(attackers).filter((e) => (e.effects || []).includes("reduce"));
-  if (reducePenetrateResist.length > 0) {
-    penetrateOptions.resistEntries = reducePenetrateResist;
-  }
-  const dealtDamage = applyDamageToPlayer(pending.defender, penetrateDamage, penetrateOptions);
-  addLog(`貫通により${defender.name}に${dealtDamage}ダメージを与えました。`);
-  await runDamageDealtTriggers(
-    attackers.filter((attacker) => hasKeyword(attacker.card, "penetrate")),
-    pending,
-    dealtDamage,
-  );
-  checkWinner();
 }
 
 async function runDamageDealtTriggers(attackers, pending, damage) {
@@ -927,6 +1006,9 @@ async function runDamageDealtTriggers(attackers, pending, damage) {
   }
   state.turnDamageEvents.push(damageEvent);
   state.counterEventWindow = damageEvent;
+  // audit2(b055-2): 連携攻撃のダメージは1回（ver2.05）なのに、ダメージ源ごとに dealDamage/allyDealDamage を配るため、
+  // 同じカードの同じ能力が源の数だけ発動していた。このダメージイベントの中では同一カード×同一能力を1回に限る。
+  const firedInThisDamage = new Set();
   for (const damageSource of damageSources) {
     const attacker = {
       card: damageSource.card,
@@ -941,6 +1023,7 @@ async function runDamageDealtTriggers(attackers, pending, damage) {
       damage,
       defender: pending.defender,
       damageSource,
+      __oncePerEvent: firedInThisDamage,
     });
     for (const zone of zones) {
       const sourceCard = state.players[attacker.owner].field[zone];
@@ -955,6 +1038,7 @@ async function runDamageDealtTriggers(attackers, pending, damage) {
         damage,
         defender: pending.defender,
         damageSource,
+        __oncePerEvent: firedInThisDamage,
       });
     }
   }
@@ -986,55 +1070,95 @@ async function runDamageDealtTriggers(attackers, pending, damage) {
   }
 }
 
-// 攻撃解決後の多重攻撃（『４回攻撃』/『３回攻撃』/『２回攻撃』）のスタンド判定を1枚ぶん実行する。
+// 『Ｎ回攻撃』キーワード表（N → keyword 内部名・ログ表記）。5回攻撃は対象内DBに無いため欠番。
+// 新しい『Ｎ回攻撃』を足すときはここに1行追加するだけでよい（standAttackerForMultiAttack が汎用に扱う）。
+const MULTI_ATTACK_KEYWORDS = [
+  { n: 2, keyword: "doubleAttack", label: "2回攻撃" },
+  { n: 3, keyword: "tripleAttack", label: "３回攻撃" },
+  { n: 4, keyword: "quadrupleAttack", label: "４回攻撃" }, // Z14(c)(S-UB-C03/0021)
+  { n: 6, keyword: "sextupleAttack", label: "６回攻撃" }, // E-XB43(X-CBT01/0070 バールバッツ・ドラグロイヤー)
+];
+
+// rulings-e（2026-10-09 オーナー裁定・rule-continuous-7）: 『Ｎ回攻撃』の使用回数は N ごとの独立カウンタ
+// card.multiAttackUses = { "2": 使ったスタンド数, "3": …, "4": …, "6": … }（各 N の上限は N−1）。
+// 旧形式は doubleAttackUsed(bool)＋tripleAttackStandCount(3/4/6回攻撃の共用カウンタ)。旧フィールドは
+// 互換のため「ミラー」として書き続ける（doubleAttackUsed = 2回攻撃を使ったか、tripleAttackStandCount =
+// N≥3 の使用数の最大）。multiAttackUses が無い（旧セーブ・旧テスト・初期札）か、旧フィールドがミラーと
+// 食い違う（外部から旧フィールドだけ書き換えた）場合は、旧フィールドから移行する。共用カウンタ t は旧挙動で
+// 「3回攻撃なら残り 2−t、4回なら 3−t、6回なら 5−t」を意味したので、uses[N] = min(t, N−1) で完全に再現できる。
+function multiAttackUsesMirror(uses) {
+  let triple = 0;
+  Object.keys(uses).forEach((key) => {
+    if (Number(key) >= 3) {
+      triple = Math.max(triple, uses[key] || 0);
+    }
+  });
+  return { double: (uses["2"] || 0) >= 1, triple };
+}
+
+function writeMultiAttackLegacyMirror(card, uses) {
+  const mirror = multiAttackUsesMirror(uses);
+  card.doubleAttackUsed = mirror.double;
+  card.tripleAttackStandCount = mirror.triple;
+}
+
+function ensureMultiAttackUses(card) {
+  const current = card.multiAttackUses;
+  if (current && typeof current === "object") {
+    const mirror = multiAttackUsesMirror(current);
+    if (mirror.double === !!card.doubleAttackUsed && mirror.triple === (card.tripleAttackStandCount || 0)) {
+      return current;
+    }
+  }
+  const uses = {};
+  if (card.doubleAttackUsed) {
+    uses["2"] = 1;
+  }
+  const shared = Math.max(0, Number(card.tripleAttackStandCount) || 0);
+  if (shared > 0) {
+    MULTI_ATTACK_KEYWORDS.forEach(({ n }) => {
+      if (n >= 3) {
+        uses[String(n)] = Math.min(shared, n - 1);
+      }
+    });
+  }
+  card.multiAttackUses = uses;
+  writeMultiAttackLegacyMirror(card, uses);
+  return uses;
+}
+
+// 攻撃解決後の『Ｎ回攻撃』のスタンド判定を1枚ぶん実行する（ver2.05 p20『Ｎ回攻撃』／アタックフェイズの流れ 4.2）。
 // runAfterAttackTriggers（攻撃解決直後・同期）と queueBattleEndTriggers（battleEnd 誘発で多重攻撃
-// キーワードが後付けされたカードの再判定）の両方から呼ぶ。quadruple/triple は tripleAttackStandCount、
-// double は doubleAttackUsed の既存ガードで、同一カードが同一ターンに規定回数を超えてスタンドしない。
+// キーワードが後付けされたカードの再判定）・無効化/対象消失経路の requestMultiAttackStand から呼ぶ。
+// 裁定（2026-10-09 オーナー承認。公式Q&A Q800・Q3110）:
+//  - 2回/3回/4回/6回攻撃は別々の能力で、それぞれ N−1 回ぶんの使用回数を持つ（同一の『Ｎ回攻撃』は重複しない）。
+//  - 攻撃終了後のこの時点で、今持っていて使用回数が残っている『Ｎ回攻撃』は全て誘発し、誘発したもの全部が
+//    1回ずつ消費する。ただしスタンドは1回だけ（Q800: H-EB03/0001 は2つ同時に誘発→両方消費→合計3回）。
+//    よって最初から両方持つなら合計攻撃回数は max N（例: PR/0468 轟く雷鳴 バールバッツ 2回＋逆天4回 → 4回）。
+//  - 一方の使用回数を使い切った後で別の『Ｎ回攻撃』を得たら、その能力は N−1 回まるごと残っている
+//    （Q3110: 2回攻撃でスタンド後に3回攻撃を得る → さらに3回攻撃できる＝合計4回）。
 function standAttackerForMultiAttack(card) {
   if (!card) {
     return;
   }
-  // E-XB43(X-CBT01/0070 バールバッツ・ドラグロイヤー): sextupleAttack（『６回攻撃』）。
-  // 選定理由（ruling R6）: 既存 double/triple/quadruple は「離散keyword＋閾値」で表現され、quadruple は triple の
-  // tripleAttackStandCount カウンタを閾値3で流用する確立形。6回攻撃は 5回スタンド＝同カウンタを閾値5で流用するのが
-  // 最小かつ自然な拡張（standPlayer の既存ターン開始リセット・22-ai/18-tooltip の keyword 集合にも同型で乗る）。
-  // 汎用 multiAttack:N 化も可だが、既存3keyword を N化に作り替えると後方互換の diff が広がるため、確立形の踏襲を優先した。
-  // 5回攻撃が対象内DBに存在しない（＝連番keywordの穴埋め不要）ことも離散keyword採用の後押し。赤ピン: 本分岐を消すと6回目以降も攻撃できず fail。
-  if (hasKeyword(card, "sextupleAttack")) {
-    card.tripleAttackStandCount = card.tripleAttackStandCount || 0;
-    if (card.tripleAttackStandCount < 5) {
-      card.used = false;
-      card.tripleAttackStandCount += 1;
-      addLog(`${card.name}は６回攻撃でスタンドしました。`);
-    }
+  // E3: 「そのターン中、スタンドできない」(preventStandThisTurn＝影縫いの術 X-BT03/0062・S-UB-C03/0038)を受けた
+  // カードは多回攻撃でもスタンドしない（残スタンド回数も消費しない）。
+  if (card.cannotStandThisTurn) {
     return;
   }
-  // Z14(c)(S-UB-C03/0021): quadrupleAttack（『４回攻撃』）。tripleAttackと同じ
-  // tripleAttackStandCountカウンタを流用（閾値のみ3に。standPlayerの既存ターン開始リセットに乗る）。
-  if (hasKeyword(card, "quadrupleAttack")) {
-    card.tripleAttackStandCount = card.tripleAttackStandCount || 0;
-    if (card.tripleAttackStandCount < 3) {
-      card.used = false;
-      card.tripleAttackStandCount += 1;
-      addLog(`${card.name}は４回攻撃でスタンドしました。`);
-    }
+  const uses = ensureMultiAttackUses(card);
+  const triggering = MULTI_ATTACK_KEYWORDS.filter(
+    ({ n, keyword }) => (uses[String(n)] || 0) < n - 1 && hasKeyword(card, keyword),
+  );
+  if (!triggering.length) {
     return;
   }
-  if (hasKeyword(card, "tripleAttack")) {
-    card.tripleAttackStandCount = card.tripleAttackStandCount || 0;
-    if (card.tripleAttackStandCount < 2) {
-      card.used = false;
-      card.tripleAttackStandCount += 1;
-      addLog(`${card.name}は３回攻撃でスタンドしました。`);
-    }
-    return;
-  }
-  if (!hasKeyword(card, "doubleAttack") || card.doubleAttackUsed) {
-    return;
-  }
+  triggering.forEach(({ n }) => {
+    uses[String(n)] = (uses[String(n)] || 0) + 1;
+  });
+  writeMultiAttackLegacyMirror(card, uses);
   card.used = false;
-  card.doubleAttackUsed = true;
-  addLog(`${card.name}は2回攻撃でスタンドしました。`);
+  addLog(`${card.name}は${triggering.map((entry) => entry.label).join("・")}でスタンドしました。`);
 }
 
 function runAfterAttackTriggers(outcome) {
@@ -1099,10 +1223,9 @@ function handleDestroyedDuringPending(target) {
     target.owner === pending.targetOwner && target.zone === pending.targetZone;
   if (destroyedTarget) {
     // 攻撃対象が場を離れた → 攻撃終了。多回攻撃の攻撃者(生存分)は残りの攻撃のため再スタンドする
-    // （対抗バウンス等でここに到達・nullify:771 と対称。resolvePendingAttack の対象消失分岐と同型）。
-    addLog("攻撃に関わるカードが場を離れたため、攻撃は終了しました。");
-    getPendingAttackers().forEach((attacker) => standAttackerForMultiAttack(attacker.card));
-    clearPendingAttack();
+    // （対抗バウンス等でここに到達・無効化経路と対称。resolvePendingAttack の対象消失分岐と同型）。
+    // E6: ver2.05 2.6→3.3→3.5『バトルの終了時』も解決し、lastAttackOutcome も更新する。
+    endPendingAttackWithoutBattle("攻撃に関わるカードが場を離れたため、攻撃は終了しました。");
     return;
   }
   // 攻撃側カードが場を離れた場合、公式裁定は「連携攻撃ではなくなるが、残った1枚が攻撃する」。
@@ -1110,9 +1233,100 @@ function handleDestroyedDuringPending(target) {
   // ※呼び出し時点で除去カードは既に場から外れているため getPendingAttackers() は生存分のみを返す。
   const wasAttacker = getPendingAttackerSlots(pending).some((attacker) => sameSlot(attacker, target));
   if (wasAttacker && getPendingAttackers().length === 0) {
-    addLog("攻撃に関わるカードが場を離れたため、攻撃は終了しました。");
-    clearPendingAttack();
+    endPendingAttackWithoutBattle("攻撃に関わるカードが場を離れたため、攻撃は終了しました。");
   }
+}
+
+// E6: 攻撃しているカードまたは攻撃対象がなくなって攻撃が終わる時の終了処理（ver2.05 アタックフェイズの流れ
+// 2.6「攻撃しているカードまたは攻撃対象がなくなったり、攻撃が無効化された場合、3.3.に進みます」→3.3『攻撃中』
+// 『バトル中』の終了→3.5『バトルの終了時』『攻撃の終了時』の能力を解決→4.1『Ｎ回攻撃』）。無効化経路
+// (nullifyPendingAttack) と同じく 3.1(ヒット判定)/3.2(貫通・反撃) だけを飛ばし、lastAttackOutcome を更新して
+// battleEnd 系3放送と多回攻撃スタンドを行う。以前は addLog＋clearPendingAttack だけで、バトル終了時誘発が落ち、
+// lastAttackOutcome も前の攻撃のまま残っていた。nullified は立てない（無効化ではない）。
+function endPendingAttackWithoutBattle(message) {
+  const pending = state.pendingAttack;
+  if (!pending) {
+    return;
+  }
+  if (message) {
+    addLog(message);
+  }
+  // 場に残っている攻撃者（宣言時の本人のみ＝E2）。離場した攻撃者・入れ替わった別カードにはバトル終了時を配らない。
+  const liveAttackers = getPendingAttackers();
+  const liveSlots = liveAttackers.map((attacker) => ({
+    owner: attacker.owner,
+    zone: attacker.zone,
+    instanceId: attacker.card.instanceId,
+  }));
+  state.lastAttackOutcome = {
+    nullified: false,
+    endedWithoutBattle: true,
+    attackers: getPendingAttackerSlots(pending),
+    ...lastAttackOutcomeAttackerInfo(pending),
+    targetOwner: pending.targetOwner,
+    targetZone: pending.targetZone,
+    targetType: pending.targetType,
+    turnCount: state.turnCount,
+  };
+  liveAttackers.forEach((attacker) => requestMultiAttackStand(attacker));
+  const targetCard = pending.targetType !== "fighter" ? pendingAttackTargetCard(pending) : null;
+  const defenderSlot =
+    targetCard && pending.targetOwner != null && pending.targetZone
+      ? { owner: pending.targetOwner, zone: pending.targetZone }
+      : null;
+  queueBattleEndTriggers(liveSlots, defenderSlot);
+  if (pending.targetType !== "fighter") {
+    queueBattleEndFieldTriggers(pending.targetOwner, targetCard, pending.targetZone, {
+      nullified: false,
+      attackerOwner: pending.attackerOwner,
+      targetType: pending.targetType,
+    });
+  }
+  queueAttackerBattleEndFieldTriggers(liveSlots, {
+    nullified: false,
+    targetOwner: pending.targetOwner,
+    targetType: pending.targetType,
+  });
+  clearPendingAttack();
+}
+
+// E3: 多回攻撃のスタンド（ver2.05 4.1）の要求。能力本体の実行中（無効化/手札戻し等を含む効果の解決途中）なら、
+// その解決が終わるまで保留する（state.deferredMultiAttackStands → flushDeferredMultiAttackStands）。能力本体の
+// 外（直接呼び出し・攻撃税の不払い無効化・バトル終了時誘発の後）では即時に standAttackerForMultiAttack する。
+// attacker: { owner, zone, card }。保留中に場を離れた/入れ替わった/既にスタンドしたカードはスタンド処理しない。
+function requestMultiAttackStand(attacker) {
+  const card = attacker?.card;
+  if (!card) {
+    return;
+  }
+  if (typeof abilityBodyDepth === "number" && abilityBodyDepth > 0) {
+    state.deferredMultiAttackStands ||= [];
+    state.deferredMultiAttackStands.push({
+      owner: attacker.owner,
+      zone: attacker.zone,
+      instanceId: card.instanceId ?? null,
+    });
+    return;
+  }
+  standAttackerForMultiAttack(card);
+}
+
+function flushDeferredMultiAttackStands() {
+  const entries = state.deferredMultiAttackStands;
+  if (!entries?.length) {
+    return;
+  }
+  if (typeof abilityBodyDepth === "number" && abilityBodyDepth > 0) {
+    return; // まだ能力解決の途中（外側の解決終了時に再試行）
+  }
+  state.deferredMultiAttackStands = [];
+  entries.forEach((entry) => {
+    const card = attackerCardAt(entry.owner, entry.zone);
+    if (!card || (entry.instanceId != null && card.instanceId !== entry.instanceId) || !card.used) {
+      return;
+    }
+    standAttackerForMultiAttack(card);
+  });
 }
 
 function getPendingAttacker() {
@@ -1124,8 +1338,9 @@ function getPendingAttackers() {
   if (!pending) {
     return [];
   }
+  // E2: 宣言時の攻撃者(instanceId)が場を離れ、別のカードが同じエリアに入っていても攻撃者として扱わない。
   return getPendingAttackerSlots(pending)
-    .map((slot) => ({ ...slot, card: attackerCardAt(slot.owner, slot.zone) })) // E-XB54b: zone:"flag"→player.flag
+    .map((slot) => ({ ...slot, card: pendingAttackerCardAt(slot) })) // E-XB54b: zone:"flag"→player.flag
     .filter((attacker) => attacker.card);
 }
 
@@ -1133,6 +1348,21 @@ function getPendingAttackerSlots(pending) {
   return pending.attackers?.length
     ? pending.attackers
     : [{ owner: pending.attackerOwner, zone: pending.attackerZone }];
+}
+
+// audit2(b063-3 他): lastAttackOutcome に攻撃者の instanceId とカード情報の写し（compactCardForLog＝JSON 安全）を控える。
+// バトル終了時の条件 lastAttackIsLink(src/13) が「このカードが（他の《X》と）連携攻撃したバトル」かを、スロットの
+// 入れ替わりや連携相手の離場（反撃で破壊等）に左右されず判定するため。旧 state（未記録）では slots の instanceId を使う。
+function lastAttackOutcomeAttackerInfo(pending) {
+  const slots = getPendingAttackerSlots(pending);
+  const cards = slots.map((slot) => {
+    const card = pendingAttackerCardAt(slot);
+    return card ? compactCardForLog(card) : null;
+  });
+  return {
+    attackerInstanceIds: slots.map((slot, index) => slot.instanceId ?? cards[index]?.instanceId ?? null),
+    attackerCards: cards,
+  };
 }
 
 // S-UB-C03(0074/0083): 現在進行中のバトル(pendingAttack)に参加しているカードの instanceId 集合。
@@ -1146,13 +1376,13 @@ function pendingBattleCardIds() {
     return ids;
   }
   getPendingAttackerSlots(pending).forEach((slot) => {
-    const card = attackerCardAt(slot.owner, slot.zone); // E-XB54b: zone:"flag"→player.flag
+    const card = pendingAttackerCardAt(slot); // E-XB54b: zone:"flag"→player.flag／E2: 同一性確認
     if (card?.instanceId) {
       ids.add(card.instanceId);
     }
   });
   if (pending.targetType === "monster") {
-    const target = state.players[pending.targetOwner]?.field?.[pending.targetZone];
+    const target = pendingAttackTargetCard(pending); // E2
     if (target?.instanceId) {
       ids.add(target.instanceId);
     }

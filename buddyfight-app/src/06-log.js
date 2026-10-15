@@ -14,6 +14,39 @@ function addLog(message) {
   });
 }
 
+// pt-fix-c T7-8: 直前の（同じ処理の中で先に出た）行より「前の出来事」としてログを置く。state.log は新しい順。
+// addLog した後、predicate に一致する直近行の下（＝時系列で前）へ移す。
+function addLogBeneath(message, predicate) {
+  addLog(message);
+  if (!state?.log) {
+    return;
+  }
+  let index = 0;
+  while (index + 1 < state.log.length && predicate(state.log[index + 1])) {
+    const swap = state.log[index + 1];
+    state.log[index + 1] = state.log[index];
+    state.log[index] = swap;
+    index += 1;
+  }
+}
+
+// 破壊のログ（「…を破壊しました」）を、破壊の中で先に出た「…は場に残りました」（ソウルガード/破壊置換等）より
+// 前の出来事として置く（以前は「場に残りました」→「破壊しました」の順に読めた）。
+function addDestroyLog(message, destroyedName) {
+  addLogBeneath(
+    message,
+    (line) => typeof line === "string" && Boolean(destroyedName) && line.includes(destroyedName) && /場に残りました。$/.test(line),
+  );
+}
+
+// ダメージのログを、そのダメージで決着した勝利ログより前に置く（applyDamageToPlayer が checkWinner で先に勝利を記す）。
+function addDamageLog(message, winnerBefore) {
+  addLogBeneath(
+    message,
+    (line) => !winnerBefore && Boolean(state?.winner) && typeof line === "string" && /の勝利です。$/.test(line),
+  );
+}
+
 function createFightId() {
   return `fight-${new Date().toISOString().replace(/[:.]/g, "-")}-${Math.random()
     .toString(36)
@@ -123,6 +156,8 @@ function compactChoiceForLog(choice) {
     zoneLabel: choice.zone ? zoneLabel(choice.zone) : "",
     note: choice.note || "",
     card: compactCardForLog(choice.card),
+    // 対抗窓改修: 対抗窓の候補だけが持つ種別（pass/passTurn/use）と札の所在（hand/field/drop）。他の選択では付かない。
+    ...(choice.counterWindowAnswer ? { counterWindowAnswer: choice.counterWindowAnswer, counterSource: choice.counterSource || null } : {}),
   };
 }
 

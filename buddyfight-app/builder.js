@@ -78,7 +78,8 @@ async function initializeBuilder() {
     render();
     updateDeckSnapshot();
     mountBuilderAccount();
-    setStatus("準備完了");
+    // U5: 共有URLの読込結果（成功/失敗理由）は「準備完了」で上書きせず最後に出す。
+    setStatus(deckFromUrlMessage || "準備完了");
   } catch (error) {
     setStatus(`読込失敗: ${error.message}`);
   }
@@ -521,6 +522,10 @@ function validateDeck(deck) {
     overLimitNames.length === 0,
     overLimitNames.length ? `同名上限超過: ${overLimitNames.join(" / ")}` : "同名カード: 上限以内（通常4枚／角王はホーム外1枚）",
   );
+  // audit2(b080-10): バディ枚数に応じた投入上限（俺のバディ！）。該当カードが無いデッキでは表示しない。
+  buddyCountOverages(currentDeck.recipe, findCard, deck.buddy).forEach((entry) => {
+    addValidation(items, false, `${entry.name}: バディが${entry.buddyGte}枚入っていないので${entry.limit}枚まで（${entry.count}枚）`);
+  });
 
   const invalidWorlds = flag ? unusableCardsForFlag(flag) : [];
   if (invalidWorlds.length) {
@@ -605,6 +610,39 @@ function deckLimitOverages(recipe, lookup, flag) {
   groups.forEach((group) => {
     const limit = groupCopyLimitFor(flag, group, linkedKeys);
     if (group.count > limit) over.push({ name: group.name, count: group.count, limit });
+  });
+  return over;
+}
+
+// audit2(b080-10 俺のバディ！「君のデッキにバディが４枚入ってないなら、「俺のバディ！」はデッキに１枚だけ」):
+// カードフラグ deckLimitUnlessBuddyCount:{buddyGte, limit, group}。デッキ内のバディ（buddyId のカードと同名）の
+// 合計枚数が buddyGte 未満なら、同じ group（無ければカード名）を持つカードの合計を limit 枚までに制限する。
+// 該当フラグを持つカードが無いデッキでは常に [] ＝従来の検証と不変（テスト用にグローバル公開）。
+function buddyCountLimitedGroups(recipe, lookup, buddyId) {
+  const buddy = buddyId ? lookup(buddyId) : null;
+  let buddyCopies = 0;
+  const groups = new Map();
+  (recipe || []).forEach(([id, count]) => {
+    const card = lookup(id);
+    const n = Number(count || 0);
+    if (buddy && card && (id === buddyId || card.name === buddy.name)) buddyCopies += n;
+    const rule = card?.deckLimitUnlessBuddyCount;
+    if (!rule) return;
+    const key = rule.group || card.name;
+    const group = groups.get(key) || { name: key, count: 0, rule };
+    group.count += n;
+    groups.set(key, group);
+  });
+  return { buddyCopies, groups };
+}
+function buddyCountOverages(recipe, lookup, buddyId) {
+  const { buddyCopies, groups } = buddyCountLimitedGroups(recipe, lookup, buddyId);
+  const over = [];
+  groups.forEach((group) => {
+    const limit = group.rule.limit ?? 1;
+    if (buddyCopies < (group.rule.buddyGte ?? 4) && group.count > limit) {
+      over.push({ name: group.name, count: group.count, limit, buddyGte: group.rule.buddyGte ?? 4 });
+    }
   });
   return over;
 }
@@ -815,6 +853,8 @@ function filteredCards() {
 
 // カード番号から公式カード画像URLを導出（ローカルWebPが無い場合のフォールバック）。
 function officialCardImageUrl(card) {
+  // 別絵（アイドルレア/究極レア等）は no から導出すると基底版の絵になるため、card.imageUrl を優先（エンジン src/12 と同じ）。
+  if (card?.imageUrl) return card.imageUrl;
   const no = card?.no;
   if (!no || no.indexOf("/") < 0) {
     return "";
@@ -959,12 +999,21 @@ function createCardResult(card) {
   const isFlagOnly = card.type === "flag" && !card.deckable;
   const groupKey = limitGroupKeyOf(card, card.id);
   const linked = !isFlagOnly && limitLinkedGroupKeys().has(groupKey);
-  const copyLimit = isFlagOnly
+  let copyLimit = isFlagOnly
     ? null
     : linked
       ? deckGroupCopyLimit(flag, groupKey, card)
       : cardCopyLimitForFlag(flag, card);
-  const count = linked ? deckGroupCount(groupKey) : deckCardCount(card.id);
+  let count = linked ? deckGroupCount(groupKey) : deckCardCount(card.id);
+  // audit2(b080-10): deckLimitUnlessBuddyCount を持つカードは、バディが規定枚数未満の間グループ合計を limit 枚までに。
+  if (!isFlagOnly && card.deckLimitUnlessBuddyCount) {
+    const { buddyCopies, groups } = buddyCountLimitedGroups(currentDeck.recipe, findCard, currentDeck.buddy);
+    const rule = card.deckLimitUnlessBuddyCount;
+    if (buddyCopies < (rule.buddyGte ?? 4)) {
+      count = Math.max(count, groups.get(rule.group || card.name)?.count || 0);
+      copyLimit = Math.min(copyLimit, rule.limit ?? 1);
+    }
+  }
   const node = document.createElement("article");
   node.className = "builder-card";
   node.innerHTML = `
@@ -1303,7 +1352,11 @@ async function copyShareUrl() {
 }
 
 // builder.html?deck=BFD1.… で起動したら、そのデッキを初期表示にする（不正コードは握り潰さず日本語で通知）。
+// applyDeckFromUrl の結果メッセージ（?deck= 無しなら空）。initializeBuilder が最後に表示し直す（U5）。
+let deckFromUrlMessage = "";
+
 function applyDeckFromUrl() {
+  deckFromUrlMessage = "";
   let params;
   try {
     params = new URLSearchParams(window.location.search || "");
@@ -1316,7 +1369,8 @@ function applyDeckFromUrl() {
   }
   const result = readDeckShareCode(code);
   if (!result.ok) {
-    setStatus("共有URLのデッキを読み込めませんでした: " + result.message);
+    deckFromUrlMessage = "共有URLのデッキを読み込めませんでした: " + result.message;
+    setStatus(deckFromUrlMessage);
     return false;
   }
   currentDeck = cloneDeck(result.deck);
@@ -1324,7 +1378,8 @@ function applyDeckFromUrl() {
   if (elements.shareCodeInput) {
     elements.shareCodeInput.value = encodeDeckObjectShareCode(currentDeck);
   }
-  setStatus("共有URLからデッキを読み込みました。");
+  deckFromUrlMessage = "共有URLからデッキを読み込みました。";
+  setStatus(deckFromUrlMessage);
   return true;
 }
 
@@ -1575,7 +1630,13 @@ function deleteSelectedSavedDeck() {
     return;
   }
   const decks = loadSavedDecks().filter((deck) => deck.id !== id);
-  localStorage.setItem(customDeckStorageKey, JSON.stringify(decks));
+  try {
+    localStorage.setItem(customDeckStorageKey, JSON.stringify(decks));
+  } catch (error) {
+    // プライベートブラウズ/ストレージ無効・容量超過等。削除できていないのに「削除しました」と出さない。
+    setStatus(`削除に失敗しました（ブラウザの保存領域に書き込めません）: ${error.message}`);
+    return;
+  }
   populateSavedDecks();
   lastLoadedSavedValue = elements.savedDeckSelect.value; // 一覧再構築でプレースホルダへ戻る
   syncSavedDeckPickerLabel();
@@ -1589,10 +1650,30 @@ function importDeckFromText() {
     if (!imported || !Array.isArray(imported.recipe)) {
       throw new Error("デッキ形式ではありません。");
     }
+    // U6: 共有コード取込(readDeckShareCode)と同じ validateDeckCodePayload で検証する
+    // （NaN枚・不明ID・5枚以上・重複ID・桁外れの枚数を弾く。旧実装は無検証でそのまま盤面に載せていた）。
+    const name = String(imported.name || "インポートデッキ").slice(0, 60);
+    const checked = validateDeckCodePayload(
+      {
+        ver: 1,
+        name,
+        flag: canonicalFlagId(imported.flag || ""),
+        buddy: imported.buddy || null,
+        recipe: imported.recipe,
+      },
+      {
+        cardIds: shareCodeCardIds(),
+        flagIds: shareCodeFlagIds(),
+        unlimitedCardIds: shareCodeUnlimitedCardIds(),
+        limitGroups: typeof buildLimitGroups === "function" ? buildLimitGroups(cards) : undefined,
+      },
+    );
+    if (!checked.ok) {
+      throw new Error(checked.reason);
+    }
     currentDeck = cloneDeck({
-      ...imported,
+      ...checked.normalized,
       id: imported.id || createDeckId("custom"),
-      name: imported.name || "インポートデッキ",
     });
     updateDeckSnapshot();
     render();

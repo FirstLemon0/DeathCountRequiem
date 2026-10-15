@@ -31,6 +31,11 @@ function selectFieldCard(owner, zone) {
   }
   const canSelect =
     (!hasPendingResolution() && owner === state.active) ||
+    // ②プレイタイミング／【対抗】の流れ 6.: ターンファイターが何も使わなければ、非ターンファイターは【対抗】を持つ
+    // カードまたは能力（手札か場かを問わない）から1つ選んで使える。場の【対抗】【起動】を今使える札だけ選択を許す。
+    (!hasPendingResolution() &&
+      owner !== state.active &&
+      findUsableFieldAbilities(card, owner).some((ability) => isCounterAbility(ability))) ||
     (state.pendingAttack &&
       [state.pendingAttack.attackerOwner, state.pendingAttack.defender].includes(owner)) ||
     (state.pendingAction && owner === state.pendingAction.responder);
@@ -232,8 +237,9 @@ function isCallZoneBlocked(owner, card, zone) {
 }
 
 // 必殺モンスター(DDD)のコール可否（共通ゲート）。「必殺モンスターは1ターンに1枚、君の
-// ファイナルフェイズにのみコールできる」（カード注記）は、通常コール・バディコール・特殊コール・
-// 効果によるコール（src/14 の callSelected 系）の全てに掛かる。非 impactMonster は常に許可（既存挙動不変）。
+// ファイナルフェイズにのみコールできる」（カード注記）は、通常コール・バディコール・特殊コールに掛かる。
+// 効果によるコール（src/14 の callSelected 系＝options.byEffect）は ver2.05 ⑤により対象外（計上もしない）。
+// 非 impactMonster は常に許可（既存挙動不変）。
 // E3(D-SS03/0020 革命者 ゼータ・0028/0029 ジェムクローン): 必殺モンスターの「1ターンに1枚」コール上限を
 // データ駆動で引き上げる。既定 cap=1（＝従来の `< 1` と完全に等価＝挙動不変）。場札/装備アイテムの継続
 // raiseImpactCallCap（controller/conditions 走査＝restrictOwnCall と同流儀）を反映する。
@@ -272,6 +278,12 @@ function impactMonsterCallAllowed(owner, card, options = {}) {
   if (card?.type !== "impactMonster") {
     return true;
   }
+  // ver2.05 ⑤必殺モンスターのコール「効果によって「必殺モンスター」をコールする場合、「１ターンに１回」には含まれません
+  // …（逆の手順も可）」・Q1/A1「カードの効果以外で必殺モンスターをコールする場合、自分のファイナルフェイズにしか
+  // コールできません」＝効果コール(byEffect)は1ターン1枚にもファイナル限定にも服さない。
+  if (options.byEffect) {
+    return true;
+  }
   const underPerTurnLimit = (state.impactMonsterCallsThisTurn?.[owner] || 0) < impactCallCap(owner, options);
   // 0008 デュエルズィーガー等: カード自身の特殊コール文（「〜が破壊された時…コールしてよい」）が成立している
   // 場合は、必殺モンスター一般注記の「自分のファイナルフェイズのみ」ゲートを免除する（カードテキスト優先原則。
@@ -307,7 +319,9 @@ function turnCallRestrictionBlocks(owner, card) {
   return (state.callRestrictionsThisTurn || []).some(
     (restriction) =>
       restriction.owner === owner &&
-      !(restriction.allowFilter && matchesCardFilter(card, restriction.allowFilter)),
+      !(restriction.allowFilter && matchesCardFilter(card, restriction.allowFilter)) &&
+      // 裁定 R9: whileCond（「そのターン中、〜なら」）は判定のたびに再評価。無い記帳は常時有効（後方互換）。
+      whileConditionsHold(restriction),
   );
 }
 
@@ -320,14 +334,15 @@ function recordSpellCastThisTurn(owner) {
   state.spellsCastThisTurn[owner] = (state.spellsCastThisTurn[owner] || 0) + 1;
 }
 
-function recordImpactMonsterCall(owner, card) {
+function recordImpactMonsterCall(owner, card, options = {}) {
   // E-XB7(X-SS03/0060 ロイヤルティ): 総コール枚数（席別）をターン内で加算する。この関数は全ての
   // コール materialization 点（callMonster＋script 系 callSelected* 全経路）で呼ばれるため、ここ1箇所で
   // 「今ターン、その席が何枚コールしたか」を漏れなく計上できる（restrictCallCountPerTurn が参照）。
   // 同名単位の callLimitPerTurn(calledCardNamesThisTurn) とは完全に別軸。
   state.callsThisTurn ||= [0, 0];
   state.callsThisTurn[owner] = (state.callsThisTurn[owner] || 0) + 1;
-  if (card?.type !== "impactMonster") {
+  // 効果によるコールは必殺モンスターの「１ターンに１回」に含まれない（ver2.05 ⑤）。総コール数(callsThisTurn)は計上する。
+  if (card?.type !== "impactMonster" || options.byEffect) {
     return;
   }
   state.impactMonsterCallsThisTurn ||= [0, 0];
@@ -352,6 +367,8 @@ async function callMonster(zone) {
   // cannotCallNormally/必殺モンスターゲート/callConditions/isCallRestricted/callLimitPerTurn 等）が addLog のみで
   // 早期 return し render() を呼ばないため、却下理由が画面 #logList に出ず「クリックしても無反応」に見えた（bt04-0103 で実証）。
   // 却下は state 未変更なので、成功パスの明示 render() に加え単一 finally で確実に画面へ反映する（表示のみ・冪等）。
+  runDeckZeroRuleProcessing(); // 先行する解決（誘発等）でデッキ0枚になっていれば行動前に敗北を確定
+  noteDeckCountsForRuleProcessing();
   try {
     return await callMonsterImpl(zone);
   } finally {
@@ -447,7 +464,10 @@ async function callMonsterImpl(zone) {
   const declaredBuddyCall = isBuddyCallDeclared(player, selectedCard);
   const deckBeforeCost = player.deck.length;
   const lifeBeforeCost = player.life;
-  const payment = await payCardCostWithSelection(player, selectedCard, "call", selectedCard);
+  // audit2(b078-6): コール元ゾーンを軽減判定へ明示（通常=手札・奇襲=ドロップ）。
+  const payment = await payCardCostWithSelection(player, selectedCard, "call", selectedCard, {
+    callFromZone: isAmbushCall ? "drop" : "hand",
+  });
   if (!payment.ok) {
     addLog(payment.reason);
     return;
@@ -463,6 +483,13 @@ async function callMonsterImpl(zone) {
     addLog(`${selectedCard.name}が${isAmbushCall ? "ドロップゾーン" : "手札"}にないため、コールを中止しました。`);
     return;
   }
+  if (declaredBuddyCall) {
+    // E4: ver2.05 コールの流れ 1.x「このゲーム中、まだ自分がバディコールを宣言していない」＝バディコールの
+    // 権利は“宣言”で消費する（コスト支払い後、バディゾーンのカードをレストで置く時点）。以前は解決時にだけ
+    // 立てていたため、ゴー・トゥ・ヘル等で無効化されると再度バディコールでき、ライフ+1を得られた。
+    // バディギフト(+1)は従来どおり解決時（場に置かれたなら・Q&A A1: 打ち消されたらライフは+1されない）。
+    player.partnerCalled = true;
+  }
   beginPendingAction({
     kind: "call",
     owner: selectedOwner,
@@ -475,13 +502,16 @@ async function callMonsterImpl(zone) {
     // E-Y1(奇襲): このコールが『奇襲』ルート由来か。resolvePendingCall→resolveOnEnter で
     // card.calledViaAmbush を立て、allyAmbushEnter を放送する。
     viaAmbush: isAmbushCall,
-    effectTargetValue: elements.effectTarget.value,
+    // T4(シーザリオン bf-d-td01-0001): 重ねコールでは効果対象欄は「重ね先」の指定に使われている。これを登場時能力の
+    // 対象として持ち越すと、重ねた後そのエリアに居る自分自身が「相手の場のモンスター」等の対象として解決され自壊した。
+    // 重ね先は stackTarget に保存済みなので、重ねコールでは登場時の事前対象を持たない（解決時に登場時能力側で選ぶ）。
+    effectTargetValue: stackTarget ? "" : elements.effectTarget.value,
   });
   if (specialCallOpportunity) {
     specialCallOpportunity.used = true;
   }
   recordCardCalledThisTurn(selectedOwner, card);
-  // 必殺モンスターの「1ターンに1枚」は宣言成立（コスト支払い済み）時点で消費する（無効化されても戻らない）。
+  // 必殺モンスターの「1ターンに1枚」は宣言成立（コスト支払い済み）時点で消費する（無効化されたら resolvePendingCall で戻す＝⑤Q4）。
   recordImpactMonsterCall(selectedOwner, card);
   addLog(`${player.name}は${card.name}を${zoneLabel(actualZone)}にコール宣言しました。対抗確認を行ってください。`);
   render();
@@ -535,6 +565,12 @@ async function resolvePendingCall(action) {
   const player = state.players[action.owner];
   const card = action.card;
   if (action.nullified) {
+    // ver2.05 ⑤Q4/A4「無効化された場合、必殺モンスターの「１ターンに１回だけコールできる」は適用されません」。
+    // 宣言時(callMonster)に計上した必殺コール数を戻す（kind:"call" の pending は通常/バディ/特殊コール宣言のみ）。
+    if (card?.type === "impactMonster" && state.impactMonsterCallsThisTurn?.[action.owner] > 0) {
+      state.impactMonsterCallsThisTurn[action.owner] -= 1;
+    }
+    card.deferredEnteredSoulTriggers = []; // 場に出なかった＝控えた enteredSoul 誘発は解決しない
     player.drop.push(card);
     addLog(`${card.name}のコールは無効化され、ドロップゾーンに置かれました。`);
     return;
@@ -543,6 +579,7 @@ async function resolvePendingCall(action) {
     ? getFieldTarget(action.stackTarget.owner, action.stackTarget.zone)
     : null;
   if (action.stackTarget && !stackTarget) {
+    card.deferredEnteredSoulTriggers = [];
     player.drop.push(card);
     addLog(`${card.name}を重ねる対象が場を離れたため、ドロップゾーンに置かれました。`);
     return;
@@ -563,21 +600,23 @@ async function resolvePendingCall(action) {
   }
   card.conditionalSize = null; // 再コール時は前回のサイズ上書き(アンノウン0029等)をリセット
   await enforceSizeLimit(player, actualZone);
-  state.phase = action.phase || "main";
+  // pt-fix-c: コールのログを、この後の★ルール処理★（サイズ超過のドロップ）より前の出来事として置く。
+  const isSizeRuleLine = (line) => typeof line === "string" && /^サイズ合計が\d+を超えたため、.*をルール処理でドロップに置きました。$/.test(line);
+  state.phase = phaseAfterPendingAction(action, "main");
   state.selected = null;
   state.linkAttackers = [];
   state.buddyCallDeclared = null;
   if (action.declaredBuddyCall) {
-    player.partnerCalled = true;
+    player.partnerCalled = true; // 宣言時に立て済み（冪等。旧セーブの宣言中 pending 互換）
     player.life += 1;
-    addLog(`${player.name}は${card.name}を${zoneLabel(actualZone)}にバディコールし、ライフを1回復しました。`);
+    addLogBeneath(`${player.name}は${card.name}を${zoneLabel(actualZone)}にバディコールし、ライフを1回復しました。`, isSizeRuleLine);
     // バディギフトの+1も『ライフの回復』＝『君のライフが回復した時』(ヲチミズ等)を誘発する。ペイン・フィールド
     // (bt05-0083)『相手は、バディギフト以外でライフを回復できない』がバディギフトを回復手段として明示的に分類する。
     // ルール処理の回復なので isLifeGainByEffectPrevented(効果による回復の禁止)ではゲートしない（第12回メカレビュー）。
     clearWinnerIfNoCurrentLoss();
     await runFieldEventTriggers("lifeGained", action.owner);
   } else {
-    addLog(`${player.name}は${card.name}を${zoneLabel(actualZone)}にコールしました。`);
+    addLogBeneath(`${player.name}は${card.name}を${zoneLabel(actualZone)}にコールしました。`, isSizeRuleLine);
   }
   if (card.destroyAtEndOfTurn) {
     card.destroyAtEndOfTurnOwner = action.owner;
@@ -585,7 +624,9 @@ async function resolvePendingCall(action) {
   // 通常コールは手札発。奇襲コールはドロップ発（E-Y1）。
   // enteredFromZoneIn 条件（「手札から登場した時」H-PP01/0031 等）のためにスタンプする。
   card.enteredFromZone = action.viaAmbush ? "drop" : "hand";
-  await resolveOnEnter(card, player, getTargetInfoFromValue(action.effectTargetValue), {
+  // 重ねコールの重ね先は登場時能力の対象にしない（上の宣言側と二重の防御。旧セーブの宣言中 pending も対象）。
+  const storedEnterTarget = action.stackTarget ? null : getTargetInfoFromValue(action.effectTargetValue);
+  await resolveOnEnter(card, player, storedEnterTarget, {
     ambush: Boolean(action.viaAmbush),
   });
 }
@@ -641,23 +682,141 @@ function stackFieldCardAsSoul(player, zone, card) {
   }
   resetEnteringFieldCardState(card); // 重ねコールで場に入るカードも前回の一時状態を持ち込まない（冪等・第13回メカレビュー）
   player.field[zone] = card;
+  // 重ね元(baseCard)は「場から」card のソウルに入った＝enteredSoul（竜装機 チャージャー等）。継承ソウルは soul→soul で対象外。
+  if (baseCard) {
+    queueEnteredSoulTriggers(baseCard, state.players.indexOf(player), "field", card);
+  }
   // E-XB24: 重ねコール／ソウル継承でホスト(card)がソウルを得た＝「ソウルが入った時」ブロードキャスト。
   if (added > 0) {
     queueSoulCardAddedTriggers(card, state.players.indexOf(player), added, baseCard);
   }
 }
 
+// E5: ★ルール処理★のサイズ検査（ver2.05「場のモンスターのサイズ合計が3より大きいなら、3以下になるまで、最後に
+// 場に置かれたモンスター以外のモンスターをドロップゾーンに置きます」）。コール時(enforceSizeLimit)だけでなく、
+// 解決の終わり・フェイズ移行・ターン開始の各ルール処理点で両ファイターを再検査する（サイズ減少の継続源が場を
+// 離れた／無効化された・ターン限定のサイズ修整が切れた等で、コール以外の契機でも超過は起こる）。
+// どれを置くかは持ち主が選ぶ（enforceSizeLimit の既存の選択UI＝CPU/権威サーバのプロンプト経路と共通）。
+// 最後に場に置かれたモンスター（resetEnteringFieldCardState が刻む fieldEnteredSeq の最大）は置かない。
+// 再入防止: 選択待ち(await)中に別のルール処理点から呼ばれても二重に走らせない。
+let sizeRuleProcessingActive = false;
+
+// ★ルール処理★の敗北判定（詳細ルール ver2.05 p.1『「ライフが0以下」または「デッキが0枚」の場合、そのファイターは
+// 敗北します。』）。デッキを0枚にする効果（デッキサーチ・lookTop系の altTo:drop/gauge・デッキ下から手札 等）の多くは
+// 個別に declareDeckLoss を呼ばないため、解決の終わりのルール処理点（runSizeRuleProcessing の全呼び出し点）と
+// クリック起点アクション（カード使用/コール）の入口で一元的に判定する。
+// 後方互換: 「前回のルール処理以降にデッキが1枚以上あった（＝観測された）席がデッキ0枚になった」場合だけ敗北とする。
+// 観測は render()・アクション入口・本判定の後で行う。最初から空デッキで組んだ内部テスト等（観測されたことが無い）は従来どおり不変。
+// 観測は「1枚以上」を記録するだけで0枚では上書きしない（解決途中の一時的なデッキ0枚の再描画で記録を消さない）。
+const deckSeenNonEmptyForRule = new WeakMap();
+
+function noteDeckCountsForRuleProcessing() {
+  if (!Array.isArray(state?.players)) {
+    return;
+  }
+  state.players.forEach((player) => {
+    if (player && Array.isArray(player.deck) && player.deck.length > 0) {
+      deckSeenNonEmptyForRule.set(player, true);
+    }
+  });
+}
+
+function runDeckZeroRuleProcessing() {
+  if (!Array.isArray(state?.players) || state.winner) {
+    return;
+  }
+  state.players.forEach((player) => {
+    if (
+      !state.winner &&
+      player &&
+      Array.isArray(player.deck) &&
+      player.deck.length === 0 &&
+      deckSeenNonEmptyForRule.get(player)
+    ) {
+      declareDeckLoss(player); // isSeatLossPrevented（ファイトに敗北しない）を尊重
+    }
+  });
+  state.players.forEach((player) => {
+    if (player && Array.isArray(player.deck)) {
+      deckSeenNonEmptyForRule.set(player, player.deck.length > 0);
+    }
+  });
+}
+
+async function runSizeRuleProcessing() {
+  runDeckZeroRuleProcessing();
+  if (sizeRuleProcessingActive || state.winner || !Array.isArray(state.players)) {
+    return;
+  }
+  sizeRuleProcessingActive = true;
+  try {
+    for (const owner of [state.active, 1 - state.active]) {
+      const player = state.players[owner];
+      if (!player?.field || !(getFieldSize(player) > fieldSizeLimit(player))) {
+        continue;
+      }
+      await enforceSizeLimit(player, latestPlacedFieldZone(player));
+    }
+  } finally {
+    sizeRuleProcessingActive = false;
+  }
+}
+
+// 最後に場に置かれたモンスターのエリア（fieldEnteredSeq が最大の場のモンスター。記録が無ければ null＝保護なし）。
+function latestPlacedFieldZone(player) {
+  let latestZone = null;
+  let latestSeq = -Infinity;
+  fieldZones.forEach((zone) => {
+    const seq = player.field[zone]?.fieldEnteredSeq;
+    if (typeof seq === "number" && seq > latestSeq) {
+      latestSeq = seq;
+      latestZone = zone;
+    }
+  });
+  return latestZone;
+}
+
 async function enforceSizeLimit(player, latestZone) {
   const limit = fieldSizeLimit(player);
   while (getFieldSize(player) > limit) {
     // 直近コールしたカード(latestZone)以外の自分の場のカードから、どれをドロップに置くかを持ち主が選ぶ
-    // （ver2.05 の★ルール処理★＝サイズ超過時、超えないよう自分のカードをドロップに置く。どれを置くかは持ち主の選択）。
-    const candidateZones = fieldZones.filter((zone) => zone !== latestZone && player.field[zone]);
+    // （ver2.05 の★ルール処理★「場のモンスターのサイズ合計が3より大きいなら、3以下になるまで、最後に場に置かれた
+    // モンスター以外のモンスターをドロップゾーンに置きます」。どれを置くかは持ち主の選択）。
+    // latestZone は配列も可（同時コール＝今回置いたカード全てが「最後に置かれた」側。rulings-f）。
+    const latestZones = Array.isArray(latestZone) ? latestZone : [latestZone];
+    const others = fieldZones.filter((zone) => !latestZones.includes(zone) && player.field[zone]);
+    let candidateZones = others;
+    if (candidateZones.length === 0 && Array.isArray(latestZone)) {
+      // 同時に置いたカードだけでサイズを超える場合は、その中から持ち主が選んでドロップに置く。
+      candidateZones = fieldZones.filter((zone) => player.field[zone]);
+    }
+    // pt-fix-c T5（オーナー裁定 a）: 最後に置かれたモンスター以外を全て置いても超過が解消しない（アジ・ダハーカ サイズ4・
+    // サツキ サイズ5 等の単体超過）なら、それ以外を全てドロップに置き、それでも超えていれば最後に置かれたモンスターも
+    // ドロップに置く（公式Q&A No.620 終焉魔竜 アジ・ダハーカ「最後に置かれた アジ・ダハーカ 以外のモンスターをドロップゾーンに
+    // 置き、それでも…３より大きいので、最後に置かれた アジ・ダハーカ をドロップゾーンに置きます」／No.322 ゴルドリッター
+    // 「最後に置かれたモンスター以外にドロップゾーンに置けるモンスターがなく…最後に置かれたモンスターをドロップゾーンに置いて」）。
+    // コール自体は禁止されない（ver2.05 ①コールの流れに単体超過でコールできない旨の規定は無い）。選ばせる意味が無いので自動。
+    let autoDrop = false;
+    if (candidateZones.length === 0) {
+      candidateZones = latestZones.filter((zone) => fieldZones.includes(zone) && player.field[zone]);
+      autoDrop = true;
+    } else {
+      const othersSize = candidateZones.reduce((total, zone) => total + effectiveSize(player.field[zone]), 0);
+      if (getFieldSize(player) - othersSize > limit) {
+        autoDrop = true; // 他を全て置いても解消しない＝全て置く（順序は結果に影響しない）
+      } else {
+        // サイズ0のカードは置いても超過が解消しない＝候補に出さない（以前は出ていて、選ぶと2枚失った）。
+        const sized = candidateZones.filter((zone) => effectiveSize(player.field[zone]) > 0);
+        if (sized.length > 0) {
+          candidateZones = sized;
+        }
+      }
+    }
     if (candidateZones.length === 0) {
       break;
     }
     let dropZone = candidateZones[0];
-    if (candidateZones.length > 1) {
+    if (candidateZones.length > 1 && !autoDrop) {
       const owner = state.players.indexOf(player);
       const picked = await chooseCardEntries(
         candidateZones.map((zone) => ({ card: player.field[zone], zone })),
@@ -675,7 +834,15 @@ async function enforceSizeLimit(player, latestZone) {
       const pickedId = picked?.[0]?.card?.instanceId;
       dropZone = candidateZones.find((zone) => player.field[zone]?.instanceId === pickedId) ?? candidateZones[0];
     }
+    // 選択(await)中に並行する別の処理（他のルール処理点・破壊時コール等）が既に場を動かしていることがある。
+    // 超過が解消していれば終える／選んだカードが居なければ選び直す（null.name で落ちない・E5）。
+    if (!(getFieldSize(player) > limit)) {
+      break;
+    }
     const dropped = player.field[dropZone];
+    if (!dropped) {
+      continue;
+    }
     dropFieldCardByRule(player, dropZone);
     addLog(`サイズ合計が${limit}を超えたため、${dropped.name}をルール処理でドロップに置きました。`);
   }
@@ -688,6 +855,10 @@ async function resolveOnEnter(card, player, storedTarget = null, options = {}) {
   // E-Y1(奇襲): この登場が『奇襲』ルート由来かを card に刻む（毎登場ごとに明示代入＝過去の奇襲登場が
   // 後の通常登場に残らない stale 防止）。calledViaAmbush 条件op（0003/0033/0036/0064/0092/0094）が参照する。
   card.calledViaAmbush = Boolean(options.ambush);
+  // 「君の場にモンスターが登場した時」等の放送先は、登場（事象）の時点で場/ドロップにあったカードに限る
+  // （ver2.05 自動能力は事象の発生で待機状態になる）。自身の登場時能力の解決中にコールされたカードが、
+  // 先に登場したこのカードの登場へ反応しないよう、自己 enter 解決前にスナップショットを取る。
+  const enterSnapshot = snapshotTriggerListeners();
   // onEnter:"destroy-opponent-size2" は desugarCardFlags で構造化 triggered/enter ability へ
   // 変換済みのため、専用ハードコード分岐は不要。すべて runTriggeredAbilities が処理する。
   await runTriggeredAbilities(card, "enter", {
@@ -703,6 +874,9 @@ async function resolveOnEnter(card, player, storedTarget = null, options = {}) {
     enteredOwner: owner,
     enteredZone: zone,
     target: storedTarget || null,
+    // 宣言時に効果対象欄から事前指定された対象は、登場時能力ごとに自身の対象指定（controller/filter 等）で
+    // 再検証する（runTriggeredAbilities）。合わなければ事前指定を捨てて能力側で選び直す（T4 の一般化）。
+    __validateStoredTarget: Boolean(storedTarget),
     // 「カードの効果で登場した時」条件（enteredByEffect。H-PP01/0044）用。
     // 通常コール経路（resolvePendingCall/arriveCard）は false、script のコール系は true を渡す。
     enteredByEffect: Boolean(options.byEffect),
@@ -711,7 +885,7 @@ async function resolveOnEnter(card, player, storedTarget = null, options = {}) {
     // enteredByCardNamed/enterCauseMatches は false（既存カードの enter 誘発は挙動不変・オプトイン）。
     enterCauseCard: options.enterCauseCard || null,
   });
-  await runAllyEnterTriggers(card, owner, zone);
+  await runAllyEnterTriggers(card, owner, zone, enterSnapshot);
   // E-Y1(奇襲): 「君のモンスターが『奇襲』で登場した時」の場イベント allyAmbushEnter（0039 飛翔刃）。
   // 場全体へ放送。奇襲登場でない通常登場では発火しない＝既存挙動不変（オプトイン）。
   if (options.ambush) {
@@ -724,12 +898,26 @@ async function resolveOnEnter(card, player, storedTarget = null, options = {}) {
   }
 }
 
-async function runAllyEnterTriggers(enteredCard, owner, enteredZone) {
-  for (const triggerOwner of [owner, 1 - owner]) {
+// 事象発生時点の場札・ドロップ札（席ごと）。誘発の配送先をイベント発生時に居たカードへ限定するのに使う。
+function snapshotTriggerListeners() {
+  return {
+    field: state.players.map((player) => zones.map((zone) => player?.field?.[zone]).filter(Boolean)),
+    drop: state.players.map((player) => [...(player?.drop || [])]),
+  };
+}
+
+async function runAllyEnterTriggers(enteredCard, owner, enteredZone, snapshot = null) {
+  // ④2.1.1/2.1.2: 待機中の自動能力はターンファイターのものから解決する（登場した側ではなく state.active 優先）。
+  const turnSeat = state.active === 0 || state.active === 1 ? state.active : owner;
+  for (const triggerOwner of [turnSeat, 1 - turnSeat]) {
     const event = triggerOwner === owner ? "allyEnter" : "opponentEnter";
     for (const zone of zones) {
       const sourceCard = state.players[triggerOwner]?.field?.[zone];
       if (!sourceCard || sourceCard.instanceId === enteredCard.instanceId) {
+        continue;
+      }
+      // snapshot 指定時: 登場の時点で場に居なかったカード（登場時能力の解決中にコールされた等）は反応しない。
+      if (snapshot && !snapshot.field.some((cards) => cards.includes(sourceCard))) {
         continue;
       }
       await runTriggeredAbilities(sourceCard, event, {
@@ -752,6 +940,9 @@ async function runAllyEnterTriggers(enteredCard, owner, enteredZone) {
       if (sourceCard.instanceId === enteredCard.instanceId || !(sourceCard.abilities || []).some(isDropEnter)) {
         continue;
       }
+      if (snapshot && !(snapshot.drop[triggerOwner] || []).includes(sourceCard)) {
+        continue; // 登場の時点でドロップに居なかった
+      }
       await runTriggeredAbilities(sourceCard, event, {
         card: sourceCard,
         player: state.players[triggerOwner],
@@ -771,7 +962,10 @@ async function runFieldEventTriggers(eventBase, eventOwner, eventCard, eventZone
   // __excludeSourceInstanceId: イベントの発生源カード自身をリスナーから除外する
   // （設置魔法が自分の設置=「使った時」に自己反応しないように。連鎖を狙え！等）。
   const { __excludeSourceInstanceId, ...detailRest } = details;
-  for (const triggerOwner of [eventOwner, 1 - eventOwner]) {
+  // ④2.1.1/2.1.2: 同時に待機状態になった自動能力は、ターンファイターのものから解決する（イベントを起こした側を
+  // 先にしない。総合レビュー rule-counter-7）。ally/opponent の別はイベントを起こした席(eventOwner)基準のまま。
+  const turnSeat = state.active === 0 || state.active === 1 ? state.active : eventOwner;
+  for (const triggerOwner of [turnSeat, 1 - turnSeat]) {
     const event = triggerOwner === eventOwner ? `ally${capitalizeAscii(eventBase)}` : `opponent${capitalizeAscii(eventBase)}`;
     for (const zone of zones) {
       const sourceCard = state.players[triggerOwner]?.field?.[zone];
@@ -843,12 +1037,10 @@ function queueGaugePlacedTriggers(chargingOwner, cards = []) {
   if (!hasListener) {
     return;
   }
-  Promise.resolve()
-    .then(async () => {
+  scheduleTriggerJob(async () => {
       await runFieldEventTriggers("gaugePlaced", chargingOwner, list[0], null, { count: list.length });
       render();
-    })
-    .catch((error) => {
+    }, (error) => {
       console.error(error);
       render();
     });
@@ -886,12 +1078,10 @@ function queueDeckMilledTriggers(deckOwner, cards = [], cause = null) {
   if (!hasListener) {
     return;
   }
-  Promise.resolve()
-    .then(async () => {
+  scheduleTriggerJob(async () => {
       await runFieldEventTriggers("deckMilled", deckOwner, list[0], null, { count: list.length, millCause: cause });
       render();
-    })
-    .catch((error) => {
+    }, (error) => {
       console.error(error);
       render();
     });
@@ -921,12 +1111,10 @@ function queueDeckBottomPlacedTriggers(deckOwner, cards = []) {
   if (!hasListener) {
     return;
   }
-  Promise.resolve()
-    .then(async () => {
+  scheduleTriggerJob(async () => {
       await runFieldEventTriggers("deckBottomPlaced", deckOwner, list[0], null, { count: list.length });
       render();
-    })
-    .catch((error) => {
+    }, (error) => {
       console.error(error);
       render();
     });
@@ -971,16 +1159,14 @@ function queueStandTriggers(stoodEntries) {
   if (!hasListener) {
     return;
   }
-  Promise.resolve()
-    .then(async () => {
+  scheduleTriggerJob(async () => {
       for (const entry of list) {
         await runFieldEventTriggers("stand", entry.owner, entry.card, entry.zone ?? null, {
           standCause: entry.cause || null,
         });
       }
       render();
-    })
-    .catch((error) => {
+    }, (error) => {
       console.error(error);
       render();
     });
@@ -1013,15 +1199,13 @@ function queueHandDiscardedTriggers(discardOwner, cards = [], cause = null) {
   if (!hasListener) {
     return;
   }
-  Promise.resolve()
-    .then(async () => {
+  scheduleTriggerJob(async () => {
       await runFieldEventTriggers("handDiscarded", discardOwner, list[0], null, {
         count: list.length,
         discardCause: cause,
       });
       render();
-    })
-    .catch((error) => {
+    }, (error) => {
       console.error(error);
       render();
     });
@@ -1063,6 +1247,8 @@ async function moveFieldCard(owner, fromZone, toZone, details = {}) {
   }
   player.field[fromZone] = null;
   player.field[toZone] = card;
+  // 進行中の攻撃の攻撃者／攻撃対象が場の中で移動しても、同じカードの攻撃・バトルを続ける（src/09）。
+  followPendingAttackCardMove(owner, fromZone, toZone, card);
   // E-XB69(X2-SP/0014 旋撃のドラム・0027 奮起のハルバード・ドラゴン): このターン中に owner 席の場のモンスターが
   // 『移動』したことを記帳する。moveFieldCard は『移動』キーワード（src/09 アタックフェイズ移動）と効果移動（src/15）の
   // 唯一の choke point なので、ここで owner 席の instanceId を積めば全移動経路を漏れなく拾える。素の instanceId 配列
@@ -1099,12 +1285,23 @@ async function moveFieldCard(owner, fromZone, toZone, details = {}) {
 }
 
 async function runPhaseStartTriggers(event, turnOwner = state.active) {
-  for (const owner of [turnOwner, 1 - turnOwner]) {
-    for (const zone of zones) {
-      const card = state.players[owner]?.field?.[zone];
-      if (!card) {
-        continue;
+  // 事象（フェイズ開始等）の発生時点で場/ドロップにあったカードの自動能力だけが待機状態になる
+  // （ver2.05 自動能力「その能力に示された事象が発生することにより、自動的に発動する」・解決手順2.1
+  // 「待機状態になっている自動能力を選ぶ」）。走査はイベント発生時のスナップショットに限定し、
+  // 解決中にコールされた/ドロップへ移ったカードは誘発させない（以前はループ中に場/ドロップを読み直し、
+  // エリア配置で結果が変わっていた）。
+  const fieldSnapshot = [turnOwner, 1 - turnOwner].map((owner) =>
+    zones.map((zone) => state.players[owner]?.field?.[zone]).filter(Boolean),
+  );
+  const dropSnapshot = [turnOwner, 1 - turnOwner].map((owner) => [...(state.players[owner]?.drop || [])]);
+  for (const [index, owner] of [turnOwner, 1 - turnOwner].entries()) {
+    for (const snapCard of fieldSnapshot[index]) {
+      const slot = findFieldCardSlot(snapCard);
+      if (!slot || slot.owner !== owner) {
+        continue; // 解決中に場を離れた
       }
+      const zone = slot.zone;
+      const card = snapCard;
       await runTriggeredAbilities(card, event, {
         card,
         player: state.players[owner],
@@ -1120,10 +1317,13 @@ async function runPhaseStartTriggers(event, turnOwner = state.active) {
     ability.kind === "triggered" &&
     ability.event === event &&
     (ability.fromDropZone || (ability.triggerZones || []).includes("drop"));
-  for (const owner of [turnOwner, 1 - turnOwner]) {
-    for (const card of [...(state.players[owner]?.drop || [])]) {
+  for (const [index, owner] of [turnOwner, 1 - turnOwner].entries()) {
+    for (const card of dropSnapshot[index]) {
       if (!(card.abilities || []).some(isDropTrigger)) {
         continue;
+      }
+      if (!(state.players[owner]?.drop || []).includes(card)) {
+        continue; // 事象発生時にドロップにあったが、解決中にドロップを離れた
       }
       await runTriggeredAbilities(card, event, {
         card,
@@ -1155,8 +1355,12 @@ async function runPhaseStartTriggers(event, turnOwner = state.active) {
 }
 
 function beginPendingAction(action) {
+  // pt-fix-c(b): 宣言のコストで場からドロップへ置いたカードの「ドロップに置かれた時」誘発（待機）を宣言に持たせ、
+  // 解決後（resolvePendingAction の末尾）に放つ。無ければキーを作らない＝既存の state 形は不変。
+  const heldCostDropTriggers = typeof takeHeldCostDropTriggers === "function" ? takeHeldCostDropTriggers() : [];
   state.pendingAction = {
     ...action,
+    ...(heldCostDropTriggers.length ? { deferredCostDropTriggers: heldCostDropTriggers } : {}),
     counterUsed: {
       [action.owner]: null,
       [action.responder]: null,
@@ -1189,6 +1393,16 @@ async function resolvePendingResolution() {
     }
   } finally {
     state.resolvingPending = false;
+    releaseHeldCostDropTriggers(); // pt-fix-c(b): 宣言に渡らず残った控え（安全網）
+    // E3: 対抗等の解決が完全にアンワインドした地点で、保留中の多回攻撃スタンドを処理する（能力本体の外で保留が
+    // 残っていた場合の安全網。通常は executeAbilityBody の終了時に処理済み）。
+    flushDeferredMultiAttackStands();
+    // E5: 解決の終わりの★ルール処理★（サイズ超過の再検査）。
+    try {
+      await runSizeRuleProcessing();
+    } catch (error) {
+      console.error(error);
+    }
     // Z6(S-UB-C03/0054): endFinalPhase効果op(15-ability-effects.js)が立てたstate.pendingEndTurnを、
     // 対抗確認(pendingAction)の解決が完全にアンワインドしたこの地点で消費してターンを終える。
     // 必殺技はファイナルフェイズでのみ使用できる(08-card-use.js)ため、この時点でstate.phaseは
@@ -1206,6 +1420,18 @@ async function resolvePendingResolution() {
     await maybeEndPendingCurrentTurn();
     render();
   }
+}
+
+// 宣言(pendingAction)の解決後に戻すフェイズ。宣言時のフェイズへ戻すのが原則だが、「防御フェイズ」は攻撃
+// (pendingAttack)が保留中の間だけ存在する。攻撃中に宣言した【対抗】の解決で攻撃自体が終わった（攻撃者を手札に
+// 戻した等＝endPendingAttackWithoutBattle→clearPendingAttack が攻撃宣言時のフェイズへ戻し済み）なら、それを
+// 上書きして defense に戻さない（defense のまま残ると攻撃もフェイズ進行もできず、CPU の手番なら停止する）。
+function phaseAfterPendingAction(action, fallback) {
+  const phase = action?.phase || fallback;
+  if (phase === "defense" && !state.pendingAttack) {
+    return state.phase && state.phase !== "defense" ? state.phase : "attack";
+  }
+  return phase;
 }
 
 function networkResolutionSeat() {
@@ -1245,6 +1471,10 @@ async function resolvePendingAction() {
   if (action.kind === "ability") {
     await resolvePendingAbility(action);
   }
+  // pt-fix-c(b): 宣言のコストで待機状態になった「ドロップに置かれた時」誘発を、宣言の解決後（無効化されても）に解決へ。
+  if (action.deferredCostDropTriggers?.length) {
+    releaseCostDropTriggers(action.deferredCostDropTriggers);
+  }
 }
 
 async function resolvePendingEquip(action) {
@@ -1254,13 +1484,17 @@ async function resolvePendingEquip(action) {
     addLog(`${action.card.name}の装備は無効化され、ドロップゾーンに置かれました。`);
     return;
   }
-  await equipCardDirect(player, action.card);
+  await equipCardDirect(player, action.card, { declaredBuddyCall: Boolean(action.declaredBuddyCall) });
 }
 
 async function resolvePendingSpell(action) {
   const player = state.players[action.owner];
   if (action.nullified) {
     player.drop.push(action.card);
+    // ④能力／その他 Q3/A3: 無効化されたら「１ターンに１回だけ使える」の部分も解決されない＝宣言時の仮記帳を取り消す。
+    if (action.limitMarkedAtDeclare) {
+      unmarkAbilityLimit(action.owner, action.card, action.ability || {});
+    }
     addLog(`${action.card.name}は無効化され、ドロップゾーンに置かれました。`);
     return;
   }
@@ -1289,10 +1523,16 @@ async function resolvePendingSpell(action) {
 async function resolvePendingAbility(action) {
   const player = state.players[action.owner];
   if (action.nullified) {
-    markAbilityLimit(action.owner, action.card, action.ability || {});
+    // ④能力／その他 Q3/A3: 無効化された能力は「１ターンに１回」の部分も解決されない＝記帳しない（手札発動で宣言時に
+    // 仮記帳した分は取り消す）。以前はここで markAbilityLimit しており、無効化された起動能力を同ターンに再使用できなかった。
+    if (action.limitMarkedAtDeclare) {
+      unmarkAbilityLimit(action.owner, action.card, action.ability || {});
+    }
     // 手札発動(変身/搭乗等)が無効化された場合、宣言時に手札から抜いた本体はドロップへ置く。
     if (action.fromHand) {
-      player.drop.push(action.card);
+      if (!action.landedAsDiscard) {
+        player.drop.push(action.card);
+      }
       addLog(`${action.card.name}は無効化され、ドロップゾーンに置かれました。`);
     } else {
       addLog(`${pendingActionLabel(action)}は無効化されました。`);
@@ -1301,7 +1541,7 @@ async function resolvePendingAbility(action) {
   }
   // 手札発動: 宣言時に手札から抜いた本体を一旦ドロップへ置く（equipSelf 等が回収/着地する。
   // 何も移動しない効果なら「使った起動能力カード」としてドロップに残る＝手札発動パスと同順序）。
-  if (action.fromHand) {
+  if (action.fromHand && !action.landedAsDiscard) {
     player.drop.push(action.card);
   }
   const context = {
@@ -1315,6 +1555,10 @@ async function resolvePendingAbility(action) {
     hostZone: action.hostZone,
     target: getTargetInfoFromValue(action.effectTargetValue),
     costDiscardedCards: action.costDiscardedCards || [], // E-PR6: 手札発動起動能力でも捨てたコスト札を解決へ持ち越す
+    declaredBuddyCall: Boolean(action.declaredBuddyCall), // 変身/搭乗/着任のバディコール宣言（equipSelf がバディギフトを付与）
+    // T2（オーナー裁定 2026-10-14）: 宣言でコストを払っていない起動だけ、解決中の選択のキャンセル＝使用前へ戻すを許す
+    // （src/14 resolutionCancelAllowed）。未指定（旧 pending・コストあり）は強制選択。
+    __selectionRollbackable: action.selectionRollbackable === true,
   };
   const bodyResult = await executeAbilityBody(context);
   // 手札発動の callSelfFromHand 中断（コール先選択キャンセル等）は宣言不成立として手札へ戻す。
@@ -1331,7 +1575,7 @@ async function resolvePendingAbility(action) {
         player.hand.push(action.card);
         addLog(`${action.card.name}のコールを取りやめ、手札に戻しました。`);
         markAbilityLimit(action.owner, action.card, action.ability || {});
-        state.phase = action.phase || state.phase;
+        state.phase = phaseAfterPendingAction(action, state.phase);
         return;
       }
     }
@@ -1341,12 +1585,26 @@ async function resolvePendingAbility(action) {
   // （宣言時に払ったコストは対抗ウィンドウを挟んでおり払い戻せないため、コストのある能力は
   //   useFieldAbilityAction が支払い前に確認を出して誤爆自体を防ぐ）。
   if (bodyResult === false && context.__abilityProgressed !== true) {
-    state.phase = action.phase || state.phase;
+    state.phase = phaseAfterPendingAction(action, state.phase);
+    // T3: 手札の【起動】（獣神 タイガトラス等）の取りやめは、宣言時に手札から抜いて仮置きした本体を手札へ戻し、
+    // 宣言時に仮記帳した使用回数も取り消す（以前はドロップに取り残され、カードを失っていた）。
+    if (action.fromHand && !action.landedAsDiscard && action.selectionRollbackable === true) {
+      const dropIndex = player.drop.findIndex((c) => c.instanceId === action.card.instanceId);
+      if (dropIndex >= 0) {
+        player.drop.splice(dropIndex, 1);
+        player.hand.push(action.card);
+      }
+      if (action.limitMarkedAtDeclare) {
+        unmarkAbilityLimit(action.owner, action.card, action.ability || {});
+      }
+      addLog(`${pendingActionLabel(action)}の使用を取りやめ、${action.card.name}を手札に戻しました。`);
+      return;
+    }
     addLog(`${pendingActionLabel(action)}の使用を取りやめました。`);
     return;
   }
   markAbilityLimit(action.owner, action.card, action.ability || {});
-  state.phase = action.phase || state.phase;
+  state.phase = phaseAfterPendingAction(action, state.phase);
   addLog(`${pendingActionLabel(action)}を解決しました。`);
 }
 
@@ -1365,12 +1623,18 @@ async function resolvePendingSetSpell(action) {
     addLog(`${action.card.name}は無効化され、ドロップゾーンに置かれました。`);
     return;
   }
-  if (player.field[action.zone]) {
+  // rule-call-11: 設置の枚数に上限は無い。宣言時に予約した枠が解決までに埋まっていたら、別の空き set 枠へ置く
+  // （旧: 2枠固定で「置く場所がない」としてドロップへ置いていた）。旧データの非 set 枠 zone はそのまま扱う。
+  let placeZone = action.zone;
+  if (player.field[placeZone] && isSetZone(placeZone)) {
+    placeZone = firstEmptySetZone(player);
+  }
+  if (player.field[placeZone]) {
     dumpSetSpellToDrop();
     addLog(`${action.card.name}を配置する場所がなくなったため、ドロップゾーンに置かれました。`);
     return;
   }
-  await placeSetSpellDirect(player, action.card, action.zone);
+  await placeSetSpellDirect(player, action.card, placeZone);
   // 設置魔法も「使う」に含まれる（“爆雷”等の spellCast 誘発。H-PP01/0021 レビュー指摘）。
   // 無効化/置き場なしの早期 return では発火しない＝通常魔法と同じ対称性。
   // 魔法のみ（『設置』持ち必殺技では発火しない=resolvePendingSpellと同じガード）。
@@ -1403,6 +1667,9 @@ function grantedNullifyImmunity(card, owner) {
       const source = player.field[zone];
       return activeContinuousEffects(source).some((e) => {
         if (e.op !== "grantNullifyImmunity") return false;
+        // scope:"abilities"＝「場のカードの能力は無効化されず」専用（cardProtectedFrom(kind:nullify) だけが読む）。
+        // カードの使用・コール・装備宣言の打ち消し（この経路）には効かない。未指定は従来どおり両方に効く。
+        if (e.scope === "abilities") return false;
         if (e.controller === "self" && owner !== sourceOwner) return false;
         if (e.controller === "opponent" && owner === sourceOwner) return false;
         if (e.filter && !matchesCardFilter(card, e.filter)) return false;
@@ -1437,7 +1704,12 @@ function nullifyPendingAction(sourceName = "効果") {
     return false;
   }
   const action = state.pendingAction;
-  if (cardCannotBeNullified(action.card, action.owner) || grantedNullifyImmunity(action.card, action.owner)) {
+  if (
+    cardCannotBeNullified(action.card, action.owner) ||
+    // 能力単位の「この能力は無効化されない」（ability.cannotBeNullified）: その能力の宣言だけは打ち消せない。
+    (action.kind === "ability" && action.ability?.cannotBeNullified) ||
+    grantedNullifyImmunity(action.card, action.owner)
+  ) {
     addLog(`${action.card.name}は無効化されません。`);
     return false;
   }

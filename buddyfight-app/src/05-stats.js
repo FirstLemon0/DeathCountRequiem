@@ -142,7 +142,7 @@ function isAbilitiesNullified(card) {
   // 既存カードは nullifyImmuneZones 未所持＝この分岐は素通り（後方互換）。
   if (Array.isArray(card.nullifyImmuneZones) && card.nullifyImmuneZones.length) {
     const slotZone = findFieldCardSlot(card)?.zone;
-    if (slotZone && card.nullifyImmuneZones.includes(slotZone)) return false;
+    if (slotZone && zoneListIncludes(card.nullifyImmuneZones, slotZone)) return false;
   }
   // フラッグは能力無効化を受けない（公式裁定Q2220: ∞ the Chaos ∞ 先例）。フラッグは場のzonesにも
   // 誰のソウルにも存在しないため、下の探索は本来どのみち host が見つからず false になるが、
@@ -228,7 +228,7 @@ function evaluateAbilitiesNullified(card, myOrder) {
           : e.controller === "self" ? cardOwner === nullifierOwner
           : true;
         if (!ownerOk) return false;
-        if (e.zones && !e.zones.includes(location)) return false;
+        if (e.zones && !zoneListIncludes(e.zones, location)) return false;
         // E-XB23(X-BT03/0018 封じられし黒印竜 エルゴッド): opposingFront＝「このカードの前の相手のモンスター」限定
         // の無効化。発生源(src=nullifierOwner側の zone)の正面（ミラー列: 左↔右/中央↔中央）に在る相手側の
         // 場札1枚だけを無効化する（continuousEffectApplies の opposingFront と同じ oppositeFieldZone 対応付け）。
@@ -333,13 +333,124 @@ function activeContinuousEffects(sourceCard) {
     return sourceCard.continuous || [];
   }
   if (isAbilitiesNullified(sourceCard)) {
-    return [];
+    // 「この能力は無効化されない」（その1能力だけの保護）: cannotBeNullified を持つ継続だけは無効化中も有効。
+    // カード単位の nullifyImmune（「このカードの能力は無効化されない」）とは別。既存カードは未所持＝従来どおり空配列。
+    // __turnEffect（解決済みの「そのターン中」効果）も発生源の能力無効化では消えない。
+    return [...(sourceCard.continuous || []), ...(sourceCard.turnContinuous || [])].filter(
+      (e) => e?.cannotBeNullified || e?.__turnEffect,
+    );
   }
   // X19(D-BT01/0131): 起動効果が付与したターン限定の継続（turnContinuous）を印字継続に合流する。
   if (sourceCard.turnContinuous?.length) {
     return [...(sourceCard.continuous || []), ...sourceCard.turnContinuous];
   }
   return sourceCard.continuous || [];
+}
+
+// 監査 rule-continuous-1/2: addTurnContinuous の「そのターン中、〜」型で、発生源以外を対象にする項目は
+// 解決後は発生源カードから切り離し state.turnSourcedContinuous[席] に置く（ver2.05 ②2.3.1＝効果は解決時に行う行動。
+// 発生源が場を離れても・後から能力無効化されても、ターン終了まで続く）。切り離せるのは、下のスキャナが store を
+// 読む op（modifyStats/grantFinalPhaseAttack/grant*Immunity/damageReceivedReduction）で、発生源を参照しない項目だけ。
+// 「このカード」型（sameInstanceAsSource 等・amountFrom・conditions・opposingFront・requireBuddy）は従来どおり
+// 発生源カードの turnContinuous に載せる（＝既存挙動不変）。
+const TURN_SOURCED_CONTINUOUS_OPS = new Set([
+  "modifyStats",
+  "grantFinalPhaseAttack",
+  "grantRestImmunity",
+  "grantSoulDiscardImmunity",
+  "grantNullifyImmunity",
+  "grantMoveAreaImmunity",
+  "damageReceivedReduction",
+]);
+function turnSourcedContinuousDetachable(effect) {
+  if (!effect || !TURN_SOURCED_CONTINUOUS_OPS.has(effect.op)) return false;
+  if (effect.conditions?.length || effect.amountFrom || effect.opposingFront || effect.requireBuddy) return false;
+  const filter = effect.filter || {};
+  if (filter.sameInstanceAsSource || filter.sameNameAsSource || filter.sameIdAsSource) return false;
+  return true;
+}
+
+// state.turnSourcedContinuous の op 一致エントリを {entry, effect, seat} で列挙する（未初期化の旧 state は空）。
+function turnSourcedContinuousEntries(op) {
+  const out = [];
+  (state?.turnSourcedContinuous || []).forEach((list, seat) => {
+    (list || []).forEach((entry) => {
+      if (entry?.effect?.op === op) out.push({ entry, effect: entry.effect, seat });
+    });
+  });
+  return out;
+}
+
+// 切り離したターン限定継続が targetCard（場札）に及ぶか。controller 既定＝発生源の席の場だけ（印字継続の自陣ループと同じ）、
+// "opponent"＝相手の場だけ、"both"＝両方。
+function turnSourcedContinuousApplies(entry, seat, targetCard) {
+  const effect = entry.effect;
+  const targetSlot = findFieldCardSlot(targetCard);
+  if (!targetSlot) return false;
+  if (effect.controller === "opponent") {
+    if (targetSlot.owner === seat) return false;
+  } else if (effect.controller !== "both" && targetSlot.owner !== seat) {
+    return false;
+  }
+  if (effect.excludeSource && targetCard.instanceId === entry.sourceInstanceId) return false;
+  if (effect.zoneIn && !zoneListIncludes(effect.zoneIn, targetSlot.zone)) return false;
+  if (Array.isArray(effect.targetZones) && !zoneListIncludes(effect.targetZones, targetSlot.zone)) return false;
+  return matchesCardFilter(targetCard, effect.filter || {});
+}
+
+// 「そのターン中、〜」を解決した発生源が場を離れた後も残るターン継続（state.turnDetachedContinuous）。
+// 発生源が場を離れる時（queueLeaveFieldTriggers＝全離場経路の共通点）に turnContinuous の __turnEffect を
+// 疑似発生源 {owner, instanceId, name, continuous:[], turnContinuous} として退避し、各スキャナが合流する。
+// 発生源自身を指す継続（sameInstanceAsSource/sameIdAsSource・redirectAttackToSelf）と、発生源の在場を前提にする
+// conditions 付きの継続は退避しない（従来どおり消える）。clearTurnModifiers がターン境界で破棄する。
+function detachTurnContinuousFromLeavingCard(card, owner) {
+  const items = (card?.turnContinuous || []).filter(
+    (e) =>
+      e?.__turnEffect &&
+      !e.filter?.sameInstanceAsSource &&
+      !e.filter?.sameIdAsSource &&
+      e.op !== "redirectAttackToSelf" &&
+      !e.conditions?.length,
+  );
+  if (card) {
+    card.turnContinuous = null; // 場を離れたカードは別カード扱い（再登場で復活させない）
+  }
+  if (!items.length) {
+    return;
+  }
+  const seat = items[0].__sourceOwner ?? owner;
+  if (seat !== 0 && seat !== 1) {
+    return;
+  }
+  state.turnDetachedContinuous ||= [];
+  state.turnDetachedContinuous.push({
+    owner: seat,
+    instanceId: `detached-${card.instanceId}-${state.turnDetachedContinuous.length}`,
+    name: card.name,
+    type: card.type,
+    attributes: [],
+    keywords: [],
+    continuous: [],
+    turnContinuous: items,
+    soul: [],
+  });
+}
+
+function detachedTurnContinuousSources(owner) {
+  return (state.turnDetachedContinuous || []).filter((entry) => entry && (owner === undefined || entry.owner === owner));
+}
+
+// 疑似発生源(entry)の継続 effect が targetCard に及ぶか（controller は entry.owner 基準）。
+function detachedTurnEffectApplies(effect, targetCard, entry) {
+  const targetSlot = findFieldCardSlot(targetCard);
+  if (!targetSlot) {
+    return false;
+  }
+  if (effect.controller === "self" && targetSlot.owner !== entry.owner) return false;
+  if (effect.controller === "opponent" && targetSlot.owner === entry.owner) return false;
+  if (effect.zoneIn && !zoneListIncludes(effect.zoneIn, targetSlot.zone)) return false;
+  if (effect.targetZones && !zoneListIncludes(effect.targetZones, targetSlot.zone)) return false;
+  return matchesCardFilter(targetCard, effect.filter || {});
 }
 
 function fieldSizeLimit(player) {
@@ -600,7 +711,7 @@ function continuousDistinctWorldCountAmount(effect, statKey, sourceOwner) {
   else if (pile === "itemSoul") cards = itemZones.flatMap((zone) => pl?.field?.[zone]?.soul || []); // E-XB46: アイテムゾーンのソウル限定
   else cards = pl?.[pile] || [];
   const matched = cards.filter((card) => matchesCardFilter(card, af.filter || {}));
-  let count = new Set(matched.flatMap((card) => cardWorlds(card))).size;
+  let count = new Set(matched.flatMap((card) => worldNamesForDistinct(card))).size;
   if (af.max !== undefined) {
     count = Math.min(count, af.max);
   }
@@ -688,6 +799,34 @@ function continuousModifyStatsAmountFrom(effect, statKey, player, sourceCard, so
   );
 }
 
+// 裁定 R3（2026-10-09 オーナー裁定）: 攻撃時などの能力（誘発/起動/魔法の解決）で「そのターン中、〜につき＋X」と得る値は、
+// 能力の解決時に計算して固定する（以後ドロップ等の枚数が変わっても再計算しない）。addTurnContinuous に freezeAmount:true を
+// 付けると、項目の modifyStats{amountFrom} を解決時点の値でこの関数が定数（power/defense/critical）に焼き込み amountFrom を外す。
+// 計算は印字継続と同じ continuousModifyStatsAmountFrom（同じ amountFrom 語彙がそのまま使える）。印字の■継続能力
+// （continuous）は性質上常時評価なので対象外。freezeAmount 無しの addTurnContinuous は従来どおり動的評価（後方互換）。
+function freezeTurnContinuousAmount(item, context, seat) {
+  if (!item || item.op !== "modifyStats" || !item.amountFrom) {
+    return item;
+  }
+  const owner = Number.isInteger(seat) ? seat : context?.owner;
+  const player = state.players?.[owner];
+  if (!player) {
+    return item;
+  }
+  const frozen = {};
+  ["power", "defense", "critical"].forEach((statKey) => {
+    const amount = continuousModifyStatsAmountFrom(item, statKey, player, context?.card || null, owner);
+    if (amount) {
+      frozen[statKey] = amount;
+      item[statKey] = (item[statKey] || 0) + amount;
+    }
+  });
+  delete item.amountFrom;
+  delete item.freezeAmount;
+  item.__frozenAmount = frozen; // 表示・デバッグ用（解決時に確定した値）
+  return item;
+}
+
 // 場・ソウルの継続 modifyStats（定数 by と amountFrom:dropAttributeCount/soulCount/soulStatSum）から statKey の合計補正値を算出。
 // MR16-1: stat 評価の再入ガード。effectiveSize の sizeEvaluationStack と同じ作法で、
 // 「自分の stat を見る継続効果」による自己言及を印字値で打ち切る。
@@ -748,6 +887,14 @@ function continuousStatBonusInner(card, statKey, slot) {
       bonus += continuousModifyStatsAmountFrom(effect, statKey, player, sourceCard, slot.owner);
     });
   });
+  // 発生源が場を離れた後も残る「そのターン中」の modifyStats（定数のみ。detachTurnContinuousFromLeavingCard）。
+  detachedTurnContinuousSources().forEach((entry) => {
+    entry.turnContinuous.forEach((effect) => {
+      if (effect.op === "modifyStats" && detachedTurnEffectApplies(effect, card, entry)) {
+        bonus += effect[statKey] || 0;
+      }
+    });
+  });
   // Z1(S-UB-C03/0095): フラッグの継続効果。フラッグは zones 走査に乗らない（player.field ではなく
   // player.flag に実体がある）ため専用ブロックで評価する。フラッグは能力無効化を受けない(Q2220)ため
   // isAbilitiesNullified は経由しない（activeContinuousEffects と異なりフラッグ自体はここでは
@@ -792,6 +939,18 @@ function continuousStatBonusInner(card, statKey, slot) {
       bonus += continuousSoulStatAmount(effect, statKey, sourceCard);
       bonus += continuousSelfSizeAmount(effect, statKey, sourceCard); // X11a(D-BT01/0059)
     });
+  });
+  // 監査 rule-continuous-1: 発生源から切り離したターン限定 modifyStats（招力 黄天鼠「そのターン中、《髑髏武者》全ての攻撃力＋2000」等）。
+  turnSourcedContinuousEntries("modifyStats").forEach(({ entry, effect, seat }) => {
+    if (!turnSourcedContinuousApplies(entry, seat, card)) {
+      return;
+    }
+    const raw = effect[statKey] || 0;
+    const protectedDecrease =
+      seat !== slot.owner &&
+      raw < 0 &&
+      (statDecreaseProtected(card, statKey) || turnProtectionBlocks(card, "statDecrease", statKey));
+    bonus += protectedDecrease ? 0 : raw;
   });
   soulContinuousEffects(card, slot.owner).forEach(({ effect, sourceCard }) => {
     // F2(D-EB02/0033): fieldWide:true の stat 効果は下の「場全体スキャン」で評価する（二重加算防止）。
@@ -1026,8 +1185,10 @@ function soulContinuousGrantsOp(card, op, causeCheck) {
 }
 
 function continuousEffectApplies(effect, targetCard, sourceCard) {
-  if (isAbilitiesNullified(sourceCard)) {
-    return false; // 能力無効化された付与元の継続効果は適用しない
+  // 能力無効化された付与元の継続効果は適用しない。ただし「この能力は無効化されない」(cannotBeNullified)と
+  // 解決済みの「そのターン中」効果(__turnEffect)は除く。
+  if (!effect?.cannotBeNullified && !effect?.__turnEffect && isAbilitiesNullified(sourceCard)) {
+    return false;
   }
   if (effect.excludeSource && sourceCard?.instanceId === targetCard?.instanceId) {
     return false;
@@ -1091,7 +1252,7 @@ function continuousEffectApplies(effect, targetCard, sourceCard) {
   }
   // targetZones: 対象の盤面ゾーン(left/center/right)で絞る（万竜不当 0047「レフトとライトのモンスター」）。
   if (Array.isArray(effect.targetZones)) {
-    if (!targetSlot || !effect.targetZones.includes(targetSlot.zone)) {
+    if (!targetSlot || !zoneListIncludes(effect.targetZones, targetSlot.zone)) {
       return false;
     }
   }
@@ -1164,13 +1325,18 @@ function linkAttackRestricted(card) {
   if (!card || !findFieldCardSlot(card)) {
     return false;
   }
-  return state.players.some((player) =>
-    zones.some((zone) => {
-      const source = player.field[zone];
-      return activeContinuousEffects(source).some(
-        (e) => e.op === "restrictLinkAttack" && continuousEffectApplies(e, card, source),
-      );
-    }),
+  return (
+    state.players.some((player) =>
+      zones.some((zone) => {
+        const source = player.field[zone];
+        return activeContinuousEffects(source).some(
+          (e) => e.op === "restrictLinkAttack" && continuousEffectApplies(e, card, source),
+        );
+      }),
+    ) ||
+    detachedTurnContinuousSources().some((entry) =>
+      entry.turnContinuous.some((e) => e.op === "restrictLinkAttack" && detachedTurnEffectApplies(e, card, entry)),
+    )
   );
 }
 
@@ -1201,6 +1367,33 @@ function grantedProtectionBlocks(card, kind, cause) {
   if (!targetSlot) {
     return false;
   }
+  // 監査 rule-continuous-1: 発生源から切り離したターン限定 grant*Immunity（ゼルギュラグネ「このターン中、《デュエルドラゴン》
+  // 全ては相手のカードの効果でレストされない」等）。発生源の在場・無効化に依存しない。
+  const fromTurnSourced = turnSourcedContinuousEntries(op).some(({ entry, effect: e, seat }) => {
+    if (!turnSourcedContinuousApplies(entry, seat, card)) return false;
+    if (e.from && cause) {
+      if (e.from.byEffect && !cause.byEffect) return false;
+      if (e.from.byOpponent && !cause.byOpponent) return false;
+    }
+    return true;
+  });
+  if (fromTurnSourced) {
+    return true;
+  }
+  // 発生源が場を離れた後も残る「そのターン中」の付与（grantRestImmunity 等）。
+  const detachedHit = detachedTurnContinuousSources().some((entry) =>
+    entry.turnContinuous.some((e) => {
+      if (e.op !== op || !detachedTurnEffectApplies(e, card, entry)) return false;
+      if (e.from && cause) {
+        if (e.from.byEffect && !cause.byEffect) return false;
+        if (e.from.byOpponent && !cause.byOpponent) return false;
+      }
+      return true;
+    }),
+  );
+  if (detachedHit) {
+    return true;
+  }
   return state.players.some((player, sourceOwner) => {
     // 継続の発生源: 場のモンスター(zones)＋フラッグ(player.flag)。フラッグ発の grantNullifyImmunity
     // （the-chaos「サイズ30以上のモンスターは能力を無効化されない」等）は player.flag に実体があり
@@ -1230,7 +1423,7 @@ function grantedProtectionBlocks(card, kind, cause) {
         if (e.controller === "self" && targetSlot.owner !== sourceOwner) return false;
         if (e.controller === "opponent" && targetSlot.owner === sourceOwner) return false;
         if (e.excludeSource && source?.instanceId === card.instanceId) return false;
-        if (e.zoneIn && !e.zoneIn.includes(targetSlot.zone)) return false;
+        if (e.zoneIn && !zoneListIncludes(e.zoneIn, targetSlot.zone)) return false;
         if (e.filter && !matchesCardFilter(card, e.filter)) return false;
         if (e.conditions && !checkCardConditions(e.conditions, sourceOwner, { card: source, zone })) return false;
         if (e.from && cause) {
@@ -1246,7 +1439,8 @@ function grantedProtectionBlocks(card, kind, cause) {
 // Z4(e): 【対抗】等でそのターン(または複数ターン)限定に付与される保護（state.turnProtections）。
 // エントリ形: {kinds:["rest"|"nullify"|"returnToHand"], owner, scope, filter, zoneIn, remainingTurnEnds}。
 // destroy専用の既存 state.turnDestroyImmunity/grantTurnDestroyImmunity は移行せずそのまま使う。
-function turnProtectionBlocks(card, kind, statKey) {
+// cause: cardProtectedFrom から渡す破壊/レスト等の原因。entry.from を持つエントリだけが照合する（無い既存エントリは不変）。
+function turnProtectionBlocks(card, kind, statKey, cause = {}) {
   const list = state.turnProtections;
   if (!list || !list.length) {
     return false;
@@ -1263,8 +1457,12 @@ function turnProtectionBlocks(card, kind, statKey) {
     if (kind === "statDecrease" && entry.stats && statKey && !entry.stats.includes(statKey)) return false;
     if (entry.scope === "self" && targetSlot.owner !== entry.owner) return false;
     if (entry.scope === "opponent" && targetSlot.owner === entry.owner) return false;
-    if (entry.zoneIn && !entry.zoneIn.includes(targetSlot.zone)) return false;
+    if (entry.zoneIn && !zoneListIncludes(entry.zoneIn, targetSlot.zone)) return false;
     if (entry.filter && !matchesCardFilter(card, entry.filter)) return false;
+    if (entry.from) {
+      if (entry.from.byEffect && !cause?.byEffect) return false;
+      if (entry.from.byOpponent && !cause?.byOpponent) return false;
+    }
     return true;
   });
 }
@@ -1275,7 +1473,7 @@ function cardProtectedFrom(card, kind, cause = {}) {
   if (grantedProtectionBlocks(card, kind, cause)) {
     return true;
   }
-  if (turnProtectionBlocks(card, kind)) {
+  if (turnProtectionBlocks(card, kind, undefined, cause)) {
     return true;
   }
   // E-XC9(X-CP02/0068 バイシャール): ソウル札の soulContinuous grantNullifyImmunity(hostOnly 等)による
@@ -1423,7 +1621,7 @@ function effectiveAttributes(card) {
             if (e.op !== "grantAttribute") return;
             if (e.scope === "self" && (!targetSlot || targetSlot.owner !== sourceOwner)) return;
             if (e.scope === "opponent" && (!targetSlot || targetSlot.owner === sourceOwner)) return;
-            if (e.zones && targetSlot && !e.zones.includes(targetSlot.zone)) return;
+            if (e.zones && targetSlot && !zoneListIncludes(e.zones, targetSlot.zone)) return;
             if (e.filter && Object.keys(e.filter).length && !matchesCardFilter(card, e.filter)) return;
             if (e.conditions && !checkCardConditions(e.conditions, sourceOwner, { card: source, zone })) return;
             const names = e.attributes || (e.attribute ? [e.attribute] : []);

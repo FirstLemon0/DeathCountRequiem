@@ -144,6 +144,12 @@ function tursoRows(result) {
   });
 }
 
+// F12: Turso fetch のタイムアウト(ms)。タイムアウトはネットワーク失敗扱い＝既存のリトライ1回の対象。
+function tursoFetchTimeoutMs() {
+  const v = Number(process.env.TURSO_FETCH_TIMEOUT_MS);
+  return Number.isFinite(v) && v > 0 ? v : 10000;
+}
+
 // statements: [{sql, args}] を1パイプラインで送る。ネットワーク/5xx失敗はリトライ1回→失敗は例外。
 async function tursoPipeline(statements) {
   const url = `${normalizeTursoUrl(tursoUrl)}/v2/pipeline`;
@@ -155,7 +161,13 @@ async function tursoPipeline(statements) {
   };
   const headers = { Authorization: `Bearer ${tursoToken}`, "Content-Type": "application/json" };
   const attempt = async () => {
-    const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      // F12: 応答しない Turso に永久待ちしない（既定10秒・env TURSO_FETCH_TIMEOUT_MS で変更可）。
+      signal: AbortSignal.timeout(tursoFetchTimeoutMs()),
+    });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       const error = new Error(`turso http ${res.status}: ${text.slice(0, 300)}`);

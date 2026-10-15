@@ -259,8 +259,40 @@ async function maybeApplyHandDiscardGuard(receiver, context) {
 // E-XB8(X-CP03/0058 ファントム・ゲッター): この dealDamage が"霊撃"か。霊撃は「破壊された時に相手へ
 // ダメージ」＝event:"destroyByAttack" の dealDamage（＋明示 effect.spiritStrike）で表現される既存概念で、
 // spiritStrikeDamageBonus の同定条件と一致させる。ブースト加算点と被弾トリガー点で共有する。
+// audit2(b047-6): effect.spiritStrike:false を明示した dealDamage は destroyByAttack でも霊撃ではない（原文に“霊撃”の
+// 無い「破壊した時か…ダメージを与えた時」型＝ジェントゥルジィ X-CBT01/0017）。未指定は従来どおり（後方互換）。
 function damageIsSpiritStrike(effect, context) {
+  if (effect.spiritStrike === false) {
+    return false;
+  }
   return Boolean(effect.spiritStrike) || context.ability?.event === "destroyByAttack";
+}
+
+// R1(2026-10-09 オーナー裁定)「N枚まで（を）」＝プレイヤーが 0〜N 枚から選ぶ。固定枚数 op の upTo:true が使う共通の枚数選択。
+// cap は可用数でクランプ済みの上限。cap<=0 なら問わず 0。選択肢は cap→0 の降順に並べ、chooseCardEntries（記録/再生・
+// 権威サーバ /prompt・CPU の共通 seam）で能力の主体（promptSeat）に問う。CPU（purpose:"branch"＝先頭）の既定は最大 cap
+// （自分のミル・相手のデッキ/ゲージ送り・見る枚数などは「多いほど得」の既定。0 を選びたい人間は末尾の 0 を選ぶ）。
+// 候補形は moveTopDeckToDrop{upTo}（同じ seam を直接呼ぶ既存実装・記録互換のため据え置き）と同一（{amount, card:{name:"n"}}）。
+async function chooseUpToAmount(cap, { title, lead, promptSeat } = {}) {
+  const max = Math.max(0, Math.floor(Number(cap) || 0));
+  if (max <= 0) {
+    return 0;
+  }
+  const options = [];
+  for (let n = max; n >= 0; n -= 1) {
+    options.push({ amount: n, card: { name: `${n}`, rules: [], type: "choice" }, note: "" });
+  }
+  const chosen = await chooseCardEntries(options, {
+    title: title || "枚数の選択",
+    lead: lead || `枚数を選んでください（0〜${max}）。`,
+    min: 1,
+    allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
+    max: 1,
+    forceDialog: true,
+    promptSeat,
+    purpose: "branch",
+  });
+  return Math.max(0, Math.min(max, chosen?.[0]?.amount ?? max));
 }
 
 async function executeAbilityEffect(effect, context) {
@@ -279,7 +311,8 @@ async function executeAbilityEffect(effect, context) {
   if (
     Array.isArray(effect.conditions) && effect.conditions.length > 0 &&
     !CONDITIONS_DEFERRED_TO_CONSUMER_OPS.has(effect.op) &&
-    !checkCardConditions(effect.conditions, context.owner, { ...context, target })
+    // abilityTarget: effect.target を持たない effect（draw 等）でも能力の対象を条件から参照できるよう退避（targetStillOnField）。
+    !checkCardConditions(effect.conditions, context.owner, { ...context, target, abilityTarget: context.target })
   ) {
     return;
   }
@@ -368,7 +401,32 @@ async function executeAbilityEffect(effect, context) {
     const receiver = effect.player === "opponent" ? opponent : player;
     const movedCards = [];
     // X15(D-BT01/0039): amountFrom 対応（「破壊したカードのサイズの数値分ミル」等。dealDamage と同形）。
-    const millAmount = effect.amountFrom ? resolveAmountFrom(effect.amountFrom, context) : effect.amount || 1;
+    let millAmount = effect.amountFrom ? resolveAmountFrom(effect.amountFrom, context) : effect.amount || 1;
+    if (effect.upTo) {
+      // upTo:true＝「N枚までを〜ドロップゾーンに置く」: 0〜N（デッキ枚数が上限）から枚数を能力の主体が選ぶ。
+      // 既存の数値選択（payLifeChoose と同じ chooseCardEntries 往復＝リプレイ/権威サーバ決定的）。
+      // 選択肢は N→0 の降順に並べ、CPU（purpose:"branch"＝先頭）の既定は最大枚数 N。未指定＝固定枚数（後方互換）。
+      const cap = Math.max(0, Math.min(millAmount, receiver.deck.length));
+      if (cap > 0) {
+        const options = [];
+        for (let n = cap; n >= 0; n -= 1) {
+          options.push({ amount: n, card: { name: `${n}`, rules: [], type: "choice" }, note: "" });
+        }
+        const chosen = await chooseCardEntries(options, {
+          title: effect.title || `${context.card?.name || "効果"}：ドロップゾーンに置く枚数`,
+          lead: effect.lead || `${receiver.name}のデッキの上からドロップゾーンに置く枚数を選んでください（0〜${cap}）。`,
+          min: 1,
+          allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
+          max: 1,
+          forceDialog: true,
+          promptSeat: context.owner, // 能力の主体が選ぶ（権威サーバ/CPU の誤配送防止）
+          purpose: "branch",
+        });
+        millAmount = Math.max(0, Math.min(cap, chosen?.[0]?.amount ?? cap));
+      } else {
+        millAmount = 0;
+      }
+    }
     for (let index = 0; index < millAmount; index += 1) {
       const movedCard = receiver.deck.pop();
       if (movedCard) {
@@ -412,6 +470,7 @@ async function executeAbilityEffect(effect, context) {
         title: `${context.card?.name || "効果"}のデッキサーチ`,
         lead: `手札に加えるカードを${wanted}枚まで選んでください。`,
         min: effect.optional === false ? Math.min(wanted, candidates.length) : 0,
+        allowCancel: effect.optional !== false, // T2: 必須（optional:false）は強制。「〜まで」は従来どおり選ばなくてよい
         max: wanted,
         forceDialog: true,
         promptSeat: searcherOwner,
@@ -475,9 +534,13 @@ async function executeAbilityEffect(effect, context) {
       //   通常コールを判定する isCallRestricted(src/18) は byEffectOnly エントリを読み飛ばす。未指定=従来の全面禁止（後方互換）。
       byEffectOnly: Boolean(effect.byEffectOnly),
       sourceName: context.card?.name || "効果",
+      // 裁定 R9: whileConditions（「そのターン中、〜なら」）はターン中ずっと判定する。未指定は null＝常時有効（後方互換）。
+      ...(captureWhileConditions(effect, context.owner) ? { whileCond: captureWhileConditions(effect, context.owner) } : {}),
     });
     addLog(
-      effect.byEffectOnly
+      captureWhileConditions(effect, context.owner)
+        ? `${state.players[restricted].name}はこのターン、条件を満たしている間${effect.byEffectOnly ? "カードの効果でモンスターをコールできません" : "コールできるカードが制限されます"}。`
+        : effect.byEffectOnly
         ? `${state.players[restricted].name}はこのターン、カードの効果でモンスターをコールできません。`
         : `${state.players[restricted].name}はこのターン、コールできるカードが制限されます。`,
     );
@@ -513,6 +576,7 @@ async function executeAbilityEffect(effect, context) {
           title: `${context.card?.name || "効果"}で見たデッキの上のカード`,
           lead: `ソウルに入れるカードを${wanted}枚選んでください（残りはドロップゾーンへ）。`,
           min: wanted,
+          allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
           max: wanted,
           forceDialog: true,
           promptSeat: soulOwner,
@@ -603,8 +667,35 @@ async function executeAbilityEffect(effect, context) {
       // 配列をそのまま push するとネスト（[[{...}]]）し、activeContinuousEffects(src/05)の spread 後に
       // 要素が配列になって .op を拾えず付与が無効化する。Array.isArray で正規化し各オブジェクトを個別に push する。
       const continuousItems = Array.isArray(effect.continuous) ? effect.continuous : [effect.continuous];
+      // 監査 rule-continuous-1/2: 「そのターン中、君の場の《X》全ての攻撃力＋2000」等の解決済み効果は、解決後は
+      //   発生源の在場・能力無効化と無関係にターン終了まで続く（ver2.05 ②2.3.1「効果に書かれている行動は全て解決時に
+      //   行います」）。発生源以外のカードを対象にする項目（turnSourcedContinuousDetachable）は発生源カードではなく
+      //   state.turnSourcedContinuous[席] に積む。「このカード」型（sameInstanceAsSource/amountFrom/conditions 等）と
+      //   anchor:"card" 明示は従来どおりカードに載せる（発生源が場を離れれば消える＝自己言及なので正しい）。
+      const sourceSeat = Number.isInteger(context.owner) ? context.owner : findFieldCardSlot(context.card)?.owner;
       continuousItems.forEach((item) => {
-        context.card.turnContinuous.push(JSON.parse(JSON.stringify(item)));
+        const copy = JSON.parse(JSON.stringify(item));
+        // 裁定 R3（2026-10-09）: 誘発/起動/魔法の解決で得る「そのターン中、〜につき＋X」は解決時に計算して固定する。
+        // freezeAmount:true（addTurnContinuous 側 or 項目側）の modifyStats は amountFrom をここで定数に焼き込む。
+        if (effect.freezeAmount || copy.freezeAmount) {
+          freezeTurnContinuousAmount(copy, context, sourceSeat);
+        }
+        if (effect.anchor !== "card" && (sourceSeat === 0 || sourceSeat === 1) && turnSourcedContinuousDetachable(copy)) {
+          state.turnSourcedContinuous ||= [[], []];
+          state.turnSourcedContinuous[sourceSeat] ||= [];
+          state.turnSourcedContinuous[sourceSeat].push({
+            effect: copy,
+            sourceName: context.card.name,
+            sourceId: context.card.id,
+            sourceInstanceId: context.card.instanceId,
+          });
+          return;
+        }
+        // __turnEffect: 解決済み効果が生んだ継続（発生源の■能力ではない）。発生源の能力無効化・離場の影響を受けない
+        // （ver2.05 2.3.1「効果に書かれている行動は全て解決時に行います」）。__sourceOwner は離場後の帰属席。
+        // 統合: 発生源から切り離せる項目は上で state.turnSourcedContinuous へ（engine-continuous）、残りはカードに載せ
+        // 離場時に detachTurnContinuousFromLeavingCard で退避する（engine-inter）。同一効果が両方に載ることはない。
+        context.card.turnContinuous.push({ ...copy, __turnEffect: true, __sourceOwner: context.owner });
       });
       addLog(`${context.card.name}のターン中の継続効果を適用しました。`);
     }
@@ -630,7 +721,25 @@ async function executeAbilityEffect(effect, context) {
       addLog(`${context.card?.name || "効果"}で${sizeTargets.length}枚のサイズを${effect.size ?? 0}にしました。`);
     }
   }
+  if (effect.op === "grantPhaseCallRight") {
+    // 「君はこのカードのソウルにある《X》のモンスターを、このアタックフェイズ中、【コールコスト】を払わずコールできる」
+    // （逆天戦艦 サツキG X-CBT01/0008）。プレイヤーへ「このフェイズ中に何度でも使えるコール権」を JSON プレーンで記帳し、
+    // findPhaseCallRightAbilities(src/13) が発生源カードの起動候補として列挙する（実行は callSelected 経路）。
+    // 権利はプレイヤーのもの＝発生源カードの能力無効化では消えない。発生源が場を離れる/フェイズが変わると使えない。
+    const seat = context.owner;
+    state.phaseCallRights ||= [[], []];
+    state.phaseCallRights[seat].push({
+      sourceInstanceId: context.card?.instanceId,
+      from: effect.from || "soul",
+      filter: deepClone(effect.filter || {}),
+      free: effect.free !== false,
+      until: effect.until || "attackPhaseEnd",
+      turnCount: state.turnCount,
+    });
+    addLog(`${state.players[seat].name}はこのアタックフェイズ中、${context.card?.name || "カード"}のソウルからコールできるようになりました。`);
+  }
   if (effect.op === "startAttackPhase") {
+    state.phaseCallRights = null; // 新たなアタックフェイズ＝前のフェイズ限定のコール権(grantPhaseCallRight)は失効
     state.phase = "attack";
     state.counterHandOwner = null;
     state.linkAttackers = [];
@@ -709,8 +818,13 @@ async function executeAbilityEffect(effect, context) {
     if (candidates.length > 0) {
       const sel = await chooseCardEntries(candidates.map((c) => ({ card: c })), {
         title: effect.title || context.card.name,
-        lead: effect.lead || "手札に加えるカードを選んでください。",
-        min: 0, max: effect.max || 1, forceDialog: true,
+        // pt-final(5): 既定の案内に枚数と「まで」を出す（マシニング・C・ドラゴン「２枚まで」/バリセラ「１枚まで」で
+        // 「手札に加えるカードを選んでください。」だけだった）。
+        lead: effect.lead || `手札に加えるカードを${defaultSelectLead(Math.min(effect.min ?? 0, candidates.length), effect.max || 1, candidates.length)}`,
+        // min（「その中の１枚を手札に加え」＝必須）は候補数で切り下げる。未指定＝0（「〜まで」・後方互換）。
+        min: Math.min(effect.min ?? 0, candidates.length), max: effect.max || 1, forceDialog: true,
+        // T2: 「その中の１枚を手札に加え」（min≥1）は強制（フローラル夕美: キャンセルで手札に加えずゲージへ流れていた）。
+        allowCancel: Math.min(effect.min ?? 0, candidates.length) === 0,
         promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
         purpose: "search",
       });
@@ -730,8 +844,29 @@ async function executeAbilityEffect(effect, context) {
       // queueGaugePlacedTriggers は内部で noteGaugePlaced も呼ぶため二重計上しない。
       queueGaugePlacedTriggers(state.players.indexOf(player), rest);
     } else {
-      rest.forEach((c) => player.deck.unshift(c));
-      queueDeckBottomPlacedTriggers(state.players.indexOf(player), rest); // E-XB18: デッキ下流入
+      let ordered = rest;
+      if (effect.orderRest && rest.length >= 2) {
+        // orderRest:true＝「残りのカードをデッキの下に好きな順番で置く」。lookTopSelectToCall の rest:"bottomOrdered" と
+        // 同じ1枚ずつの順序選択（能力主体の席・決定的）。未指定＝見た順のまま（後方互換）。
+        ordered = [];
+        let remaining = rest.map((c) => ({ card: c }));
+        while (remaining.length > 1) {
+          const pick2 = await chooseCardEntries(remaining, {
+            title: effect.title || context.card?.name,
+            lead: `デッキの下から${ordered.length + 1}番目に置くカードを選んでください。`,
+            min: 1, max: 1, forceDialog: true, promptSeat: context.owner, purpose: "scry",
+            allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
+          });
+          const entry = pick2?.[0] || remaining[0];
+          ordered.push(entry.card);
+          remaining = remaining.filter((r) => r.card !== entry.card);
+        }
+        if (remaining.length) ordered.push(remaining[0].card);
+        // 1番目に選んだカードが最も下（deck[0]）になるよう、逆順に unshift する。
+        ordered = ordered.slice().reverse();
+      }
+      ordered.forEach((c) => player.deck.unshift(c));
+      queueDeckBottomPlacedTriggers(state.players.indexOf(player), ordered); // E-XB18: デッキ下流入
     }
     addLog(`${context.card.name}の効果でデッキの上${revealed.length}枚を見て${picked.length}枚を手札に加えました。`);
     // F4(D-SS03/0001): discardOnPick:N — 手札に加えた枚数が1以上のときのみ、解決後に手札N枚を選んで捨てる。
@@ -781,7 +916,7 @@ async function executeAbilityEffect(effect, context) {
         if (zoneChoices.length > 1) {
           const zsel = await chooseCardEntries(
             zoneChoices.map((z) => ({ card: pick, owner: seat, zone: z, note: zoneLabel(z) })),
-            { title: effect.title || context.card?.name, lead: `${pick.name}のコール先を選んでください。`, min: 1, max: 1, forceDialog: true, promptSeat: context.owner, purpose: "call" },
+            { title: effect.title || context.card?.name, lead: `${pick.name}のコール先を選んでください。`, min: 1, allowCancel: false, max: 1, forceDialog: true, promptSeat: context.owner, purpose: "call" },
           );
           zone = zsel?.[0]?.zone ?? zone;
         }
@@ -791,7 +926,7 @@ async function executeAbilityEffect(effect, context) {
           if (player.field[zone]) dropFieldCardByRule(player, zone);
           resetEnteringFieldCardState(pick); // 前回場に居た時の一時状態を持ち込まない（第13回メカレビュー）
           player.field[zone] = pick;
-          recordImpactMonsterCall(seat, pick);
+          recordImpactMonsterCall(seat, pick, { byEffect: true }); // 効果コール＝必殺「1ターン1回」に含めない（ver2.05 ⑤）
           recordCardCalledThisTurn(seat, pick); // 同名1ターンN枚上限の計上（第13回メカレビュー: 残り経路）
           pick.enteredFromZone = "deck";
           // 「そのカードは場から離れるまで、サイズ0（0）になる」（grantConditionalSize。conditionalSize を先に付与してから
@@ -826,6 +961,7 @@ async function executeAbilityEffect(effect, context) {
             title: effect.title || context.card?.name,
             lead: `デッキの下から${ordered.length + 1}番目に置くカードを選んでください。`,
             min: 1, max: 1, forceDialog: true, promptSeat: context.owner, purpose: "scry",
+            allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
           });
           const entry = pick2?.[0] || remaining[0];
           ordered.push(entry.card);
@@ -868,6 +1004,7 @@ async function executeAbilityEffect(effect, context) {
           title: effect.title || context.card?.name,
           lead: effect.gaugeLead || "ゲージに置くカードを選んでください。",
           min: gaugePick, max: gaugePick, forceDialog: true,
+          allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
           promptSeat: context.owner, // 「見る」＝能力主体の席のみへ開示（誤配送防止・秘匿）
           purpose: "search",
         });
@@ -928,6 +1065,7 @@ async function executeAbilityEffect(effect, context) {
             title: effect.title || context.card?.name,
             lead: `デッキの下から${ordered.length + 1}番目に置くカードを選んでください。`,
             min: 1, max: 1, forceDialog: true, promptSeat: context.owner, purpose: "scry",
+            allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
           });
           const entry = pick?.[0] || pool[0];
           ordered.push(entry.card);
@@ -974,6 +1112,7 @@ async function executeAbilityEffect(effect, context) {
             title: effect.title || context.card.name,
             lead: `デッキの上から${ordered.length + 1}番目に置くカードを選んでください。`,
             min: 1, max: 1, forceDialog: true,
+            allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
             promptSeat: context.owner,
             purpose: "scry",
           });
@@ -1011,6 +1150,7 @@ async function executeAbilityEffect(effect, context) {
         title: effect.title || context.card.name,
         lead: effect.lead || "ゲージに置くカードを選んでください。",
         min: Math.min(pick, revealed.length),
+        allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
         max: Math.min(pick, revealed.length),
         forceDialog: true,
         promptSeat: context.owner, // 「見る」＝能力主体の席のみへ開示（誤配送防止・秘匿）
@@ -1027,6 +1167,7 @@ async function executeAbilityEffect(effect, context) {
             title: effect.title || context.card.name,
             lead: `デッキの上から${ordered.length + 1}番目に置くカードを選んでください。`,
             min: 1, max: 1, forceDialog: true,
+            allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
             promptSeat: context.owner,
             purpose: "scry",
           });
@@ -1068,7 +1209,10 @@ async function executeAbilityEffect(effect, context) {
       dmg = matched * (effect.perDamage || 1);
     }
     addLog(`${context.card.name}の効果で${revealed.length}枚を公開し、${matched}枚一致。`);
-    if (dmg > 0) applyDamageToPlayer(1 - context.owner, dmg, { sourceName: context.card?.name, sourceCard: context.card, sourceOwner: context.owner });
+    if (dmg > 0) {
+      const dealing = applyDamageToPlayerAsk(1 - context.owner, dmg, { sourceName: context.card?.name, sourceCard: context.card, sourceOwner: context.owner });
+      if (dealing?.then) await dealing;
+    }
     revealed.forEach((c) => player.deck.unshift(c));
     queueDeckBottomPlacedTriggers(state.players.indexOf(player), revealed); // E-XB18: デッキ下流入
   }
@@ -1184,7 +1328,7 @@ async function executeAbilityEffect(effect, context) {
     ) {
       amount += state.spiritStrikeDamageBonus[context.owner];
     }
-    const dealt = applyDamageToPlayer(state.players.indexOf(receiver), amount, {
+    let dealt = applyDamageToPlayerAsk(state.players.indexOf(receiver), amount, {
       sourceName: context.card?.name,
       sourceCard: context.card,
       sourceOwner: context.owner,
@@ -1196,6 +1340,7 @@ async function executeAbilityEffect(effect, context) {
       sourceAbilityLabel: context.ability?.label || null, // damageReceived 側で参照（爆雷等）
       floorLife: effect.floorLife, // 非致死: このダメージで受け手を floorLife 未満にしない（ミネウチでござる 0109）
     });
+    if (dealt?.then) dealt = await dealt;
     // 「効果で相手にダメージを与えた時」ダメージ源側の場札へ誘発（爆雷連鎖 0005/0064）。
     // 発生源(context.owner)の視点イベントなので、runFieldEventTriggers の接頭辞を使わず自陣へ直接配送する。
     if (receiver === opponent && dealt > 0) {
@@ -1232,6 +1377,8 @@ async function executeAbilityEffect(effect, context) {
     // 乱数索引は state 常駐 rngInt（リプレイ/room 復元で決定的）。索引/シードは addLog しない（T13）。
     // 捨て札は公開領域（ドロップ）へ落ちるため、捨てたカード名の addLog は許容（公開）。
     const receiver = effect.player === "self" ? player : opponent;
+    // 後続 effect の lastDiscardSucceeded（「捨てたら、〜」）用。ガードで置換された/手札0枚なら 0 のまま。
+    context.lastDiscardedCount = 0;
     if (receiver !== player && (await maybeApplyHandDiscardGuard(receiver, context))) {
       return;
     }
@@ -1244,6 +1391,7 @@ async function executeAbilityEffect(effect, context) {
       picked.push(receiver.hand.splice(rngInt(receiver.hand.length), 1)[0]);
     }
     discardHandCardsToDrop(receiver, picked, makeEffectCause(context, state.players.indexOf(receiver)));
+    context.lastDiscardedCount = picked.length;
     if (picked.length > 0) {
       addLog(`${receiver.name}はランダムに選ばれた${picked.map((card) => card.name).join("、")}を捨てました。`);
     }
@@ -1259,11 +1407,12 @@ async function executeAbilityEffect(effect, context) {
     }
     const amount = visibleFieldStat(source.card, effect.stat || "critical");
     const receiver = effect.player === "self" ? player : opponent;
-    const dealtDamage = applyDamageToPlayer(state.players.indexOf(receiver), amount, {
+    let dealtDamage = applyDamageToPlayerAsk(state.players.indexOf(receiver), amount, {
       log: false,
       sourceCard: context.card,
       sourceOwner: context.owner,
     });
+    if (dealtDamage?.then) dealtDamage = await dealtDamage;
     addLog(`${context.card.name}の効果で${receiver.name}に${dealtDamage}ダメージを与えました。`);
     checkWinner();
   }
@@ -1295,6 +1444,12 @@ async function executeAbilityEffect(effect, context) {
       owner: state.players.indexOf(receiver), // E-PR3: filter.buddy を手札でも所有者判定できるよう伝播
     });
     discardHandCardsToDrop(receiver, movedCards, makeEffectCause(context, state.players.indexOf(receiver))); // E6
+    if (effect.var) {
+      // 捨てたカードを script の選択 var として残す（後続 ifCondition の selectionMatches が
+      // 「捨てたカードが《X》なら」を判定する。ダメージ・コントロール等）。未指定＝従来どおり。
+      context.vars ||= {};
+      context.vars[effect.var] = movedCards.map((card) => ({ card, owner: state.players.indexOf(receiver), source: "drop" }));
+    }
     if (movedCards.length > 0) {
       addLog(`${receiver.name}は${movedCards.map((card) => card.name).join("、")}を捨てました。`);
     }
@@ -1343,12 +1498,20 @@ async function executeAbilityEffect(effect, context) {
     // E-XB15(X-CP03/0034 ヴェンディダート・ディザスター): amountFrom 指定時は動的枚数（putTopDeckToGauge と同型の
     // resolveAmountFrom。「相手の場のモンスターの枚数分」＝fieldCardCount controller:opponent）をゲージ残数でクランプ。
     // downTo/amount の各経路はこの分岐が undefined のときのみ到達＝挙動完全不変（後方互換のオプトイン）。
-    const amount =
+    let amount =
       effect.downTo !== undefined
         ? Math.max(0, receiver.gauge.length - effect.downTo)
         : effect.amountFrom !== undefined
           ? Math.max(0, Math.min(resolveAmountFrom(effect.amountFrom, context), receiver.gauge.length))
           : Math.min(effect.amount || 1, receiver.gauge.length);
+    if (effect.upTo) {
+      // R1(2026-10-09): 「ゲージN枚までを捨てる／置く」＝0〜N（ゲージ枚数が上限）を能力の主体が選ぶ。
+      amount = await chooseUpToAmount(amount, {
+        title: effect.title || `${context.card?.name || "効果"}：ゲージから置く枚数`,
+        lead: effect.lead || `${receiver.name}のゲージからドロップゾーンに置く枚数を選んでください（0〜${amount}）。`,
+        promptSeat: context.owner,
+      });
+    }
     const movedCards = receiver.gauge.splice(receiver.gauge.length - amount, amount);
     receiver.drop.push(...movedCards);
     if (movedCards.length > 0) {
@@ -1416,11 +1579,16 @@ async function executeAbilityEffect(effect, context) {
       receiver.drop.push(movedCard);
       queueDeckMilledTriggers(owner, [movedCard], makeEffectCause(context, owner)); // E5: 両者のデッキ→ドロップもミル
       if (effectiveCardType(movedCard) === "monster") {
-        applyDamageToPlayer(owner, effect.damage || 1, { sourceName: context.card?.name, sourceCard: context.card, sourceOwner: context.owner });
+        const dealing = applyDamageToPlayerAsk(owner, effect.damage || 1, { sourceName: context.card?.name, sourceCard: context.card, sourceOwner: context.owner });
+        if (dealing?.then) await dealing;
       } else if (!isLifeGainByEffectPrevented(state.players.indexOf(receiver))) {
         receiver.life += effect.life || 1;
         clearWinnerIfNoCurrentLoss(); // 可逆winner（gainLife と同じ扱い）
         addLog(`${context.card.name}の効果で${receiver.name}のライフを${effect.life || 1}回復しました。`);
+        // 「ライフが回復した時」(lifeGained) も gainLife と同じく発火する（D-CBT/0072 霊撃のライフ+2）。
+        if ((effect.life || 1) > 0) {
+          await runFieldEventTriggers("lifeGained", owner);
+        }
       }
     }
   }
@@ -1443,6 +1611,7 @@ async function executeAbilityEffect(effect, context) {
       title: `${context.card?.name || "効果"}で破壊するカード`,
       lead: "破壊するカードを1枚選んでください。",
       min: 1,
+      allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
       max: 1,
       forceDialog: true,
       promptSeat: chooserOwner,
@@ -1453,7 +1622,7 @@ async function executeAbilityEffect(effect, context) {
         cause: makeEffectCause(context, rpsChosen.owner),
       });
       if (rpsDestroyed) {
-        addLog(`${state.players[chooserOwner].name}はジャンケンに勝ち、${rpsChosen.card.name}を破壊しました。`);
+        addDestroyLog(`${state.players[chooserOwner].name}はジャンケンに勝ち、${rpsChosen.card.name}を破壊しました。`, rpsChosen.card.name);
       }
     }
   }
@@ -1479,10 +1648,12 @@ async function executeAbilityEffect(effect, context) {
     // noDrawDamage:true のカード(EB02/0063「負けたファイター」)ではアイコで誰も被弾しない。
     const drawHitsBoth = result === "draw" && !effect.noDrawDamage;
     if (result === "win" || drawHitsBoth) {
-      applyDamageToPlayer(1 - context.owner, amount, { sourceName: context.card?.name, sourceCard: context.card, sourceOwner: context.owner });
+      const dealing = applyDamageToPlayerAsk(1 - context.owner, amount, { sourceName: context.card?.name, sourceCard: context.card, sourceOwner: context.owner });
+      if (dealing?.then) await dealing;
     }
     if (result === "lose" || drawHitsBoth) {
-      applyDamageToPlayer(context.owner, amount, { sourceName: context.card?.name, sourceCard: context.card, sourceOwner: context.owner });
+      const dealing = applyDamageToPlayerAsk(context.owner, amount, { sourceName: context.card?.name, sourceCard: context.card, sourceOwner: context.owner });
+      if (dealing?.then) await dealing;
     }
   }
   if (effect.op === "rockPaperScissorsBranch") {
@@ -1527,15 +1698,31 @@ async function executeAbilityEffect(effect, context) {
     if (!player.setLockedIdsThisTurn.includes(context.card.id)) {
       player.setLockedIdsThisTurn.push(context.card.id);
     }
+    // audit2(b010-2): byName:true は「そのターン中、「<カード名>」は『設置』できない」＝同名の別プリントもロックする。
+    if (effect.byName) {
+      player.setLockedNamesThisTurn ||= [];
+      if (!player.setLockedNamesThisTurn.includes(context.card.name)) {
+        player.setLockedNamesThisTurn.push(context.card.name);
+      }
+    }
   }
   if (effect.op === "destroySelf") {
-    await destroyFieldCard(context.owner, context.zone, { ignoreSoulguard: true });
+    // rule-zones-2: 自壊でもソウルガードは使える（ver2.05『ソウルガード』は離場の原因を問わない置換効果）。
+    // pt-fix-c T7-2: 自壊も「カードの効果で破壊」＝cause を渡す（C・バジゴレム“パーツドロップ”「カードの効果で
+    // 破壊された時」等が自壊で誘発しなかった）。発生源はこのカード自身（byOpponent:false）。
+    await destroyFieldCard(context.owner, context.zone, { cause: makeEffectCause(context, context.owner), ...(effect.options || {}) });
   }
   if (effect.op === "equipSelf") {
     // 『変身』: 発生源カード自身を（手札/場、または手札能力使用でドロップへ移った直後でも）
     // アイテムとして装備する。currentType="item" 化・装備変更・装備時誘発は equipCardDirect が処理。
     const source = context.card;
-    if (source) {
+    // effect.stackOnItem:{target}: 重ね搭乗（「君が『搭乗』しているカード１枚の上に重ね」キングカイゼリオン X-UB02/0002）。
+    // 重ね先は自分の装備枠に居るカードに限る。居なければ（解決時に離れた等）装備しない。未指定は従来どおり。
+    const stackOnRef = effect.stackOnItem ? resolveEffectReference(effect.stackOnItem.target ?? effect.stackOnItem, context) : null;
+    const stackOn = stackOnRef?.card && itemZones.some((zone) => player.field[zone]?.instanceId === stackOnRef.card.instanceId) ? stackOnRef.card : null;
+    if (effect.stackOnItem && !stackOn) {
+      addLog(`${source?.name || "カード"}を重ねる『搭乗』しているカードが場にありません。`);
+    } else if (source) {
       const handIndex = player.hand.findIndex((c) => c.instanceId === source.instanceId);
       if (handIndex >= 0) {
         player.hand.splice(handIndex, 1);
@@ -1552,7 +1739,28 @@ async function executeAbilityEffect(effect, context) {
           }
         }
       }
-      await equipCardDirect(player, source, { byEffect: true });
+      // バディギフト（ver2.05 ④『変身』『搭乗』『着任』『必殺変身』「バディギフトによりライフを＋１することはできます」）:
+      // 宣言時にバディコール権を消費済み(context.declaredBuddyCall)なら+1。宣言を経ない即時解決経路（【対抗】の変身等）は
+      // 自分のバディでまだバディコールしていなければ、その場でバディコールとして扱う。
+      // R10（2026-10-09 オーナー裁定）: effectEquip:true（「手札のこのカードを装備する」等の効果による装備）はバディギフト無し。
+      const declaredBuddyCall =
+        !effect.effectEquip &&
+        Boolean(context.declaredBuddyCall || (!player.partnerCalled && isBuddyCard(player, source)));
+      // 『着任』（effect.arrival）: 装備したカードを着任アイテムとして記録する（equipCardDirect が arrivalCardId を消すため装備後に立てる）。
+      if (effect.arrival) {
+        source.arrived = true;
+      }
+      await equipCardDirect(player, source, { byEffect: true, declaredBuddyCall, stackOn });
+      const arrivedZone = effect.arrival
+        ? itemZones.find((zone) => player.field[zone]?.instanceId === source.instanceId)
+        : null;
+      if (arrivedZone) {
+        player.arrivalCardId = source.instanceId;
+        addLog(`${player.name}は${source.name}を着任しました。`);
+        // E-XB49①: 着任を場イベントとして配信（着任カード自身へ "arrived"、場全体へ allyArrived/opponentArrived）。
+        await runTriggeredAbilities(source, "arrived", { card: source, player, owner: context.owner, zone: arrivedZone });
+        await runFieldEventTriggers("arrived", context.owner, source, arrivedZone);
+      }
       // E3(D-SS03/0020 ゼータ『必殺変身』): 「装備したら『変身』しているアイテムとして扱い、ファイナル
       // フェイズ中にも攻撃できる」。装備先に grantedFinalPhaseAttack を立てる（src/09 canDeclareAttackInFinal が参照。
       // 場を離れると resetLeftFieldCardState でクリア）。既定（オプション無し）は従来どおり非設定＝挙動不変。
@@ -1610,7 +1818,16 @@ async function executeAbilityEffect(effect, context) {
     // 昇格後: player.flag.name === "∞ the Chaos ∞" で flagNameIs（0012/0014）が成立し、maxFieldSizeInfinite で ∞ 場サイズ、
     //   canAttackAsFlag でフラッグ攻撃が解禁される。控えが無い（0019 を仕込んでいない）なら何もしない（冪等）。
     const reserve = (player.flagReserve || []);
-    if (reserve.length > 0) {
+    // R1(2026-10-09): upTo:true＝「裏向きのカード１枚までを…重ね」＝重ねる枚数 0/1 を選ぶ（CPU 既定=1）。
+    const promoteCount =
+      reserve.length > 0 && effect.upTo
+        ? await chooseUpToAmount(1, {
+            title: `${context.card?.name || "効果"}：フラッグの上に重ねる枚数`,
+            lead: "フラッグの下にある裏向きのカードを、フラッグの上に表向きで重ねる枚数を選んでください（0〜1）。",
+            promptSeat: context.owner,
+          })
+        : reserve.length > 0 ? 1 : 0;
+    if (promoteCount > 0) {
       const promoted = reserve.shift(); // 先頭の控え札（∞ the Chaos ∞）を昇格
       player.flagReserve = reserve;
       const previousFlag = player.flag;
@@ -1649,7 +1866,22 @@ async function executeAbilityEffect(effect, context) {
     // プレイヤー単位の一回限り。resolveLifeZeroReplacements が消費し、ターン終了でクリアされる。
     // effects 指定時は消費時に追加効果（手札全捨て・相手にダメージ等。蒼舞天滝陣 0037）を実行する。
     player.lifeZeroSafeguard = { life: effect.life || 1, effects: effect.effects || null, owner: state.players.indexOf(player) };
-    addLog(`${player.name}は次にライフが0になっても${effect.life || 1}で耐える構えをとった。`);
+    // 監査 rule-damage-5(D-BT03/0075 ジャックナイフ・リンカー「そのアタックフェイズ中、君のライフが０になるなら、かわりに
+    //   君のライフは１になる」＝『次に』が無い期間型): once:false で消費しない持続型、duration:"attackPhase" で
+    //   アタックフェイズ中だけ有効（resolveLifeZeroReplacements が判定。ターン終了のクリアは従来どおり）。
+    //   未指定の既存カードは従来の一回限り・ターン中有効のまま。
+    if (effect.once === false) {
+      player.lifeZeroSafeguard.once = false;
+    }
+    if (effect.duration === "attackPhase") {
+      player.lifeZeroSafeguard.duration = "attackPhase";
+      player.lifeZeroSafeguard.turnCount = state.turnCount;
+    }
+    addLog(
+      effect.once === false
+        ? `${player.name}は${effect.duration === "attackPhase" ? "そのアタックフェイズ中" : "そのターン中"}、ライフが0になっても${effect.life || 1}で耐える構えをとった。`
+        : `${player.name}は次にライフが0になっても${effect.life || 1}で耐える構えをとった。`,
+    );
   }
   if (effect.op === "addTurnFlagNameAlias") {
     // E12(D-SS02/0005 未来占星術): 「そのターン中、君のフラッグは「X」と「Y」としても扱う」。
@@ -1740,7 +1972,9 @@ async function executeAbilityEffect(effect, context) {
       //   デッドコードだが後方互換のため温存）。ignore*/suppress* は !options.X 判定なので false 明示は無害。
       const nullifyDestroyOptions = {
         ignoreSoulguard: Boolean(effect.ignoreSoulguard || effect.nullifyAbilities),
-        ignoreDestroyImmunity: Boolean(effect.ignoreDestroyImmunity || effect.nullifyAbilities),
+        // 「能力全てを無効化し」は対象自身の能力だけ＝他カード発の破壊耐性は貫通しない（ignoreOwnDestroyImmunity）。
+        ignoreDestroyImmunity: Boolean(effect.ignoreDestroyImmunity),
+        ignoreOwnDestroyImmunity: Boolean(effect.ignoreOwnDestroyImmunity || effect.nullifyAbilities),
         ignoreDestroyReplacement: Boolean(effect.ignoreDestroyReplacement || effect.nullifyAbilities),
         suppressDestroyedTriggers: Boolean(effect.suppressDestroyedTriggers || effect.nullifyAbilities),
         suppressLifeLink: Boolean(effect.suppressLifeLink || effect.nullifyAbilities),
@@ -1757,13 +1991,13 @@ async function executeAbilityEffect(effect, context) {
     } else if (target?.card) {
       const destroyedName = target.card.name;
       const isSelf = effect.target === "$self";
-      const options = isSelf
-        ? { ignoreSoulguard: true, ...(effect.options || {}) }
-        : { cause: makeEffectCause(context, target.owner), ...(effect.options || {}) };
+      // rule-zones-2: 自壊($self)もソウルガードを使える（ignoreSoulguard は effect.options で明示した時だけ）。
+      // pt-fix-c T7-2: 自壊($self)も効果による破壊＝cause を渡す（「カードの効果で破壊された時」が自壊で誘発する）。
+      const options = { cause: makeEffectCause(context, target.owner), ...(effect.options || {}) };
       const destroyed = await destroyFieldCard(target.owner, target.zone, options);
       context.lastDestroyed = Boolean(destroyed);
       if (destroyed && !isSelf && context.card) {
-        addLog(`${context.card.name}の効果で${destroyedName}を破壊しました。`);
+        addDestroyLog(`${context.card.name}の効果で${destroyedName}を破壊しました。`, destroyedName);
       }
     }
   }
@@ -1773,7 +2007,7 @@ async function executeAbilityEffect(effect, context) {
     //   デッドコード（生 op を直接投げる内部呼び出しの後方互換のため温存・削除不可）。
     //   nullifyAbilities の実挙動は上の destroy{scope} 経路（nullifyDestroyOptions）が担う。
     const destroyAllTargets = allFieldTargets((card, owner, zone) => {
-      if (Array.isArray(effect.zones) && !effect.zones.includes(zone)) {
+      if (Array.isArray(effect.zones) && !zoneListIncludes(effect.zones, zone)) {
         return false;
       }
       if (effect.controller === "self" && owner !== context.owner) {
@@ -1797,7 +2031,8 @@ async function executeAbilityEffect(effect, context) {
         // nullifyAbilities: 「場のモンスターの能力全てを無効化し…破壊する」(大魔法 ラグナロク 0030)。
         // 能力由来の防御(ソウルガード/破壊耐性/破壊置換)と破壊時誘発を一括で無効化してから破壊する。
         ignoreSoulguard: Boolean(effect.ignoreSoulguard || effect.nullifyAbilities),
-        ignoreDestroyImmunity: Boolean(effect.ignoreDestroyImmunity || effect.nullifyAbilities),
+        ignoreDestroyImmunity: Boolean(effect.ignoreDestroyImmunity),
+        ignoreOwnDestroyImmunity: Boolean(effect.ignoreOwnDestroyImmunity || effect.nullifyAbilities),
         ignoreDestroyReplacement: Boolean(effect.nullifyAbilities),
         suppressDestroyedTriggers: Boolean(effect.nullifyAbilities),
         // ライフリンクもキーワード能力なので「能力全て無効化してから破壊」では発動しない（ラグナロク）。
@@ -1822,7 +2057,10 @@ async function executeAbilityEffect(effect, context) {
       (fieldHasLeaveFieldReplacer(target.owner) && (await applyAllyLeaveFieldReplacement(target.card, target.owner, leaveCause))) ||
       (soulHasLeaveFieldReplacer(target.card) && (await applySoulLeaveFieldReplacement(target.card, target.owner, leaveCause)))
     )) {
-      const moved = dropFieldCardByRule(ownerPlayer, target.zone);
+      // rule-zones-1: 効果でドロップへ置く＝場から離れる。ソウルガード（置換効果）で場に残せる。
+      const moved = (await trySoulguardOnLeave(target.card, target.owner, target.zone))
+        ? null
+        : dropFieldCardByRule(ownerPlayer, target.zone);
       if (moved) {
         addLog(`${context.card.name}の効果で${moved.name}をドロップゾーンに置きました。`);
       }
@@ -1838,7 +2076,7 @@ async function executeAbilityEffect(effect, context) {
       (fieldHasLeaveFieldReplacer(target.owner) && (await applyAllyLeaveFieldReplacement(returnTargetCard, target.owner, leaveCause))) ||
       (soulHasLeaveFieldReplacer(returnTargetCard) && (await applySoulLeaveFieldReplacement(returnTargetCard, target.owner, leaveCause)))
     )) {
-      returnFieldTargetToHand(target, context.card.name, { returnCause: leaveCause });
+      await returnFieldTargetToHandAsync(target, context.card.name, { returnCause: leaveCause });
     }
   }
   if (effect.op === "dischargeSelfFromHostSoul" && context.card && context.hostCard) {
@@ -1889,9 +2127,15 @@ async function executeAbilityEffect(effect, context) {
     if (selfPlayer) {
       const slot = findFieldCardSlot(card);
       if (slot && slot.owner === state.players.indexOf(selfPlayer)) {
-        selfPlayer.drop.push(...(card.soul || []));
-        card.soul = [];
-        selfPlayer.field[slot.zone] = null;
+        // rule-zones-7: 場からデッキの下へ＝正規の離場経路（ライフリンク・「場から離れた時」・裏向きソウルの公開・
+        // 場の一時状態リセット・「場のモンスターが手札かデッキに戻った時」）へ委譲する。rule-zones-1: ソウルガード可。
+        if (await trySoulguardOnLeave(card, slot.owner, slot.zone)) {
+          return;
+        }
+        if (putFieldCardToDeck(selfPlayer, slot.zone, { position: "bottom" })) {
+          addLog(`${card.name}をデッキの下に置きました。`);
+        }
+        return;
       } else {
         const dropIndex = selfPlayer.drop.findIndex((c) => c.instanceId === card.instanceId);
         if (dropIndex >= 0) selfPlayer.drop.splice(dropIndex, 1);
@@ -1908,18 +2152,27 @@ async function executeAbilityEffect(effect, context) {
     if (selfPlayer) {
       const selfOwnerIndex = state.players.indexOf(selfPlayer);
       const selfSlot = findFieldCardSlot(context.card);
+      // require:true（「場のこのカードを手札に戻してよい。戻したら、…」）: 場のこのカードが実際に手札へ戻った時だけ
+      // 後続を解決する。場にいない／手札に戻せない／ソウルガード・離場置換で場に残った場合は script を打ち切る。
+      if (effect.require === true && !(selfSlot && selfSlot.owner === selfOwnerIndex)) {
+        addLog(`${context.card.name}は場にないため手札に戻せません。`);
+        return { ok: false, reason: "self_return_failed" };
+      }
       if (selfSlot && selfSlot.owner === selfOwnerIndex) {
         // F5: 場にあるこのカード自身の手札戻し（battleEnd自己戻し bf-h-eb04-0008/0011/0059・
         // bf-h-pp01-0036/0063、【対抗】自己戻し bf-s-ub-c03-0020/0071/0084 等）。従来はドロップ回収
         // しか処理せず field[zone] に参照が残り「場と手札に同一カードが複製」される実バグだった。
         // 正規の単体手札戻し経路（ソウルのドロップ送り・ゾーンクリア・ライフリンク・戻り誘発・
         // cannotReturnToHand/離場置換ゲート込み）へ委譲する。
-        const returned = returnFieldTargetToHand(
+        const returned = await returnFieldTargetToHandAsync(
           { owner: selfSlot.owner, zone: selfSlot.zone },
           context.card.name,
+          { cause: makeEffectCause(context, selfSlot.owner) },
         );
         if (returned) {
           context.cardMoved = true;
+        } else if (effect.require === true) {
+          return { ok: false, reason: "self_return_failed" };
         }
       } else {
         const dropIndex = selfPlayer.drop.findIndex((c) => c.instanceId === context.card.instanceId);
@@ -1982,7 +2235,7 @@ async function executeAbilityEffect(effect, context) {
       if (!returned) {
         continue;
       }
-      if (cannotReturnToHand(returned)) {
+      if (cannotReturnToHand(returned, makeEffectCause(context, candidate.owner))) {
         addLog(`${returned.name}は手札に戻せません。`);
         continue;
       }
@@ -1992,11 +2245,19 @@ async function executeAbilityEffect(effect, context) {
         addLog(`${returned.name}は効果により場に残りました。`);
         continue;
       }
+      // rule-zones-1: ver2.05『ソウルガード』（場から離れる場合の置換効果）は全体手札戻しでも使える。
+      if (await trySoulguardOnLeave(returned, candidate.owner, candidate.zone)) {
+        continue;
+      }
       // X9(D-BT01/0131): コスト付き離場置換（手札戻しもカバー）。
       if (await tryLeaveFieldReplacement(returned, candidate.owner)) {
         continue;
       }
+      if (ownerPlayer.field[candidate.zone] !== returned) {
+        continue; // 確認(await)中に既に場を離れた
+      }
       const lifeLinkNullifiedAtLeave = isAbilitiesNullified(returned); // 離場直前に捕捉（能力無効化中はライフリンク無し）
+      const typeAtLeave = effectiveCardType(returned); // rule-zones-3: 離場時点の型（変身等は装備中だけアイテム）
       ownerPlayer.drop.push(...(returned.soul || []));
       returned.soul = [];
       reconcileFaceDownSoulDrops(); // ソウル札の公開・selfDroppedFromSoul（他の離場経路と同基準）
@@ -2008,13 +2269,13 @@ async function executeAbilityEffect(effect, context) {
       ownerPlayer.hand.push(returned);
       applyLifeLink(returned, candidate.owner, { nullifiedAtLeave: lifeLinkNullifiedAtLeave });
       // 「場から離れた時」誘発は手札戻し(全戻しfunnel)でも発火（ライフリンクと同一離場サイト）。
-      queueLeaveFieldTriggers(returned, candidate.owner, candidate.zone);
+      queueLeaveFieldTriggers(returned, candidate.owner, candidate.zone, { eventCardTypeAtLeave: typeAtLeave });
       addLog(`${returned.name}を手札に戻しました。`);
       // E-XV6(X-UB02/0015): 戻ったカード自身の「このカードが手札に戻った時」自己誘発（全戻し funnel。
       // returnFieldTargetToHand を経ない直接 hand.push のため、ここでも queue する＝兄弟経路の取りこぼし防止）。
       queueReturnedToHandTriggers(returned, candidate.owner, "field");
       allReturnedForTriggers.push({ card: returned, owner: candidate.owner, zone: candidate.zone });
-      if (effectiveCardType(returned) === "monster") {
+      if (typeAtLeave === "monster") {
         returnedForTriggers.push({ card: returned, owner: candidate.owner, zone: candidate.zone });
       }
     }
@@ -2126,7 +2387,21 @@ async function executeAbilityEffect(effect, context) {
     target.card[`${prefix}DefenseBonus`] += guardStatDelta(target.card, "defense", effect.defense || 0, cause);
     target.card[`${prefix}CriticalBonus`] += guardStatDelta(target.card, "critical", effect.critical || 0, cause);
   }
-  if (effect.op === "grantKeyword" && target?.card) {
+  if (effect.op === "grantKeyword" && effect.scope) {
+    // scope 指定（modifyStats と同じ全体形）: 解決時点で場にいる scope/filter 一致カード全てへ、単体形と
+    // 同じ付与処理を1枚ずつ適用する（「そのターン中、君の場の《X》のモンスター全ては『～』を得る」）。
+    const keywordRecipients = collectFieldTargets(
+      { scope: effect.scope, filter: effect.filter, zones: effect.zones, excludeSource: effect.excludeSource },
+      context,
+    );
+    for (const recipient of keywordRecipients) {
+      await executeAbilityEffect(
+        { op: "grantKeyword", keyword: effect.keyword, duration: effect.duration, target: "$target" },
+        { ...context, target: recipient },
+      );
+    }
+  }
+  if (effect.op === "grantKeyword" && !effect.scope && target?.card) {
     // duration を counterattack 特別扱いより先に判定する。counterattack+duration:"turn" は
     // turnKeywords に載せることで、clearBattleModifiers(バトル終了)ではなく clearTurnModifiers(ターン終了)で
     // クリアされる（「そのターン中『反撃』を得る」がバトル終了で失効するのを防ぐ）。
@@ -2170,12 +2445,26 @@ async function executeAbilityEffect(effect, context) {
       .filter((entry) => !soulCardSelfProtectedFrom(entry.card, "soulDrop", soulDiscardCause))
       // E-XB58(X-UB03/0016 起爆畳): faceDown:true は裏向きソウルのみを候補にする（原文「裏向きのソウル」限定）。
       .filter((entry) => !effect.faceDown || entry.card?.faceDown);
-    const selected =
-      soulEntries.length > amount
+    // R1(2026-10-09): upTo:true＝「ソウルN枚までを置く」。0〜N（ソウル枚数が上限）を能力の主体が選ぶ（候補が N 以下でも
+    // 必ず問う）。CPU: 相手のカードのソウルは hostile（最大枚数）、自分のカードのソウルは cost（0枚）。未指定＝従来の固定枚数。
+    const selected = effect.upTo
+      ? soulEntries.length > 0
+        ? (await chooseCardEntries(soulEntries, {
+            title: `${context.card.name}のソウル選択`,
+            lead: `${target.card.name}のソウルからドロップゾーンに置くカードを${Math.min(amount, soulEntries.length)}枚まで選んでください。`,
+            min: 0,
+            max: Math.min(amount, soulEntries.length),
+            forceDialog: true,
+            promptSeat: context.owner,
+            purpose: target.owner === context.owner ? "cost" : "hostile",
+          })) || []
+        : []
+      : soulEntries.length > amount
         ? await chooseCardEntries(soulEntries, {
             title: `${context.card.name}のソウル選択`,
             lead: `${target.card.name}のソウルからドロップゾーンに置くカードを${amount}枚選んでください。`,
             min: amount,
+            allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
             max: amount,
             forceDialog: true,
             promptSeat: context.owner, // 効果の使用者が選ぶ（CPU対戦/権威サーバの誤配送防止）
@@ -2217,6 +2506,7 @@ async function executeAbilityEffect(effect, context) {
             title: `${context.card.name}のソウル選択`,
             lead: `${target.card.name}のソウルから手札に戻すカードを${amount}枚選んでください。`,
             min: amount,
+            allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
             max: amount,
             forceDialog: true,
             promptSeat: context.owner, // 効果の使用者が選ぶ（CPU対戦/権威サーバの誤配送防止）
@@ -2260,10 +2550,21 @@ async function executeAbilityEffect(effect, context) {
     for (const soulOwner of soulOwners) {
       const fieldCard = state.players[soulOwner]?.field?.[effect.zone];
       if (fieldCard?.soul?.length) {
-        const droppedCount = fieldCard.soul.length;
+        // dropTargetSoul と同じソウル保護: ソウルの持ち主ごとに原因を作り、相手の効果なら grantSoulDiscardImmunity
+        // （ホスト単位）と selfInSoulProtection（ソウル札単位）で守られたソウルを落とさない。自分の効果は従来どおり。
+        const soulDiscardCause = makeEffectCause(context, soulOwner);
+        if (soulDiscardCause.byOpponent && cardProtectedFrom(fieldCard, "soulDiscard", soulDiscardCause)) {
+          addLog(`${fieldCard.name}のソウルは相手のカードの効果で捨てられません。`);
+          continue;
+        }
+        const droppedSoul = fieldCard.soul.filter((card) => !soulCardSelfProtectedFrom(card, "soulDrop", soulDiscardCause));
+        if (!droppedSoul.length) {
+          continue;
+        }
+        const droppedCount = droppedSoul.length;
         addLog(`${context.card.name}の効果で${fieldCard.name}のソウル${droppedCount}枚をドロップゾーンに置きました。`);
-        state.players[soulOwner].drop.push(...fieldCard.soul);
-        fieldCard.soul = [];
+        state.players[soulOwner].drop.push(...droppedSoul);
+        fieldCard.soul = fieldCard.soul.filter((card) => !droppedSoul.includes(card));
         // E1/F2: ホスト存命のままソウル全てがドロップへ → soulCardDropped。
         queueSoulCardDroppedTriggers(fieldCard, soulOwner, droppedCount);
       }
@@ -2307,7 +2608,7 @@ async function executeAbilityEffect(effect, context) {
   if (effect.op === "standAll") {
     // controller/filter 一致の場のカード全てをスタンド（「君の場の《冒険者》全てを【スタンド】」0046）。
     const targets = allFieldTargets((card, owner, zone) => {
-      if (Array.isArray(effect.zones) && !effect.zones.includes(zone)) return false;
+      if (Array.isArray(effect.zones) && !zoneListIncludes(effect.zones, zone)) return false;
       if (effect.controller === "self" && owner !== context.owner) return false;
       if (effect.controller === "opponent" && owner === context.owner) return false;
       return matchesTargetFilter(card, owner, zone, effect.filter || {});
@@ -2340,6 +2641,11 @@ async function executeAbilityEffect(effect, context) {
       owner: context.owner,
       attackerFilter: effect.attackerFilter || effect.filter || {},
       chooseTarget: effect.chooseTarget || null,
+      // persistent:true＝「そのターン中、君の～が攻撃した時」型の持続予約。消費せず、一致した攻撃宣言のたびに
+      // 発火する（1宣言につき1エントリ1回）。発生源の離場/無効化に依存せず、clearTurnModifiers でのみ破棄。
+      persistent: Boolean(effect.persistent),
+      // chooseTarget の候補が無くても effects を解決する（破壊対象なしでもダメージは与える等）。
+      allowMissingTarget: Boolean(effect.allowMissingTarget || effect.chooseTarget?.allowMissingTarget),
       effects: effect.effects || [],
       sourceName: context.card?.name || "効果",
       // ログ/makeEffectCause 用の最小スナップショット。実カード参照は room 復元（JSON往復）で
@@ -2389,6 +2695,9 @@ async function executeAbilityEffect(effect, context) {
       return;
     }
     target.card.putToGaugeAtEndOfTurnOwner = context.owner;
+    // 裁定2026-10-08: 『ターン終了時』に所有者指定が無い＝予約したそのターンの終了時（【対抗】で相手ターン中に
+    // 使った D-EB01/0033 太陽炉ジェット壱式 は相手ターン終了時に置く。自ターン使用は従来と同じ）。
+    target.card.putToGaugeAtEndOfTurnTurn = state.active;
   }
   if (effect.op === "nullifyAttackersKeyword") {
     // 攻撃してきたカードの指定キーワードを、そのターン中 無効化する（turnSuppressedKeywords は hasKeyword が参照し、ターン終了でクリア）。
@@ -2439,10 +2748,12 @@ async function executeAbilityEffect(effect, context) {
   if (effect.op === "preventAttackDamageThisTurn") {
     // そのターン中、君が攻撃によって受けるダメージを0にする（拳士の覚悟 グラップルソウル）。
     // onlyAttack=攻撃ダメージ限定、once:false=ターン中持続（turn-end で untilTurnOwner により消える）。
+    // 裁定 rulings-d: 「０になる」は減らす効果ではない＝分類(b) setZero。『減らない』ダメージにも効く（Q677・Q1603）。
     addNextDamagePrevention(context.owner, {
       preventAll: true,
       once: false,
       onlyAttack: true,
+      damageClass: "setZero",
       source: context.card?.name,
       sourceCard: context.card,
     });
@@ -2510,7 +2821,10 @@ async function executeAbilityEffect(effect, context) {
       (fieldHasLeaveFieldReplacer(target.owner) && (await applyAllyLeaveFieldReplacement(target.card, target.owner, leaveCause))) ||
       (soulHasLeaveFieldReplacer(target.card) && (await applySoulLeaveFieldReplacement(target.card, target.owner, leaveCause)))
     )) {
-      const moved = putFieldCardToGauge(ownerPlayer, target.zone, { byEffect: true }); // 効果配置＝gaugePlaced 発火（第11回メカレビュー）
+      // rule-zones-1: 効果でゲージへ置く＝場から離れる。ソウルガード（置換効果）で場に残せる。
+      const moved = (await trySoulguardOnLeave(target.card, target.owner, target.zone))
+        ? null
+        : putFieldCardToGauge(ownerPlayer, target.zone, { byEffect: true }); // 効果配置＝gaugePlaced 発火（第11回メカレビュー）
       if (moved) {
         addLog(`${context.card.name}の効果で${moved.name}をゲージに置きました。`);
       }
@@ -2563,7 +2877,14 @@ async function executeAbilityEffect(effect, context) {
     // そのターン中、effect.conditions を満たすバトル中は、発動者の相手は【対抗】を使えない（0053）。
     // メイン魔法で貼り、後で連携攻撃等が起きた時に効くターンスコープのロック。
     state.opponentCounterLockThisTurn ||= [];
-    state.opponentCounterLockThisTurn.push({ owner: context.owner, while: effect.conditions || [] });
+    // 発生源（instanceId）を保存し、while は発生源カードを context.card にして評価する（canUseCounterEffect）。
+    // sourceMustAttack:true＝「このカードが…攻撃しているバトル中」＝発生源が現在の攻撃者に含まれる時だけ有効。
+    state.opponentCounterLockThisTurn.push({
+      owner: context.owner,
+      while: effect.conditions || [],
+      sourceInstanceId: context.card?.instanceId ?? null,
+      sourceMustAttack: Boolean(effect.sourceMustAttack),
+    });
     addLog(`${context.card?.name || "効果"}の効果で、このターン相手は指定の状況で【対抗】を使えません。`);
   }
   if (effect.op === "eachPlayerMayDiscardElseDamage") {
@@ -2584,6 +2905,7 @@ async function executeAbilityEffect(effect, context) {
           title: context.card?.name || "喧嘩両成敗",
           lead: `捨てる手札${n}枚を選んでください。`,
           min: n,
+          allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
           max: n,
           forceDialog: true,
           promptSeat: seat,
@@ -2595,7 +2917,8 @@ async function executeAbilityEffect(effect, context) {
         discarded = true;
       }
       if (!discarded) {
-        applyDamageToPlayer(seat, dmg, { sourceName: context.card?.name, byEffect: true, sourceCard: context.card, sourceOwner: context.owner });
+        const dealing = applyDamageToPlayerAsk(seat, dmg, { sourceName: context.card?.name, byEffect: true, sourceCard: context.card, sourceOwner: context.owner });
+        if (dealing?.then) await dealing;
         addLog(`${p.name}は捨てなかったため${dmg}ダメージ。`);
       }
     }
@@ -2633,6 +2956,7 @@ async function executeAbilityEffect(effect, context) {
         state.pendingAttack.targetZone = slot.zone;
         state.pendingAttack.targetType =
           effectiveCardType(context.card) === "monster" ? "monster" : "fieldCard";
+        bindPendingAttackTarget(); // E2
         addLog(`${context.card.name}の効果で攻撃対象を${context.card.name}に変更しました。`);
       }
     }
@@ -2642,6 +2966,7 @@ async function executeAbilityEffect(effect, context) {
     state.pendingAttack.targetOwner = context.owner;
     state.pendingAttack.targetZone = null;
     state.pendingAttack.targetType = "fighter";
+    bindPendingAttackTarget(); // E2（ファイター対象＝控え無し）
     addLog(`${context.card?.name || "効果"}の効果で攻撃対象を${player.name}本体に変更しました。`);
   }
   if (effect.op === "redirectPendingAttackToTarget" && state.pendingAttack) {
@@ -2654,6 +2979,7 @@ async function executeAbilityEffect(effect, context) {
       state.pendingAttack.targetZone = slot.zone;
       const card = targetCard || state.players[slot.owner]?.field?.[slot.zone];
       state.pendingAttack.targetType = card && effectiveCardType(card) === "monster" ? "monster" : "fieldCard";
+      bindPendingAttackTarget(); // E2
       addLog(`${context.card?.name || "効果"}の効果で攻撃対象を${card?.name || "対象"}に変更しました。`);
     }
   }
@@ -2666,6 +2992,7 @@ async function executeAbilityEffect(effect, context) {
       state.pendingAttack.targetOwner = slot.owner;
       state.pendingAttack.targetZone = slot.zone;
       state.pendingAttack.targetType = effectiveCardType(selected) === "monster" ? "monster" : "fieldCard";
+      bindPendingAttackTarget(); // E2
       addLog(`${context.card?.name || "効果"}の効果で攻撃対象を${selected.name}に変更しました。`);
     }
   }
@@ -2708,6 +3035,7 @@ async function executeAbilityEffect(effect, context) {
       title: `${context.card.name}で破壊するモンスター`,
       lead: `破壊するモンスターを1枚選んでください。`,
       min: 1,
+      allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
       max: 1,
       forceDialog: true,
       promptSeat: context.owner,
@@ -2743,6 +3071,7 @@ async function executeAbilityEffect(effect, context) {
       title: `${context.card.name}で破壊するモンスター`,
       lead: `破壊するモンスターを1枚選んでください。`,
       min: 1,
+      allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
       max: 1,
       forceDialog: true,
       promptSeat: context.owner,
@@ -2786,6 +3115,7 @@ async function executeAbilityEffect(effect, context) {
         title: `${context.card.name}`,
         lead: "破壊する相手モンスターを選んでください。",
         min: 1,
+        allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
         max: 1,
         forceDialog: true,
         promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
@@ -2795,7 +3125,7 @@ async function executeAbilityEffect(effect, context) {
     if (selected?.[0]) {
       // 効果破壊として発生源(sourceOwner)を伝播（「君のカードで破壊された時」0030・破壊耐性判定と整合）。
       await destroyFieldCard(selected[0].owner, selected[0].zone, { cause: makeEffectCause(context, selected[0].owner) });
-      addLog(`${context.card.name}の効果で${selected[0].card.name}を破壊しました。`);
+      addDestroyLog(`${context.card.name}の効果で${selected[0].card.name}を破壊しました。`, selected[0].card.name);
     }
   }
   if (effect.op === "moveTargetToZone" && target?.card) {
@@ -2818,6 +3148,7 @@ async function executeAbilityEffect(effect, context) {
       state.pendingAttack.targetOwner = target.owner;
       state.pendingAttack.targetZone = destination;
       state.pendingAttack.targetType = effectiveCardType(target.card) === "monster" ? "monster" : "fieldCard";
+      bindPendingAttackTarget(); // E2: 変更後の攻撃対象の同一性を控え直す
       addLog(`${context.card.name}の効果で攻撃対象を${target.card.name}に変更しました。`);
     }
   }
@@ -2863,6 +3194,7 @@ async function executeAbilityEffect(effect, context) {
           title: `${context.card?.name || "効果"}の再配置`,
           lead: `${movedCard.name}を動かすエリアを選んでください。`,
           min: 1,
+          allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
           max: 1,
           forceDialog: true,
           promptSeat: context.owner,
@@ -2916,6 +3248,7 @@ async function executeAbilityEffect(effect, context) {
           title: `${context.card.name}の移動先`,
           lead: `${target.card.name}を移動するエリアを選んでください。`,
           min: 1,
+          allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
           max: 1,
           forceDialog: true,
           promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
@@ -3036,6 +3369,7 @@ async function executeAbilityEffect(effect, context) {
   if (effect.op === "reduceNextDamage") {
     addNextDamagePrevention(context.owner, {
       amount: effect.amount || 1,
+      damageClass: "reduce",
       // 「N以上のダメージを受ける時」限定の軽減（PP01/0026）。未指定なら全ダメージ対象。
       threshold: effect.threshold,
       source: context.card?.name,
@@ -3047,16 +3381,32 @@ async function executeAbilityEffect(effect, context) {
     // 統合形: all:true(全無効) / amount:N(N軽減) / 引数なし(後方互換で全無効)。
     const preventAll = effect.all === true || (effect.amount === undefined && effect.all === undefined);
     if (preventAll) {
+      // 監査 rule-damage-6: 『次に君に与えられるダメージを０に減らし』は文言上「軽減」（reduceToZero）であり、
+      //   アトラ・アダマント等の『減らない』（sourceUnreducible）が優先して貫通する。『受けない』（バディ×クロス
+      //   「君は次のダメージを受けない」）は effect.noDamage:true で従来の preventAll（貫通されない）のまま。
+      // 裁定 rulings-d: noDamage:true＝分類(a)「受けない」、それ以外＝分類(c)「０に減らす」。
+      //   gainLife: 「０に減らし、君のライフを＋N」のライフ回復はダメージを受ける時に行う（Q189。applyDamageToPlayer が加算）。
       addNextDamagePrevention(context.owner, {
         preventAll: true,
+        ...(effect.noDamage === true ? { damageClass: "noDamage" } : { reduceToZero: true, damageClass: "reduce" }),
+        ...(effect.gainLife > 0 ? { gainLife: effect.gainLife } : {}),
         source: context.card?.name,
         sourceCard: context.card,
       });
-      addLog(`${context.card.name}の効果で、次に受けるダメージを0にします。`);
+      addLog(
+        effect.noDamage === true
+          ? `${context.card.name}の効果で、次のダメージを受けません。`
+          : `${context.card.name}の効果で、次に受けるダメージを0に減らします${effect.gainLife > 0 ? `（その時ライフ＋${effect.gainLife}）` : ""}。`,
+      );
     } else {
       const amount = effect.amount || 1;
       addNextDamagePrevention(context.owner, {
         amount,
+        damageClass: "reduce",
+        ...(effect.gainLife > 0 ? { gainLife: effect.gainLife } : {}),
+        // E13: 「N以上のダメージを受ける時」限定の軽減（PP01/0026 めちゃ痛タコス）。旧 reduceNextDamage は
+        // ロード時 desugar(src/02 desugarTwinEffectOps)でこの op に吸収されるため、threshold もここで引き継ぐ。
+        ...(effect.threshold !== undefined ? { threshold: effect.threshold } : {}),
         source: context.card?.name,
         sourceCard: context.card,
       });
@@ -3066,20 +3416,35 @@ async function executeAbilityEffect(effect, context) {
   if (effect.op === "preventAllDamageThisTurn") {
     // 「そのターン中、君はダメージを受けない」（四角炎王 バーンノヴァ H-BT03/0006 の救援）。
     // once:false + preventAll で持続。untilTurnOwner=state.active（発動＝相手ターン）なので、その相手ターン終了で失効。
+    // 裁定 R9: whileConditions（「そのターン中、君のセンターにモンスターがいるなら」X-BT02/0073）は記帳に載せ、
+    // applyDamageToPlayer のキュー走査がダメージのたびに再評価する（満たさない間はキューに残して適用しない）。
+    // 裁定 rulings-d: 分類(a)「受けない」＝『減らない』ダメージも受けない（Q1605）。
+    // onlyAttack:true は「攻撃でダメージを受けない」（S-UB-C03/0047 棟方愛海 第2択）。
+    const whileCond = captureWhileConditions(effect, context.owner);
     addNextDamagePrevention(context.owner, {
       preventAll: true,
       once: false,
+      damageClass: "noDamage",
+      ...(effect.onlyAttack === true ? { onlyAttack: true } : {}),
       source: context.card?.name,
       sourceCard: context.card,
+      ...(whileCond ? { whileCond } : {}),
     });
-    addLog(`${context.card?.name || "効果"}により、このターン中${state.players[context.owner].name}はダメージを受けません。`);
+    {
+      const what = `${effect.onlyAttack === true ? "攻撃で" : ""}ダメージを受けません。`;
+      addLog(
+        whileCond
+          ? `${context.card?.name || "効果"}により、このターン中、条件を満たしている間${state.players[context.owner].name}は${what}`
+          : `${context.card?.name || "効果"}により、このターン中${state.players[context.owner].name}は${what}`,
+      );
+    }
   }
   if (effect.op === "setPreventNextDestroy" && target?.card) {
     target.card.preventNextDestroyCount = (target.card.preventNextDestroyCount || 0) + (effect.amount || 1);
     // E2(D-BT02/0110): mode:"returnToHand" で破壊置換の着地先を「場に残す」→「手札へ戻す」に変える。
     // 既定(mode 未指定)は従来どおり場に残す＝完全後方互換。消費側(src/11)が returnToHand を見て委譲先を切替。
     const returnToHand = effect.mode === "returnToHand";
-    if (effect.gainLife || effect.log || effect.countsAsDestroyed || effect.grantKeyword || effect.effects || returnToHand) {
+    if (effect.gainLife || effect.log || effect.countsAsDestroyed || effect.grantKeyword || effect.effects || returnToHand || effect.optional) {
       target.card.preventNextDestroyEffects ||= [];
       target.card.preventNextDestroyEffects.push({
         owner: context.owner,
@@ -3092,6 +3457,8 @@ async function executeAbilityEffect(effect, context) {
         // 破壊解決の消費側(src/11)で destroyReaction と同形の microtask で実行する（再入を避けるため）。
         effects: Array.isArray(effect.effects) ? effect.effects : null,
         returnToHand,
+        // optional:true＝「場に残せる」（任意）。消費側(src/11 acceptOptionalPreventNextDestroy)が持ち主に確認する。
+        ...(effect.optional ? { optional: true } : {}),
       });
     }
     addLog(
@@ -3109,6 +3476,8 @@ async function executeAbilityEffect(effect, context) {
       owner: immunityOwner,
       zoneIn: effect.zoneIn || null,
       filter: effect.filter || null,
+      // from:{byEffect,byOpponent,byBattle}＝破壊原因の限定（「相手のカードの効果で破壊されない」）。未指定は原因不問＝従来どおり。
+      ...(effect.from ? { from: effect.from } : {}),
     });
     addLog(`${context.card?.name || "効果"}の効果で、このターン中に対象のモンスターは破壊されなくなりました。`);
   }
@@ -3130,6 +3499,8 @@ async function executeAbilityEffect(effect, context) {
     // E-XB51①(X-CBT01/0073 覇王紅蓮雷波): statDecrease(相手効果によるステ減少無視)保護。effect.stats で
     // 対象 stat を限定（例 ["critical"]＝打撃力のみ「減らず」）。既定（stats 無し）は全stat保護＝後方互換。
     if (effect.stats) protectionEntry.stats = effect.stats;
+    // from:{byEffect,byOpponent}＝原因の限定（「相手のカードの効果で」）。cardProtectedFrom の cause と照合。未指定は従来どおり。
+    if (effect.from) protectionEntry.from = effect.from;
     // effect.selected: filter/scope の広域一致ではなく「選んだ1枚」だけを束縛する。context.vars[effect.var]
     //（selectCards の選択）または context.target を instanceIds に写す。既存2カードは selected 未指定＝挙動不変。
     if (effect.selected) {
@@ -3187,6 +3558,7 @@ async function executeAbilityEffect(effect, context) {
     const delayTarget = effect.target ? resolveEffectReference(effect.target, context) : null;
     if (delayTarget?.card) {
       delayTarget.card.destroyAtEndOfTurnOwner = delayTarget.owner;
+      markDelayedDestroySoulguardAllowed(delayTarget.card, context);
     } else if (context.card) {
       context.card.destroyAtEndOfTurnOwner = context.owner;
     }
@@ -3207,6 +3579,7 @@ async function executeAbilityEffect(effect, context) {
       (attackers || []).forEach((entry) => {
         if (entry?.card && effectiveCardType(entry.card) === "monster") {
           entry.card.destroyAtEndOfTurnOwner = turnEndOwnerFor(entry.owner);
+          markDelayedDestroySoulguardAllowed(entry.card, context);
         }
       });
     } else {
@@ -3217,6 +3590,7 @@ async function executeAbilityEffect(effect, context) {
           : null;
       if (victim?.card) {
         victim.card.destroyAtEndOfTurnOwner = turnEndOwnerFor(victim.owner);
+        markDelayedDestroySoulguardAllowed(victim.card, context);
       }
     }
   }
@@ -3390,6 +3764,7 @@ async function resolveTopTwoRevealOneOpponentRandomToHandOrGauge(effect, context
       title: `${context.card.name}で公開するカード`,
       lead: "デッキの上から見た2枚のうち、公開するカードを1枚選んでください。",
       min: 1,
+      allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
       max: 1,
       forceDialog: true,
       promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
@@ -3425,6 +3800,7 @@ async function statsToModifyForEffect(effect, context, amount) {
       title: `${context.card.name}の強化先`,
       lead: "強化する能力値を選んでください。",
       min: 1,
+      allowCancel: false, // T2: 解決途中の必須選択は強制（キャンセル不可）
       max: 1,
       forceDialog: true,
       promptSeat: context.owner, // 能力主体の席へ（CPU対戦/権威サーバの誤配送防止）
@@ -3608,8 +3984,19 @@ function resolveAmountFrom(spec, context) {
     // 指定controllerのドロップのカードが持つ、指定label(“爆雷”等)の能力の総数（0020）。
     const owner = ownerOf(spec.controller);
     let total = 0;
+    // audit2(b015-1): ソウルに入って働く“爆雷”（soulAbilities）も印字能力として数える。1行を複数の triggered に
+    // 分けて実装した能力は、同じ labelGroup（無ければ同じ limit.key）を持つものを1つにまとめる。
     (state.players[owner]?.drop || []).forEach((card) => {
-      total += (card.abilities || []).filter((a) => a.label === spec.label).length;
+      const groups = new Set();
+      [...(card.abilities || []), ...(card.soulAbilities || [])].forEach((a) => {
+        if (a.label !== spec.label) return;
+        const groupKey = a.labelGroup || a.limit?.key;
+        if (groupKey) {
+          if (groups.has(groupKey)) return;
+          groups.add(groupKey);
+        }
+        total += 1;
+      });
     });
     return total * (spec.per ?? 1);
   }
@@ -3701,7 +4088,7 @@ function resolveAmountFrom(spec, context) {
     else if (pile === "itemSoul") cards = itemZones.flatMap((zone) => pl?.field?.[zone]?.soul || []); // E-XB46: アイテムゾーンのソウル限定
     else cards = pl?.[pile] || [];
     const matched = cards.filter((card) => matchesCardFilter(card, spec.filter || {}));
-    const count = new Set(matched.flatMap((card) => cardWorlds(card))).size;
+    const count = new Set(matched.flatMap((card) => worldNamesForDistinct(card))).size;
     const capped = spec.max !== undefined ? Math.min(count, spec.max) : count;
     return capped * (spec.per ?? 1);
   }
@@ -3709,7 +4096,7 @@ function resolveAmountFrom(spec, context) {
     // E-XB47(X-CBT01/0038 系「ソウルのワールド名の種類分」): 発生源カード自身のソウルの distinct ワールド種類数を
     // 「量」として返す（sourceSoulWorldCountGte の amountFrom 版）。cardWorlds() で2ワールドは両算入。max/per 対応。
     const source = context.card || getSelectedCard();
-    const count = new Set((source?.soul || []).flatMap((card) => cardWorlds(card))).size;
+    const count = new Set((source?.soul || []).flatMap((card) => worldNamesForDistinct(card))).size;
     const capped = spec.max !== undefined ? Math.min(count, spec.max) : count;
     return capped * (spec.per ?? 1);
   }
@@ -3874,6 +4261,28 @@ function markAbilityLimit(owner, card, ability) {
   }
 }
 
+// ver2.05 ④能力／その他 Q3/A3（竜王伝をアブラ・カタブラで無効化）「無効化された場合、そのカードの効果全てが解決されない
+// ため、『１ターンに１回だけ使える』の部分も解決されません。そのため、再度使うことができます」。宣言時に記帳した
+// （limitMarkedAtDeclare＝二重宣言防止の仮記帳）使用回数を、無効化で解決されなかったときに取り消す。markAbilityLimit の逆。
+function unmarkAbilityLimit(owner, card, ability) {
+  const limit = normalizedAbilityLimit(ability || {});
+  if (!limit) {
+    return;
+  }
+  const key = abilityLimitKey(card, ability, limit);
+  if (limit.scope === "fight") {
+    const current = fightLimitUseCount(state.fightLimits?.[owner]?.[key]);
+    if (current <= 1) {
+      delete state.fightLimits[owner][key];
+    } else {
+      state.fightLimits[owner][key] = current - 1;
+    }
+  }
+  if (limit.scope === "turn" || limit.scope === "phase") {
+    delete state.players[owner].oncePerTurn[key];
+  }
+}
+
 function normalizedAbilityLimit(ability) {
   if (ability.limit) {
     return ability.limit;
@@ -3931,3 +4340,13 @@ function isHandCastLimitAbility(ability) {
 
 const abilityHandlers = {};
 
+// rule-turn-4: 他のカードの効果で予約された「ターン終了時に破壊」（デスカース bt04-0026 等）。詳細ルール ver2.05
+//『ソウルガード』:「場から離れる場合、ソウル１枚をドロップゾーンに置くことで場に残すことができます。…置換効果です。」
+// に発生源の例外は無いため、runEndTurnEffects はこの印の付いた遅延破壊をソウルガード可能な通常の破壊として扱う。
+// 自己破壊の予約（印字 destroyAtEndOfTurn・自分自身を対象にした予約）は従来どおり（destroySelf の慣例に揃える）。
+function markDelayedDestroySoulguardAllowed(card, context) {
+  if (!card) {
+    return;
+  }
+  card.destroyAtEndOfTurnAllowSoulguard = Boolean(context?.card && card !== context.card);
+}

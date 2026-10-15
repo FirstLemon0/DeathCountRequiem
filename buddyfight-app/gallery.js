@@ -456,6 +456,8 @@ function galleryCardImgError(img) {
 
 // カード番号から公式カード画像URLを導出（ローカルWebPが無い場合のフォールバック。builder と同一ロジック）。
 function galleryOfficialImageUrl(card) {
+  // 別絵（アイドルレア/究極レア等）は no から導出すると基底版の絵になるため、card.imageUrl を優先（エンジン src/12 と同じ）。
+  if (card?.imageUrl) return card.imageUrl;
   const no = card?.no;
   if (!no || no.indexOf("/") < 0) {
     return "";
@@ -493,6 +495,10 @@ function openCardModal(card) {
       </div>
     </div>
   `;
+  // a11y: 閉じた時に開いた元（カード）へフォーカスを戻すため、開く直前のフォーカスを覚えておく（既に開いていれば保持）。
+  if (gEl.modal.hidden && typeof document !== "undefined" && document.activeElement) {
+    galleryModalOpener = document.activeElement;
+  }
   gEl.modal.hidden = false;
   gEl.modal.classList.add("open");
   if (gEl.modalClose && typeof gEl.modalClose.focus === "function") {
@@ -508,12 +514,21 @@ function openCardModal(card) {
   });
 }
 
+let galleryModalOpener = null;
+
 function closeCardModal() {
   if (!gEl.modal) {
     return;
   }
+  const wasOpen = !gEl.modal.hidden;
   gEl.modal.classList.remove("open");
   gEl.modal.hidden = true;
+  // a11y: 開いた元へフォーカスを戻す（Esc/背景/×のどれで閉じても。DOM から消えていれば戻さない）。
+  const opener = galleryModalOpener;
+  galleryModalOpener = null;
+  if (wasOpen && opener && opener.isConnected !== false && typeof opener.focus === "function") {
+    opener.focus();
+  }
 }
 
 function gallerySummaryLine(card) {

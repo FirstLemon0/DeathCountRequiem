@@ -9,6 +9,8 @@ async function useCardAction() {
   // addLog だけして早期 return し render() を呼ばないため、理由が画面 #logList に出ず「無反応」に見えた。
   // src/08 内に同型が多数あるため個別 render ではなく単一の finally で確実に画面へ反映する（表示のみ・
   // 検証失敗は state 未変更なので安全・成功パスの二重 render は冪等で無害）。src/13 側は R-BR2 で対応済み。
+  runDeckZeroRuleProcessing(); // 先行する解決（誘発等）でデッキ0枚になっていれば行動前に敗北を確定
+  noteDeckCountsForRuleProcessing();
   try {
     return await useCardActionImpl();
   } finally {
@@ -24,7 +26,7 @@ async function useCardActionImpl() {
     return;
   }
   const usesCounterEventWindow = Boolean(
-    (state.counterEventWindow || state.destroyedEventWindow || state.enteredEventWindow) &&
+    (state.counterEventWindow || state.destroyedEventWindow || state.enteredEventWindow || state.leftFieldEventWindow) &&
       state.selected?.source === "hand" &&
       canUseCounterPlayCard(selectedCard),
   );
@@ -130,6 +132,7 @@ async function useCardActionImpl() {
     return;
   }
   await castImpact(selectedCard);
+  await runSizeRuleProcessing(); // E5: 解決後の★ルール処理★
   // Z6(S-UB-C03/0054): endFinalPhase効果op(15-ability-effects.js)が立てた state.pendingEndTurn を、
   // カード使用の解決が完全にアンワインドしたこの地点で消費してターンを終える。必殺技はファイナルフェイズ
   // でのみ使用できる(上のcastImpact到達条件)ため、この時点でstate.phaseは既に"final"のはず。
@@ -152,21 +155,39 @@ function controllerSpellUsePrevented(owner) {
 // この card を「追加アイテム」として（主枠を空けずに）装備できるか。
 // 通常アイテムは1枚だが、装備中アイテムの allowExtraItemEquip か、この card 自身の allowExtraItemEquip が
 // 相手側アイテムに一致する場合、空きスロットへ追加装備できる（虎の槍ペア 0019/0045 等）。
-function canEquipAsExtraItem(player, card) {
-  if (firstEmptyItemZone(player) === null) {
-    return false; // 空きスロットが無い
+// pt-fix-c T7-5: 付与は「〜１枚を装備できる」＝付与ルールごとに枚数上限がある（栄光の剣 オーダーエッジで
+// オーダーガードを2枚装備できていた）。既に装備しているフィルタ一致アイテム（付与元を除く）が上限未満の時だけ可。
+// レヴァンティン「アイテムを何枚でも装備できる」は上限なし（T7-4: アイテム枠も可変長＝枠数で頭打ちにしない）。
+function extraItemEquipRuleMax(grantingCard, rule) {
+  if (Number.isFinite(rule?.max)) {
+    return rule.max;
   }
+  const text = Array.isArray(grantingCard?.rules) ? grantingCard.rules.join("\n") : String(grantingCard?.rules || "");
+  return /何枚でも装備できる/.test(text) ? Infinity : 1;
+}
+
+function canEquipAsExtraItem(player, card) {
   const equipped = equippedItems(player);
   if (equipped.length === 0) {
     return false; // まだ1枚も装備していない → 通常装備（主枠）
   }
   const asList = (v) => (Array.isArray(v) ? v : v ? [v] : []);
+  const others = equipped.filter((it) => it.instanceId !== card?.instanceId);
   const grantedByEquipped = equipped.some((it) =>
-    asList(it.allowExtraItemEquip).some((rule) => matchesCardFilter(card, rule.filter || {})),
+    asList(it.allowExtraItemEquip).some((rule) => {
+      if (!matchesCardFilter(card, rule.filter || {})) {
+        return false;
+      }
+      const already = others.filter((other) => other !== it && matchesCardFilter(other, rule.filter || {})).length;
+      return already < extraItemEquipRuleMax(it, rule);
+    }),
   );
-  const grantedBySelf = asList(card.allowExtraItemEquip).some((rule) =>
-    equipped.some((it) => matchesCardFilter(it, rule.filter || {})),
-  );
+  // 自身が付与元（「君がこのカードを装備しているなら、君は X １枚を装備できる」＝X を先に装備していてこのカードを追加）:
+  // 装備中の X（フィルタ一致）が上限以内なら、このカードを加えて並存できる。
+  const grantedBySelf = asList(card.allowExtraItemEquip).some((rule) => {
+    const matching = others.filter((it) => matchesCardFilter(it, rule.filter || {})).length;
+    return matching > 0 && matching <= extraItemEquipRuleMax(card, rule);
+  });
   return grantedByEquipped || grantedBySelf;
 }
 
@@ -180,8 +201,15 @@ async function equipCardDirect(player, card, options = {}) {
   // 印字ルール付与を待たずこの装備1回だけ追加枠扱いにする）。1枚目は equippedItems 0＝主枠、2枚目以降が追加枠。
   const useExtraSlot =
     canEquipAsExtraItem(player, card) ||
-    (options.allowExtra && equippedItems(player).length > 0 && firstEmptyItemZone(player) !== null);
-  if (useExtraSlot) {
+    (options.allowExtra && equippedItems(player).length > 0);
+  // options.stackOn: 重ね搭乗（「君が『搭乗』しているカード１枚の上に重ね」）。旧アイテムはドロップせず、旧アイテムと
+  // そのソウルを新カードのソウルへ移して同じ装備枠に装備する（重ねコールと同じ stackFieldCardAsSoul＝下敷きの離場扱い）。
+  const stackZone = options.stackOn
+    ? itemZones.find((zone) => player.field[zone]?.instanceId === options.stackOn.instanceId) || null
+    : null;
+  if (stackZone) {
+    targetZone = stackZone;
+  } else if (useExtraSlot) {
     // 追加アイテム: 主枠を空けず、空いているスロットへ装備する。
     targetZone = firstEmptyItemZone(player);
   } else {
@@ -199,13 +227,16 @@ async function equipCardDirect(player, card, options = {}) {
           { yesLabel: "手札に戻す", noLabel: "ドロップに置く" },
         );
         if (useEquipChange) {
-          // 旧アイテムは場を離れる＝そのソウルはドロップへ（以前はソウルを処理せず宙に浮く潜在バグがあった）。
-          player.drop.push(...(oldItem.soul || []));
-          oldItem.soul = [];
-          player.hand.push(oldItem);
-          player.field.item = null;
+          // rule-zones-4: 旧アイテムは場を離れて手札へ＝正規の単体手札戻し経路へ委譲する（ソウルのドロップ送り・
+          // 場の一時状態と変身等の型のリセット・着任解除・ライフリンク・「場から離れた時」/「手札に戻った時」誘発・
+          // 手札に戻せない/離場置換のゲート込み）。ゲート等で場に残った場合は、同じエリアに2枚となるため★ルール処理★で
+          // 旧アイテムをドロップへ置く（従来の見送り時と同じ）。ソウルガードは直後のルール処理で結局ドロップへ置かれ
+          // 意味を持たないため確認しない（同期の returnFieldTargetToHand を直接呼ぶ）。
           player.oncePerTurn["equipChange"] = true;
-          addLog(`${card.name}の『装備変更』で${oldItem.name}を手札に戻しました。`);
+          returnFieldTargetToHand({ owner, zone: "item" }, `${card.name}の『装備変更』`);
+          if (player.field.item) {
+            dropFieldCardByRule(player, "item");
+          }
         } else {
           // 見送り: ルール処理で旧アイテム(＋そのソウル)をドロップへ。once-per-turn は消費しない。
           dropFieldCardByRule(player, "item");
@@ -214,18 +245,39 @@ async function equipCardDirect(player, card, options = {}) {
         dropFieldCardByRule(player, "item");
       }
     }
+    // pt-final(7a): 追加枠に残っているアイテム（付与元＝オーダーエッジが先に場を離れ、追加装備だったオーダー
+    // ガードだけが item2 に残った等）も、この通常装備で「2枚目のアイテム」になる＝ルール処理で新しい方以外を
+    // ドロップへ（ver2.05: アイテムは1枚まで。追加装備の許可は付与元が場にある間だけ）。以前は主枠しか見ず、
+    // 新アイテムと追加枠のアイテムが並存していた。
+    for (const zone of itemZones) {
+      if (zone !== "item" && player.field[zone] && player.field[zone].instanceId !== card.instanceId) {
+        dropFieldCardByRule(player, zone);
+      }
+    }
     targetZone = "item";
   }
   card.currentType = "item";
-  player.field[targetZone] = card;
+  if (stackZone) {
+    const baseItem = player.field[stackZone];
+    stackFieldCardAsSoul(player, stackZone, card);
+    baseItem.currentType = baseItem.baseType || baseItem.type; // ソウルに入った旧搭乗カードは装備扱いを外す
+  } else {
+    player.field[targetZone] = card;
+  }
   if (card.destroyAtEndOfTurn) {
     card.destroyAtEndOfTurnOwner = owner;
   }
   player.arrivalCardId = null;
-  await resolveOnEnter(card, player, null, { byEffect: Boolean(options.byEffect) });
+  // pt-final(5): 「装備しました」は登場時能力（任意能力の確認・解決）より前に出す（王剣の鞘 スルトクロス:
+  // 「任意能力を使いませんでした」→「装備しました」の順にログが出ていた）。
   addLog(`${player.name}は${card.name}を装備しました。`);
-  // バディギフト: バディにできるアイテム(canBeBuddy)を自分のバディとして初めて場に出したとき、ライフ+1。
-  if (card.canBeBuddy && isBuddyCard(player, card) && !player.partnerCalled) {
+  await resolveOnEnter(card, player, null, { byEffect: Boolean(options.byEffect) });
+  // バディギフト: バディコールを宣言して装備したときだけライフ+1。
+  // E4: 手札からの通常装備は宣言時にバディコール権を消費する(equipItem で partnerCalled を立て、
+  // options.declaredBuddyCall で引き継ぐ)。変身/搭乗/着任/必殺変身も宣言時に決めて declaredBuddyCall で渡す（src/13・src/15 equipSelf）。
+  // 2026-10-09 オーナー裁定R10: 効果による装備（宣言を経ない装備＝script equipSelected 等）ではバディギフトは得られず、
+  // バディコールの権利も消費しない（効果によるコールと同じ扱い）。以前は未消費なら宣言なしでも付与していた（rule-call-10）。
+  if (options.declaredBuddyCall) {
     player.partnerCalled = true;
     player.life += 1;
     addLog(`${player.name}はバディの${card.name}を装備し、バディギフトでライフを1回復しました。`);
@@ -283,12 +335,19 @@ async function equipItem(selectedCard) {
     return;
   }
   // 装備も対抗確認を挟む（コール/呪文/起動能力と同様）。相手が対抗を使わなければ解決で装備が確定。
+  // E4: バディにできるアイテムの装備宣言もバディコールの宣言（ver2.05 アイテムの装備の流れ 1.x）。権利は宣言で
+  // 消費し、無効化されたらバディギフトは無い（解決時の equipCardDirect が declaredBuddyCall を見て+1する）。
+  const declaredBuddyCall = Boolean(card.canBeBuddy && isBuddyCard(player, card) && !player.partnerCalled);
+  if (declaredBuddyCall) {
+    player.partnerCalled = true;
+  }
   beginPendingAction({
     kind: "equip",
     owner: state.active,
     responder: 1 - state.active,
     card,
     phase: state.phase,
+    declaredBuddyCall,
   });
   addLog(`${player.name}は${card.name}の装備を宣言しました。対抗確認を行ってください。`);
   render();
@@ -298,42 +357,20 @@ async function equipItem(selectedCard) {
 }
 
 async function arriveCard(selectedCard) {
-  const player = activePlayer();
-  const ability = findKeywordAbility(selectedCard, "arrival");
-  const payment = await payStructuredCostWithSelection(player, ability?.cost || selectedCard.costs?.arrival || [], {
-    sourceCard: selectedCard,
-    selectedCard,
-  });
-  if (!payment.ok) {
-    addLog(payment.reason);
+  // 『着任』は手札用の起動能力（02-data-load の desugar: equipSelf{arrival:true}）として宣言する。ver2.05 ④『変身』『搭乗』
+  // 『着任』「宣言し、必要なコストを払った後、相手は【対抗】を宣言します」「バディギフトによりライフを＋１することはできます」
+  // ＝対抗窓（pendingAction kind:"ability"）→解決で装備（equipCardDirect＝equip 放送・バディギフト）→arrived 放送。
+  const known = (selectedCard.abilities || []).find((entry) => entry?.keyword === "arrival");
+  // 正規化(desugar)を経ていないカード（keywords:["arrival"] だけを持つ合成カード等）は同じ能力をその場で用いる（後方互換）。
+  const ability = known
+    ? findUsableHandAbilities(selectedCard).find((entry) => entry.keyword === "arrival")
+    : arrivalKeywordAbilities(selectedCard)[0];
+  if (!ability) {
+    addLog(handAbilityUnavailableReason(selectedCard, state.selected?.owner ?? state.active));
+    render();
     return;
   }
-  if (player.field.item) {
-    dropFieldCardByRule(player, "item");
-  }
-  const card = removeSelectedFromHand();
-  // 非同期誘発レースで選択カードが手札を離れていたら着任中止（callMonster と同型・fuzzer seed915）。
-  if (!card) {
-    addLog(`${selectedCard.name}が手札にないため、着任を中止しました。`);
-    return;
-  }
-  card.currentType = "item";
-  card.arrived = true;
-  player.field.item = card;
-  if (card.destroyAtEndOfTurn) {
-    card.destroyAtEndOfTurnOwner = state.active;
-  }
-  player.arrivalCardId = card.instanceId;
-  state.selected = null;
-  state.phase = "main";
-  state.linkAttackers = [];
-  addLog(`${player.name}は${card.name}を着任しました。`);
-  // E-XB49①(X-CBT01/0008 逆天戦艦 サツキG「君が『着任』した時、〜」): 着任を場イベントとして配信する。
-  // 攻撃(runAttackDeclarationTriggers)と同じ慣例＝着任カード自身へ event:"arrived"、場全体へ allyArrived/opponentArrived。
-  // リスナー（triggered ability の event:"arrived"/"allyArrived"）が無い既存カードは空振り＝挙動不変。
-  await runTriggeredAbilities(card, "arrived", { card, player, owner: state.active, zone: "item" });
-  await runFieldEventTriggers("arrived", state.active, card, "item");
-  render();
+  await useHandAbilityAction(selectedCard, ability);
 }
 
 async function castSpell(selectedCard) {
@@ -354,11 +391,29 @@ async function castSpell(selectedCard) {
     addLog(handAbilityUnavailableReason(selectedCard, state.selected.owner));
     return;
   }
+  if (isSoulOnlyUseCard(selectedCard)) {
+    addLog(soulOnlyUseReason(selectedCard));
+    return;
+  }
   addLog("このカードの使用処理はまだ実装されていません。");
 }
 
 function hasKnownHandAbility(card) {
   return (card?.abilities || []).some((ability) => canUseAbilityFromHand(ability));
+}
+
+// pt-fix-c T7-7: 「(このカードは手札から使えない)」＝ソウルからだけ使えるカード（秘剣 流星/月牙 の fromSoulOnly）。
+// 手札の「使用」で「まだ実装されていません」と出ていたのを、使えない理由の説明にする。
+function isSoulOnlyUseCard(card) {
+  const abilities = card?.abilities || [];
+  return (
+    !hasKnownHandAbility(card) &&
+    abilities.some((ability) => ability?.fromSoulOnly && ["spell", "impact", "activated"].includes(ability.kind))
+  );
+}
+
+function soulOnlyUseReason(card) {
+  return `${card.name}は手札から使えません（ソウルにある時だけ使えるカードです）。`;
 }
 
 // F8: timing が指定フェイズを明示する手札起動能力を持つか（非メインフェイズの useCardAction ゲート用）。
@@ -371,7 +426,7 @@ function hasExplicitPhaseHandAbility(card, phase) {
 function handAbilityUnavailableReason(card, owner, options = {}) {
   const abilities = (card?.abilities || []).filter((ability) => canUseAbilityFromHand(ability));
   if (abilities.length === 0) {
-    return "このカードの使用処理はまだ実装されていません。";
+    return isSoulOnlyUseCard(card) ? soulOnlyUseReason(card) : "このカードの使用処理はまだ実装されていません。";
   }
   // F1: カードレベルの useConditions 不成立（findUsableHandAbility と同じゲート）を先に報告する。
   if (!checkCardConditions(card.useConditions || [], owner, { card, owner })) {
@@ -401,12 +456,7 @@ function handAbilityUnavailableReason(card, owner, options = {}) {
     return `${card.name}の対象にできるカードがありません。`;
   }
   const player = state.players[owner];
-  const costSteps = adjustedCostSteps(
-    player,
-    card,
-    abilityCostPurpose(ability),
-    abilityCostSteps(card, ability),
-  );
+  const costSteps = adjustedAbilityCostSteps(player, card, ability);
   const canPay = canPayStructuredCost(player, costSteps, {
     sourceCard: card,
     selectedCard: card,
@@ -424,16 +474,16 @@ async function castSetSpell(selectedCard) {
     addLog(`${selectedCard.name}の使用条件を満たしていません。`);
     return;
   }
-  const zone = setZones.find((candidate) => !player.field[candidate]);
-  if (!zone) {
-    addLog("配置魔法ゾーンが空いていません。");
-    return;
-  }
+  // rule-call-11: 設置の枚数に上限は無い（空きが無ければ新しい set 枠を作る）＝「ゾーンが空いていない」は起きない。
+  const zone = firstEmptySetZone(player);
   if (selectedCard.uniqueSet && setZones.some((candidate) => player.field[candidate]?.name === selectedCard.name)) { // レビュー修正(D-BT01/0066): 「1枚だけ設置できる」は同名制限（再録混載でも1枚）
     addLog(`${selectedCard.name}はすでに配置されています。`);
     return;
   }
-  if ((player.setLockedIdsThisTurn || []).includes(selectedCard.id)) {
+  if (
+    (player.setLockedIdsThisTurn || []).includes(selectedCard.id) ||
+    (player.setLockedNamesThisTurn || []).includes(selectedCard.name) // audit2(b010-2): 名前単位ロック
+  ) {
     addLog(`${selectedCard.name}はそのターン中は設置できません。`);
     return;
   }
@@ -581,6 +631,10 @@ async function castImpact(selectedCard) {
     addLog(handAbilityUnavailableReason(selectedCard, state.players.indexOf(player)));
     return;
   }
+  if (isSoulOnlyUseCard(selectedCard)) {
+    addLog(soulOnlyUseReason(selectedCard));
+    return;
+  }
   addLog("この必殺技の処理はまだ実装されていません。");
 }
 
@@ -721,7 +775,7 @@ async function useMagicalGoodbyeCounterCard(selectedCard, caster) {
     markCounterUsed(owner, selectedCounterKind(usedCard));
   }
   addLog(`${caster.name}は${usedCard.name}を【対抗】で使いました。`);
-  returnFieldTargetToHand(target, usedCard.name);
+  await returnFieldTargetToHandAsync(target, usedCard.name, { cause: makeEffectCause({ owner, card: usedCard }, target.owner) });
   markAbilityLimit(owner, usedCard, ability);
   state.selected = null;
   state.linkAttackers = [];
@@ -761,11 +815,13 @@ function resetLeftFieldCardState(card) {
   // 残り、1度も再スタンドせず実質1回しか攻撃できなかった（standPlayer はターン開始時に両カウンタをリセットするが、
   // 離場クリーンアップは doubleAttackUsed しかリセットしていなかった＝明白な非対称の取りこぼし）。
   card.tripleAttackStandCount = 0;
+  delete card.multiAttackUses; // rulings-e: 『Ｎ回攻撃』の N 別使用回数（src/10）も離場でリセット
   // 「そのターン中攻撃できない」/「そのターン中スタンドできない」も離場でリセットする（多回攻撃カウンタと同じ
   // per-instance の一時状態群）。clearTurnModifiers は場札しか掃除しないため、これらを付与されたカードが同一
   // ターンに離場→再コール（または離場後に別ターンへ持ち越し再コール）すると、別カード扱いのはずが攻撃/スタンド
   // 不可を引きずっていた（グレイプニル等の cannotAttackThisTurn・S-UB-C03/0038 の cannotStandThisTurn）。
   card.cannotAttackThisTurn = false;
+  if (card.cannotAttackThisTurnSources) card.cannotAttackThisTurnSources = [];
   card.cannotStandThisTurn = false;
   card.preventNextDestroyCount = 0;
   card.preventNextDestroyEffects = [];
@@ -778,6 +834,7 @@ function resetLeftFieldCardState(card) {
   // G5(D-EB01/0023): 「場を離れるまで」付与されたファイナル攻撃可フラグを離場時に解除する
   // （conditionalSize と同じ「場在中のみ」寿命。印字カードは type/canAttackInFinalPhase 側で判定するため無関係）。
   card.grantedFinalPhaseAttack = false;
+  clearDelayedFieldFlags(card);
   card.currentType = card.baseType || card.type;
   // r3 L4(S-UB-C03/0066): 裏向きトークン化(faceDownMonster)による印字値の恒久上書きも、
   // 場を離れたタイミングで印字値へ復元する（restoreFaceDownMonsterPrintがno-opガード付き）。
@@ -795,6 +852,9 @@ function resetEnteringFieldCardState(card) {
   if (!card) {
     return;
   }
+  // E5: 場に置かれた順序（★ルール処理★のサイズ超過で「最後に場に置かれたモンスター」を残すため）。
+  state.fieldEntrySeq = (state.fieldEntrySeq || 0) + 1;
+  card.fieldEnteredSeq = state.fieldEntrySeq;
   card.used = false;
   card.battlePowerBonus = 0;
   card.battleDefenseBonus = 0;
@@ -812,22 +872,72 @@ function resetEnteringFieldCardState(card) {
   card.counterattack = false;
   card.doubleAttackUsed = false;
   card.tripleAttackStandCount = 0;
+  delete card.multiAttackUses;
   card.cannotAttackThisTurn = false;
+  if (card.cannotAttackThisTurnSources) card.cannotAttackThisTurnSources = [];
   card.cannotStandThisTurn = false;
   card.preventNextDestroyCount = 0;
   card.preventNextDestroyEffects = [];
   card.destroyReaction = null;
   card.scheduledStatBonus = [];
+  clearDelayedFieldFlags(card);
+  // 場に出るカードは別カード扱い: 前回場に居た時に受けたターン限定の能力無効化(state.turnNullifies)を引き継がない
+  // （instanceId 集合で記録しているため、同じインスタンスが同ターンに再登場すると無効化が残っていた）。
+  (state.turnNullifies || []).forEach((entry) => {
+    if (Array.isArray(entry?.instanceIds) && entry.instanceIds.includes(card.instanceId)) {
+      entry.instanceIds = entry.instanceIds.filter((id) => id !== card.instanceId);
+    }
+  });
+  // コスト等でホストが場に出る前にソウルへ入ったカードの enteredSoul 誘発（登場後に解決）。
+  flushDeferredEnteredSoulTriggers(card);
 }
 
-function returnFieldTargetToHand(target, sourceName = "効果", details = {}) {
+// E8: 「場に居るこのカード」に予約された遅延処理フラグ。場を離れたカードは別カード扱いなので、離場/再登場で落とす。
+// 以前は残留し、同ターン中に手札へ戻ったカードを後のターンに再コールすると、予約者のターン終了時に
+// 新しく出たカードが破壊/ゲージ送りされる・次スタンドが止まる・次の離場が置換される等の誤挙動になった。
+// （各予約 op は場のカードへ立てる。コール経路の destroyAtEndOfTurn(印字) は登場後に立て直すので影響しない。）
+function clearDelayedFieldFlags(card) {
+  card.destroyAtEndOfTurnOwner = null;
+  card.destroyAtEndOfTurnAllowSoulguard = false;
+  card.putToGaugeAtEndOfTurnOwner = null;
+  card.putToGaugeAtEndOfTurnTurn = null;
+  card.preventStandOnce = false;
+  card.preventNextLeaveFieldCount = 0;
+}
+
+// rule-zones-1: 効果による単体の手札戻しの入口（非同期）。ver2.05『ソウルガード』は「場から離れる場合」の置換効果
+// なので、手札に戻せない/Z9 で場に残る場合を除き、戻す前にソウルガードを確認する（破壊経路と同じ確認・ソウル選択）。
+// details.byCost: コストの支払いとしての手札戻し（ソウルガードで置換しない）。
+async function returnFieldTargetToHandAsync(target, sourceName = "効果", details = {}) {
+  const card = state.players[target.owner]?.field?.[target.zone];
+  // details.cause（無ければ details.returnCause）: preventReturnToHand の from（「相手のカードの効果で」）判定用の原因。
+  const gateCause = details.cause || details.returnCause || null;
+  if (card && !details.byCost && !cannotReturnToHand(card, gateCause) && !(card.preventNextLeaveFieldCount > 0)) {
+    if (await trySoulguardOnLeave(card, target.owner, target.zone)) {
+      return null;
+    }
+    // X9 コスト付き離場置換も、非同期の入口では確認（アプリ内UI・権威サーバ往復・CPU・リプレイ）＋対話の支払いで
+    // 先に解決する（同期版 tryLeaveFieldReplacementSync はネイティブ確認しか出せなかった＝プレイテスト T8）。
+    // 断った/使えない時は同期版で再確認しない（skipLeaveReplacement）。
+    if (state.players[target.owner]?.field?.[target.zone] === card && card.leaveFieldReplacement) {
+      if (await tryLeaveFieldReplacement(card, target.owner)) {
+        return null;
+      }
+      return returnFieldTargetToHand(target, sourceName, { ...details, skipLeaveReplacement: true });
+    }
+  }
+  return returnFieldTargetToHand(target, sourceName, details);
+}
+
+function returnFieldTargetToHand(target, sourceName = "効果", rawDetails = {}) {
+  const { byCost: _byCost, cause: explicitCause, skipLeaveReplacement, ...details } = rawDetails || {};
   const ownerPlayer = state.players[target.owner];
   const returned = ownerPlayer?.field[target.zone];
   if (!returned) {
     addLog(`${sourceName}の対象はすでに場にありません。`);
     return null;
   }
-  if (cannotReturnToHand(returned)) {
+  if (cannotReturnToHand(returned, explicitCause || details.returnCause || null)) {
     addLog(`${returned.name}は手札に戻せません。`);
     return null;
   }
@@ -838,10 +948,13 @@ function returnFieldTargetToHand(target, sourceName = "効果", details = {}) {
     return null;
   }
   // X9(D-BT01/0131): コスト付き離場置換（単体の手札戻しもカバー）。
-  if (tryLeaveFieldReplacementSync(returned, target.owner)) {
+  if (!skipLeaveReplacement && tryLeaveFieldReplacementSync(returned, target.owner)) {
     return null;
   }
   const lifeLinkNullifiedAtLeave = isAbilitiesNullified(returned); // 離場直前に捕捉（能力無効化中はライフリンク無し）
+  // rule-zones-3/4: 離場時点の型（変身等は装備中だけアイテム）。resetLeftFieldCardState で印字の型へ戻るため、
+  // 「場のモンスターが手札に戻った時」「場から離れた時」はこの時点の型で照合する。
+  const typeAtLeave = effectiveCardType(returned);
   ownerPlayer.drop.push(...(returned.soul || []));
   returned.soul = [];
   // ホストが手札へ戻る＝ソウル札がドロップへ落ちる。破壊経路(destroyFieldCard:505)と同様、裏向き奇襲札の公開
@@ -855,12 +968,12 @@ function returnFieldTargetToHand(target, sourceName = "効果", details = {}) {
   ownerPlayer.hand.push(returned);
   applyLifeLink(returned, target.owner, { nullifiedAtLeave: lifeLinkNullifiedAtLeave });
   // 「場から離れた時」誘発は手札戻しでも発火（ライフリンクと同一離場サイト。詳細は detachFieldCardForMove のコメント）。
-  queueLeaveFieldTriggers(returned, target.owner, target.zone);
+  queueLeaveFieldTriggers(returned, target.owner, target.zone, { eventCardTypeAtLeave: typeAtLeave });
   addLog(`${sourceName}で${returned.name}を手札に戻しました。`);
   handleDestroyedDuringPending({ owner: target.owner, zone: target.zone });
   // 「場のモンスターが手札に戻った時」誘発（D・R・システム等）。発生源は既に場から外れている。
   // Z14(b)(S-UB-C03/0017): details.returnCause があれば伝播（「君のカードの効果で」判定用）。
-  queueMonsterReturnedTriggers(returned, target.owner, target.zone, details);
+  queueMonsterReturnedTriggers(returned, target.owner, target.zone, { ...details, eventCardTypeAtLeave: typeAtLeave });
   // E-XV6(X-UB02/0015): 戻ったカード自身の「このカードが手札に戻った時」自己誘発（場→手札の単体 funnel。
   // 効果 returnToHand/returnSelfToHand(場)・コスト returnPendingTargetToHand・破壊置換の手札戻しを全て被覆）。
   queueReturnedToHandTriggers(returned, target.owner, "field");

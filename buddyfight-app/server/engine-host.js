@@ -5,6 +5,7 @@
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
+const { engineVersion } = require("./engine-version");
 
 const root = path.resolve(__dirname, "..");
 const srcDir = path.join(root, "src");
@@ -85,6 +86,8 @@ function createEngineContext({ customDecks = [], onServerPrompt = null } = {}) {
     // loadJson の ?v= キャッシュ経路をサーバ側でも通す（＝実ローダと同じコードパスを検証する）。
     // FS読込ではクエリは makeFsFetch が落とすので値は任意でよい。
     __BUDDYFIGHT_DATA_VERSION: "engine-host",
+    // リプレイ記録へ刻むエンジン版（src/23 replayStartRecording）。正は index.html の ENGINE_VERSION（server/engine-version.js）。
+    __BUDDYFIGHT_ENGINE_VERSION: engineVersion(),
     console,
     crypto: {
       randomUUID: () =>
@@ -109,10 +112,14 @@ function createEngineContext({ customDecks = [], onServerPrompt = null } = {}) {
     clearTimeout,
     setInterval,
     clearInterval,
+    // R1: リプレイの順序配信（src/23 replayMacrotask）が macrotask 境界へ譲るのに使う（無ければ setTimeout(0)）。
+    setImmediate,
+    clearImmediate,
     window: {
       confirm: () => true,
-      // TODO(P1 後続): 選択ダイアログ/じゃんけん等は現状サーバ側で自動解決（先頭選択）。
-      // 本来はアクティブ/応答プレイヤーのクライアントへ往復させる（プロンプト round-trip）。
+      // 選択ダイアログ/じゃんけん/任意能力ゲート等は onServerPrompt（__serverPrompt）経由で該当席の
+      // クライアントへ往復させる（authoritative-server の dispatchPrompt → /prompt 応答）。window.prompt/confirm は
+      // その往復フックを持たない文脈（単体スモーク等）と、宛先席が不在/未接続の時の既定値フォールバックのみ。
       prompt: () => "1",
       location: { origin: "http://server.local", pathname: "/netplay.html", search: "" },
       matchMedia: () => ({ matches: false, addEventListener() {} }),
@@ -132,6 +139,16 @@ function createEngineContext({ customDecks = [], onServerPrompt = null } = {}) {
     throw new Error("__buddyfightServerApi が公開されていません（__BUDDYFIGHT_SERVER__ 分岐を確認）");
   }
   return { context, api };
+}
+
+// rule-call-11: 設置魔法の枠名（"set1","set2","set3",…）。エンジン側 isSetZone と同じ判定（vm 外で使うため複製）。
+function isSetZoneKey(zone) {
+  return typeof zone === "string" && /^set[1-9][0-9]*$/.test(zone);
+}
+
+// pt-fix-c T7-4: アイテム枠も可変長（"item5","item6",…）。エンジン側 isItemZone の 5 以降と同じ判定。
+function isDynamicItemZoneKey(zone) {
+  return typeof zone === "string" && /^item([5-9]|[1-9][0-9]+)$/.test(zone);
 }
 
 // 非公開ゾーン（山札・ゲージ・相手手札・場のソウル）を枚数のみに伏せる。
@@ -177,10 +194,16 @@ class GameRoom {
   constructor(options = {}) {
     // options.onPrompt を createEngineContext の onServerPrompt へ明示ブリッジ
     // （キー名が違うため素通しだと黙って null に落ち自動解決へ退行する）。
-    const { api } = createEngineContext({
+    // R1/R7: 往復プロンプトの in-flight 数を数える（誘発チェーンが静止するまで applyAction を返さないため）。
+    this.promptsInFlight = 0;
+    this.promptWaiters = [];
+    const onPrompt =
+      typeof options.onPrompt === "function" ? (request) => this.trackPrompt(options.onPrompt(request)) : options.onPrompt;
+    const { context, api } = createEngineContext({
       customDecks: options.customDecks,
-      onServerPrompt: options.onPrompt,
+      onServerPrompt: onPrompt,
     });
+    this.context = context;
     this.api = api;
     this.started = false;
     // 直近に applyAction を呼んだ席（プロンプト往復の既定の宛先＝手番プレイヤー）。
@@ -195,6 +218,45 @@ class GameRoom {
     // seed は state.rngSeed に載り、部屋スナップショットに含まれて再起動をまたいで復元される。
     this.seed =
       options.seed != null ? options.seed >>> 0 : Math.floor(Math.random() * 0x100000000) >>> 0;
+  }
+
+  // R1/R7: 往復プロンプトの Promise を in-flight として数える（解決/失敗で減らし待機者を起こす）。
+  trackPrompt(promise) {
+    this.promptsInFlight += 1;
+    const settle = () => {
+      this.promptsInFlight = Math.max(0, this.promptsInFlight - 1);
+      const waiters = this.promptWaiters;
+      this.promptWaiters = [];
+      waiters.forEach((resolve) => resolve());
+    };
+    return Promise.resolve(promise).then(
+      (value) => {
+        settle();
+        return value;
+      },
+      (error) => {
+        settle();
+        throw error;
+      },
+    );
+  }
+
+  // R1/R7: 操作本体の解決後、遅延実行の誘発チェーン（battleEnd 等の Promise.resolve().then）が静止するまで待つ。
+  // 静止＝microtask が走り切り（macrotask 境界）、未応答の往復プロンプトも記録/再生上の未配信プロンプトも 0。
+  // これにより (1) チェーン中の応答も同じ step に記録され（リプレイの決定性）、(2) authoritative-server の
+  // /action 後処理（broadcastView / persistNow / maybeRecordMatch）がチェーン完了後の局面で走る
+  // （チェーンの /prompt 応答で局面が変わっても配信・保存・戦績が取りこぼされない＝R7）。
+  async waitQuiescent() {
+    for (;;) {
+      if (typeof this.context.replayWaitQuiescent === "function") {
+        await this.context.replayWaitQuiescent();
+      }
+      await new Promise((resolve) => setImmediate(resolve));
+      if (this.promptsInFlight === 0) {
+        return;
+      }
+      await new Promise((resolve) => this.promptWaiters.push(resolve));
+    }
   }
 
   async loadData() {
@@ -262,17 +324,35 @@ class GameRoom {
       resolve: a.resolvePendingResolution,
       counterHand: a.toggleCounterHand,
     };
-    const fn = dispatch[type];
-    if (!fn) {
-      throw new Error(`未知のアクション: ${type}`);
+    // F10: dispatch は素のオブジェクトなので dispatch["toString"]/["constructor"]/["__proto__"] が
+    // Object.prototype から引けてしまい、未知アクションが受理されリプレイ step にも刻まれていた。
+    // 自前プロパティのみ受理し、replayBeginStep より前に弾く。
+    if (typeof type !== "string" || !Object.prototype.hasOwnProperty.call(dispatch, type)) {
+      throw new Error(`未知のアクション: ${String(type).slice(0, 40)}`);
     }
+    // R3: 操作入力の形を受理前に検査する（selected.owner:7 等でエンジン内部が TypeError を投げ、
+    // 「投げた step」が記録に残って保存済みリプレイが必ずそこで失敗する事故を入口で断つ）。
+    const invalid =
+      typeof this.context.replayValidateActionParams === "function"
+        ? this.context.replayValidateActionParams(params)
+        : null;
+    if (invalid) {
+      throw new Error(`不正な操作入力: ${invalid}`);
+    }
+    const fn = dispatch[type];
     // B2: このアクションを1 step として刻む。プロンプト応答は chooseCardEntries seam が
-    // 現在の step へ自動で溜める。例外時も step を確定させるため finally で閉じる（記録オフなら no-op）。
+    // 要求時に開いている step へ溜める（R1）。例外時も step を確定させるため finally で閉じる（記録オフなら no-op）。
+    // R1/R7: step を閉じる前に誘発チェーンの静止を待つ。R3: 例外で終わった step には threw 印を付ける。
     this.api.replayBeginStep(seat, type, params);
+    let threw = false;
     try {
       await fn();
+    } catch (error) {
+      threw = true;
+      throw error;
     } finally {
-      this.api.replayEndStep();
+      await this.waitQuiescent();
+      this.api.replayEndStep({ threw });
     }
     // D5(戦績): アクション解決後の整合局面で決着を確定させる（state.matchResult に一度だけ載る）。
     // authoritative-server はこの後 getState().matchResult を読んで席別ユーザーに戦績を記録する。
@@ -281,6 +361,39 @@ class GameRoom {
       this.api.matchRecordCheckpoint();
     }
     return this.api.getState();
+  }
+
+  // rule-counter-5: 非ターン席(seat≠active)が、保留(攻撃/行動の対抗窓)の無い局面で今この選択を【対抗】として
+  // 使えるか。ver2.05 ②プレイタイミング／【対抗】の流れ 6.: 非ターンファイターは【対抗】を持つカード/能力（手札・場・
+  // ドロップ・ソウルを問わない）を使えるが、それ以外（コール/装備/通常魔法/【対抗】無しの【起動】/フェイズ進行等）は不可。
+  // 判定はエンジン自身の探索関数（useCardAction が実際に通る経路と同じ finder）に委ね、サーバでルールを複製しない。
+  // state は変更しない（finder が読む state.selected だけ一時的に差し替えて必ず戻す）。
+  canUseOffTurnCounter(seat, params = {}) {
+    const ctx = this.context;
+    const state = this.api.getState();
+    if (!state || state.winner || state.pendingAttack || state.pendingAction) return false;
+    if (seat !== 0 && seat !== 1) return false;
+    if (seat === state.active) return false; // 手番席は通常の可否判定（canActorActNow）側で扱う
+    const sel = params?.selected;
+    if (!sel || typeof sel !== "object" || sel.owner !== seat) return false;
+    if (!["hand", "field", "drop"].includes(sel.source)) return false;
+    if (typeof ctx.isCounterPlayTiming !== "function" || !ctx.isCounterPlayTiming()) return false;
+    const prevSelected = state.selected;
+    try {
+      state.selected = { ...sel };
+      const card = ctx.getSelectedCard();
+      if (!card) return false;
+      if (sel.source === "hand") {
+        return Boolean(ctx.findUsableHandAbility(card, { counterOnly: true }));
+      }
+      const abilities =
+        sel.source === "drop" ? ctx.findUsableDropAbilities(card, seat) : ctx.findUsableFieldAbilities(card, seat);
+      return abilities.some((ability) => ctx.isCounterAbility(ability));
+    } catch (_error) {
+      return false; // 判定不能は不許可側へ倒す
+    } finally {
+      state.selected = prevSelected;
+    }
   }
 
   // B2: 記録済みリプレイ（JSONセーフな複製）を取り出す。B3（保存・共有URL）はこれを持ち回る。
@@ -323,7 +436,8 @@ class GameRoom {
         // 配置魔法(『設置』)は神以前ルールでは表向き＝両者に公開が基本。無条件で伏せると相手から中身が
         // 見えなくなるバグになる。実際に faceDown フラグが立ったカード（将来の裏向き設置カード等）だけ伏せる
         // （通常の設置魔法は faceDown を持たないため、そのまま名前・効果が相手に見える）。
-        for (const zone of ["set1", "set2"]) {
+        // rule-call-11: 設置魔法の枠は可変長（set1, set2, set3, …）。field に在る setN キーを全て見る。
+        for (const zone of Object.keys(player.field || {}).filter(isSetZoneKey)) {
           if (player.field[zone] && player.field[zone].faceDown === true) {
             player.field[zone] = faceDownCard(player.field[zone]);
           }
@@ -339,7 +453,9 @@ class GameRoom {
       // 相手席・観戦ロールとも face-down 札だけを個別に伏せ、face-up ソウルは公開のまま見せる
       // （ver2.05 p.24。MR17-1 で相手席の一律 hiddenPile を廃止し、両ロールをこの1経路に統一した）。
       if (!own) {
-        for (const zone of ["left", "center", "right", "item", "item2", "item3", "item4"]) {
+        // rule-call-11: 設置魔法（setN）に載ったソウルの裏向き札も同様に伏せる（表向きは公開のまま）。
+        const soulHostZones = ["left", "center", "right", "item", "item2", "item3", "item4", ...Object.keys(player.field || {}).filter(isDynamicItemZoneKey), ...Object.keys(player.field || {}).filter(isSetZoneKey)];
+        for (const zone of soulHostZones) {
           const card = player.field[zone];
           if (card && Array.isArray(card.soul) && card.soul.length) {
             card.soul = card.soul.map((soulCard) =>
@@ -363,7 +479,7 @@ class GameRoom {
       }
       // Z13(S-UB-C03/0066他): 場の裏向きモンスター(faceDownMonster:true)は誰から見てもマスクする
       // （自席も含む。既存bt02-0035の同型リークもこれで同時に直る）。
-      for (const zone of ["left", "center", "right", "item", "item2", "item3", "item4"]) {
+      for (const zone of ["left", "center", "right", "item", "item2", "item3", "item4", ...Object.keys(player.field || {}).filter(isDynamicItemZoneKey)]) {
         const card = player.field[zone];
         if (card?.faceDownMonster) {
           player.field[zone] = faceDownMonsterCard(card);
@@ -406,6 +522,8 @@ async function replayGame(recording) {
     }
   };
 
+  // 版の照合（旧版の記録は再生しない）は呼び元（authoritative-server の GET /replay・replay.html）が行う。
+  room.context.replayBeginPlayback();
   // newGame(配牌)中の選択（通常は空）。setup 中もキューを立てておき、想定外の選択要求を即検出する。
   room.api.replaySetPlaybackQueue(recording.setupResponses || []);
   room.startGame(recording.deckIds || [], { firstSeat: recording.firstSeat });
@@ -415,7 +533,14 @@ async function replayGame(recording) {
   for (let index = 0; index < steps.length; index += 1) {
     const step = steps[index];
     room.api.replaySetPlaybackQueue(step.promptResponses || []);
-    await room.applyAction(step.seat, step.type, step.params || {});
+    try {
+      await room.applyAction(step.seat, step.type, step.params || {});
+    } catch (error) {
+      // R3: 記録時にも例外で終わった step（threw 印）は同じく投げるのが正しい再現。それ以外は失敗。
+      if (!step.threw) {
+        throw error;
+      }
+    }
     drain(`step#${index}(${step.type})`);
   }
   room.api.replayClearPlayback();

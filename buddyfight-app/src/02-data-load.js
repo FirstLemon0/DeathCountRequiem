@@ -165,7 +165,9 @@ function desugarStatDestroyEffectOps(effect) {
   }
   if (effect.op === "destroySelf") {
     const { op, options, ...rest } = effect;
-    return { ...rest, op: "destroy", target: "$self", options: { ignoreSoulguard: true, ...(options || {}) } };
+    // rule-zones-2: ver2.05『ソウルガード』は破壊の原因を問わない置換効果＝自壊でも使える（ignoreSoulguard を既定で
+    // 付けない。能力無効化を伴う破壊等、本文が要求するカードだけ options で明示する）。
+    return { ...rest, op: "destroy", target: "$self", ...(options ? { options } : {}) };
   }
   if (effect.op === "modifyStatsAll") {
     const { op, controller, ...rest } = effect;
@@ -212,6 +214,33 @@ function desugarStatDestroyEffectOps(effect) {
 
 function desugarEffectOp(effect) {
   return desugarStatDestroyEffectOps(desugarTwinEffectOps(effect));
+}
+
+// 『着任』keyword の手札用/場用起動能力（desugarCardFlags と、未正規化カードの arriveCard フォールバックで共用）。
+function arrivalKeywordAbilities(card) {
+  const arrivalCost = card?.costs?.arrival || [];
+  return [
+    {
+      id: `${card?.id || "card"}-arrival-hand`,
+      label: "『着任』する",
+      keyword: "arrival",
+      kind: "activated",
+      fromHandOnly: true,
+      timing: ["main"],
+      cost: arrivalCost,
+      effects: [{ op: "equipSelf", arrival: true }],
+    },
+    {
+      id: `${card?.id || "card"}-arrival-field`,
+      label: "『着任』する",
+      keyword: "arrival",
+      kind: "activated",
+      timing: ["main"],
+      conditions: [{ op: "sourceZoneIn", zones: ["left", "center", "right"] }],
+      cost: arrivalCost,
+      effects: [{ op: "equipSelf", arrival: true }],
+    },
+  ];
 }
 
 function desugarCardFlags(card) {
@@ -310,6 +339,13 @@ function desugarCardFlags(card) {
       },
     ];
   }
+  // 『着任』keyword → 手札用/場用の起動能力（equipSelf{arrival:true}）。ver2.05 ④『変身』『搭乗』『着任』「自分のメインフェイズに、
+  // 自分の手札か自分のモンスタースペースにあるときに、〔 〕内のコストを払って、アイテムのように装備することができます」
+  // 「…に対して【対抗】を使用することができます」「バディギフトによりライフを＋１することはできます」＝搭乗/変身の
+  // -hand/-field 能力と同じ形（対抗窓・バディギフト・equip 放送は起動能力の宣言→解決経路が担う）。cost は costs.arrival。
+  if ((card.keywords || []).includes("arrival") && !(card.abilities || []).some((ability) => ability?.keyword === "arrival")) {
+    card.abilities = [...(card.abilities || []), ...arrivalKeywordAbilities(card)];
+  }
   // #12/#13 effect-op desugar: 双子op・強化/破壊/量参照op族を合成可能な新opへ寄せる。
   mapCardEffectOps(card, desugarEffectOp);
   return card;
@@ -384,6 +420,7 @@ const LEGACY_HANDLER_SCRIPTS = {
       op: "moveSelected",
       var: "discard",
       to: "drop",
+      discard: true,
       log: "discard",
     },
     {
@@ -480,6 +517,21 @@ function canonicalFlagId(id) {
 }
 
 function normalizeDeckProfile(deck, set = {}) {
+  // U7: 自作デッキ（localStorage / リプレイ記録の customDecks＝他人由来もあり得る）は表示用メタを固定値にする。
+  // productName/category を任意文字列のまま通すと、デッキ選択の見出し等に他人の文字列が製品名として出る。
+  if (set.id === "custom") {
+    const { productId, productName, category, series, ...rest } = deck || {};
+    return {
+      ...rest,
+      flag: canonicalFlagId(rest.flag || ""),
+      productId: "custom",
+      productName: set.name || "ユーザー作成デッキ",
+      category: "custom",
+      series: "",
+      releaseOrder: Number.isFinite(rest.releaseOrder) ? rest.releaseOrder : (set.releaseOrder ?? 9999),
+      recipe: [...(rest.recipe || [])],
+    };
+  }
   return {
     ...deck,
     flag: canonicalFlagId(deck.flag || ""),

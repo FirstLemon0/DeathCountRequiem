@@ -110,7 +110,7 @@ function collectFieldTargets(spec, context) {
   const scope = spec.scope || "all";
   const zoneList = Array.isArray(spec.zones) ? spec.zones : null;
   return allFieldTargets((card, owner, zone) => {
-    if (zoneList && !zoneList.includes(zone)) {
+    if (zoneList && !zoneListIncludes(zoneList, zone)) {
       return false;
     }
     if (scope === "self" && owner !== context.owner) {
@@ -157,7 +157,7 @@ function targetMatchesSpec(target, targetSpec, specOwner, context = {}) {
     // 単体対象の target 直下 zones（『相手のセンターのモンスター1枚』メラシエル 等）を honor する。
     // 以前は collectFieldTargets(全体対象)だけが zones を見て、単体対象の候補算出/再検証は zones を黙殺し
     // 左右のモンスターまで過剰許容していた（第7回レビュー・target直下 zone 単数の是正の複数形残余）。
-    if (Array.isArray(targetSpec.zones) && !targetSpec.zones.includes(target.zone)) {
+    if (Array.isArray(targetSpec.zones) && !zoneListIncludes(targetSpec.zones, target.zone)) {
       return false;
     }
     if (targetSpec.controller === "self" && target.owner !== specOwner) {
@@ -166,8 +166,13 @@ function targetMatchesSpec(target, targetSpec, specOwner, context = {}) {
     if (targetSpec.controller === "opponent" && target.owner === specOwner) {
       return false;
     }
+    // pt-final(7b): 候補算出(targetCandidatesFromSpecForOwner)と同じく excludeSource（「このカード以外の」）を守る。
+    // 以前は再利用する現在の対象（targetForAbilityUseDetailed の current）が発生源自身でも一致扱いになっていた。
+    if (targetSpec.excludeSource && target.card.instanceId === context.card?.instanceId) {
+      return false;
+    }
     return (
-      targetAllowedByAbility(target.card, context) &&
+      targetAllowedByAbility(target.card, context, specOwner) &&
       matchesTargetFilter(target.card, target.owner, target.zone, targetSpec.filter) &&
       passesStatThreshold(target.card, targetSpec.statThreshold, specOwner, context)
     );
@@ -208,7 +213,7 @@ function targetCandidatesFromSpecForOwner(targetSpec, specOwner, context = {}) {
       (target) =>
         (!targetSpec.controller ||
           (targetSpec.controller === "self" ? target.owner === specOwner : target.owner !== specOwner)) &&
-        targetAllowedByAbility(target.card, context) &&
+        targetAllowedByAbility(target.card, context, specOwner) &&
         matchesTargetFilter(target.card, target.owner, target.zone, targetSpec.filter) &&
         passesStatThreshold(target.card, targetSpec.statThreshold, specOwner, context),
     );
@@ -216,7 +221,7 @@ function targetCandidatesFromSpecForOwner(targetSpec, specOwner, context = {}) {
   if (targetSpec.type === "fieldCard") {
     return allFieldTargets((card, owner, zone) => {
       // target 直下 zones を honor（collectFieldTargets と同ロジック。単体対象の zones 黙殺による過剰一致を是正）。
-      if (Array.isArray(targetSpec.zones) && !targetSpec.zones.includes(zone)) {
+      if (Array.isArray(targetSpec.zones) && !zoneListIncludes(targetSpec.zones, zone)) {
         return false;
       }
       if (targetSpec.controller === "self" && owner !== specOwner) {
@@ -229,7 +234,7 @@ function targetCandidatesFromSpecForOwner(targetSpec, specOwner, context = {}) {
         return false;
       }
       return (
-        targetAllowedByAbility(card, context) &&
+        targetAllowedByAbility(card, context, specOwner) &&
         matchesTargetFilter(card, owner, zone, targetSpec.filter) &&
         passesStatThreshold(card, targetSpec.statThreshold, specOwner, context)
       );
@@ -238,16 +243,41 @@ function targetCandidatesFromSpecForOwner(targetSpec, specOwner, context = {}) {
   return [];
 }
 
-function targetAllowedByAbility(card, context = {}) {
+function targetAllowedByAbility(card, context = {}, specOwner) {
+  // cause 無しの判定は from 付き耐性も含めて阻止側（上位集合）＝ここで false なら cause 付きでも false。
   if (!cannotReturnToHand(card)) {
     return true;
   }
-  return !(context.ability?.effects || []).some(
-    (effect) => effect.op === "returnToHand" && effect.target === "$target",
-  );
+  if (!(context.ability?.effects || []).some((effect) => effect.op === "returnToHand" && effect.target === "$target")) {
+    return true;
+  }
+  return !cannotReturnToHand(card, returnToHandCauseForTarget(card, context, specOwner));
 }
 
-function cannotReturnToHand(card) {
+// 対象選択時点の手札戻しの原因（preventReturnToHand の from 判定用）。発生源側が分からなければ null（＝従来どおり阻止）。
+function returnToHandCauseForTarget(card, context = {}, specOwner) {
+  const sourceOwner = context.owner ?? specOwner;
+  const victimOwner = findFieldCardSlot(card)?.owner;
+  if (sourceOwner === undefined || sourceOwner === null || victimOwner === undefined) {
+    return null;
+  }
+  return makeEffectCause({ ...context, owner: sourceOwner }, victimOwner);
+}
+
+// preventReturnToHand の from:{byEffect,byOpponent}（「相手のカードの効果で手札に戻せない」）を原因で絞る。
+// grantedProtectionBlocks（05-stats.js）と同じ判定。from 無し、または cause 不明（旧呼び出し）は従来どおり阻止。
+function returnToHandFromAllows(effect, cause) {
+  if (!effect.from || !cause) {
+    return true;
+  }
+  if (effect.from.byEffect && !cause.byEffect) return false;
+  if (effect.from.byOpponent && !cause.byOpponent) return false;
+  return true;
+}
+
+// cause: makeEffectCause 形（{byEffect, byOpponent, sourceOwner, ...}）またはコスト起因（byCost:true,byEffect:false）。省略可。
+// カード直下の cannotReturnToHand:true は原因を問わず阻止（印字の無条件耐性）。
+function cannotReturnToHand(card, cause = null) {
   if (!card) {
     return false;
   }
@@ -264,13 +294,18 @@ function cannotReturnToHand(card) {
       return (sourceCard?.continuous || []).some(
         (effect) =>
           effect.op === "preventReturnToHand" &&
-          continuousEffectApplies(effect, card, sourceCard),
+          continuousEffectApplies(effect, card, sourceCard) &&
+          returnToHandFromAllows(effect, cause),
       );
     }),
   );
   // Z4(e)(S-UB-C03/0043(b)): 【対抗】等でそのターン（＋次ターン等）限定に付与される手札戻し耐性
   // （state.turnProtections、05-stats.js）。既存の恒久 preventReturnToHand とは独立レイヤ。
-  return fieldPrevents || soulContinuousGrantsOp(card, "preventReturnToHand") || cardProtectedFrom(card, "returnToHand");
+  return (
+    fieldPrevents ||
+    soulContinuousGrantsOp(card, "preventReturnToHand", (effect) => returnToHandFromAllows(effect, cause)) ||
+    cardProtectedFrom(card, "returnToHand", cause || {})
+  );
 }
 
 function targetSourceConditionMatches(targetSpec, context = {}) {
@@ -340,7 +375,7 @@ function matchesTargetFilter(card, owner, zone, filter = {}) {
   if (filter.zone && zone !== filter.zone) {
     return false;
   }
-  if (filter.zoneIn && !filter.zoneIn.includes(zone)) {
+  if (filter.zoneIn && !zoneListIncludes(filter.zoneIn, zone)) {
     return false;
   }
   if (filter.zoneNot && zone === filter.zoneNot) {

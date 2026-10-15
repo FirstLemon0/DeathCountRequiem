@@ -17,13 +17,18 @@ const aiSession = {
   actionCap: 100,
   turnKey: "", // ターン切替検出（actionCount / failedActionKeys 等のリセット）
   failedActionKeys: new Set(), // 実行しても状態が変わらなかった行動（同一ターン内は再試行しない）
+  declarationProbes: [], // 宣言(pendingAction)を伴う行動の不発検出待ち { key, before, pending, turnKey }（aiSettleDeclarationProbes）
   usedOnceKeys: new Set(), // このターンに使った場/ドロップ起動能力（同一能力の連打防止）
   handledWindows: new WeakSet(), // 判断済みの応答窓イベント（同じ窓を再判断しない）
   waitingPendings: new WeakSet(), // CPU応答側だが「宣言側(人間)の攻撃側対抗」を待っている pending
+  stalled: null, // 空回り防止: aiStep が待ちを返したのに aiHasWork が真だった局面 { pending, fingerprint }
   offeredCounterIds: new Set(), // このターンに人間へ提案済みの対抗カード instanceId（同じ提案の連発防止）
   lastOfferWindow: null, // 最後に提案対象にした応答窓（新しい窓が開いたら再提案を許す）
   errorStreak: 0,
+  // 対抗窓改修: 誘発/ライフリンクの対抗窓での方針。"default"=救命時のみ使う／"eager"=検証用に必ず使う。
+  counterWindowPolicy: "default",
   errorCount: 0, // 累計のフォールバック発生数（スモークの「例外ゼロ」検証用）
+  privateRandom: { fightKey: null, count: 0 }, // CPU 自身の乱数（aiPrivateRandomInt）の対戦内通し番号
   // 難易度（席別）。"beginner"=v1のカジュアルヒューリスティック（既定・従来と完全同一の判断）、
   // "advanced"=上級（盤面と打点を読む判断関数群）。判断関数は全て aiIsAdvanced(seat) で分岐し、
   // beginner 側の式には一切触れない＝既存の挙動・テスト・リプレイは不変。
@@ -107,6 +112,21 @@ function aiShouldAnswerPrompt(seat) {
 
 // カード選択への応答。頭脳(aiChooseSelection)の答えを min/max/allowCancel に収めて返す（機構の責務）。
 async function aiAnswerSelection(normalized, options) {
+  return aiAnswerSelectionSync(normalized, options);
+}
+
+// 同期版（R2: src/04 chooseCostEntriesSync の同期コスト選択からも CPU 席の判断を呼べるようにする）。
+function aiAnswerSelectionSync(normalized, options) {
+  if (options?.counterWindow) {
+    // 対抗窓改修: 誘発/ライフリンクの対抗窓は即答する（待たない）。判断に失敗したらパス。
+    try {
+      return [aiChooseCounterWindowAnswer(normalized, options) || normalized[0]];
+    } catch (error) {
+      aiSession.errorCount += 1;
+      console.error("[AI] 対抗窓の判断に失敗。パスします。", error);
+      return [normalized[0]];
+    }
+  }
   const min = options.min ?? Math.min(1, normalized.length);
   const max = Math.min(options.max ?? min, normalized.length);
   const allowCancel = options.allowCancel !== false;
@@ -148,6 +168,17 @@ async function aiAnswerConfirm(owner, message, options = {}) {
   }
 }
 
+// 同期版（src/11 tryLeaveFieldReplacementSync・src/13 confirmPrompt の同期確認から CPU 席の判断を呼ぶ）。
+function aiAnswerConfirmSync(owner, message, options = {}) {
+  try {
+    return Boolean(aiDecideConfirm(owner, message, options));
+  } catch (error) {
+    aiSession.errorCount += 1;
+    console.error("[AI] 確認の判断に失敗。既定(はい)へフォールバックします。", error);
+    return true;
+  }
+}
+
 // --------------------------------------------------------------------------
 // 駆動（render 末尾から aiOnRender が呼ばれる。テストは __buddyfightAiApi.pump を明示駆動）
 // --------------------------------------------------------------------------
@@ -174,9 +205,20 @@ function aiOnRender() {
   }, Math.min(aiSession.waitMs, 250));
 }
 
+// waitMs=0（ヘッドレス/フザー）でも必ず macrotask 境界まで譲る。前の行動が遅延起動した誘発チェーン
+// （battleEnd・登場時の「〜をコールする」等の Promise.resolve().then）は microtask 上で走るため、
+// Promise.resolve() だけで次の行動に進むと、チェーンの途中（コール先エリアを選んだ後・着地前）に次のコールが
+// 割り込み、同じエリアへ二重に着地して先客が消える（上級フザー seed401851 等の card-conservation の正体）。
+// 実UI（waitMs=500 の setTimeout）と同じ「チェーン完走後に次の行動」の順序をヘッドレスでも保つ。
 function aiWait() {
   if (aiSession.waitMs > 0 && typeof setTimeout === "function") {
     return new Promise((resolve) => setTimeout(resolve, aiSession.waitMs));
+  }
+  if (typeof setImmediate === "function") {
+    return new Promise((resolve) => setImmediate(resolve));
+  }
+  if (typeof setTimeout === "function") {
+    return new Promise((resolve) => setTimeout(resolve, 0));
   }
   return Promise.resolve();
 }
@@ -186,14 +228,21 @@ function aiHasWork() {
   if (!aiEnabled() || !Array.isArray(state?.players) || state.players.length < 2 || state.winner) {
     return false;
   }
+  if (state.counterWindow && !isAiSeat(state.counterWindow.responder)) {
+    return false; // 対抗窓改修: 人間の対抗窓（非モーダル）が開いている間は CPU が割り込まない（CPU 席の窓は即答済み）
+  }
   if (hasPendingResolution()) {
     const responder = networkResolutionSeat();
-    const declarer = state.pendingAction ? state.pendingAction.owner : state.pendingAttack.attackerOwner;
+    const declarer = aiPendingDeclarer();
+    const pending = aiCurrentPending();
+    if (aiIsStalledOn(pending)) {
+      return false; // 安全網: aiStep が「待ち」を返したのに aiHasWork が真のままだった局面（空回り防止）
+    }
     if (isAiSeat(responder)) {
-      const pending = state.pendingAction || state.pendingAttack;
       if (aiSession.waitingPendings.has(pending)) {
-        // 宣言側(人間)の攻撃側対抗を待っている。人間の対抗が尽きたらCPUが解決を引き取る
-        return aiEnumerateCounters(declarer).length === 0;
+        // 宣言側(人間)の攻撃側対抗を待っている。人間の対抗が尽きたらCPUが解決を引き取る。
+        // 判定は aiPendingStep の待機条件と同じ述語（aiShouldWaitForDeclarerCounter）を使う（不一致＝永久待ちの再発防止）。
+        return !aiShouldWaitForDeclarerCounter(responder, declarer);
       }
       return true; // CPUが応答側: 対抗するか解決する
     }
@@ -246,6 +295,13 @@ async function aiPump() {
         }
       }
       if (!progressed) {
+        // 一般ガード（T1 デッドロックの再発防止）: aiStep が「待ち」を返したのに aiHasWork が真のままだと、
+        // render→aiOnRender→pump が同じ局面で永久に空回りする（操作ロックの点滅）。その局面を記録して
+        // aiHasWork を偽に倒し、不整合は console.error で可視化する（フザーは console.error を失敗として拾う）。
+        if (hasPendingResolution() && aiHasWork()) {
+          aiMarkStalled(aiCurrentPending());
+          console.error("[AI] 対抗確認で待機と aiHasWork が不整合（空回り防止のため待機に倒します）。");
+        }
         break; // 人間の入力待ち等。次の render で再開する
       }
     }
@@ -275,6 +331,8 @@ async function aiPump() {
 
 // 1判断=1行動。true を返すと pump が継続、false は「人間待ち」。
 async function aiStep() {
+  aiResetTurnScope();
+  aiSettleDeclarationProbes();
   if (hasPendingResolution()) {
     return aiPendingStep();
   }
@@ -297,7 +355,7 @@ async function aiStep() {
 async function aiPendingStep() {
   aiResetTurnScope();
   const responder = networkResolutionSeat();
-  const declarer = state.pendingAction ? state.pendingAction.owner : state.pendingAttack.attackerOwner;
+  const declarer = aiPendingDeclarer();
   if (isAiSeat(responder)) {
     const counters = aiEnumerateCounters(responder).filter(
       (counter) => !aiSession.failedActionKeys.has(aiCounterKey(counter)),
@@ -309,20 +367,19 @@ async function aiPendingStep() {
       if (aiStateFingerprint() === before) {
         // 特殊コスト等で不発（状態不変）→ 同一ターン内は再選択しない（不発対抗の無限再選択＝凍結防止）
         aiSession.failedActionKeys.add(aiCounterKey(pick));
+      } else {
+        aiNoteDeclaration(aiCounterKey(pick), before); // 宣言→解決で何も起きなかった対抗も再選択しない
       }
       return true;
     }
     // 攻撃への【対抗】は宣言側(攻撃側)にも機会がある(ver2.05・エンジンも対応)。人間の攻撃側対抗が
     // 残っているなら解決せず待つ（人間は対抗カードを使うか「解決」を押す）。
-    // pendingAction は宣言側が自分の行動に対抗できない（usePendingActionCounterCard が responder 限定）ため即解決してよい。
+    // pendingAction は宣言側が自分の行動に対抗できない（usePendingActionCounterCard が responder 限定）ため即解決してよい
+    // （T1: 人間が自分の攻撃中に宣言した【対抗】= 攻撃の上に積まれた pendingAction も即解決。以前は pendingAttack だけで
+    //  判定して待ちに入り、waitingPendings には pendingAttack を、aiHasWork は pendingAction で照合＝永久に空回りした）。
     // CPU(応答側)が既に対抗を使った後は「対抗の対抗」は不可のため待たずに解決する。
-    if (
-      state.pendingAttack &&
-      !isAiSeat(declarer) &&
-      !state.pendingAttack.counterUsed?.[responder] &&
-      aiEnumerateCounters(declarer).length > 0
-    ) {
-      aiSession.waitingPendings.add(state.pendingAttack);
+    if (aiShouldWaitForDeclarerCounter(responder, declarer)) {
+      aiSession.waitingPendings.add(aiCurrentPending()); // aiHasWork と同じキー（今の pending）で記帳する
       return false;
     }
     await resolvePendingResolution();
@@ -336,6 +393,47 @@ async function aiPendingStep() {
     return false; // 人間の対抗 or 解決ボタン待ち
   }
   return false;
+}
+
+// 今の対抗確認の対象（入れ子なら上に積まれた pendingAction）。aiHasWork / aiPendingStep で同じキーを使う。
+function aiCurrentPending() {
+  return state.pendingAction || state.pendingAttack || null;
+}
+
+function aiPendingDeclarer() {
+  if (state.pendingAction) return state.pendingAction.owner;
+  return state.pendingAttack ? state.pendingAttack.attackerOwner : null;
+}
+
+// CPU が応答側の対抗確認で「宣言側(人間)の攻撃側【対抗】」を待つべきか（aiPendingStep と aiHasWork の共通述語）。
+// 待つのは pendingAttack 単独（入れ子の pendingAction 無し）の時だけ。pendingAction は宣言側が対抗できない。
+function aiShouldWaitForDeclarerCounter(responder, declarer) {
+  return Boolean(
+    !state.pendingAction &&
+      state.pendingAttack &&
+      Number.isInteger(declarer) &&
+      !isAiSeat(declarer) &&
+      !state.pendingAttack.counterUsed?.[responder] &&
+      aiEnumerateCounters(declarer).length > 0,
+  );
+}
+
+// 空回り防止の記帳（pending オブジェクト＋状態フィンガープリント）。人間が何かすれば（対抗の宣言・解決）
+// pending かフィンガープリントが変わるので自動的に解ける。
+function aiMarkStalled(pending) {
+  aiSession.stalled = pending ? { pending, fingerprint: aiStateFingerprint() } : null;
+}
+
+function aiIsStalledOn(pending) {
+  const stalled = aiSession.stalled;
+  if (!stalled || !pending || stalled.pending !== pending) {
+    return false;
+  }
+  if (stalled.fingerprint !== aiStateFingerprint()) {
+    aiSession.stalled = null;
+    return false;
+  }
+  return true;
 }
 
 function aiCounterKey(counter) {
@@ -354,8 +452,21 @@ function aiEnumerateCounters(seat) {
   if (!player) {
     return [];
   }
+  // 手番/応答者ガード（エンジンの canUseSelectedCard・findUsableDropAbilities と同じ規約）: 攻撃中は攻撃側/防御側、
+  // 行動の対抗確認中は応答側だけが【対抗】を使える。宣言側は自分の pendingAction に対抗できない。
+  const mayAct = state.pendingAction
+    ? seat === state.pendingAction.responder
+    : state.pendingAttack
+      ? [state.pendingAttack.attackerOwner, state.pendingAttack.defender].includes(seat)
+      : false;
+  if (!mayAct) {
+    return [];
+  }
+  // 宣言中のカード自身（場の【対抗】【起動】は1ターン1回の記帳が解決時のため、宣言中は「まだ使える」に見える）は除く。
+  const declaredCard = state.pendingAction?.card || null;
   const counters = [];
   for (const card of player.hand) {
+    if (card === declaredCard) continue;
     const usable = aiWithSelected({ source: "hand", owner: seat, instanceId: card.instanceId }, () => {
       const ability = findUsableHandAbility(card, { counterOnly: true });
       if (!ability || !canUseCounterEffect(seat, selectedCounterKind(card))) {
@@ -369,17 +480,22 @@ function aiEnumerateCounters(seat) {
   }
   for (const zone of Object.keys(player.field)) {
     const card = player.field[zone];
-    if (!card) continue;
+    if (!card || card === declaredCard) continue;
+    // 場は【対抗】能力に限り、対抗の使用可否（counterUsed・対抗ロック）までエンジンの canUseCounterEffect で見る
+    // （以前は findUsableFieldAbilities だけ＝対抗でない起動・使用済みの側まで「人間の対抗が残っている」に数えた）。
     const usable = aiWithSelected({ source: "field", owner: seat, zone, instanceId: card.instanceId }, () =>
-      findUsableFieldAbilities(card, seat).length > 0,
+      findUsableFieldAbilities(card, seat).some((ability) => isCounterAbility(ability)) &&
+      canUseCounterEffect(seat, selectedCounterKind(card)),
     );
     if (usable) {
       counters.push({ type: "field", seat, zone, card });
     }
   }
   for (const card of player.drop) {
+    if (card === declaredCard) continue;
     const usable = aiWithSelected({ source: "drop", owner: seat, instanceId: card.instanceId }, () =>
-      findUsableDropAbilities(card, seat).length > 0,
+      findUsableDropAbilities(card, seat).some((ability) => isCounterAbility(ability)) &&
+      canUseCounterEffect(seat, selectedCounterKind(card)),
     );
     if (usable) {
       counters.push({ type: "drop", seat, card });
@@ -391,7 +507,7 @@ function aiEnumerateCounters(seat) {
 // 能力コストの支払可否（判定不能な特殊コストは「支払える」に倒し、実行失敗はブラックリストで吸収）。
 function aiCanPayAbilityCost(player, card, ability) {
   try {
-    const costSteps = adjustedCostSteps(player, card, abilityCostPurpose(ability), abilityCostSteps(card, ability));
+    const costSteps = adjustedAbilityCostSteps(player, card, ability);
     // canPayStructuredCost は {ok, reason} を返す（オブジェクトのまま返すと常に真になる）。
     // allowInteractiveSelection: 実支払い(payStructuredCostWithSelection)と同条件で判定する
     // （dropOwnMonster 等の選択型コストは候補があれば支払えるとみなす。選択自体は seam でAIが答える）。
@@ -482,7 +598,10 @@ async function aiOfferHumanCounters(humanSeat, counters) {
     card: { name: "対抗しない", rules: [], attributes: [], keywords: [], costs: {} },
   };
   const entries = [...counters.map((counter) => ({ card: counter.card, counter })), passEntry];
-  const selected = await chooseCardEntries(entries, {
+  // この提案は CPU 駆動側の UI であってエンジンのプロンプトではない（再生時は CPU が動かず二度と問われない）。
+  // 記録 seam(chooseCardEntries) を通すと step 境界の外の応答として setupResponses に積まれ再生不能になるため、
+  // 記録/再生を経由しない Impl を直接呼ぶ（使うと決めた対抗は aiExecuteCounter→useCardAction の step として記録される）。
+  const selected = await chooseCardEntriesImpl(entries, {
     title: "対抗タイミング",
     lead: "CPUの手番中ですが、今あなたが使える【対抗】カードがあります。使うカードを選ぶか、「対抗しない」を選んでください。",
     min: 1,
@@ -506,6 +625,7 @@ function aiResetTurnScope() {
     aiSession.turnKey = key;
     aiSession.actionCount = 0;
     aiSession.failedActionKeys = new Set();
+    aiSession.declarationProbes = [];
     aiSession.usedOnceKeys = new Set();
     aiSession.offeredCounterIds = new Set();
     aiSession.lastOfferWindow = null;
@@ -523,7 +643,8 @@ async function aiTurnStep() {
   // 人間の【対抗】機会（F4/Q11統合）: 応答窓 or フリータイミングで人間が使える手札対抗が
   // 新しく現れたら、次の行動（=窓の失効）より前にブロッキング確認を一度だけ出す。
   const humanSeat = aiHumanSeat();
-  if (humanSeat !== null) {
+  // 対抗窓改修: 人間が「このターンはパス」を選んだターンは、CPU 手番中のフリータイミング提案も出さない。
+  if (humanSeat !== null && !(typeof counterWindowPassedThisTurn === "function" && counterWindowPassedThisTurn(humanSeat))) {
     const windowEvent = aiOpenResponseWindow();
     if (windowEvent && windowEvent !== aiSession.lastOfferWindow) {
       aiSession.lastOfferWindow = windowEvent;
@@ -622,6 +743,7 @@ async function aiFinalStep(seat) {
     for (const card of player.hand) {
       if (card.type !== "impactMonster" || card.cannotCallNormally) continue;
       if (!aiCanPayCardCost(player, card, "call")) continue;
+      if (!aiCallDeclarable(seat, card)) continue; // pt-final(3)
       if (card.callStack) {
         // 重ねコール: 有効な重ね先ごとに列挙（メインフェイズのコール列挙と同じF7方式）。
         const bases = aiWithSelected({ source: "hand", owner: seat, instanceId: card.instanceId }, () => {
@@ -632,13 +754,14 @@ async function aiFinalStep(seat) {
           }
         });
         for (const base of bases) {
-          if (base.owner !== seat || !base.zone) continue;
+          if (base.owner !== seat || !base.zone || isCallZoneBlocked(seat, card, base.zone)) continue;
           calls.push(aiCallAction(seat, card, base.zone, { stack: true, base }));
         }
         // callStack.optional（「１枚まで」型）は重ねずに通常コールも可。重ね先が無くてもコールできる。
         if (card.callStack.optional) {
           for (const zone of fieldZones) {
             if (player.field[zone]) continue;
+            if (isCallZoneBlocked(seat, card, zone)) continue; // pt-final(3)
             calls.push(aiCallAction(seat, card, zone, {}));
           }
         }
@@ -646,6 +769,7 @@ async function aiFinalStep(seat) {
       }
       for (const zone of fieldZones) {
         if (player.field[zone]) continue;
+        if (isCallZoneBlocked(seat, card, zone)) continue; // pt-final(3)
         calls.push(aiCallAction(seat, card, zone, {}));
       }
     }
@@ -674,7 +798,40 @@ async function aiExecuteAction(action) {
   await action.exec();
   if (aiStateFingerprint() === before) {
     aiSession.failedActionKeys.add(action.key);
+  } else {
+    aiNoteDeclaration(action.key, before);
   }
+}
+
+// 空打ち防止（木村夏樹 bf-s-ub-c03-0030 型）: 宣言(pendingAction)を伴う行動は exec 直後には「宣言中」で状態が
+// 変わって見えるため、上の即時判定では不発を検出できない。解決後に宣言前と同じ局面へ戻っていたら
+// （解決で中断→手札へ戻す等＝何も起きなかった）、同じ行動を同一ターン内は再試行しない
+// （以前は「使える」と判定される限り 1 ターンに数百回 宣言→取りやめ を繰り返した）。
+function aiNoteDeclaration(key, before) {
+  const pending = state.pendingAction;
+  if (pending && key) {
+    aiSession.declarationProbes.push({ key, before, pending, turnKey: aiSession.turnKey });
+  }
+}
+
+function aiSettleDeclarationProbes() {
+  const probes = aiSession.declarationProbes;
+  if (!probes.length) {
+    return;
+  }
+  const remaining = [];
+  const fingerprint = aiStateFingerprint();
+  for (const probe of probes) {
+    if (probe.turnKey !== aiSession.turnKey) continue; // ターンが変わった（記帳は破棄）
+    if (state.pendingAction === probe.pending || (state.resolvingPending && state.pendingAction)) {
+      remaining.push(probe); // まだ解決していない
+      continue;
+    }
+    if (fingerprint === probe.before) {
+      aiSession.failedActionKeys.add(probe.key);
+    }
+  }
+  aiSession.declarationProbes = remaining;
 }
 
 // 例外・行動数上限時の「必ず前へ進む」既定行動（全て正規APIの範囲＝合法）。
@@ -745,6 +902,17 @@ function aiEnumerateFieldAbilities(seat) {
   return actions;
 }
 
+// pt-final(3): 通常コールの宣言段ゲート（callMonster src/07 と同基準）を CPU の列挙段で先に判定する。
+function aiCallDeclarable(seat, card) {
+  return aiWithSelected({ source: "hand", owner: seat, instanceId: card.instanceId }, () => {
+    if (!checkCardConditions(card.callConditions, seat)) return false;
+    if (typeof isCallRestricted === "function" && isCallRestricted(seat, card)) return false;
+    if (typeof isCallCountLimitedThisTurn === "function" && isCallCountLimitedThisTurn(seat, card)) return false;
+    if (typeof isCallCountCappedThisTurn === "function" && isCallCountCappedThisTurn(seat)) return false;
+    return true;
+  });
+}
+
 function aiEnumerateMainActions(seat) {
   const player = state.players[seat];
   const actions = [];
@@ -772,6 +940,10 @@ function aiEnumerateMainActions(seat) {
     if (!isCallableMonster(card) || card.cannotCallNormally) continue;
     if (card.type === "impactMonster") continue; // 必殺モンスターはファイナルフェイズ限定（aiFinalStep で扱う）
     if (!aiCanPayCardCost(player, card, "call")) continue;
+    // pt-final(3): callMonster が宣言時に弾く条件（callConditions＝無限ロボ マセマティック等の「〜の時だけコール
+    // できる」、継続コール制限、同名/総枚数上限）を列挙段で落とす。以前は毎回宣言→「コール条件を満たして
+    // いません」のログを出して失敗し、CPU が同じ失敗コールを繰り返していた。
+    if (!aiCallDeclarable(seat, card)) continue;
     const buddyable = !player.partnerCalled && isBuddyCard(player, card);
     if (card.callStack) {
       // 重ねコール: 有効な重ね先（効果対象候補）ごとに列挙し、exec で effectTarget に重ね先を指定する（F7）。
@@ -783,7 +955,7 @@ function aiEnumerateMainActions(seat) {
         }
       });
       for (const base of bases) {
-        if (base.owner !== seat || !base.zone) continue;
+        if (base.owner !== seat || !base.zone || isCallZoneBlocked(seat, card, base.zone)) continue;
         actions.push(aiCallAction(seat, card, base.zone, { stack: true, base }));
       }
       // callStack.optional（「１枚まで」型）は重ねずに空きエリアへの通常コールも可。
@@ -791,6 +963,7 @@ function aiEnumerateMainActions(seat) {
       if (card.callStack.optional) {
         for (const zone of fieldZones) {
           if (player.field[zone]) continue;
+          if (isCallZoneBlocked(seat, card, zone)) continue; // pt-final(3): コールできないエリアは列挙しない
           actions.push(aiCallAction(seat, card, zone, {}));
           if (buddyable) {
             actions.push(aiCallAction(seat, card, zone, { buddy: true }));
@@ -801,6 +974,7 @@ function aiEnumerateMainActions(seat) {
     }
     for (const zone of fieldZones) {
       if (player.field[zone]) continue;
+      if (isCallZoneBlocked(seat, card, zone)) continue; // pt-final(3): センター専用/センター禁止等のエリアは列挙しない
       actions.push(aiCallAction(seat, card, zone, {}));
       if (buddyable) {
         actions.push(aiCallAction(seat, card, zone, { buddy: true }));
@@ -853,7 +1027,12 @@ function aiEnumerateMainActions(seat) {
       score: aiScoreDropAbility(seat, card),
       exec: async () => {
         aiSession.usedOnceKeys.add(key);
-        await useDropAbilityAction(seat, card);
+        // R10: 人間/権威版と同じ実操作経路（selected=drop → useCardAction）を通す。ローカル記録では
+        // useCardAction が "use" step として刻まれ、再生でも同じ経路で再現される（useDropAbilityAction 直叩きは
+        // step 境界の外＝記録されず、CPU 対戦のリプレイが必ずズレていた）。
+        state.selected = { source: "drop", owner: seat, instanceId: card.instanceId };
+        elements.effectTarget.value = "";
+        await useCardAction();
       },
     });
   }
@@ -873,10 +1052,11 @@ function aiCallAction(seat, card, zone, options) {
       state.selected = { source: "hand", owner: seat, instanceId: card.instanceId };
       // 重ねコールは getStackCallTarget が効果対象を参照するため、重ね先を明示指定する（F7）。
       elements.effectTarget.value = options.base ? encodeTarget(options.base.owner, options.base.zone) : "";
-      if (options.buddy) {
-        // 宣言は明示代入（partnerCall のトグルだと、コール失敗→再試行で宣言が解除され
-        // フィンガープリントが毎回変わりブラックリストが効かない=F2のループ）。
-        state.buddyCallDeclared = card.instanceId;
+      if (options.buddy && state.buddyCallDeclared !== card.instanceId) {
+        // R10: 宣言は記録される実操作 partnerCall（"buddy" step）で行う（state 直代入は step 外＝リプレイで再現されない）。
+        // 既に同じカードで宣言済みならトグルしない（コール失敗→再試行で宣言が解除されフィンガープリントが
+        // 毎回変わりブラックリストが効かない=F2のループを、従来の明示代入と同じく防ぐ）。
+        partnerCall();
       }
       await callMonster(zone);
     },
@@ -901,7 +1081,7 @@ function aiEnumerateAttacks(seat, attackerFilter) {
         key: `attack:${card.instanceId}:${target.value}`,
         score: aiScoreAttack(seat, card, target),
         exec: async () => {
-          state.linkAttackers = [];
+          aiClearLinkAttackers(seat);
           state.selected = { source: "field", owner: seat, zone, instanceId: card.instanceId };
           render(); // attackTarget の option を最新化してから対象を指定する
           elements.attackTarget.value = target.value;
@@ -944,7 +1124,7 @@ function aiEnumerateFlagAttacks(seat) {
       // フラッグは失っても場のモンスターを失わない＝トレードのリスクが無い攻撃。同条件ならモンスター攻撃より優先する。
       score: aiScoreAttack(seat, flag, target) + 1,
       exec: async () => {
-        state.linkAttackers = [];
+        aiClearLinkAttackers(seat);
         state.selected = { source: "flag", owner: seat, zone: "flag", instanceId: flag.instanceId };
         render();
         elements.attackTarget.value = target.value;
@@ -994,10 +1174,7 @@ function aiEnumerateLinkAttacks(seat, singles) {
             key: `link:${a.card.instanceId}+${b.card.instanceId}:fighter`,
             score: fighterScore,
             exec: async () => {
-              state.linkAttackers = [
-                { owner: seat, zone: a.zone },
-                { owner: seat, zone: b.zone },
-              ];
+              aiSetLinkAttackers(seat, [a, b]);
               state.selected = { source: "field", owner: seat, zone: a.zone, instanceId: a.card.instanceId };
               render();
               elements.attackTarget.value = "fighter";
@@ -1026,10 +1203,7 @@ function aiEnumerateLinkAttacks(seat, singles) {
           key: `link:${a.card.instanceId}+${b.card.instanceId}:${target.value}`,
           score,
           exec: async () => {
-            state.linkAttackers = [
-              { owner: seat, zone: a.zone },
-              { owner: seat, zone: b.zone },
-            ];
+            aiSetLinkAttackers(seat, [a, b]);
             state.selected = { source: "field", owner: seat, zone: a.zone, instanceId: a.card.instanceId };
             render();
             elements.attackTarget.value = target.value;
@@ -1040,6 +1214,34 @@ function aiEnumerateLinkAttacks(seat, singles) {
     }
   }
   return actions;
+}
+
+// R10: 連携攻撃の参加者は記録される実操作 toggleLinkAttacker（"link" step）で組む。state.linkAttackers の
+// 直代入は step 境界の外＝リプレイで再現されず、再生側は単騎攻撃になって対戦がズレていた。
+// まず残っている参加者を外し（aiClearLinkAttackers）、選んだスロットを順にトグルで加える。
+function aiSetLinkAttackers(seat, slots) {
+  aiClearLinkAttackers(seat);
+  for (const slot of slots) {
+    const card = state.players[seat]?.field?.[slot.zone];
+    state.selected = { source: "field", owner: seat, zone: slot.zone, instanceId: card?.instanceId };
+    toggleLinkAttacker();
+  }
+}
+
+// 連携攻撃の参加者を記録される実操作（toggleLinkAttacker）で全て外す。トグルで外せない残骸
+// （参加者がレスト済み等で toggleLinkAttacker が早期 return する）だけは従来どおり直接クリアする
+// （その残骸は getAttackDeclarationAttackers が used/不在で除外するため、再生側との差は攻撃結果に出ない）。
+function aiClearLinkAttackers(seat) {
+  const current = Array.isArray(state.linkAttackers) ? state.linkAttackers.slice() : [];
+  for (const slot of current) {
+    const card = state.players[slot.owner]?.field?.[slot.zone];
+    if (slot.owner !== seat || !card) continue;
+    state.selected = { source: "field", owner: slot.owner, zone: slot.zone, instanceId: card.instanceId };
+    toggleLinkAttacker();
+  }
+  if (Array.isArray(state.linkAttackers) && state.linkAttackers.length > 0) {
+    state.linkAttackers = [];
+  }
 }
 
 // 状態フィンガープリント（行動が実際に何かを変えたかの判定用）。
@@ -1529,6 +1731,38 @@ function aiChooseCounter(counters, seat) {
   return null;
 }
 
+// 対抗窓改修: 誘発/ライフリンクの対抗窓での判断。既定はパス（「このターンはパス」は使わない）。
+// ライフリンクで自分が敗北する（即死／ダメージ≧ライフ）局面だけ、それを止められる【対抗】を使う。
+const AI_LIFE_SAVER_OPS = ["gainLife", "preventNextDamage", "reduceNextDamage", "preventAllDamageThisTurn", "setLifeZeroSafeguard"];
+const AI_LIFELINK_CANCEL_OPS = ["cancelRecentLifeLink", "cancelLifeLink", "cancelCallOpportunityLifeLink"];
+function aiCardUsesOps(card, ops) {
+  const text = JSON.stringify([card?.abilities || [], card?.soulAbilities || []]);
+  return ops.some((op) => text.includes(`"op":"${op}"`));
+}
+
+function aiChooseCounterWindowAnswer(normalized, options) {
+  const info = options.counterWindowInfo || {};
+  const seat = info.responder;
+  const pass = normalized.find((entry) => entry.counterWindowAnswer === "pass") || normalized[0];
+  if (aiSession.counterWindowPolicy === "eager") {
+    // 検証用（フザー/テスト専用・既定 "default"）: 窓で使える対抗を必ず使い、窓の実行経路を叩く。
+    return normalized.find((entry) => entry.counterWindowAnswer === "use") || pass;
+  }
+  if (info.kind !== "lifeLink" || info.damagedSeat !== seat || !state.players?.[seat]) {
+    return pass;
+  }
+  const life = state.players[seat].life;
+  const lethal = Boolean(info.instantDefeat) || (info.damage || 0) >= life;
+  if (!lethal) {
+    return pass;
+  }
+  const ops = info.instantDefeat ? AI_LIFELINK_CANCEL_OPS : [...AI_LIFELINK_CANCEL_OPS, ...AI_LIFE_SAVER_OPS];
+  const saver = normalized.find(
+    (entry) => entry.counterWindowAnswer === "use" && aiCardUsesOps(entry.option?.card || entry.card, ops),
+  );
+  return saver || pass;
+}
+
 function aiAbilityNullifiesAttack(card) {
   return (card?.abilities || []).some((ability) =>
     JSON.stringify(ability.effects || ability.script || []).includes('"nullifyAttack"'),
@@ -1611,7 +1845,9 @@ function aiChooseSelection(normalized, options) {
   switch (purpose) {
     case "cost":
       if (options.min <= 0) {
-        return options.allowCancel ? null : [];
+        // 「〜まで」型の任意枚数コストは0枚で支払う（最小価値）。以前は allowCancel 時に null＝キャンセルを返し、
+        // 支払い全体が失敗してコール自体が中止されていた（X-TD02/0001 ギアゴッドⅦ 等を CPU がコールできない）。
+        return [];
       }
       return byValueAsc().slice(0, options.min);
     case "hostile": {
@@ -1629,15 +1865,21 @@ function aiChooseSelection(normalized, options) {
     case "friendly":
     case "search":
       return byValueDesc().slice(0, Math.max(options.min, 1));
+    case "fill":
+      // R1(2026-10-09): 「N枚まで…置く。N枚置いたら〜」型（D-EB03 アヴァロン等）。上限 max 枚まで、価値の低い順に選ぶ
+      // （N枚そろえると追加効果が出るので最大枚数を狙う。以前の「N枚以上あれば N 枚強制」実装での CPU 挙動と同じ選び方）。
+      return byValueAsc().slice(0, Math.max(options.max, options.min));
     case "rps":
-      return [normalized[rngInt(normalized.length)]]; // B1: シード乱数（未設定時は Math.random 素通し）
+      return [normalized[aiPrivateRandomInt(normalized.length, options.promptSeat)]];
     case "move": {
-      const center = normalized.find((entry) => entry.zone === "center");
+      // rulings-f: 同時コールのコール先で使用中/選択済み（occupied）のエリアは避ける（無ければ従来どおり）。
+      const free = normalized.filter((entry) => !entry.occupied);
+      const center = (free.length ? free : normalized).find((entry) => entry.zone === "center");
       if (center) {
         return [center]; // センター空き（=選択肢に出る）なら防御優先で center へ
       }
       const skip = normalized.find((entry) => entry.key === "skip");
-      return [skip || normalized[0]];
+      return [skip || free[0] || normalized[0]];
     }
     case "declare":
     case "branch":
@@ -1649,6 +1891,29 @@ function aiChooseSelection(normalized, options) {
       }
       return normalized.slice(0, options.min);
   }
+}
+
+// R1/R10: CPU 自身の気まぐれ（じゃんけんの手）用の乱数。対戦の乱数列（state.rngSeed/rngCounter＝シャッフル・
+// ドロー）を**消費しない**。旧実装は rngInt で state.rngCounter を進めていたが、CPU の判断は記録された応答として
+// 再生される（再生時に AI は動かない）ため、再生側だけ rngCounter が進まず以降のシャッフル/ドローが全てズレた。
+// (seed, 現在の rngCounter, 対戦内の通し番号, 席) から mulberry32At で導出するので、同じ seed＋同じ手順なら
+// フザーの (seed, deckIds, firstSeat) 再現性も保たれる。通し番号は fightId が変わったら 0 に戻す
+// （state には置かない＝state を汚すと記録→再生の最終局面比較が CPU の内部状態ぶんズレるため）。
+function aiPrivateRandomInt(maxExclusive, seat) {
+  if (!(maxExclusive > 0)) {
+    return 0;
+  }
+  if (!state || state.rngSeed == null) {
+    return Math.floor(Math.random() * maxExclusive);
+  }
+  const fightKey = state.fightId ?? null;
+  if (aiSession.privateRandom.fightKey !== fightKey) {
+    aiSession.privateRandom = { fightKey, count: 0 };
+  }
+  aiSession.privateRandom.count += 1;
+  const salt = (Math.imul(aiSession.privateRandom.count, 0x9e3779b1) ^ ((seat === 1 ? 2 : 1) * 0x85ebca6b)) >>> 0;
+  const value = mulberry32At((state.rngSeed ^ salt) >>> 0, (state.rngCounter >>> 0) + 1);
+  return Math.floor(value * maxExclusive);
 }
 
 // 選択候補の価値（entry.card が疑似カードでも安全に 0 になる）。
@@ -1688,6 +1953,11 @@ const aiUi = {
 // 自分の攻撃への攻撃側【対抗】が使えるため（F3）。CPUの判断は pump が担い、実行中は running で守る。
 function aiShouldLockHumanControls() {
   if (!aiEnabled() || state?.winner || !Array.isArray(state?.players)) {
+    return false;
+  }
+  // 対抗窓改修: 人間席の対抗窓が開いている間は、その席が手札/場の【対抗】を選んで使えるよう操作を開ける
+  // （CPU の行動は窓の解決を待って止まっている）。
+  if (state.counterWindow && !isAiSeat(state.counterWindow.responder)) {
     return false;
   }
   if (aiSession.running) {

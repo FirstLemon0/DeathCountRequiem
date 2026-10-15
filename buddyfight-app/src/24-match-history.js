@@ -183,12 +183,14 @@ function matchSaveLocalHistory(list) {
 }
 
 // ローカルの「自分」席。CPU対戦なら人間席、ホットシート(人間同士)は P1 を自分とみなす（サーバ同期の近似）。
+// R4: 両席CPU（観戦モード）は「自分」の席が無いので null（サーバへは送らずローカル履歴だけに残す）。
 function matchSelfSeat() {
   if (typeof aiEnabled === "function" && aiEnabled() && typeof aiHumanSeat === "function") {
     const seat = aiHumanSeat();
     if (seat === 0 || seat === 1) {
       return seat;
     }
+    return null;
   }
   return 0;
 }
@@ -199,8 +201,9 @@ function matchLocalSink(record) {
   matchSaveLocalHistory(list);
   // ログイン中ならサーバへも記録（best-effort・source:"client"。権威記録 source:"server" は上書きしない）。
   // サーバは席=自分の視点で集計するため、自分席の勝敗・デッキへ射影して送る。
-  if (typeof userRecordMatch === "function") {
-    const self = matchSelfSeat();
+  // R4: 両席CPU（観戦）の対戦はログインユーザーの戦績ではない＝サーバへ送らない（従来は席0扱いで勝敗が載っていた）。
+  const self = matchSelfSeat();
+  if (typeof userRecordMatch === "function" && (self === 0 || self === 1)) {
     const deckIds = Array.isArray(record.deckIds) ? record.deckIds : [null, null];
     try {
       // 非同期(fetch)。同期例外も非同期リジェクトも握り、ローカル記録・対戦進行に影響させない。

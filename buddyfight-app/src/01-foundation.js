@@ -30,6 +30,129 @@ const setZones = ["set1", "set2"];
 const itemZones = ["item", "item2", "item3", "item4"];
 const setZonesAndItems = [...setZones, ...itemZones];
 const zones = ["left", "center", "right", ...setZonesAndItems];
+
+// rule-call-11（オーナー裁定 2026-10-08）: 『設置』の置ける枚数に上限は無い（ver2.05「魔法エリアに置かれたままとなり」）。
+// 設置魔法は従来どおり player.field の "set1"/"set2"/… キーに置く（JSON 直列化・room-store・リプレイ・旧スナップショットと
+// 同形＝旧 set1/set2 はそのまま読める）。3枚目以降は "set3","set4"… を動的に増やし、setZones/setZonesAndItems/zones の
+// 共有配列へ「最後の set 枠の直後（item 枠より前）」へ挿入して、全ゾーン走査系（継続/破壊/無効化/対象/イベント）に自動で載せる。
+// 配列は伸びるだけ（縮めない）＝空き枠は走査しても field[zone] が空なので挙動不変。エンジンは部屋ごとに別 vm 文脈なので
+// 他の部屋には影響しない。カードJSONの zones/zoneIn に書かれた "set1"/"set2" は「設置魔法の枠全体」の意味として
+// zoneListIncludes / expandZoneList で全 set 枠に広げて解釈する。
+function isSetZone(zone) {
+  return typeof zone === "string" && /^set[1-9][0-9]*$/.test(zone);
+}
+
+function ensureSetZoneCount(count) {
+  const target = Math.max(0, Math.floor(Number(count) || 0));
+  while (setZones.length < target) {
+    const lastSet = setZones[setZones.length - 1];
+    const name = `set${setZones.length + 1}`;
+    setZones.push(name);
+    for (const list of [setZonesAndItems, zones]) {
+      const index = list.indexOf(lastSet);
+      list.splice(index >= 0 ? index + 1 : list.length, 0, name);
+    }
+  }
+}
+
+// プレイヤー（または state 全体）の field に存在する setN キーまで set 枠を伸ばす。状態の差し替え（部屋復元・リプレイ・
+// ネット対戦の view 適用・テストの直置き）後に呼ぶ。null/空の setN キーも数える（枠の存在＝走査対象）。
+function syncSetZonesWithPlayer(player) {
+  const field = player?.field;
+  if (!field || typeof field !== "object") return;
+  let max = 0;
+  let maxItem = 0;
+  for (const key of Object.keys(field)) {
+    if (isSetZone(key)) max = Math.max(max, Number(key.slice(3)));
+    if (isItemZone(key)) maxItem = Math.max(maxItem, key === "item" ? 1 : Number(key.slice(4)));
+  }
+  if (max > setZones.length) ensureSetZoneCount(max);
+  // pt-fix-c T7-4: アイテム枠も可変長（item5 以降）。部屋復元・リプレイ・view 適用後の走査対象へ載せる。
+  if (maxItem > itemZones.length) ensureItemZoneCount(maxItem);
+}
+
+// pt-fix-c T7-4（レヴァンティン「アイテムを何枚でも装備できる」）: アイテム枠も設置魔法枠と同じく可変長にする。
+// 既存の "item"/"item2"…"item4" はそのまま（JSON/room-store/リプレイ/旧スナップショットと同形）。5枚目以降は
+// "item5","item6"… を動的に増やし、itemZones/setZonesAndItems/zones の共有配列の最後のアイテム枠の直後へ挿入する
+// （伸びるだけ＝空き枠は走査しても空なので挙動不変）。カードJSONの zones に "item4" まで（＝全アイテム枠）が
+// 書かれていれば zoneListIncludes / expandZoneList が item5 以降にも広げて解釈する。
+function isItemZone(zone) {
+  return typeof zone === "string" && /^item([2-9]|[1-9][0-9]+)?$/.test(zone);
+}
+
+function ensureItemZoneCount(count) {
+  const target = Math.max(0, Math.floor(Number(count) || 0));
+  while (itemZones.length < target) {
+    const lastItem = itemZones[itemZones.length - 1];
+    const name = `item${itemZones.length + 1}`;
+    itemZones.push(name);
+    for (const list of [setZonesAndItems, zones]) {
+      const index = list.indexOf(lastItem);
+      list.splice(index >= 0 ? index + 1 : list.length, 0, name);
+    }
+  }
+}
+
+// 動的に増やしたアイテム枠（item5 以降）か。
+function isDynamicItemZone(zone) {
+  return isItemZone(zone) && zone !== "item" && Number(zone.slice(4)) > 4;
+}
+
+function syncSetZonesWithState(target) {
+  const players = target?.players;
+  if (Array.isArray(players)) players.forEach(syncSetZonesWithPlayer);
+}
+
+// 空いている最初の設置枠（上限なし: 全て埋まっていれば新しい枠を作って返す）。
+function firstEmptySetZone(player) {
+  syncSetZonesWithPlayer(player);
+  const zone = setZones.find((candidate) => !player?.field?.[candidate]);
+  if (zone) return zone;
+  ensureSetZoneCount(setZones.length + 1);
+  return setZones[setZones.length - 1];
+}
+
+// 設置魔法の一覧（枠順）。UI・AI・テスト用の読み取りアクセサ。
+function setSpellEntries(player) {
+  syncSetZonesWithPlayer(player);
+  return setZones.map((zone) => ({ zone, card: player?.field?.[zone] })).filter((entry) => entry.card);
+}
+
+function setSpellsOf(player) {
+  return setSpellEntries(player).map((entry) => entry.card);
+}
+
+// カードJSONのゾーン一覧（zones/zoneIn/targetZones/fromZones 等）の所属判定。一覧に set 枠が1つでも含まれていれば
+// 全ての set 枠（set3 以降を含む）に一致する（旧データの ["set1","set2"] は「設置魔法の枠」の意）。
+function zoneListIncludes(list, zone) {
+  if (!Array.isArray(list)) return typeof list?.includes === "function" ? list.includes(zone) : false;
+  if (list.includes(zone)) return true;
+  if (isDynamicItemZone(zone)) return list.includes("item4"); // pt-fix-c T7-4: 「全アイテム枠」指定は item5 以降も含む
+  return isSetZone(zone) && list.some(isSetZone);
+}
+
+// 同上の走査用: 一覧中の set 枠を現在の全 set 枠へ展開する（最初の set 枠の位置に挿入。非配列はそのまま返す）。
+function expandZoneList(list) {
+  if (!Array.isArray(list)) return list;
+  const expandItems = list.includes("item4") && itemZones.length > 4;
+  if (!list.some(isSetZone) && !expandItems) return list;
+  const out = [];
+  let inserted = false;
+  for (const zone of list) {
+    if (isSetZone(zone)) {
+      if (!inserted) {
+        out.push(...setZones);
+        inserted = true;
+      }
+    } else {
+      out.push(zone);
+      if (zone === "item4" && expandItems) {
+        out.push(...itemZones.slice(4)); // pt-fix-c T7-4: 全アイテム枠指定を item5 以降へ展開
+      }
+    }
+  }
+  return out;
+}
 const ruleEraLabel = "2018年6月以前ルール（神バディファイト以前）";
 
 // プレイヤーが装備している全アイテム（主枠＋追加枠、コール順）を返す。
@@ -38,8 +161,13 @@ function equippedItems(player) {
 }
 
 // 空いている最初のアイテムスロット名（無ければ null）。
+// pt-fix-c T7-4: 全て埋まっていれば新しい枠（item5…）を作って返す（何枚装備できるかは canEquipAsExtraItem が決める）。
 function firstEmptyItemZone(player) {
-  return itemZones.find((zone) => !player?.field?.[zone]) || null;
+  syncSetZonesWithPlayer(player);
+  const zone = itemZones.find((candidate) => !player?.field?.[candidate]);
+  if (zone) return zone;
+  ensureItemZoneCount(itemZones.length + 1);
+  return itemZones[itemZones.length - 1];
 }
 
 // 指定カードが今いるアイテムスロット名（無ければ null）。

@@ -12,7 +12,9 @@
 // turso バックエンド: replays(id, recording, created_at) テーブルに1行1リプレイ。
 //
 // 保存する blob（recording引数）は authoritative-server 側で GameRoom.getRecording() の戻り値だけを
-// 包んだもの（member.token を含まない）。この層は blob の中身を解釈しない（純粋な KV ストア）。
+// 包んだもの（member.token を含まない）。この層は blob の中身を原則解釈しない（KV ストア）。唯一の例外は
+// エンジン版（blob.replay.engineVersion）で、pruneOtherVersions が版の違う blob を削除する
+// （2026-10-09 オーナー裁定「リプレイについてはバージョンアップ時に前のは消していい」）。
 const fs = require("fs");
 const path = require("path");
 
@@ -28,6 +30,13 @@ let tursoToken = null;
 
 function fileOf(id) {
   return path.join(fileDir, `${id}.json`);
+}
+
+// blob に刻まれたエンジン版（authoritative-server が包む {replay: recording, ...} の recording.engineVersion）。
+// 版の無い旧形式は null。
+function blobEngineVersion(blob) {
+  const version = blob && blob.replay && blob.replay.engineVersion;
+  return typeof version === "string" && version ? version : null;
 }
 
 // ===================== file backend =====================
@@ -88,6 +97,58 @@ const fileImpl = {
     }
     out.sort((a, b) => b.createdAt - a.createdAt);
     return out.slice(0, Math.max(0, limit));
+  },
+  // F11: 指定ユーザーが保存したリプレイだけを新しい順に返す（全体の直近N件を取ってから絞ると、
+  // 他人の保存が多い時に自分の古いリプレイが一覧から消えるため、絞り込みを先に行う）。
+  async listByUser(userId, limit = 200) {
+    if (!fileDir || userId == null) return [];
+    let names = [];
+    try {
+      names = fs.readdirSync(fileDir).filter((n) => n.endsWith(".json"));
+    } catch {
+      return [];
+    }
+    const out = [];
+    for (const name of names) {
+      const file = path.join(fileDir, name);
+      try {
+        const recording = JSON.parse(fs.readFileSync(file, "utf8"));
+        if (!recording || recording.userId !== userId) continue;
+        out.push({ id: name.replace(/\.json$/, ""), createdAt: fs.statSync(file).mtimeMs, recording });
+      } catch {
+        /* 壊れたファイルは列挙から除外 */
+      }
+    }
+    out.sort((a, b) => b.createdAt - a.createdAt);
+    return out.slice(0, Math.max(0, limit));
+  },
+  // エンジン版が version と違う（版の無い旧形式・壊れたファイルを含む）リプレイを削除し、件数を返す。
+  async pruneOtherVersions(version) {
+    if (!fileDir || !version) return 0;
+    let names = [];
+    try {
+      names = fs.readdirSync(fileDir).filter((n) => n.endsWith(".json"));
+    } catch {
+      return 0;
+    }
+    let removed = 0;
+    for (const name of names) {
+      const file = path.join(fileDir, name);
+      let blob = null;
+      try {
+        blob = JSON.parse(fs.readFileSync(file, "utf8"));
+      } catch {
+        blob = null; // 壊れたファイルも再生できないので消す
+      }
+      if (blobEngineVersion(blob) === version) continue;
+      try {
+        fs.unlinkSync(file);
+        removed += 1;
+      } catch {
+        /* 途中で消えていれば無視 */
+      }
+    }
+    return removed;
   },
   async pruneExpired(maxAgeMs) {
     if (!fileDir) return 0;
@@ -153,6 +214,12 @@ function tursoRows(result) {
   });
 }
 
+// F12: Turso fetch のタイムアウト(ms)。タイムアウトはネットワーク失敗扱い＝既存のリトライ1回の対象。
+function tursoFetchTimeoutMs() {
+  const v = Number(process.env.TURSO_FETCH_TIMEOUT_MS);
+  return Number.isFinite(v) && v > 0 ? v : 10000;
+}
+
 // statements: [{sql, args}] を1パイプラインで送る。ネットワーク/5xx失敗はリトライ1回→失敗は例外。
 async function tursoPipeline(statements) {
   const url = `${normalizeTursoUrl(tursoUrl)}/v2/pipeline`;
@@ -164,7 +231,13 @@ async function tursoPipeline(statements) {
   };
   const headers = { Authorization: `Bearer ${tursoToken}`, "Content-Type": "application/json" };
   const attempt = async () => {
-    const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      // F12: 応答しない Turso に永久待ちしない（既定10秒・env TURSO_FETCH_TIMEOUT_MS で変更可）。
+      signal: AbortSignal.timeout(tursoFetchTimeoutMs()),
+    });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       const error = new Error(`turso http ${res.status}: ${text.slice(0, 300)}`);
@@ -205,6 +278,20 @@ async function initTursoSchema() {
       )`,
     },
   ]);
+  // F11: 保存者で引けるよう user_id 列を後付けする（既存DBへの移行。列が既にあれば ALTER は失敗するので握る）。
+  try {
+    await tursoExec("ALTER TABLE replays ADD COLUMN user_id TEXT", []);
+  } catch (error) {
+    if (!/duplicate column/i.test(String(error && error.message))) throw error;
+  }
+  await tursoPipeline([
+    { sql: "CREATE INDEX IF NOT EXISTS replays_user_created ON replays(user_id, created_at)" },
+    // 列追加前に保存された行を blob の userId から埋める（未ログイン保存=null の行は対象外のまま）。
+    {
+      sql: `UPDATE replays SET user_id = json_extract(recording, '$.userId')
+            WHERE user_id IS NULL AND json_extract(recording, '$.userId') IS NOT NULL`,
+    },
+  ]);
 }
 
 const tursoImpl = {
@@ -223,9 +310,10 @@ const tursoImpl = {
   async save(id, recording) {
     const now = Date.now();
     await tursoExec(
-      `INSERT INTO replays (id, recording, created_at) VALUES (?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET recording = excluded.recording, created_at = excluded.created_at`,
-      [String(id), JSON.stringify(recording), now],
+      `INSERT INTO replays (id, recording, created_at, user_id) VALUES (?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET recording = excluded.recording, created_at = excluded.created_at,
+         user_id = excluded.user_id`,
+      [String(id), JSON.stringify(recording), now, recording && recording.userId != null ? String(recording.userId) : null],
     );
   },
   async load(id) {
@@ -256,6 +344,32 @@ const tursoImpl = {
       }
     }
     return out;
+  },
+  async listByUser(userId, limit = 200) {
+    if (userId == null) return [];
+    const result = await tursoExec(
+      "SELECT id, recording, created_at FROM replays WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+      [String(userId), Math.max(0, limit)],
+    );
+    const out = [];
+    for (const row of tursoRows(result)) {
+      try {
+        out.push({ id: row.id, createdAt: Number(row.created_at), recording: JSON.parse(row.recording) });
+      } catch {
+        /* 壊れた行は列挙から除外 */
+      }
+    }
+    return out;
+  },
+  async pruneOtherVersions(version) {
+    if (!version) return 0;
+    const where = "COALESCE(json_extract(recording, '$.replay.engineVersion'), '') != ?";
+    const countRows = tursoRows(await tursoExec(`SELECT COUNT(*) AS c FROM replays WHERE ${where}`, [String(version)]));
+    const count = countRows.length ? Number(countRows[0].c) : 0;
+    if (count > 0) {
+      await tursoExec(`DELETE FROM replays WHERE ${where}`, [String(version)]);
+    }
+    return count;
   },
   async pruneExpired(maxAgeMs) {
     const cutoff = Date.now() - maxAgeMs;
@@ -308,5 +422,8 @@ module.exports = {
   load: (...args) => impl().load(...args),
   delete: (...args) => impl().delete(...args),
   listRecent: (...args) => impl().listRecent(...args),
+  listByUser: (...args) => impl().listByUser(...args),
   pruneExpired: (...args) => impl().pruneExpired(...args),
+  pruneOtherVersions: (...args) => impl().pruneOtherVersions(...args),
+  blobEngineVersion,
 };

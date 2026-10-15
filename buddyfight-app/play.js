@@ -83,8 +83,16 @@
   const canActNow = () => {
     const st = thin?.getState?.();
     if (mySeat() === null || !session.started || !st || st.winner) return false;
-    if (st.active === mySeat()) return true;
-    return Boolean(st.pendingAttack || st.pendingAction); // 対抗/応答中は相手手番でも操作可
+    // 自分の手番・対抗/応答中（相手手番でも可）に加え、rule-counter-5: 保留の無い相手ターン中も【対抗】の
+    // カード/能力は使える（ver2.05 ②【対抗】の流れ 6.）。その局面のメニューは【対抗】用の「使用」だけに絞る
+    // （isOffTurnCounterOnly）。可否の最終判定はサーバ(canActorActNow → engine canUseOffTurnCounter)。
+    return true;
+  };
+  // 相手ターンで保留(攻撃/行動の対抗窓)が無い＝【対抗】としての「使用」しか送れない局面か。
+  const isOffTurnCounterOnly = () => {
+    const st = thin?.getState?.();
+    if (!st || mySeat() === null) return false;
+    return st.active !== mySeat() && !st.pendingAttack && !st.pendingAction;
   };
   const mySeat = () => (session.role === 0 || session.role === 1 ? session.role : null);
   const isMyTurnSeat = () => mySeat() !== null && session.started;
@@ -225,7 +233,16 @@
       // 観戦/非該当席には届かない設計だが、念のため防御。
       if (mySeat() === null) return;
       if (message.requestId === ui.activePromptId) return; // 再接続時の再送重複を吸収
+      if (message.kind === "counterWindow") {
+        showCounterWindowPrompt(message); // 対抗窓改修: 非モーダルのバーで受ける
+        return;
+      }
       showPrompt(message);
+    } else if (message.type === "counter_window") {
+      // 対抗窓改修: 相手の対抗窓の開閉（何を持っているかは届かない）。待つ側は小バーで「相手が対抗を検討中」とだけ出す。
+      if (typeof showCounterWindowWaiting === "function") {
+        showCounterWindowWaiting(message.open ? "相手が対抗を検討中…" : "");
+      }
     } else if (message.type === "notice") {
       // 相手退出＝自分の勝ち等の通知（テキストのみ）。勝者viewは別途 type:"view" で届くので、ここは文言表示のみ。
       setStatus(message.text || "");
@@ -429,7 +446,42 @@
   });
 
   // ---- アクション送信 ----
+  // 対抗窓改修: 自席の対抗窓（prompt_request kind:"counterWindow"）を共有の非モーダルバーで受ける。
+  // 答えは候補 index（0=パス,1=このターンはパス,2..=使う）を /prompt へ返す。バーが開いている間の「使用」操作は
+  // sendAction が横取りして、その札の候補 index の応答に変換する（サーバは窓の間 /action を受け付けないため）。
+  function showCounterWindowPrompt(req) {
+    closeMenu();
+    setStatus(""); // 「操作を送信中…」等の待機表示はバーに置き換える（自分の操作の途中で窓が開くことがある）
+    ui.activePromptId = req.requestId;
+    if (typeof openCounterWindowBar !== "function") {
+      sendPromptResponse(req.requestId, { selectedIndexes: [0] });
+      return;
+    }
+    openCounterWindowBar({
+      entries: (req.candidates || []).map((candidate) => ({
+        ...candidate,
+        note: [candidate.note, candidate.zoneLabel].filter(Boolean).join(" ・ ") || candidate.note,
+      })),
+      title: req.title,
+      lead: req.lead,
+      mode: "remote",
+      windowId: req.counterWindow?.windowId || null,
+      sourceInstanceId: req.counterWindow?.sourceInstanceId || null,
+      sourceName: req.counterWindow?.sourceName || "",
+      onAnswer: (choiceIndex) => sendPromptResponse(req.requestId, { selectedIndexes: [choiceIndex] }),
+    });
+  }
+
   async function sendAction(type, params) {
+    if (typeof counterWindowUi !== "undefined" && counterWindowUi && counterWindowUi.mode === "remote") {
+      const index = type === "use" ? counterWindowAnswerFor(params?.selected || null) : null;
+      if (index !== null && index !== undefined) {
+        answerCounterWindow(index);
+      } else {
+        setStatus("【対抗】の確認中です。強調された【対抗】を使うか、「パス」を選んでください。");
+      }
+      return;
+    }
     if (!isMyTurnSeat()) {
       // 着席済みだが未開始のプレイヤーに「観戦者は操作できません」は誤り。席の有無で文言を分ける。
       setStatus(mySeat() === null ? "観戦者は操作できません" : "対戦開始前です（ロビーで『対戦開始』を押してください）");
@@ -777,7 +829,43 @@
     }
   }
 
+  // 対抗窓改修: 自席の対抗窓（非モーダルバー）の間は、窓の候補の札だけ「【対抗】で使う」を出す。true なら処理済み。
+  // カードタップの操作の出し方（src/20 presentCardActions と共通: スマホ=カードシート、PC=下部メニュー）。
+  function presentMenu(card, items) {
+    if (typeof presentCardActions === "function" && card) {
+      presentCardActions(card, items, { onClose: clearSelection });
+      return;
+    }
+    showMenu(items);
+  }
+  // 「今できること」の判定（src/20 handCardActionKeys/fieldCardActionKeys＝PC の操作パネルと同じ規則）を view 上で行う。
+  // 判定できない環境（関数なし・例外）は null を返し、呼び出し側は従来の全項目メニューに戻す。
+  function actionKeysOrNull(fn, sel) {
+    try {
+      return typeof fn === "function" ? fn(sel) : null;
+    } catch (_error) {
+      return null;
+    }
+  }
+  function counterWindowCardMenu(ref) {
+    if (typeof counterWindowUi === "undefined" || !counterWindowUi || counterWindowUi.mode !== "remote") {
+      return false;
+    }
+    const index = counterWindowAnswerFor(ref);
+    if (index !== null && index !== undefined) {
+      const player = state?.players?.[ref.owner];
+      const card = ref.source === "hand"
+        ? player?.hand?.find((c) => c.instanceId === ref.instanceId)
+        : player?.field?.[ref.zone];
+      presentMenu(card, [{ label: "【対抗】で使う", run: () => answerCounterWindow(index), primary: true }]);
+    } else {
+      setStatus("【対抗】の確認中です。強調された【対抗】を使うか、「パス」を選んでください。");
+    }
+    return true;
+  }
+
   function handCardMenu(instanceId) {
+    if (counterWindowCardMenu({ source: "hand", owner: mySeat(), instanceId })) return;
     ui.selected = { source: "hand", owner: mySeat(), instanceId };
     ui.targeting = false;
     const sel = ui.selected;
@@ -789,7 +877,7 @@
         if (handCard.callStack.optional) {
           // E-ZA4:「１枚まで の上に重ね」型は重ねるかどうかを選べる。「重ねずに」は effectTarget 無しで
           // call を送る＝サーバ側 callMonster の optional 分岐が通常コールとして処理（ローカル版と同型）。
-          showMenu([
+          presentMenu(handCard, [
             { label: "重ねてコール（対象を選ぶ）", run: () => startEffectTargeting(sel, "call", { callZone: zone }) },
             { label: "重ねずにコール", run: () => sendAction("call", { selected: sel, callZone: zone }) },
           ]);
@@ -800,18 +888,62 @@
       }
       sendAction("call", { selected: sel, callZone: zone });
     };
-    showMenu([
+    if (isOffTurnCounterOnly()) {
+      // 相手ターン中: 手札から使えるのは【対抗】のカードだけ（コール/チャージ/バディコール宣言は出さない）。
+      // 可否はサーバ（canUseOffTurnCounter）が最終判定するため、ここは従来どおり2項目を出す。
+      const counterItems = [
+        { label: "【対抗】で使用", run: () => sendAction("use", { selected: sel }), primary: true },
+        { label: "【対抗】で使用（効果対象を選ぶ）", run: () => startEffectTargeting(sel, "use") },
+      ];
+      applyBlockedReasonsSafely(typeof applyHandActionBlockedReasons === "function" ? applyHandActionBlockedReasons : null, handCard, counterItems, sel);
+      presentMenu(handCard, counterItems);
+      return;
+    }
+    const legacy = [
       { label: "チャージ&ドロー", run: () => sendAction("charge", { selected: sel }) },
-      { label: "レフトにコール", run: callVia("left") },
-      { label: "センターにコール", run: callVia("center") },
-      { label: "ライトにコール", run: callVia("right") },
-      { label: "使用/装備", run: () => sendAction("use", { selected: sel }) },
+      { label: "レフトにコール", run: callVia("left"), callZone: "left", owner: sel.owner },
+      { label: "センターにコール", run: callVia("center"), callZone: "center", owner: sel.owner },
+      { label: "ライトにコール", run: callVia("right"), callZone: "right", owner: sel.owner },
+      { label: "使用/装備", run: () => sendAction("use", { selected: sel }), primary: true },
       { label: "使用（効果対象を選ぶ）", run: () => startEffectTargeting(sel, "use") },
-      { label: "バディコール宣言", run: () => sendAction("buddy", { selected: sel }) },
-    ]);
+      { label: state?.buddyCallDeclared === instanceId ? "バディ宣言中" : "バディコール宣言", run: () => sendAction("buddy", { selected: sel }) },
+    ];
+    // 今できる操作だけを出す（ローカル版 handCardMenuLocal と同じ判定）。判定不能時は従来の全項目。
+    const keys = actionKeysOrNull(typeof handCardActionKeys === "function" ? handCardActionKeys : null, sel);
+    const items = keys === null
+      ? legacy
+      : keys.map((entry) => {
+          if (entry.key === "charge") return legacy[0];
+          if (entry.key === "call") return legacy.find((item) => item.callZone === entry.zone);
+          if (entry.key === "use") return legacy[4];
+          if (entry.key === "useTarget") return legacy[5];
+          if (entry.key === "buddy") return legacy[6];
+          return null;
+        }).filter(Boolean);
+    if (keys !== null && !keys.some((entry) => entry.key === "buddy") && typeof buddyCallBlockedReason === "function") {
+      const reason = actionKeysOrNull(buddyCallBlockedReason, sel);
+      if (reason) items.push({ label: "バディコール宣言", disabled: true, reason, run: () => {} });
+    }
+    // pt-final(1): ローカル版と同じ「無効＋理由1行」（コール先・使用/装備・【対抗】・必殺技/必殺変身・秘剣）。
+    if (keys !== null) {
+      applyBlockedReasonsSafely(typeof applyHandActionBlockedReasons === "function" ? applyHandActionBlockedReasons : null, handCard, items, sel);
+    }
+    presentMenu(handCard, items);
+  }
+  // 理由の判定は view 上のエンジン関数で行う。判定できない（例外）時は項目を変えない。
+  function applyBlockedReasonsSafely(fn, card, items, sel) {
+    if (typeof fn !== "function") return;
+    const snapshot = items.map((item) => ({ ...item }));
+    try {
+      fn(card, items, sel);
+    } catch (_error) {
+      items.length = 0;
+      snapshot.forEach((item) => items.push(item));
+    }
   }
 
   function fieldCardMenu(owner, zone, instanceId) {
+    if (counterWindowCardMenu({ source: "field", owner, zone, instanceId })) return;
     ui.selected = { source: "field", owner, zone, instanceId };
     ui.targeting = false;
     const sel = ui.selected;
@@ -819,12 +951,36 @@
     const linked =
       Array.isArray(state?.linkAttackers) &&
       state.linkAttackers.some((slot) => slot.owner === owner && slot.zone === zone);
-    showMenu([
-      { label: "攻撃（対象を選ぶ）", run: () => { ui.targeting = true; closeMenu(); setTargetingBanner("攻撃対象をタップ（本体は相手の『装備』枠）"); setStatus("攻撃対象をタップ：相手モンスター、または本体は相手の『装備』枠をタップ"); updateAttackHighlights(); } },
+    const fieldCard = state?.players?.[owner]?.field?.[zone];
+    if (isOffTurnCounterOnly()) {
+      // 相手ターン中: 場（ソウル含む）から使えるのは【対抗】を持つ能力だけ（攻撃/連携は出さない）。
+      const counterItems = [
+        { label: "【対抗】で使用（能力）", run: () => sendAction("use", { selected: sel }), primary: true },
+        { label: "【対抗】で使用（効果対象を選ぶ）", run: () => startEffectTargeting(sel, "use") },
+      ];
+      applyBlockedReasonsSafely(typeof applyFieldActionBlockedReasons === "function" ? applyFieldActionBlockedReasons : null, fieldCard, counterItems, sel);
+      presentMenu(fieldCard, counterItems);
+      return;
+    }
+    const legacy = [
+      { label: "攻撃（対象を選ぶ）", primary: true, run: () => { ui.targeting = true; closeMenu(); setTargetingBanner("攻撃対象をタップ（本体は相手の『装備』枠）"); setStatus("攻撃対象をタップ：相手モンスター、または本体は相手の『装備』枠をタップ"); updateAttackHighlights(); } },
       { label: linked ? "連携から外す" : "連携に追加", run: () => sendAction("link", { selected: sel }) },
       { label: "使用（能力）", run: () => sendAction("use", { selected: sel }) },
       { label: "使用（効果対象を選ぶ）", run: () => startEffectTargeting(sel, "use") },
-    ]);
+    ];
+    // 今できる操作だけを出す（ローカル版 fieldCardMenuLocal と同じ判定）。判定不能時は従来の全項目。
+    const keys = actionKeysOrNull(typeof fieldCardActionKeys === "function" ? fieldCardActionKeys : null, sel);
+    const items = keys === null
+      ? legacy
+      : keys.map((entry) => ({ attack: legacy[0], link: legacy[1], use: legacy[2], useTarget: legacy[3] })[entry.key]).filter(Boolean);
+    if (keys !== null && !keys.some((entry) => entry.key === "attack") && typeof fieldAttackBlockedReason === "function") {
+      const reason = actionKeysOrNull(fieldAttackBlockedReason, sel);
+      if (reason) items.unshift({ label: "攻撃（対象を選ぶ）", disabled: true, reason, run: () => {} });
+    }
+    if (keys !== null) {
+      applyBlockedReasonsSafely(typeof applyFieldActionBlockedReasons === "function" ? applyFieldActionBlockedReasons : null, fieldCard, items, sel);
+    }
+    presentMenu(fieldCard, items);
   }
 
   // E-XB54b(∞ the Chaos ∞): 「攻撃するフラッグ」(canAttackAsFlag)を攻撃者に選ぶ。ui.selected を source:"flag" で
@@ -836,8 +992,8 @@
     if (!flag) return;
     ui.selected = { source: "flag", owner, zone: "flag", instanceId: flag.instanceId };
     ui.targeting = false;
-    showMenu([
-      { label: "攻撃（対象を選ぶ）", run: () => { ui.targeting = true; closeMenu(); setTargetingBanner("攻撃対象をタップ（本体は相手の『装備』枠）"); setStatus("攻撃対象をタップ：相手モンスター、または本体は相手の『装備』枠をタップ"); updateAttackHighlights(); } },
+    presentMenu(flag, [
+      { label: "攻撃（対象を選ぶ）", primary: true, run: () => { ui.targeting = true; closeMenu(); setTargetingBanner("攻撃対象をタップ（本体は相手の『装備』枠）"); setStatus("攻撃対象をタップ：相手モンスター、または本体は相手の『装備』枠をタップ"); updateAttackHighlights(); } },
     ]);
   }
 
@@ -895,9 +1051,25 @@
     }
     ui.effectTargeting.candidates = candidates.map((c) => ({ owner: c.owner, zone: c.zone }));
     candidates.forEach((candidate) => {
-      const el = document.querySelector(`.zone[data-owner="${candidate.owner}"][data-zone="${candidate.zone}"]`);
+      // pt-final(4): 設置魔法(set1..)＝配置魔法パイル／追加アイテム(item2..)＝アイテム枠を光らせる（ローカル版と同じ）。
+      const el = typeof zoneHighlightElement === "function"
+        ? zoneHighlightElement(candidate.owner, candidate.zone)
+        : document.querySelector(`.zone[data-owner="${candidate.owner}"][data-zone="${candidate.zone}"]`);
       el?.classList.add("effect-target-candidate");
     });
+  }
+  // 効果対象の確定（盤面タップ・まとめ枠の一覧から共通）。
+  function sendEffectTarget(owner, zone) {
+    const et = ui.effectTargeting;
+    if (!et) return;
+    sendAction(et.type, {
+      selected: et.selected,
+      effectTarget: `${owner}:${zone}`,
+      ...(et.callZone ? { callZone: et.callZone } : {}),
+    });
+    ui.effectTargeting = null;
+    clearTargetingBanner();
+    updateEffectTargetHighlights();
   }
 
   // ---- ワールドタイル→デッキ情報ポップアップ（thin専用。相手のデッキ名は非公開）----
@@ -959,6 +1131,8 @@
     // モーダル表示中は盤面へ click が届かず消費コードが走らないため、close で必ず戻す）。
     cardSheetEl.addEventListener("close", () => {
       if (typeof suppressNextZoneClick !== "undefined") suppressNextZoneClick = false;
+      // スマホの操作シートをキャンセルで閉じた＝選択解除（src/20。操作ボタン経由では解除しない）。
+      if (typeof onCardSheetClosed === "function") onCardSheetClosed();
     });
   }
 
@@ -1024,8 +1198,13 @@
       const cardEl = event.target?.closest?.(".card[data-instance-id]") || zoneButton.querySelector(".card[data-instance-id]");
       const zone = cardEl?.dataset?.itemZone || zoneButton.dataset.zone;
       // 「ソウル N」バッジのタップ＝ソウル一覧（対象選択中は邪魔しない）。ローカル版と同じ。
-      if (!ui.targeting && !ui.effectTargeting && event.target?.closest?.("[data-soul-peek]")) {
+      // スマホはバッジを表示だけにし、札のタップ＝カードシート（シートの「ソウルを見る」から一覧へ）＝プレイテスト T8。
+      if (!ui.targeting && !ui.effectTargeting && !(typeof isPhoneLayout === "function" && isPhoneLayout()) && event.target?.closest?.("[data-soul-peek]")) {
         showSoulDialog(owner, zone);
+        return;
+      }
+      // スマホの選択ドック: 光っている候補札のタップ＝その候補を選ぶ/外す（ローカル版と同じ src/16）。
+      if (typeof selectionDockPick === "function" && selectionDockPick(owner, zone)) {
         return;
       }
       // 選択ダイアログの「盤面確認」中は詳細を見るだけ（サーバへ操作を送らない）。ローカル版と同じ。
@@ -1043,14 +1222,10 @@
           !Array.isArray(et.candidates) ||
           et.candidates.some((candidate) => candidate.owner === owner && candidate.zone === zone);
         if (cardEl && isCandidate) {
-          sendAction(et.type, {
-            selected: et.selected,
-            effectTarget: `${owner}:${zone}`,
-            ...(et.callZone ? { callZone: et.callZone } : {}),
-          });
-          ui.effectTargeting = null;
-          clearTargetingBanner();
-          updateEffectTargetHighlights();
+          sendEffectTarget(owner, zone);
+        } else if (zoneButton.dataset.zone === "item" && Array.isArray(et.candidates) && typeof pickGroupedZoneCandidate === "function") {
+          // pt-final(4): 追加アイテム(item2..)が候補でタップ位置から特定できない時は一覧から選ぶ。
+          pickGroupedZoneCandidate(owner, "item", et.candidates, (picked) => sendEffectTarget(owner, picked));
         }
         return;
       }
@@ -1082,7 +1257,7 @@
         typeof canAttackAsFlag === "function" &&
         canAttackAsFlag(state?.players?.[owner])
       ) {
-        if (owner === mySeat() && canActNow()) {
+        if (owner === mySeat() && canActNow() && !isOffTurnCounterOnly()) {
           flagCardMenu(owner);
         } else if (typeof openReadOnlyCardSheet === "function") {
           openReadOnlyCardSheet(state.players[owner].flag); // 相手の∞フラッグ／自分の操作番外は詳細のみ
@@ -1095,6 +1270,12 @@
           return;
         }
         fieldCardMenu(owner, zone, cardEl.dataset.instanceId);
+        return;
+      }
+      // フラッグ絵のタップ＝フラッグの詳細（閲覧専用。ローカル版と同じ）。
+      if (!cardEl && zoneButton.dataset.zone === "item" && event.target?.closest?.(".flag-layer")) {
+        const flag = state?.players?.[owner]?.flag;
+        if (flag && typeof openReadOnlyCardSheet === "function") openReadOnlyCardSheet(flag);
         return;
       }
       // 相手の盤面カードタップ＝閲覧専用シート（ローカル版と同じ。公開情報の確認手段）。
@@ -1133,6 +1314,14 @@
     }
     fieldCardMenu(owner, zone, card.instanceId);
   };
+  // rule-call-11: 配置魔法一覧の「使用」ボタン＝自席の設置魔法の能力を即実行（fieldCardMenu の「使用（能力）」と同じ "use"）。
+  window.__onSetSpellUse = (owner, zone, card) => {
+    if (owner !== mySeat() || !canActNow()) {
+      setStatus("相手の番です（あなたの操作番ではありません）");
+      return;
+    }
+    sendAction("use", { selected: { source: "field", owner, zone, instanceId: card.instanceId } });
+  };
   // ドロップからの起動能力（墓場のDJ等）: 自分の席のみ、"use" アクションに source:"drop" 選択を載せて送る。
   window.__onDropAbilityActivate = (owner, card) => {
     if (owner !== mySeat() || !canActNow()) {
@@ -1158,9 +1347,25 @@
       },
     });
   };
+  // バディゾーン（裏向き）: 持ち主（自席）には一覧、それ以外は枚数だけ（view が自席の分だけ表を届ける）。
+  document.querySelectorAll(".buddyzone-pile").forEach((pile) => {
+    pile.addEventListener("click", () => {
+      if (!session.started || !state?.players) return;
+      if (typeof showBuddyZoneDialog === "function") showBuddyZoneDialog(Number(pile.dataset.owner));
+    });
+  });
   document.querySelectorAll(".set-pile").forEach((pile) => {
     pile.addEventListener("click", () => {
       if (!session.started || !state?.players) return; // 開始前/初回view未着は state 未同期のため開かない
+      const pileOwner = Number(pile.dataset.owner);
+      // pt-final(4): 効果対象の選択中は、光っている配置魔法パイルの中の候補から選ぶ（ローカル版と同じ）。
+      if (ui.effectTargeting && Array.isArray(ui.effectTargeting.candidates) && typeof pickGroupedZoneCandidate === "function") {
+        pickGroupedZoneCandidate(pileOwner, "set", ui.effectTargeting.candidates, (picked) => sendEffectTarget(pileOwner, picked));
+        return;
+      }
+      if (typeof selectionDockPickSet === "function" && selectionDockPickSet(pileOwner)) {
+        return;
+      }
       if (typeof showSetSpellDialog === "function") {
         showSetSpellDialog(Number(pile.dataset.owner));
       }
@@ -1205,11 +1410,13 @@
   document.addEventListener("click", (event) => {
     if (!document.body.classList.contains("nav-open")) return;
     if (event.target.closest(".nav-toggle")) return;
+    // デッキ選択/アカウントのモーダル（メニューから開く）の中の操作ではメニューを閉じない（選んだ後に「新規」を押せるように）。
+    if (event.target.closest(".dp-backdrop, .acc-backdrop")) return;
     const item = event.target.closest(".toolbar a, .toolbar button");
     const outside = !event.target.closest(".toolbar");
-    if (outside || (item && !item.closest(".log-toggle, .theme-toggle"))) {
+    if (outside || (item && !item.closest(".log-toggle, .theme-toggle, .dp-open-button, .account-control-slot"))) {
       document.body.classList.remove("nav-open");
-      document.querySelector(".nav-toggle")?.setAttribute("aria-expanded", "false");
+      document.querySelectorAll(".nav-toggle").forEach((el) => el.setAttribute("aria-expanded", "false")); // ヘッダー＋スマホのドック
     }
   });
 

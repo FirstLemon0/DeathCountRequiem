@@ -309,9 +309,15 @@
   }
 
   function closeModal() {
+    const wasOpen = Boolean(modalRoot && !modalRoot.hidden);
     if (modalRoot) modalRoot.hidden = true;
-    if (activeAttach) syncButtonLabel(activeAttach);
+    const attach = activeAttach;
+    if (attach) syncButtonLabel(attach);
     activeAttach = null;
+    // a11y: 閉じたら開いたボタン（オープナー）へフォーカスを戻す（Esc/×/背景/選択のどれでも）。
+    if (wasOpen && attach && attach.button && typeof attach.button.focus === "function") {
+      attach.button.focus({ preventScroll: true });
+    }
   }
 
   // いま絞り込まれている一覧（シリーズ/区分/製品/ワールド/検索の全条件を通ったデッキ）から1つ選ぶ。
@@ -340,6 +346,18 @@
     closeModal();
   }
 
+  // 「すべて」＋values の <option> を textContent で作り直す（selected は値一致で付ける）。
+  function fillOptions(select, values, selectedValue) {
+    select.innerHTML = '<option value="">すべて</option>'; // 固定文字列のみ（可変値は下で textContent）
+    values.forEach((value) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = value;
+      select.appendChild(option);
+    });
+    select.value = values.includes(selectedValue) ? selectedValue : "";
+  }
+
   function renderList() {
     if (!activeAttach || !modalRoot) return;
     const { select, adapter } = activeAttach;
@@ -357,9 +375,9 @@
         }
       });
     const products = [...productOrder.entries()].sort((a, b) => a[1] - b[1]).map(([name]) => name);
-    productSelect.innerHTML = `<option value="">すべて</option>${products
-      .map((name) => `<option value="${name}"${name === uiState.product ? " selected" : ""}>${name}</option>`)
-      .join("")}`;
+    // U7: 製品名/ワールド名/見出しは localStorage・リプレイ記録由来の任意文字列になり得るので
+    // innerHTML に連結せず DOM API＋textContent で組む（自作デッキ名経由の HTML 注入対策）。
+    fillOptions(productSelect, products, uiState.product);
     if (uiState.product && !products.includes(uiState.product)) {
       uiState.product = "";
       productSelect.value = "";
@@ -373,9 +391,7 @@
       const bi = WORLD_ORDER.indexOf(b);
       return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
     });
-    worldSelect.innerHTML = `<option value="">すべて</option>${worlds
-      .map((world) => `<option value="${world}"${world === uiState.world ? " selected" : ""}>${world}</option>`)
-      .join("")}`;
+    fillOptions(worldSelect, worlds, uiState.world);
     if (uiState.world && !worlds.includes(uiState.world)) {
       uiState.world = "";
       worldSelect.value = "";
@@ -399,7 +415,18 @@
       head.type = "button";
       head.className = "dp-group-head";
       const collapsed = collapsedGroups.has(group.title);
-      head.innerHTML = `<span class="dp-caret">${collapsed ? "▶" : "▼"}</span>${group.title}<span class="dp-group-count">${group.rows.length}</span>`;
+      const caret = document.createElement("span");
+      caret.className = "dp-caret";
+      caret.textContent = collapsed ? "▶" : "▼";
+      const count = document.createElement("span");
+      count.className = "dp-group-count";
+      count.textContent = String(group.rows.length);
+      const title = document.createElement("span");
+      title.className = "dp-group-title";
+      title.textContent = String(group.title);
+      head.appendChild(caret);
+      head.appendChild(title);
+      head.appendChild(count);
       head.addEventListener("click", () => {
         if (collapsedGroups.has(group.title)) collapsedGroups.delete(group.title);
         else collapsedGroups.add(group.title);

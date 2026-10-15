@@ -86,56 +86,36 @@ function ownEffectDamageUnreducibleActive(sourceOwner) {
   });
 }
 
-function applyDamageToPlayer(owner, amount = 0, options = {}) {
+// 裁定 rulings-d（公式Q&A Q1018/Q677/Q553/Q165/Q1602〜1605）: ダメージ防止/軽減プリミティブの3分類。
+//   (a) "noDamage" 「ダメージを受けない」「無効」 … 『減らない』ダメージにも効く（Q1018 アステール vs ガルガンチュア・
+//       パニッシャー!!＝受けない／Q1605 バーンノヴァ救援の「そのターン中ダメージを受けない」は打撃力∞も受けない）。
+//   (b) "setZero" 「ダメージは０になる／Nになる」（変更） … 減らす効果ではない＝『減らない』ダメージにも効く
+//       （Q677 グラップルソウル vs ドラム・ザ・フューチャー／Q553・Q1604 ゴルドリッター「２になる」）。
+//   (c) "reduce"  「０に減らす」「N減らす」「軽減」 … 『減らない』ダメージには効かない（Q165・Q1602）。
+// 『減らない』の全フレーバー（dealDamage.ignorePrevention＝必殺技/魔法の「このカードのダメージは減らない」、
+// pendingAttack.damageCannotBeReduced＝ドラム等、ownEffectDamageUnreducible＝アトラ・アダマント/逆雷の源泉、
+// attackResistances{effects:["reduce"]}＝「このカードが相手に与えるダメージは減らない」）は (c) だけを無効にする。
+// キューのエントリは生成時に damageClass を持つ。旧 state（部屋復元）の未付与エントリは形から導出する。
+function damagePreventionClass(prevention) {
+  if (prevention?.damageClass) {
+    return prevention.damageClass;
+  }
+  if (prevention?.preventAll && !prevention.reduceToZero) {
+    // 旧形: onlyAttack の preventAll はグラップルソウル（preventAttackDamageThisTurn「０になる」）だけが生成していた。
+    return prevention.onlyAttack ? "setZero" : "noDamage";
+  }
+  return "reduce";
+}
+
+// 継続 preventOpponentEffectDamage: 「君は相手のカードの効果でダメージを受けない」恒常（H-BT04/0109）＝分類(a)。
+// 該当する場札（ガード）を返す（無ければ null）。applyDamageToPlayer と任意コストの事前確認（prepareDamageDecisions）で共用。
+function opponentEffectDamageGuardCard(owner, options = {}) {
   const player = state.players[owner];
-  if (!player || amount <= 0) {
-    return 0;
+  if (!player || options.byAttack || !Number.isInteger(options.sourceOwner) || options.sourceOwner === owner) {
+    return null;
   }
-  state.damagePrevention ||= [[], []];
-  state.damagePrevention[owner] ||= [];
-  let remaining = amount;
-  // E-XB52: ダメージ源側の ownEffectDamageUnreducible（アトラ・アダマント）が「効果ダメージ（!byAttack）を
-  // 相手（sourceOwner!==owner）へ与える」場合、受け手の軽減系だけをバイパスする。フル無効化
-  // （preventOpponentEffectDamage「受けない」）は「減らない」では貫通しない＝下の line で !options.ignorePrevention のまま。
-  const sourceUnreducible =
-    !options.ignorePrevention &&
-    !options.byAttack &&
-    Number.isInteger(options.sourceOwner) &&
-    options.sourceOwner !== owner &&
-    ownEffectDamageUnreducibleActive(options.sourceOwner);
-  const bypassReduction = options.ignorePrevention || sourceUnreducible;
-  // 継続 damageReceivedReduction（装備者が受けるダメージを amount 減らす。
-  // nonAttackOnly:true は攻撃以外のダメージ限定(マグナグレイス0011)、既定は全ダメージ(0056)。
-  // byOpponent:true は相手席発のダメージ限定(X-UB01/0007 結晶魔王アトラ)＝options.sourceOwner を渡して判定）。
-  if (!bypassReduction) {
-    const cap = damageReceivedReductionFor(owner, Boolean(options.byAttack), remaining, options.sourceOwner, options.sourceCard);
-    // 攻撃側の reduce 耐性(『相手に与えるダメージは減らない』ジャックナイフ等)は、キュー型の damagePrevention だけ
-    // でなく継続 damageReceivedReduction(ドラゴエンペラー等)も貫通する（ver2.05: 「減らない」は「減らす」に優先＝
-    // can't beats does）。以前は resistEntries がキュー経路(下段)にしか効かず継続軽減を素通りできなかった非対称。
-    const reductionResisted =
-      cap &&
-      (options.resistEntries || []).some((e) => resistanceFilterMatches(e.filter, cap.sourceCard, cap.source));
-    if (cap && !reductionResisted) {
-      const reduced = Math.max(0, remaining - cap.amount);
-      if (reduced !== remaining) {
-        addLog(`${cap.source || "効果"}により${player.name}が受けるダメージを${remaining - reduced}減らしました。`);
-      }
-      remaining = reduced;
-    }
-  }
-  // 継続 preventOpponentEffectDamage: 「君は相手のカードの効果でダメージを受けない」恒常（H-BT04/0109）。
-  // 攻撃ダメージ(byAttack)と自分発のダメージ（コストの damageSelf 等 sourceOwner===owner）には効かない。
-  // F1(D-BT02/0123): エントリの conditions を評価する（「このカードがセンターにいるなら」＝sourceZoneIn 等）。
-  // プレイヤー単位のガードで対象カードが無いため continuousEffectApplies ではなく、同等の条件評価
-  // ＝C7(D-EB02)と同じ context(card/owner/zone)供給で checkCardConditions を直接通す。
-  // conditions 無しの既存エントリ（bf-h-bt04-0109/0110 の2枚のみ・全数監査済み）は従来どおり常時作動＝挙動不変。
-  if (
-    !options.ignorePrevention &&
-    !options.byAttack &&
-    Number.isInteger(options.sourceOwner) &&
-    options.sourceOwner !== owner
-  ) {
-    const guardCard = zones
+  return (
+    zones
       .map((zone) => ({ zone, fieldCard: player.field[zone] }))
       .find(
         ({ zone, fieldCard }) =>
@@ -146,36 +126,197 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
               (!e.conditions?.length ||
                 checkCardConditions(e.conditions, owner, { card: fieldCard, owner, zone, player })),
           ),
-      )?.fieldCard;
-    if (guardCard) {
-      addLog(`${guardCard.name}の効果で${player.name}は相手の効果によるダメージを受けません。`);
-      return 0;
+      )?.fieldCard || null
+  );
+}
+
+// 継続 damageReceivedReduction の適用（監査 rule-continuous-3 / rule-damage-3: 別々の継続軽減はそれぞれ適用する）。
+// 適用順は受け手に有利な順＝閾値付き（「N以上のダメージを受ける場合」）と full（0に減らす）を先、定量軽減を後にし、
+// 閾値は各段階の残りダメージで判定する。任意コスト付き（optionalCost）は最後（強制の軽減で足りるなら払わずに済む）。
+// decide(cap): 任意コスト付きの軽減を「払って適用する」なら true。null を返すと走査を打ち切る（事前確認の探索用）。
+// options.dryRun: ログを出さない（事前確認の探索用）。戻り値は軽減後の残りダメージ（打ち切り時は { stopAt: cap }）。
+function continuousDamageReductionPass(owner, remaining, options, reductionResisted, namedIgnored, decide, passOptions = {}) {
+  const player = state.players[owner];
+  const reductionEntries = damageReceivedReductionEntries(owner, Boolean(options.byAttack), remaining, options.sourceOwner, options.sourceCard)
+    .map((entry, index) => ({ entry, index }))
+    .sort((a, b) => Number(Boolean(a.entry.optionalCost)) - Number(Boolean(b.entry.optionalCost)) || (b.entry.threshold || 0) - (a.entry.threshold || 0) || Number(b.entry.full) - Number(a.entry.full) || a.index - b.index)
+    .map(({ entry }) => entry);
+  for (const cap of reductionEntries) {
+    if (remaining <= 0) {
+      break;
     }
+    // 攻撃側の reduce 耐性(『相手に与えるダメージは減らない』ジャックナイフ等)は、キュー型の damagePrevention だけ
+    // でなく継続 damageReceivedReduction(ドラゴエンペラー等)も貫通する（ver2.05: 「減らない」は「減らす」に優先）。
+    // 耐性の発生源一致は軽減ごとに判定する。
+    if (reductionResisted(cap.sourceCard, cap.source) || namedIgnored(cap.source) || (cap.threshold && remaining < cap.threshold)) {
+      continue;
+    }
+    if (cap.optionalCost) {
+      const decision = decide(cap);
+      if (decision === null) {
+        return { stopAt: cap };
+      }
+      if (!decision) {
+        continue;
+      }
+    }
+    const amount = cap.full ? remaining : cap.amount;
+    const reduced = Math.max(0, remaining - amount);
+    if (reduced !== remaining && !passOptions.dryRun) {
+      addLog(`${cap.source || "効果"}により${player.name}が受けるダメージを${remaining - reduced}減らしました。`);
+    }
+    remaining = reduced;
+  }
+  return remaining;
+}
+
+// 任意コスト付き軽減（メラク・プリドゥエン）の確認の同一性キー（事前確認→同期適用の受け渡し用）。
+function optionalDamageReductionKey(cap) {
+  return `${cap.sourceCard?.instanceId || ""}|${cap.source || ""}|${cap.amount || 0}`;
+}
+
+// applyDamageToPlayer と同じ判定（『減らない』・耐性・名称無視）を options から作る。
+function damageReductionResistance(owner, options = {}) {
+  const sourceUnreducible =
+    !options.ignorePrevention &&
+    !options.byAttack &&
+    Number.isInteger(options.sourceOwner) &&
+    options.sourceOwner !== owner &&
+    ownEffectDamageUnreducibleActive(options.sourceOwner);
+  const unreducible = Boolean(options.ignorePrevention) || sourceUnreducible;
+  const ignoreNames = options.ignoreNamedPreventions || (options.ignoreNamedPrevention ? [options.ignoreNamedPrevention] : []);
+  const resistEntries = options.resistEntries || [];
+  return {
+    unreducible,
+    reductionResisted: (sourceCard, sourceName) =>
+      unreducible || resistEntries.some((e) => resistanceFilterMatches(e.filter, sourceCard, sourceName)),
+    namedIgnored: (sourceName) => ignoreNames.some((n) => (sourceName || "").includes(n)),
+  };
+}
+
+// 統合 follow-up（pt-fix-e の残課題）: 任意コスト付き軽減の「払ってよい」を、非同期の文脈では本人に問う。
+// applyDamageToPlayer は同期の合流点で確認UI/権威サーバ往復を待てないため、呼ぶ前にこの事前確認で
+// confirmChoiceAsync（アプリ内UI・権威サーバ往復・CPU 席は AI・リプレイ記録/再生）を通し、払うならここで払い、
+// 決定を options に載せる（同期の適用はそれを消費するだけ）。問う必要が無ければ何もしない。
+function nextOptionalDamageReductionToAsk(owner, amount, options = {}) {
+  const player = state.players[owner];
+  if (!player || !(amount > 0) || opponentEffectDamageGuardCard(owner, options)) {
+    return null;
+  }
+  const { unreducible, reductionResisted, namedIgnored } = damageReductionResistance(owner, options);
+  if (unreducible) {
+    return null;
+  }
+  const decisions = options.__optionalCostDecisions || {};
+  const result = continuousDamageReductionPass(
+    owner,
+    amount,
+    options,
+    reductionResisted,
+    namedIgnored,
+    (cap) => {
+      const key = optionalDamageReductionKey(cap);
+      if (Object.prototype.hasOwnProperty.call(decisions, key)) {
+        return decisions[key];
+      }
+      return canPayStructuredCost(player, cap.optionalCost || [], { sourceCard: cap.sourceCard || null }).ok ? null : false;
+    },
+    { dryRun: true },
+  );
+  return result && typeof result === "object" ? result.stopAt : null;
+}
+
+function damageNeedsAsyncDecision(owner, amount, options = {}) {
+  if (options.__optionalCostPrepared) {
+    return false;
+  }
+  return Boolean(nextOptionalDamageReductionToAsk(owner, amount, options));
+}
+
+async function prepareDamageDecisions(owner, amount, options = {}) {
+  options.__optionalCostDecisions ||= {};
+  for (let guard = 0; guard < 8; guard += 1) {
+    const cap = nextOptionalDamageReductionToAsk(owner, amount, options);
+    if (!cap) {
+      break;
+    }
+    const player = state.players[owner];
+    const message = `${cap.source || "効果"}のコストを払って、受けるダメージを${cap.amount || 0}減らしますか？`;
+    const answer = await confirmChoiceAsync(owner, message, {
+      purpose: "damageReductionOptionalCost",
+      yesLabel: "払って減らす",
+      noLabel: "払わない",
+    });
+    const paid = Boolean(answer) && Boolean(payStructuredCost(player, cap.optionalCost || [], { sourceCard: cap.sourceCard || null }).ok);
+    options.__optionalCostDecisions[optionalDamageReductionKey(cap)] = paid;
+  }
+  options.__optionalCostPrepared = true;
+  return options;
+}
+
+// 非同期の文脈からのダメージ適用。任意コストの確認が要る時だけ Promise を返す（要らなければ同期の数値＝tick 不変）。
+// 呼び出し側: let dealt = applyDamageToPlayerAsk(...); if (dealt?.then) dealt = await dealt;
+function applyDamageToPlayerAsk(owner, amount = 0, options = {}) {
+  if (!damageNeedsAsyncDecision(owner, amount, options)) {
+    return applyDamageToPlayer(owner, amount, options);
+  }
+  return prepareDamageDecisions(owner, amount, options).then(() => applyDamageToPlayer(owner, amount, options));
+}
+
+function applyDamageToPlayer(owner, amount = 0, options = {}) {
+  const player = state.players[owner];
+  if (!player || amount <= 0) {
+    return 0;
+  }
+  state.damagePrevention ||= [[], []];
+  state.damagePrevention[owner] ||= [];
+  let remaining = amount;
+  // E-XB52: ダメージ源側の ownEffectDamageUnreducible（アトラ・アダマント）が「効果ダメージ（!byAttack）を
+  // 相手（sourceOwner!==owner）へ与える」場合、受け手の軽減(c)だけをバイパスする＝『減らない』ダメージ（(c) 軽減を全て無効）。
+  // 軽減/無効の無視判定: 名称配列(後方互換) または attackResistances由来の filter エントリ（「このカードが与えるダメージは
+  // 減らない」＝発生源一致の (c) 軽減だけを無効にする）。名称指定の無視（旧 ignoreNamedPrevention）は「そのカードはこの攻撃に
+  // 適用しない」＝分類を問わず素通りしキューに残す。判定は任意コストの事前確認と共用（damageReductionResistance）。
+  const { unreducible, reductionResisted, namedIgnored } = damageReductionResistance(owner, options);
+  // 継続 preventOpponentEffectDamage: 「君は相手のカードの効果でダメージを受けない」恒常（H-BT04/0109）＝分類(a)。
+  // 『減らない』ダメージにも効く（Q1018: アステールの場で相手のガルガンチュア・パニッシャー!!のダメージは受けない）。
+  // 攻撃ダメージ(byAttack)と自分発のダメージ（コストの damageSelf 等 sourceOwner===owner）には効かない。
+  // F1(D-BT02/0123): エントリの conditions を評価する（「このカードがセンターにいるなら」＝sourceZoneIn 等）。
+  // 受けないダメージには軽減の任意コスト確認（メラク等）も出さないよう、軽減より先に判定する。
+  const guardCard = opponentEffectDamageGuardCard(owner, options);
+  if (guardCard) {
+    addLog(`${guardCard.name}の効果で${player.name}は相手の効果によるダメージを受けません。`);
+    return 0;
+  }
+  // 継続 damageReceivedReduction（分類(c)。装備者が受けるダメージを amount 減らす／full＝「０に減らす」。
+  // nonAttackOnly:true は攻撃以外のダメージ限定(マグナグレイス0011)、既定は全ダメージ(0056)。
+  // byOpponent:true は相手席発のダメージ限定(X-UB01/0007 結晶魔王アトラ)＝options.sourceOwner を渡して判定）。
+  if (!unreducible) {
+    remaining = continuousDamageReductionPass(owner, remaining, options, reductionResisted, namedIgnored, (cap) =>
+      // audit2(b015-2): 「君がダメージを受ける時、[コスト]を払ってよい。払ったら、そのダメージをN減らす」
+      // （メラク H-BT03/0022・プリドゥエン BT04/0037）。ダメージ1回ごとに払うかを確認し、払った時だけ軽減する。
+      payOptionalDamageReductionCostSync(owner, cap, options),
+    );
   }
   if (remaining <= 0) {
     return 0;
   }
-  // 軽減/無効の無視判定: 名称配列(後方互換) または attackResistances由来の filter エントリ
-  const ignoreNames = options.ignoreNamedPreventions
-    || (options.ignoreNamedPrevention ? [options.ignoreNamedPrevention] : []);
-  const resistEntries = options.resistEntries || [];
-  const isPreventionResisted = (prevention) =>
-    ignoreNames.some((n) => (prevention.source || "").includes(n)) ||
-    resistEntries.some((e) => resistanceFilterMatches(e.filter, prevention.sourceCard, prevention.source));
   const queue = state.damagePrevention[owner];
+  // 適用したキューエントリの「君のライフを＋N」（チェレックス！/黒竜の盾等「０に減らし、君のライフを＋１する」）。
+  // Q189: ライフ＋１は軽減効果の発動時＝ダメージを受ける時に行う（使用時ではない）。ダメージ適用後にまとめて加算する。
+  let pendingLifeGain = 0;
+  const lifeGainSources = [];
   let i = 0;
-  // ループのゲートは ignorePrevention(ドラム『減らない』)基準。sourceUnreducible(アトラ『効果ダメージは減らない』)は
-  // amount 型軽減だけを貫通し、キュー型 preventAll『受けない』(バーンノヴァ preventAllDamageThisTurn)は貫通しない
-  // ＝継続 preventOpponentEffectDamage『受けない』が sourceUnreducible を貫通しないのと対称(第10回メカレビュー是正・src/04:97-99の設計意図どおり)。
-  while (!options.ignorePrevention && remaining > 0 && i < queue.length) {
+  while (remaining > 0 && i < queue.length) {
     const prevention = queue[i];
-    if (isPreventionResisted(prevention)) {
+    const damageClass = damagePreventionClass(prevention);
+    if (namedIgnored(prevention.source)) {
       // この攻撃には適用しない（キューには残す）
       i += 1;
       continue;
     }
-    if (sourceUnreducible && !prevention.preventAll) {
-      // 『減らない』は amount 型軽減のみ貫通。preventAll『受けない』は下で適用する（キューには残す）。
+    if (prevention.whileCond && !whileConditionsHold(prevention)) {
+      // 裁定 R9: 「そのターン中、〜なら」の継続条件を今は満たしていない＝適用しない（キューには残す）。
+      // 分類(a)〜(c)の判定より先に見る（継続条件を満たさない間は『受けない』でも適用されない）。
       i += 1;
       continue;
     }
@@ -189,13 +330,29 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
       i += 1;
       continue;
     }
-    const reduction = prevention.preventAll ? remaining : Math.min(remaining, prevention.amount || 0);
+    // (c) 軽減は『減らない』ダメージを減らせない。「次に受けるダメージ」としてはこのダメージに適用済み（一度きりなら消費）
+    // で、付随する「ライフ＋１」は行う（Q165 ガルガンチュア・パニッシャー!! vs チェレックス！）。
+    const cannotReduce = damageClass === "reduce" && reductionResisted(prevention.sourceCard, prevention.source);
+    let reduction = 0;
+    if (!cannotReduce) {
+      reduction = damageClass !== "reduce" || prevention.preventAll ? remaining : Math.min(remaining, prevention.amount || 0);
+    }
     remaining -= reduction;
-    if (!prevention.preventAll) {
+    if (damageClass === "reduce" && !prevention.preventAll && !cannotReduce) {
       prevention.amount = Math.max(0, (prevention.amount || 0) - reduction);
     }
     if (reduction > 0) {
-      addLog(`${prevention.source || "効果"}により${player.name}へのダメージを${reduction}減らしました。`);
+      addLog(
+        damageClass === "reduce"
+          ? `${prevention.source || "効果"}により${player.name}へのダメージを${reduction}減らしました。`
+          : `${prevention.source || "効果"}により${player.name}はダメージ${reduction}を受けませんでした。`,
+      );
+    } else if (cannotReduce) {
+      addLog(`${prevention.source || "効果"}ではこのダメージを減らせません（ダメージは減らない）。`);
+    }
+    if (prevention.gainLife > 0) {
+      pendingLifeGain += prevention.gainLife;
+      lifeGainSources.push(prevention.source || "効果");
     }
     // once!==false: 一度きり（消費）。once:false の preventAll/残量ありは消費せずターン中持続。
     const exhausted = !prevention.preventAll && (prevention.amount || 0) <= 0;
@@ -229,6 +386,7 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
     if (options.log !== false && options.sourceName) {
       addLog(`${options.sourceName}により${player.name}に${remaining}ダメージを与えました。`);
     }
+    applyPreventionLifeGain(owner, pendingLifeGain, lifeGainSources, options);
     // 効果/必殺技ダメージの後にも「ダメージを受けた時」対抗窓(counterEventWindow)を開く。
     // 戦闘ダメージは runDamageDealtTriggers 側でより詳細に設定するためここでは開かない(byAttack)。
     // 発生源 owner が判っている効果ダメージのみ対象（コスト/ライフリンク等の発生源不明ダメージでは開かない＝安全）。
@@ -245,8 +403,41 @@ function applyDamageToPlayer(owner, amount = 0, options = {}) {
     state.suppressLifeZeroReplacementFor = null;
     // 「君がダメージを受けた時」誘発（五角竜王ドラム等）。同期経路のため microtask で遅延発火。
     queueDamageReceivedTriggers(owner, remaining, options);
+  } else {
+    applyPreventionLifeGain(owner, pendingLifeGain, lifeGainSources, options);
   }
   return remaining;
+}
+
+// 裁定 rulings-d: キューの防止/軽減エントリに付いた「君のライフを＋N」（damagePrevention.gainLife）をダメージ適用後に行う。
+// Q189: ＋１は軽減効果の発動時（使用時ではない）。Q165: 『減らない』ダメージで軽減できなくても＋１は行う。
+// Q1612（×天バスター系 suppressLifeZeroReplacement）: 「このカードで相手のライフが０になった場合、相手のカードで相手の
+// ライフは変更されない」＝このダメージでライフ0以下になったなら＋１は行われない（ライフ0のまま）。
+function applyPreventionLifeGain(owner, gain, sources, options = {}) {
+  const player = state.players[owner];
+  if (!player || !(gain > 0)) {
+    return;
+  }
+  const sourceLabel = sources.join("・") || "効果";
+  if (options.suppressLifeZeroReplacement && player.life <= 0) {
+    addLog(`${sourceLabel}のライフ＋${gain}は行われません（ライフは変更されない）。`);
+    return;
+  }
+  if (typeof isLifeGainByEffectPrevented === "function" && isLifeGainByEffectPrevented(owner)) {
+    addLog(`${player.name}は効果でライフを回復できません。`);
+    return;
+  }
+  player.life += gain;
+  addLog(`${sourceLabel}の効果で${player.name}のライフを${gain}回復しました。`);
+  if (typeof clearWinnerIfNoCurrentLoss === "function") {
+    clearWinnerIfNoCurrentLoss();
+  }
+  // 「ライフが回復した時」誘発（gainLife op と同じ lifeGained 放送）。同期 funnel のため trigger job で遅延発火。
+  if (typeof scheduleTriggerJob === "function" && typeof runFieldEventTriggers === "function") {
+    scheduleTriggerJob(async () => {
+      await runFieldEventTriggers("lifeGained", owner);
+    });
+  }
 }
 
 // 効果/必殺技ダメージ後の「ダメージを受けた時」対抗窓。発生源(カード/owner)を凍結して counterEventWindow へ。
@@ -273,6 +464,51 @@ function openDamageReceivedCounterWindow(defender, damage, options = {}) {
   state.counterEventWindow = event;
 }
 
+// audit2(b015-2): 継続 damageReceivedReduction{optionalCost} の「払ってよい」を同期で確認し、払えたら true。
+// applyDamageToPlayer は同期の合流点なので、確認は tryLeaveFieldReplacementSync(src/11) と同じ方式
+// （リプレイ再生＝記録値／CPU席＝src/22 が同期回答／ブラウザ＝window.confirm／非対話（権威サーバ・ヘッドレス）＝払う）。
+// 非同期の文脈からの適用（applyDamageToPlayerAsk）は事前確認（prepareDamageDecisions）で本人に問い済み＝その決定を使う。
+function payOptionalDamageReductionCostSync(owner, entry, damageOptions = {}) {
+  // 事前確認（prepareDamageDecisions）済み: 払う/払わないは確定・支払いも済んでいる。未確認の分（事前確認の時点で払えなかった）は払わない。
+  if (damageOptions.__optionalCostPrepared) {
+    return Boolean(damageOptions.__optionalCostDecisions?.[optionalDamageReductionKey(entry)]);
+  }
+  const player = state.players[owner];
+  const cost = entry.optionalCost || [];
+  const sourceCard = entry.sourceCard || null;
+  if (!player || !canPayStructuredCost(player, cost, { sourceCard }).ok) {
+    return false;
+  }
+  const message = `${entry.source || "効果"}のコストを払って、受けるダメージを${entry.amount || 0}減らしますか？`;
+  let answer;
+  if (typeof replayIsPlaying === "function" && replayIsPlaying()) {
+    answer = replayNextConfirm();
+  } else if (typeof aiShouldAnswerPrompt === "function" && aiShouldAnswerPrompt(owner)) {
+    answer = aiAnswerConfirmSync(owner, message, { purpose: "damageReductionOptionalCost" });
+    if (typeof replayRecordConfirm === "function") {
+      replayRecordConfirm(answer);
+    }
+  } else if (typeof appChoiceUiAvailable === "function" && appChoiceUiAvailable()) {
+    // ブラウザ: applyDamageToPlayer は同期の合流点で確認UIを待てない。ネイティブ確認は出さず、権威サーバと
+    // 同じ既定（払う）で確定し、確認応答として記録する（再生は上の replayNextConfirm で同じ値を消費）。
+    answer = true;
+    if (typeof replayRecordConfirm === "function") {
+      replayRecordConfirm(answer);
+    }
+  } else if (typeof window !== "undefined" && typeof window.confirm === "function") {
+    answer = Boolean(window.confirm(message));
+    if (typeof replayRecordConfirm === "function") {
+      replayRecordConfirm(answer);
+    }
+  } else {
+    answer = true;
+  }
+  if (!answer) {
+    return false;
+  }
+  return Boolean(payStructuredCost(player, cost, { sourceCard }).ok);
+}
+
 // 継続 damageReceivedReduction を持つ場札から、owner が受けるダメージの軽減設定（最も減らせる1件）を返す。
 // nonAttackOnly:true は byAttack===false の時のみ適用（攻撃以外限定。マグナグレイス0011）。
 // attackOnly:true は byAttack===true の時のみ適用（攻撃限定。E-ZA2/X-SS02/0002 ソル・アステール）。既定は全ダメージ(0056)。
@@ -280,10 +516,42 @@ function openDamageReceivedCounterWindow(defender, damage, options = {}) {
 // E-XB27(R24): sourceCardType（例 "monster"）はダメージ発生源カードの種別限定（「モンスターの効果で」X-BT03/0044）。
 // full:true は threshold 以上のダメージを 0 に減らす（軽減量=incomingDamage 相当＝全額。「N以上のダメージを0に減らす」）。
 function damageReceivedReductionFor(owner, byAttack, incomingDamage = Infinity, sourceOwner = undefined, sourceCard = undefined) {
+  // 後方互換: 「最も減らせる1件」を返す旧 API（applyDamageToPlayer は damageReceivedReductionEntries で全件を順に適用する）。
   let best = null;
+  damageReceivedReductionEntries(owner, byAttack, incomingDamage, sourceOwner, sourceCard).forEach((entry) => {
+    if (entry.threshold && incomingDamage < entry.threshold) {
+      return;
+    }
+    const amount = entry.full && Number.isFinite(incomingDamage) ? incomingDamage : entry.amount;
+    // audit2(b015-2): 任意コスト付きの軽減は払うか未定なので「確実に減らせる」見積もりには含めない。
+    if (entry.optionalCost) {
+      return;
+    }
+    if (amount > 0 && (!best || amount > best.amount)) {
+      best = { amount, source: entry.source, sourceCard: entry.sourceCard };
+    }
+  });
+  return best;
+}
+
+// 監査 rule-continuous-3 / rule-damage-3: 適用可能な継続 damageReceivedReduction を全件返す（ver2.05 ③3「永続能力の
+// 効果 能力に示された条件を満たしている間、常にその効果を発揮します」＝別カードの軽減はそれぞれ独立して効く）。
+// エントリ形 {amount, full, threshold, source, sourceCard}。threshold/full の判定は applyDamageToPlayer が各段階の
+// 残りダメージで行う（ここでは incomingDamage による閾値の事前判定をしない）。
+function damageReceivedReductionEntries(owner, byAttack, incomingDamage = Infinity, sourceOwner = undefined, sourceCard = undefined) {
+  const entries = [];
+  // 監査 rule-continuous-1: 発生源から切り離したターン限定 damageReceivedReduction（バッツ・ザ・スピリット
+  // 「そのターン中、君が攻撃で受けるダメージを１減らす」）。発生源の席＝受け手のときだけ（controller:"opponent" 以外）。
+  const turnSourced = turnSourcedContinuousEntries("damageReceivedReduction")
+    .filter(({ seat, effect }) => seat === owner && effect.controller !== "opponent")
+    .map(({ effect, entry }) => ({ effect, source: { name: entry.sourceName, id: entry.sourceId, instanceId: entry.sourceInstanceId }, zone: null }));
+  const fromField = [];
   zones.forEach((zone) => {
     const source = state.players[owner]?.field?.[zone];
-    activeContinuousEffects(source).forEach((effect) => {
+    activeContinuousEffects(source).forEach((effect) => fromField.push({ effect, source, zone }));
+  });
+  [...fromField, ...turnSourced].forEach(({ effect, source, zone }) => {
+    {
       if (effect.op !== "damageReceivedReduction" || effect.controller === "opponent") {
         return;
       }
@@ -311,9 +579,7 @@ function damageReceivedReductionFor(owner, byAttack, incomingDamage = Infinity, 
       if (effect.byOpponent && !(Number.isInteger(sourceOwner) && sourceOwner !== owner)) {
         return;
       }
-      if (effect.threshold && incomingDamage < effect.threshold) {
-        return; // 「N以上のダメージを受ける場合」限定の軽減はN未満には効かない（0056／0044＝閾値未満は素通り）
-      }
+      // 「N以上のダメージを受ける場合」限定（threshold）は applyDamageToPlayer が各段階の残りダメージで判定する。
       // E-XB27(X-BT03/0044 沈んだ海底遺跡): sourceCardType＝「モンスターの効果で」等、ダメージ発生源カードの
       // 種別限定。発生源カードが無い（攻撃/コスト/ライフリンク等）か種別不一致なら適用しない（安全側）。
       // 既存の damageReceivedReduction 使用カードは sourceCardType 非保持＝この分岐を踏まず挙動完全不変。
@@ -322,26 +588,46 @@ function damageReceivedReductionFor(owner, byAttack, incomingDamage = Infinity, 
       }
       // full:true は threshold 以上のダメージを 0 にする＝軽減量を incomingDamage 全額にする（「0に減らす」）。
       // 既定は amount 分の部分軽減（従来）。incomingDamage 未供給時（Infinity）は full を適用できないため amount へフォールバック。
-      const amount = effect.full && Number.isFinite(incomingDamage) ? incomingDamage : effect.amount || 0;
-      if (amount > 0 && (!best || amount > best.amount)) {
-        // sourceCard も返す: 攻撃側の reduce 耐性(『相手に与えるダメージは減らない』)が、この軽減の発生源に
-        // 一致するかを applyDamageToPlayer 側で resistanceFilterMatches で判定してスキップするため。
-        best = { amount, source: source.name, sourceCard: source };
+      // sourceCard も返す: 攻撃側の reduce 耐性(『相手に与えるダメージは減らない』)が、この軽減の発生源に
+      // 一致するかを applyDamageToPlayer 側で resistanceFilterMatches で判定してスキップするため。
+      if (effect.full || (effect.amount || 0) > 0) {
+        entries.push({
+          amount: effect.amount || 0,
+          full: Boolean(effect.full),
+          threshold: effect.threshold || 0,
+          source: source?.name,
+          sourceCard: source,
+          ...(Array.isArray(effect.optionalCost) && effect.optionalCost.length ? { optionalCost: effect.optionalCost } : {}),
+        });
+      }
+    }
+  });
+  // engine-inter: 発生源が場を離れた後も残る「そのターン中、君が受けるダメージを減らす」（X-CBT01/0011 等。
+  // カードに残った __turnEffect を離場時に退避したもの）。threshold/full は applyDamageToPlayer が段階ごとに判定する。
+  detachedTurnContinuousSources(owner).forEach((entry) => {
+    entry.turnContinuous.forEach((effect) => {
+      if (effect.op !== "damageReceivedReduction" || effect.controller === "opponent") return;
+      if (effect.nonAttackOnly && byAttack) return;
+      if (effect.attackOnly && !byAttack) return;
+      if (effect.byOpponent && !(Number.isInteger(sourceOwner) && sourceOwner !== owner)) return;
+      if (effect.sourceCardType && !(sourceCard && cardTypeMatches(sourceCard, effect.sourceCardType))) return;
+      if (effect.full || (effect.amount || 0) > 0) {
+        entries.push({ amount: effect.amount || 0, full: Boolean(effect.full), threshold: effect.threshold || 0, source: entry.name, sourceCard: entry });
       }
     });
   });
   // Z4(f)(S-UB-C03/0051): 【対抗】等で付与されたターン限定ダメージ軽減（state.turnDamageReductions）。
-  // 場のカード発の継続 damageReceivedReduction と同じ「最大1件のみ適用（加算しない）」規約に合わせる。
+  // 監査 rule-damage-3: 場の継続軽減と同じく、別々の効果は加算する。
   (state.turnDamageReductions || []).forEach((entry) => {
     if (entry.owner !== owner) {
       return;
     }
     const amount = entry.amount || 0;
-    if (amount > 0 && (!best || amount > best.amount)) {
-      best = { amount, source: "ターン限定効果" };
+    if (amount > 0) {
+      entries.push({ amount, full: false, threshold: 0, source: "ターン限定効果", sourceCard: null });
     }
   });
-  return best;
+  return entries;
 }
 
 function addNextDamagePrevention(owner, prevention) {
@@ -591,11 +877,14 @@ function costReductionApplies(reduction, card, purpose, options = {}) {
   // E-XU3(X-UB01/0019 サツキ・パレス): 「手札以外からコールする場合」限定の軽減。コール元ゾーンが判明
   // していて、かつ除外ゾーンに含まれない時だけ適用する。ゾーン不明（通常の手札コール等＝callFromZone 未供給）は
   // 非適用＝後方互換（callFromZoneNot を持たない既存 costReduction はこの分岐を素通り＝挙動完全不変）。
-  if (Array.isArray(reduction.callFromZoneNot)) {
-    const fromZone = options.callFromZone;
-    if (!fromZone || reduction.callFromZoneNot.includes(fromZone)) {
-      return false;
-    }
+  // audit2(b078-6): コール元ゾーン未供給は通常の手札コール＝"hand" とみなす（通常コール/奇襲コールは
+  // callMonsterImpl が明示供給）。callFromZoneIn は「手札からコールする場合」等の包含限定（アンディ BT05/0032）。
+  const fromZone = options.callFromZone || "hand";
+  if (Array.isArray(reduction.callFromZoneNot) && reduction.callFromZoneNot.includes(fromZone)) {
+    return false;
+  }
+  if (Array.isArray(reduction.callFromZoneIn) && !reduction.callFromZoneIn.includes(fromZone)) {
+    return false;
   }
   return true;
 }
@@ -734,16 +1023,16 @@ function canPayStructuredCost(player, costSteps = [], context = {}) {
     if (["cancelRecentLifeLink", "cancelLifeLink"].includes(step.op)) {
       const owner = state.players.indexOf(player);
       if (!findRecentLifeLinkEvent(owner, step)) {
-        return { ok: false, reason: "Life Link to cancel was not found." };
+        return { ok: false, reason: "打ち消せるライフリンクがありません。" };
       }
     }
     if (step.op === "cancelCallOpportunityLifeLink") {
       const owner = state.players.indexOf(player);
       if (!findSpecialCallOpportunity(owner, step)) {
-        return { ok: false, reason: "Special call opportunity was not found." };
+        return { ok: false, reason: "対象となるコール機会がありません。" };
       }
       if (!findLifeLinkEventForCallOpportunity(owner, step)) {
-        return { ok: false, reason: "Life Link to cancel was not found." };
+        return { ok: false, reason: "打ち消せるライフリンクがありません。" };
       }
     }
     if (step.op === "putTopDeckToSoul") {
@@ -785,7 +1074,7 @@ function canPayStructuredCost(player, costSteps = [], context = {}) {
       if (
         !target?.card ||
         target.owner !== owner ||
-        cannotReturnToHand(target.card) ||
+        cannotReturnToHand(target.card, returnPendingTargetCostCause(owner, target.owner)) ||
         !matchesTargetFilter(target.card, target.owner, target.zone, step.filter || {})
       ) {
         return { ok: false, reason: "コストで手札に戻す対象のモンスターがいません。" };
@@ -833,7 +1122,7 @@ function canPayStructuredCost(player, costSteps = [], context = {}) {
       // 破壊耐性/離場防止で実際には破壊できないカードはコスト候補から除外する（第13回メカレビュー:
       // 耐性持ちしか居ない時に「支払えた」ことにして効果だけ通るコスト踏み倒しを防ぐ）。
       const candidates = ownFieldCostCandidates(player, step.includeAllTypes ? (step.filter || {}) : { cardType: "monster", ...(step.filter || {}) }).filter(
-        (candidate) => candidate.card.instanceId !== excludeId && !costDestroyBlocked(candidate.card, candidate.owner),
+        (candidate) => candidate.card.instanceId !== excludeId && !costDestroyBlocked(candidate.card, candidate.owner, costDestroyStepCause(step)),
       );
       if (candidates.length < amount) {
         return { ok: false, reason: "コストで破壊する自分のモンスターがいません。" };
@@ -906,27 +1195,40 @@ function canPayStructuredCost(player, costSteps = [], context = {}) {
 // returnOwnFieldCardToHand 用の候補（zones 指定があればそのゾーンのみ、既定は全場）。
 function returnFieldCostCandidates(player, step = {}) {
   const owner = state.players.indexOf(player);
-  const allowedZones = step.zones && step.zones.length ? step.zones : zones;
+  const allowedZones = step.zones && step.zones.length ? expandZoneList(step.zones) : zones;
   return allowedZones
     .map((zone) => ({ owner, zone, card: player.field[zone], source: "field" }))
     .filter(({ card, zone }) => card && matchesTargetFilter(card, owner, zone, step.filter || {}));
 }
 
 // 場のカードを手札へ戻す（ソウルはドロップ・currentTypeを基底へ）。コスト用。
+// rule-zones-6: コストでも「場を離れて手札に戻る」ので、ライフリンク（ver2.05「場から離れる場合、示された数値分の
+// ダメージを受けます」）・「場から離れた時」・「場のモンスターが手札(かデッキ)に戻った時」(D・R・システム等)・
+// 自身の「手札に戻った時」を、効果の手札戻し(returnFieldTargetToHand)と同じ順序で発火する。
 function returnFieldCardToHandCost(player, zone) {
   const card = player.field[zone];
   if (!card) {
     return null;
   }
+  const owner = state.players.indexOf(player);
+  const lifeLinkNullifiedAtLeave = isAbilitiesNullified(card); // 離場直前に捕捉（能力無効化中はライフリンク無し）
+  const typeAtLeave = effectiveCardType(card);
   player.drop.push(...(card.soul || []));
   card.soul = [];
   // ホスト離場でソウル札がドロップへ＝裏向き奇襲札の公開・selfDroppedFromSoul(ヴィーガー等)を発火する
   // （destroyFieldCard:511 等と同基準・冪等/opt-in。第12回メカレビュー: コスト経路の取りこぼしを是正）。
   reconcileFaceDownSoulDrops();
   player.field[zone] = null;
+  if (zone === "item" && player.arrivalCardId === card.instanceId) {
+    player.arrivalCardId = null;
+  }
   resetLeftFieldCardState(card);
   player.hand.push(card);
+  applyLifeLink(card, owner, { nullifiedAtLeave: lifeLinkNullifiedAtLeave });
+  queueLeaveFieldTriggers(card, owner, zone, { eventCardTypeAtLeave: typeAtLeave });
   addLog(`${card.name}をコストで手札に戻しました。`);
+  queueMonsterReturnedTriggers(card, owner, zone, { eventCardTypeAtLeave: typeAtLeave });
+  queueReturnedToHandTriggers(card, owner, "field");
   return card;
 }
 
@@ -1052,12 +1354,15 @@ function moveCostEntriesToSoul(player, entries, sourceCard, faceDown = false) {
     bySource.set(entry.source, group);
   });
   const movedCards = [];
+  const movedFrom = new Map(); // instanceId → 出所（enteredSoul の fromZone 判定用）
   bySource.forEach((group, source) => {
     const pile = player[source];
     if (!Array.isArray(pile)) {
       return;
     }
-    movedCards.push(...removePileEntries(pile, group));
+    const removed = removePileEntries(pile, group);
+    removed.forEach((moved) => movedFrom.set(moved.instanceId, source));
+    movedCards.push(...removed);
     if (source === "deck") {
       shuffleInPlace(pile);
       addLog(`${player.name}はデッキをシャッフルしました。`);
@@ -1066,9 +1371,15 @@ function moveCostEntriesToSoul(player, entries, sourceCard, faceDown = false) {
   if (movedCards.length > 0) {
     sourceCard.soul ||= [];
     sourceCard.soul.push(...movedCards);
+    // 「このカードが手札/デッキ/ドロップから…のソウルに入った時」（enteredSoul）。コスト経路でも発火する。
+    movedCards.forEach((moved) =>
+      queueEnteredSoulTriggers(moved, state.players.indexOf(player), movedFrom.get(moved.instanceId), sourceCard),
+    );
     queueSoulCardAddedTriggers(sourceCard, state.players.indexOf(player), movedCards.length, movedCards[0]); // E-XB24
     if (faceDown) {
       markSoulCardsFaceDown(movedCards, sourceCard); // E-Y1(奇襲): 「裏向きで」
+    } else {
+      markFaceUpSoulSelfDropHost(movedCards, sourceCard); // 表向き selfDroppedFromSoul 札の __soulHost 印（funnel と同基準）
     }
     // E-Y1(奇襲): 裏向きコストは表情報(カード名)を log に出さない（秘匿）。枚数のみ記す。
     addLog(
@@ -1080,19 +1391,61 @@ function moveCostEntriesToSoul(player, entries, sourceCard, faceDown = false) {
   return movedCards;
 }
 
+// R2: 同期のコスト選択（破壊置換の payStructuredCost 等、async にできない経路）。支払う席(promptSeat)を見て
+// 答え手を選ぶ: CPU 席なら AI が同期で選ぶ（従来は window.prompt に落ち、人間に CPU の手札が見え CPU の代わりに
+// 選ばされていた）。権威サーバは同期往復できないため従来どおり既定（先頭）で確定する（誰にも提示しない）。
+// それ以外（ローカルの人間席）は従来どおり本人への window.prompt。選択はリプレイの応答として記録・再生する
+// （再生中は記録された応答を消費する）。
 function chooseCostEntriesSync(candidates, options = {}) {
   const amount = options.max ?? options.amount ?? 1;
   if ((candidates || []).length <= amount) {
     return (candidates || []).slice(0, amount);
   }
-  return fallbackCardEntrySelection(candidates, {
-    min: options.min ?? amount,
-    max: amount,
-    title: options.title || "コストのカード選択",
-  });
+  const min = options.min ?? amount;
+  const normalized = candidates.map((candidate, index) => ({ ...candidate, choiceIndex: index }));
+  if (typeof replayIsPlaying === "function" && replayIsPlaying()) {
+    return replayNextSelection(candidates);
+  }
+  let selected;
+  if (typeof aiShouldAnswerPrompt === "function" && aiShouldAnswerPrompt(options.promptSeat)) {
+    selected = aiAnswerSelectionSync(normalized, {
+      min,
+      max: amount,
+      allowCancel: false,
+      purpose: "cost",
+      promptSeat: options.promptSeat,
+      title: options.title || "コストのカード選択",
+    });
+  } else if (typeof appChoiceUiAvailable === "function" && appChoiceUiAvailable()) {
+    // ブラウザ: 同期の支払い経路では選択UIを待てない。ネイティブ prompt は出さず、権威サーバと同じ既定（先頭から）で確定する。
+    selected = normalized.slice(0, amount);
+  } else {
+    selected = fallbackCardEntrySelection(normalized, {
+      min,
+      max: amount,
+      title: options.title || "コストのカード選択",
+    });
+  }
+  if (typeof replayIsRecording === "function" && replayIsRecording()) {
+    replayRecordSelection(selected);
+  }
+  return selected;
 }
 
+// pt-fix-c(b): コスト支払い中に場からドロップへ置いたカードの「ドロップに置かれた時」誘発を、宣言の解決後まで
+// 控える（src/11 costDropCapture）。支払い本体は Core。失敗時は控えた分を即放つ。
 function payStructuredCost(player, costSteps = [], context = {}) {
+  enterCostDropCapture();
+  let result;
+  try {
+    result = payStructuredCostCore(player, costSteps, context);
+    return result;
+  } finally {
+    exitCostDropCapture(result);
+  }
+}
+
+function payStructuredCostCore(player, costSteps = [], context = {}) {
   const payment = canPayStructuredCost(player, costSteps, context);
   if (!payment.ok) {
     return payment;
@@ -1129,6 +1482,7 @@ function payStructuredCost(player, costSteps = [], context = {}) {
         min: minimum,
         max: maximum,
         title: `${sourceCard?.name || "コスト"}で捨てる手札`,
+        promptSeat: state.players.indexOf(player), // R2: 支払う本人の席（CPU 席なら AI が答える）
       });
       discardHandCardsToDrop(player, removePileEntries(player.hand, selected || []), { byCost: true, sourceOwner: state.players.indexOf(player), sourceCard: context.sourceCard || null }); // E6: コスト起因
     }
@@ -1142,10 +1496,8 @@ function payStructuredCost(player, costSteps = [], context = {}) {
           sourceCard.soul ||= [];
           const moved = player.hand.splice(index, 1)[0];
           sourceCard.soul.push(moved);
-          queueSoulCardAddedTriggers(sourceCard, state.players.indexOf(player), 1, moved); // E-XB24
-          if (step.faceDown) {
-            markSoulCardsFaceDown([moved], sourceCard); // E-Y1(奇襲): 「裏向きで」
-          }
+          // ソウルイン funnel（enteredSoul・E-XB24・裏向き印・__soulHost 印）。移動は上で完了済み。
+          putCardsToSoulWithTrigger(sourceCard, state.players.indexOf(player), [moved], "hand", { alreadyPlaced: true, faceDown: step.faceDown });
         }
       });
     }
@@ -1177,7 +1529,9 @@ function payStructuredCost(player, costSteps = [], context = {}) {
     if (step.op === "returnPendingTargetToHand") {
       const target = getPendingBattleTargetInfo(state.pendingAttack);
       if (target?.card) {
-        returnFieldTargetToHand(target, sourceCard?.name || "効果");
+        returnFieldTargetToHand(target, sourceCard?.name || "効果", {
+          cause: returnPendingTargetCostCause(state.players.indexOf(player), target.owner),
+        });
       }
     }
     if (["cancelRecentLifeLink", "cancelLifeLink"].includes(step.op)) {
@@ -1365,7 +1719,93 @@ function payStructuredCost(player, costSteps = [], context = {}) {
   return { ok: true };
 }
 
-async function payStructuredCostWithSelection(player, costSteps = [], context = {}) {
+// destroyOwnMonster コストの破壊の原因（候補判定用）。asEffect（“C・ドレイン”等＝効果の破壊）は効果、それ以外は真の【コスト】。
+function costDestroyStepCause(step) {
+  return step?.asEffect ? { byEffect: true, byOpponent: false } : { byCost: true, byEffect: false, byOpponent: false };
+}
+
+// 統合 follow-up（pt-fix-e の残課題「同期のコスト選択」）: 対話の選択・確認が要るコスト step。同期の
+// payStructuredCost はこれらを先頭から自動で決める（chooseCostEntriesSync＝ブラウザ/権威サーバとも既定）ため、
+// 非同期の文脈では payStructuredCostWithSelection（本人へ往復・CPU は AI・リプレイ記録）で払う。
+const INTERACTIVE_COST_OPS = new Set([
+  "chooseCost", "destroyOwnMonster", "discardHand", "discardSoulToDeckBottom", "dropOwnFieldCard", "dropOwnFieldCardSoul",
+  "dropOwnFieldOrSoulCard", "dropOwnMonster", "lookTopSelectToSoulRestToDrop", "putCardToSoul", "putDropToDeckBottom",
+  "putDropToSoul", "putHandToDeckTop", "putHandToSoul", "putOwnFieldCardsToDeckBottom", "putOwnFieldCardsToGauge",
+  "putSelectedOwnFieldCardsToSoul", "restOwnMonster", "returnOwnFieldCardToHand", "damageSelf", "returnPendingTargetToHand",
+]);
+
+function costStepsNeedInteraction(costSteps) {
+  return (costSteps || []).some((step) => step && INTERACTIVE_COST_OPS.has(step.op));
+}
+
+// 非同期の文脈でのコスト支払い。対話が要る時だけ Promise（payStructuredCostWithSelection）を返し、要らなければ同期の
+// 結果をそのまま返す（await しない＝tick 不変）。呼び出し側: let paid = payCostAsk(...); if (paid?.then) paid = await paid;
+function payCostAsk(player, costSteps = [], context = {}) {
+  return costStepsNeedInteraction(costSteps)
+    ? payStructuredCostWithSelection(player, costSteps, context)
+    : payStructuredCost(player, costSteps, context);
+}
+
+// T2（オーナー裁定 2026-10-14）: 効果の解決途中で払うコスト（script の payCost 等）は、宣言前へ巻き戻せないので
+// 選択をキャンセル不可（強制）にする。context.forceSelection:true の時だけ allowCancel:false を足す（宣言時のコスト
+// 選択＝キャンセルで使用前へ戻る従来挙動は不変）。
+function forcedCostSelectionOption(context) {
+  return context?.forceSelection === true ? { allowCancel: false } : {};
+}
+
+// pt-final(5): destroyOwnMonster コストで破壊する札の呼び名（属性指定＝《属性》／全種類可＝カード／既定＝モンスター）。
+function costDestroyNoun(step = {}) {
+  const attribute = step.filter?.attribute;
+  if (typeof attribute === "string" && attribute) {
+    return `《${attribute}》`;
+  }
+  return step.includeAllTypes ? "カード" : "モンスター";
+}
+
+// pt-final(5): コスト選択の枚数の案内（「0～1枚」→「1枚まで（選ばなくてもかまいません）」・上限は候補数で切る）。
+function costCountLead(minimum, maximum, candidateCount = Infinity) {
+  const upper = Math.max(0, Math.min(Number.isFinite(maximum) ? maximum : candidateCount, candidateCount));
+  if (!(minimum > 0)) {
+    return `${upper}枚まで選んでください（選ばなくてもかまいません）。`;
+  }
+  if (upper > minimum) {
+    return `${minimum}～${upper}枚選んでください。`;
+  }
+  return `${minimum}枚選んでください。`;
+}
+
+// pt-fix-c T7-8: コスト選択の候補が必要枚数に足りない時に「〜を選んでください」とだけ出ていた（選びようがない）。
+// 候補不足ならその理由を述べる（候補はあるのに選ばなかった＝キャンセル時は従来文言）。
+function costChoiceFailReason(message, candidates, minimum = 1) {
+  const count = Array.isArray(candidates) ? candidates.length : 0;
+  const need = Math.max(1, Number(minimum) || 1);
+  if (count >= need) {
+    return message;
+  }
+  const subject = String(message).replace(/^コストで/, "").replace(/を選んでください。$/, "");
+  return `コストで${subject}が足りないため、払えません（必要${need}枚・候補${count}枚）。`;
+}
+
+// 注: async の包みは await 1段ぶん解決が遅れ、既存の誘発タイミング（同期的に解決し切る前提のテスト・リプレイ）を
+// ずらすため、Core の Promise をそのまま返し、終了処理は同じ Promise への先行リアクションで行う（呼び出し側の
+// await より先に走る＝tick 数は従来と同一）。
+function payStructuredCostWithSelection(player, costSteps = [], context = {}) {
+  enterCostDropCapture();
+  let promise;
+  try {
+    promise = payStructuredCostWithSelectionCore(player, costSteps, context);
+  } catch (error) {
+    exitCostDropCapture(null);
+    throw error;
+  }
+  promise.then(
+    (result) => exitCostDropCapture(result),
+    () => exitCostDropCapture(null),
+  );
+  return promise;
+}
+
+async function payStructuredCostWithSelectionCore(player, costSteps = [], context = {}) {
   const payment = canPayStructuredCost(player, costSteps, {
     ...context,
     allowInteractiveSelection: true,
@@ -1414,16 +1854,17 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       lead:
         minimum === maximum
           ? `手札からコストで捨てるカードを${maximum}枚選んでください。`
-          : `手札からコストで捨てるカードを${minimum}～${maximum}枚選んでください。`,
+          : `手札からコストで捨てるカードを${costCountLead(minimum, maximum, candidates.length)}`,
       min: minimum,
       max: maximum,
       forceDialog: true,
       // 権威サーバ: コスト選択は支払い本人の席へ往復（未指定だと能動側へ誤配送＝相手手札候補が漏れる）。
       promptSeat: state.players.indexOf(player),
       purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
+      ...forcedCostSelectionOption(context), // T2: 効果の途中で払うコストは強制選択
     });
     if (!selected || selected.length < minimum) {
-      return { ok: false, reason: "コストで捨てる手札を選んでください。" };
+      return { ok: false, reason: costChoiceFailReason("コストで捨てる手札を選んでください。", candidates, minimum) };
     }
     selected.forEach(({ card }) => reservedHandIds.add(card.instanceId));
     handDiscards.push(selected);
@@ -1445,16 +1886,18 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       );
     const selected = await chooseCardEntries(candidates, {
       title: `${context.sourceCard?.name || "コスト"}でソウルに入れる手札`,
-      lead: `手札からソウルに入れるカードを${minimum}～${maximum}枚選んでください。`,
+      // pt-final(5): 「好きな枚数」(ヴァリアブルコード max:20) は候補数で上限を示す（「0～20枚」と出ていた）。
+      lead: `手札からソウルに入れるカードを${costCountLead(minimum, maximum, candidates.length)}`,
       min: minimum,
       max: maximum,
       forceDialog: true,
       // 権威サーバ: コスト選択は支払い本人の席へ往復（未指定だと能動側へ誤配送＝相手手札候補が漏れる）。
       promptSeat: state.players.indexOf(player),
       purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
+      ...forcedCostSelectionOption(context), // T2: 効果の途中で払うコストは強制選択
     });
     if (!selected || selected.length < minimum) {
-      return { ok: false, reason: "コストでソウルに入れる手札を選んでください。" };
+      return { ok: false, reason: costChoiceFailReason("コストでソウルに入れる手札を選んでください。", candidates, minimum) };
     }
     selected.forEach(({ card }) => reservedHandIds.add(card.instanceId));
     handToSoulSelections.push(selected);
@@ -1478,15 +1921,16 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       );
     const selected = await chooseCardEntries(candidates, {
       title: `${context.sourceCard?.name || "コスト"}でデッキの上に置く手札`,
-      lead: `手札からデッキの上に置くカードを${minimum}～${maximum}枚選んでください。`,
+      lead: `手札からデッキの上に置くカードを${costCountLead(minimum, maximum, candidates.length)}`,
       min: minimum,
       max: maximum,
       forceDialog: true,
       promptSeat: state.players.indexOf(player),
       purpose: "cost",
+      ...forcedCostSelectionOption(context), // T2: 効果の途中で払うコストは強制選択
     });
     if (!selected || selected.length < minimum) {
-      return { ok: false, reason: "コストでデッキの上に置く手札を選んでください。" };
+      return { ok: false, reason: costChoiceFailReason("コストでデッキの上に置く手札を選んでください。", candidates, minimum) };
     }
     selected.forEach(({ card }) => reservedHandIds.add(card.instanceId));
     handToDeckTopSelections.push(selected);
@@ -1515,9 +1959,10 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       // 権威サーバ: コスト選択は支払い本人の席へ往復（未指定だと能動側へ誤配送＝相手手札候補が漏れる）。
       promptSeat: state.players.indexOf(player),
       purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
+      ...forcedCostSelectionOption(context), // T2: 効果の途中で払うコストは強制選択
     });
     if (!selected || selected.length < amount) {
-      return { ok: false, reason: "コストでドロップに置く自分のモンスターを選んでください。" };
+      return { ok: false, reason: costChoiceFailReason("コストでドロップに置く自分のモンスターを選んでください。", candidates, amount) };
     }
     selected.forEach((candidate) => reservedCostZones.add(`${candidate.owner}:${candidate.zone}`));
     dropOwnMonsterSelections.push(selected);
@@ -1539,9 +1984,10 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       // 権威サーバ: コスト選択は支払い本人の席へ往復（未指定だと能動側へ誤配送＝相手手札候補が漏れる）。
       promptSeat: state.players.indexOf(player),
       purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
+      ...forcedCostSelectionOption(context), // T2: 効果の途中で払うコストは強制選択
     });
     if (!selected || selected.length < amount) {
-      return { ok: false, reason: "コストでゲージに置く自分の場のカードを選んでください。" };
+      return { ok: false, reason: costChoiceFailReason("コストでゲージに置く自分の場のカードを選んでください。", candidates, amount) };
     }
     selected.forEach((candidate) => reservedCostZones.add(`${candidate.owner}:${candidate.zone}`));
     fieldToGaugeSelections.push(selected);
@@ -1564,9 +2010,10 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       // 権威サーバ: コスト選択は支払い本人の席へ往復（未指定だと能動側へ誤配送＝相手手札候補が漏れる）。
       promptSeat: state.players.indexOf(player),
       purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
+      ...forcedCostSelectionOption(context), // T2: 効果の途中で払うコストは強制選択
     });
     if (!selected || selected.length < amount) {
-      return { ok: false, reason: "コストでデッキの下に置く自分の場のカードを選んでください。" };
+      return { ok: false, reason: costChoiceFailReason("コストでデッキの下に置く自分の場のカードを選んでください。", candidates, amount) };
     }
     selected.forEach((candidate) => reservedCostZones.add(`${candidate.owner}:${candidate.zone}`));
     fieldToDeckBottomSelections.push(selected);
@@ -1587,9 +2034,10 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       forceDialog: true,
       promptSeat: state.players.indexOf(player),
       purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
+      ...forcedCostSelectionOption(context), // T2: 効果の途中で払うコストは強制選択
     });
     if (!selected || selected.length < amount) {
-      return { ok: false, reason: "コストでドロップに置く自分の場のカードを選んでください。" };
+      return { ok: false, reason: costChoiceFailReason("コストでドロップに置く自分の場のカードを選んでください。", candidates, amount) };
     }
     selected.forEach((candidate) => reservedCostZones.add(`${candidate.owner}:${candidate.zone}`));
     dropOwnFieldSelections.push(selected);
@@ -1610,9 +2058,10 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       forceDialog: true,
       promptSeat: state.players.indexOf(player),
       purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
+      ...forcedCostSelectionOption(context), // T2: 効果の途中で払うコストは強制選択
     });
     if (!selected || selected.length < amount) {
-      return { ok: false, reason: "コストでドロップに置くカードを選んでください。" };
+      return { ok: false, reason: costChoiceFailReason("コストでドロップに置くカードを選んでください。", candidates, amount) };
     }
     selected.forEach((candidate) => {
       if (candidate.source === "field") {
@@ -1640,38 +2089,13 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       forceDialog: true,
       promptSeat: state.players.indexOf(player),
       purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
+      ...forcedCostSelectionOption(context), // T2: 効果の途中で払うコストは強制選択
     });
     if (!selected || selected.length < minimum) {
-      return { ok: false, reason: "コストでソウルに入れる自分の場のカードを選んでください。" };
+      return { ok: false, reason: costChoiceFailReason("コストでソウルに入れる自分の場のカードを選んでください。", candidates, minimum) };
     }
     selected.forEach((candidate) => reservedCostZones.add(`${candidate.owner}:${candidate.zone}`));
     putSelectedFieldSoulSelections.push(selected);
-  }
-  for (const step of applicableCostSteps) {
-    if (step.op !== "lookTopSelectToSoulRestToDrop") {
-      continue;
-    }
-    const count = step.count || 1;
-    const amount = step.amount || 1;
-    const revealed = [];
-    for (let index = 0; index < count && player.deck.length > 0; index += 1) {
-      revealed.push(player.deck.pop());
-    }
-    const pickCount = Math.min(amount, revealed.length);
-    const selected = await chooseCardEntries(
-      revealed.map((card) => ({ card })),
-      {
-        title: `${context.sourceCard?.name || "コスト"}: デッキ上${revealed.length}枚を見る`,
-        lead: `ソウルに入れる${pickCount}枚を選んでください（残りはドロップゾーンに置かれます）。`,
-        min: pickCount,
-        max: pickCount,
-        forceDialog: true,
-        promptSeat: state.players.indexOf(player),
-        purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
-      },
-    );
-    const soulSelected = selected && selected.length ? selected.map((entry) => entry.card) : revealed.slice(0, pickCount);
-    lookTopSoulSelections.push({ revealed, soulSelected });
   }
   for (const step of applicableCostSteps) {
     if (step.op !== "destroyOwnMonster") {
@@ -1683,19 +2107,22 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       (candidate) =>
         candidate.card.instanceId !== excludeId &&
         !reservedCostZones.has(`${candidate.owner}:${candidate.zone}`) &&
-        !costDestroyBlocked(candidate.card, candidate.owner), // 破壊耐性で払えないカードは選ばせない（canPay と同基準）
+        !costDestroyBlocked(candidate.card, candidate.owner, costDestroyStepCause(step)), // 破壊耐性で払えないカードは選ばせない（canPay と同基準）
     );
     const selected = await chooseCardEntries(candidates, {
-      title: `${context.sourceCard?.name || "コスト"}で破壊する自分のモンスター`,
-      lead: `コストで破壊する自分の場のモンスターを${amount}枚選んでください。`,
+      // pt-final(5): 呼び名はフィルタに合わせる（ブラック・リチュアル「君の場の《黒竜》１枚を破壊」＝アイテムの
+      // 《黒竜》も払える includeAllTypes なのに「自分のモンスター」と出ていた）。
+      title: `${context.sourceCard?.name || "コスト"}で破壊する自分の${costDestroyNoun(step)}`,
+      lead: `コストで破壊する自分の場の${costDestroyNoun(step)}を${amount}枚選んでください。`,
       min: amount,
       max: amount,
       forceDialog: true,
       promptSeat: state.players.indexOf(player),
       purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
+      ...forcedCostSelectionOption(context), // T2: 効果の途中で払うコストは強制選択
     });
     if (!selected || selected.length < amount) {
-      return { ok: false, reason: "コストで破壊する自分のモンスターを選んでください。" };
+      return { ok: false, reason: costChoiceFailReason(`コストで破壊する自分の${costDestroyNoun(step)}を選んでください。`, candidates, amount) };
     }
     selected.forEach((candidate) => reservedCostZones.add(`${candidate.owner}:${candidate.zone}`));
     destroyOwnMonsterSelections.push(selected);
@@ -1712,17 +2139,18 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     const maximum = Math.min(step.max ?? amount, candidates.length);
     const selected = await chooseCardEntries(candidates, {
       title: `${context.sourceCard?.name || "コスト"}で手札に戻すカード`,
-      lead: `自分の場から手札に戻すカードを${minimum}〜${maximum}枚選んでください。`,
+      lead: `自分の場から手札に戻すカードを${costCountLead(minimum, maximum, candidates.length)}`,
       min: minimum,
       max: maximum,
       forceDialog: true,
       allowCancel: minimum === 0,
       promptSeat: state.players.indexOf(player),
       purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
+      ...forcedCostSelectionOption(context), // T2: 効果の途中で払うコストは強制選択
     });
     if (!selected || selected.length < minimum) {
       if (minimum > 0) {
-        return { ok: false, reason: "コストで手札に戻す自分の場のカードを選んでください。" };
+        return { ok: false, reason: costChoiceFailReason("コストで手札に戻す自分の場のカードを選んでください。", candidates, minimum) };
       }
     }
     (selected || []).forEach((candidate) => reservedCostZones.add(`${candidate.owner}:${candidate.zone}`));
@@ -1738,21 +2166,66 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     const candidates = cardToSoulCostCandidates(player, step, selectedCard, reservedHandIds);
     const selected = await chooseCardEntries(candidates, {
       title: `${context.sourceCard?.name || "コスト"}でソウルに入れるカード`,
-      lead: `指定された領域からソウルに入れるカードを${minimum}～${maximum}枚選んでください。`,
+      lead: `指定された領域からソウルに入れるカードを${costCountLead(minimum, maximum, candidates.length)}`,
       min: minimum,
       max: maximum,
       forceDialog: true,
       // 権威サーバ: コスト選択は支払い本人の席へ往復（未指定だと能動側へ誤配送＝相手手札候補が漏れる）。
       promptSeat: state.players.indexOf(player),
       purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
+      ...forcedCostSelectionOption(context), // T2: 効果の途中で払うコストは強制選択
     });
     if (!selected || selected.length < minimum) {
-      return { ok: false, reason: "コストでソウルに入れるカードを選んでください。" };
+      return { ok: false, reason: costChoiceFailReason("コストでソウルに入れるカードを選んでください。", candidates, minimum) };
     }
     selected
       .filter((entry) => entry.source === "hand")
       .forEach(({ card }) => reservedHandIds.add(card.instanceId));
     cardToSoulSelections.push(selected);
+  }
+  // pt-fix-c T7-6: putDropToSoul（「君のドロップゾーンの〜N枚(まで)をこのカードのソウルに入れる」）も選択式に
+  // （以前は対話経路でもドロップ末尾から自動取得＝何を入れるか選べなかった）。選択の余地が無い（候補＝必要枚数）
+  // 時だけ自動。選択は chooseCardEntries（CPU/権威サーバ/リプレイの共通 seam）で支払い本人の席へ。
+  const dropToSoulSelections = [];
+  for (const step of applicableCostSteps) {
+    if (step.op !== "putDropToSoul") {
+      continue;
+    }
+    const amount = step.amount || 1;
+    const minimum = Math.min(step.min ?? amount, amount);
+    const candidates = cardToSoulCostCandidates(
+      player,
+      { sources: ["drop"], filter: step.filter || {} },
+      selectedCard,
+    ).filter((entry) => entry.card.instanceId !== context.sourceCard?.instanceId);
+    const maximum = Math.min(amount, candidates.length);
+    if (candidates.length < minimum) {
+      return { ok: false, reason: "ソウルに入れるドロップのカードが足りません。" };
+    }
+    let selected;
+    if (candidates.length === minimum && minimum === maximum) {
+      selected = candidates; // 選択の余地なし（全て入れる）
+    } else {
+      selected = await chooseCardEntries(candidates, {
+        title: `${context.sourceCard?.name || "コスト"}でソウルに入れるドロップのカード`,
+        lead:
+          minimum === maximum
+            ? `ドロップゾーンからソウルに入れるカードを${maximum}枚選んでください。`
+            : minimum === 0
+              ? `ドロップゾーンからソウルに入れるカードを${maximum}枚まで選んでください。`
+              : `ドロップゾーンからソウルに入れるカードを${costCountLead(minimum, maximum, candidates.length)}`,
+        min: minimum,
+        max: maximum,
+        forceDialog: true,
+        promptSeat: state.players.indexOf(player),
+        purpose: "cost",
+        ...forcedCostSelectionOption(context), // T2: 効果の途中で払うコストは強制選択（統合時: pt-fix-c の新設選択にも適用）
+      });
+      if (!selected || selected.length < minimum) {
+        return { ok: false, reason: "コストでソウルに入れるドロップのカードを選んでください。" };
+      }
+    }
+    dropToSoulSelections.push(selected || []);
   }
 
   const sourceCard = context.sourceCard;
@@ -1775,9 +2248,10 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       forceDialog: true,
       promptSeat: state.players.indexOf(player),
       purpose: "cost",
+      ...forcedCostSelectionOption(context), // T2: 効果の途中で払うコストは強制選択
     });
     if (!selected || selected.length < amount) {
-      return { ok: false, reason: "コストで【レスト】するモンスターを選んでください。" };
+      return { ok: false, reason: costChoiceFailReason("コストで【レスト】するモンスターを選んでください。", candidates, amount) };
     }
     selected.forEach((candidate) => reservedCostZones.add(`${candidate.owner}:${candidate.zone}`)); // 二重選択防止
     restOwnMonsterSelections.push(selected);
@@ -1799,9 +2273,10 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       forceDialog: true,
       promptSeat: state.players.indexOf(player),
       purpose: "cost",
+      ...forcedCostSelectionOption(context), // T2: 効果の途中で払うコストは強制選択
     });
     if (!selected || selected.length < amount) {
-      return { ok: false, reason: "コストでデッキの下に置くカードを選んでください。" };
+      return { ok: false, reason: costChoiceFailReason("コストでデッキの下に置くカードを選んでください。", candidates, amount) };
     }
     dropToBottomSelections.push(selected);
   }
@@ -1825,9 +2300,10 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       forceDialog: true,
       promptSeat: state.players.indexOf(player),
       purpose: "cost",
+      ...forcedCostSelectionOption(context), // T2: 効果の途中で払うコストは強制選択
     });
     if (!selected || selected.length < floor) {
-      return { ok: false, reason: "コストでデッキの下に置くソウルを選んでください。" };
+      return { ok: false, reason: costChoiceFailReason("コストでデッキの下に置くソウルを選んでください。", candidates, floor) };
     }
     soulToBottomSelections.push(selected);
   }
@@ -1850,6 +2326,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       forceDialog: true,
       promptSeat: state.players.indexOf(player),
       purpose: "cost",
+      ...forcedCostSelectionOption(context), // T2: 効果の途中で払うコストは強制選択
     });
     const host = hostPick?.[0];
     if (!host) {
@@ -1865,6 +2342,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
         forceDialog: true,
         promptSeat: state.players.indexOf(player),
         purpose: "cost",
+        ...forcedCostSelectionOption(context), // T2: 効果の途中で払うコストは強制選択
       },
     );
     if (!soulPick || soulPick.length < amount) {
@@ -1897,16 +2375,64 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
         forceDialog: true,
         promptSeat: state.players.indexOf(player),
         purpose: "cost",
+        ...forcedCostSelectionOption(context), // T2: 効果の途中で払うコストは強制選択
       },
     );
-    const chosenIndex = Number(String(picked?.[0]?.card?.instanceId || "").replace("choose-cost-", ""));
+    // pt-final(2): キャンセル時に先頭の支払い方法を黙って採用しない（宣言ごと取り消す）。強制選択時は
+    // chooseCardEntries 側が既定を返すので null にならない。
+    if (!picked || !picked.length) {
+      return { ok: false, reason: "支払うコストを選んでください。" };
+    }
+    const chosenIndex = Number(String(picked[0]?.card?.instanceId || "").replace("choose-cost-", ""));
     const chosen = payable.find(({ index }) => index === chosenIndex) || payable[0];
     chooseCostSelections.push(chosen.option);
+  }
+  // pt-final(2): lookTopSelectToSoulRestToDrop（グライゼンZK 等「デッキの上からN枚見て1枚をソウルに入れ、残りを
+  // ドロップ」）。以前はここでデッキから pop してから選ばせ、キャンセルすると先頭を黙って自動採用（＝宣言は進み
+  // ゲージも払われる）、後続のコスト選択をキャンセルするとデッキから抜いた札が消えていた。
+  // 今は (a) デッキは覗くだけ（pop は下の適用フェイズ）＝後続キャンセルでもデッキ不変、(b) 他の（取り消せる）
+  // コスト選択を全て終えた最後に出し、(c) デッキを見た後は戻せないので選択は強制（キャンセル不可）。
+  let lookTopPeekOffset = 0;
+  for (const step of applicableCostSteps) {
+    if (step.op !== "lookTopSelectToSoulRestToDrop") {
+      continue;
+    }
+    const count = step.count || 1;
+    const amount = step.amount || 1;
+    const revealed = [];
+    for (let index = 0; index < count; index += 1) {
+      const card = player.deck[player.deck.length - 1 - lookTopPeekOffset - index];
+      if (!card) {
+        break;
+      }
+      revealed.push(card);
+    }
+    lookTopPeekOffset += revealed.length;
+    const pickCount = Math.min(amount, revealed.length);
+    const selected =
+      pickCount > 0
+        ? await chooseCardEntries(
+            revealed.map((card) => ({ card, owner: state.players.indexOf(player) })),
+            {
+              title: `${context.sourceCard?.name || "コスト"}: デッキの上${revealed.length}枚を見る`,
+              lead: `ソウルに入れる${pickCount}枚を選んでください（残りはドロップゾーンに置かれます）。`,
+              min: pickCount,
+              max: pickCount,
+              forceDialog: true,
+              allowCancel: false, // デッキを見た後は宣言前へ戻せない（強制選択）
+              promptSeat: state.players.indexOf(player),
+              purpose: "cost", // CPU対戦(src/22): コスト支払いの選択＝最小価値を差し出す
+            },
+          )
+        : [];
+    const soulSelected = (selected || []).map((entry) => entry.card).slice(0, pickCount);
+    lookTopSoulSelections.push({ revealed, soulSelected });
   }
   let discardStepIndex = 0;
   let handToSoulStepIndex = 0;
   let handToDeckTopStepIndex = 0; // E-XB48(0037 トラクタービーム)
   let cardToSoulStepIndex = 0;
+  let dropToSoulStepIndex = 0;
   let dropOwnMonsterStepIndex = 0;
   let fieldToGaugeStepIndex = 0;
   let fieldToDeckBottomStepIndex = 0; // E3'
@@ -1915,6 +2441,7 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
   let putSelectedFieldSoulStepIndex = 0;
   let lookTopSoulStepIndex = 0;
   let destroyOwnMonsterStepIndex = 0;
+  let effectDestroyFailed = false; // destroyOwnMonster{asEffect} が置換等で破壊できなかった（R8）
   let returnFieldToHandStepIndex = 0;
   let restOwnMonsterStepIndex = 0;
   let dropToBottomStepIndex = 0;
@@ -1948,10 +2475,8 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       handToSoulStepIndex += 1;
       sourceCard.soul ||= [];
       sourceCard.soul.push(...movedCards);
-      queueSoulCardAddedTriggers(sourceCard, state.players.indexOf(player), movedCards.length, movedCards[0]); // E-XB24
-      if (step.faceDown) {
-        markSoulCardsFaceDown(movedCards, sourceCard); // E-Y1(奇襲): 「裏向きで」
-      }
+      // ソウルイン funnel（enteredSoul・E-XB24・裏向き印・__soulHost 印）。移動は上で完了済み。
+      putCardsToSoulWithTrigger(sourceCard, state.players.indexOf(player), movedCards, "hand", { alreadyPlaced: true, faceDown: step.faceDown });
       if (movedCards.length > 0) {
         // E-Y1(奇襲): 裏向きコストは表情報(カード名)を log に出さない（秘匿）。枚数のみ記す。
         addLog(
@@ -1981,7 +2506,8 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       player.life -= amount;
     }
     if (step.op === "damageSelf") {
-      applyDamageToPlayer(state.players.indexOf(player), amount, { sourceName: sourceCard?.name, byAttack: false });
+      const dealing = applyDamageToPlayerAsk(state.players.indexOf(player), amount, { sourceName: sourceCard?.name, byAttack: false }); // 対話経路: 任意コストの軽減は本人に問う
+      if (dealing?.then) await dealing;
     }
     if (step.op === "setLife") {
       player.life = step.life ?? step.amount ?? player.life;
@@ -1989,7 +2515,23 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     if (step.op === "returnPendingTargetToHand") {
       const target = getPendingBattleTargetInfo(state.pendingAttack);
       if (target?.card) {
-        returnFieldTargetToHand(target, sourceCard?.name || "効果");
+        const returnCause = returnPendingTargetCostCause(state.players.indexOf(player), target.owner);
+        // 対話経路: 戻される札のコスト付き離場置換（“C・ドレイン”・X9 等）は持ち主に非同期で問い、対話の支払いで解決する
+        // （同期の returnFieldTargetToHand 内の確認は権威サーバと同じ既定でしか確定できない）。手札に戻せない／Z9 で場に残る札は
+        // 置換の前に同期側のゲートで止まるので、ここでは問わない。
+        const leaving = target.card;
+        const canAskReplacement =
+          leaving.leaveFieldReplacement &&
+          !cannotReturnToHand(leaving, returnCause) &&
+          !(leaving.preventNextLeaveFieldCount > 0);
+        if (canAskReplacement && (await tryLeaveFieldReplacement(leaving, target.owner))) {
+          // 離場置換が成立＝場に残った（手札へは戻らない）。
+        } else {
+          returnFieldTargetToHand(target, sourceCard?.name || "効果", {
+            cause: returnCause,
+            ...(canAskReplacement ? { skipLeaveReplacement: true } : {}),
+          });
+        }
       }
     }
     if (["cancelRecentLifeLink", "cancelLifeLink"].includes(step.op)) {
@@ -2002,7 +2544,12 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       moveTopDeckToSoul(player, sourceCard, amount, Boolean(step.faceDown)); // E-Y1(奇襲)
     }
     if (step.op === "putDropToSoul") {
-      moveDropToSoul(player, sourceCard, amount, step.filter);
+      // pt-fix-c T7-6: 上で選んだドロップのカードをソウルへ（enteredSoul 誘発つき・putCardToSoul と同じ移動）。
+      const chosen = dropToSoulSelections[dropToSoulStepIndex] || [];
+      dropToSoulStepIndex += 1;
+      if (chosen.length > 0 && sourceCard) {
+        moveCostEntriesToSoul(player, chosen, sourceCard);
+      }
     }
     if (step.op === "putOwnFieldCardsToSoul") {
       moveFieldCardsToSoul(player, sourceCard, step.filter);
@@ -2056,7 +2603,11 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       // このカード自身をコストで「破壊」する（破壊時誘発・ソウルガード・ライフリンクが正しく発生）。
       const slot = findFieldCardSlot(sourceCard);
       if (slot) {
-        const dropped = await destroyFieldCard(slot.owner, slot.zone, { cause: { byEffect: true }, ignoreDestroyReplacement: true });
+        // Q&A No.1007/1000/850・No.1933: コストの破壊は効果の破壊ではない（「カードの効果で破壊された時」は誘発しない）。
+        const dropped = await destroyFieldCard(slot.owner, slot.zone, {
+          cause: makeCostDestroyCause(state.players.indexOf(player), context.sourceCard || sourceCard || null, slot.owner),
+          ignoreDestroyReplacement: true,
+        });
         if (dropped) addLog(`${dropped.name}をコストで破壊しました。`);
       }
     }
@@ -2068,8 +2619,34 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
       const targets = destroyOwnMonsterSelections[destroyOwnMonsterStepIndex] || [];
       destroyOwnMonsterStepIndex += 1;
       for (const target of targets) {
-        const dropped = await destroyFieldCard(target.owner, target.zone, { cause: { byEffect: true }, ignoreDestroyReplacement: true });
-        if (dropped) addLog(`${dropped.name}をコストで破壊しました。`);
+        // 破壊の発生源情報（makeEffectCause と同形）を載せる。以前は byEffect だけで sourceType/sourceCard が無く、
+        // 「モンスターの効果で破壊された時」（eventDestroyCauseMatches{sourceType:"monster"}）が不成立だった
+        // （煉獄騎士団の『〜を破壊する。破壊したら』起動で破壊されたエヴィルグレイブ等が誘発しない）。
+        const costSource = context.sourceCard || sourceCard || null;
+        // asEffect:true（2026-10-09 オーナー裁定R8）: コスト欄に置くが実体は効果の破壊＝「〜を破壊してよい。破壊したら」
+        // （“C・ドレイン”の離場置換など、支払い＝解決時のもの）。破壊される側の置換（ソウルガードの任意使用・「破壊される
+        // 場合かわりに」等）を通常どおり適用し、実際に破壊できなかったら支払い不成立（ok:false）として後段を行わせない。
+        // 未指定（真の【コスト】）は従来どおり置換を無視して破壊する（後方互換）。
+        // 真の【コスト】（asEffect 無し）は効果の破壊ではない（公式Q&A No.1007/1000/850「効果ではなく【使用コスト】で破壊
+        // されたため…発動しません」・No.1933「【使用コスト】や【コールコスト】はカードの効果ではない」）＝byCost の原因で破壊し、
+        // 「カードの効果で破壊された時」（eventDestroyCauseMatches{byEffect}）は誘発させない。「破壊された時」・ライフリンク・
+        // ソウルガード（Q&A No.334）は従来どおり。asEffect は効果の破壊（R8）なので従来の効果の原因のまま。
+        const dropped = await destroyFieldCard(target.owner, target.zone, {
+          cause: step.asEffect
+            ? {
+                byEffect: true,
+                byOpponent: false,
+                sourceOwner: state.players.indexOf(player),
+                sourceType: costSource ? effectiveCardType(costSource) : null,
+                sourceCard: costSource,
+              }
+            : makeCostDestroyCause(state.players.indexOf(player), costSource, target.owner),
+          ...(step.asEffect ? {} : { ignoreDestroyReplacement: true }),
+        });
+        if (dropped) addLog(`${dropped.name}を${step.asEffect ? "" : "コストで"}破壊しました。`);
+        if (step.asEffect && !dropped) {
+          effectDestroyFailed = true;
+        }
       }
     }
     if (step.op === "restSource") {
@@ -2150,6 +2727,16 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     if (step.op === "lookTopSelectToSoulRestToDrop") {
       const pick = lookTopSoulSelections[lookTopSoulStepIndex] || { revealed: [], soulSelected: [] };
       lookTopSoulStepIndex += 1;
+      // pt-final(2): 選択フェイズでは覗いただけ。ここでデッキから実際に抜く（その間に動いた札は除外）。
+      pick.revealed = pick.revealed.filter((card) => {
+        const at = player.deck.indexOf(card);
+        if (at < 0) {
+          return false;
+        }
+        player.deck.splice(at, 1);
+        return true;
+      });
+      pick.soulSelected = pick.soulSelected.filter((card) => pick.revealed.includes(card));
       // FE3(X-BT01/0032 羅生門): faceDown で選んだ1枚を裏向きソウルへ（秘匿・ログに名前を出さない）。
       lookTopSelectToSoulRestToDrop(player, sourceCard, step.count || 1, step.amount || 1, pick.revealed, pick.soulSelected, step.faceDown);
     }
@@ -2191,6 +2778,9 @@ async function payStructuredCostWithSelection(player, costSteps = [], context = 
     }
   }
   checkWinner();
+  if (effectDestroyFailed) {
+    return { ok: false, reason: "破壊できなかったため、後の処理は行いません。", discarded };
+  }
   return { ok: true, discarded };
 }
 
@@ -2212,12 +2802,9 @@ function moveTopDeckToSoul(player, card, amount = 1, faceDown = false) {
   for (let index = skipped.length - 1; index >= 0; index -= 1) {
     player.deck.push(skipped[index]); // 取り置いた自分自身をデッキ上（元位置）へ戻す
   }
-  if (moved.length > 0) {
-    queueSoulCardAddedTriggers(card, state.players.indexOf(player), moved.length, moved[0]); // E-XB24: コール時 put-top-deck-to-soul
-  }
-  if (faceDown) {
-    markSoulCardsFaceDown(moved, card); // E-Y1(奇襲): 「裏向きで」
-  }
+  // ソウルイン funnel（enteredSoul・E-XB24 ソウル加入放送・E-Y1 裏向き印・表向き selfDroppedFromSoul の __soulHost 印）。
+  // 移動（soul.push）は上で完了済み＝alreadyPlaced。
+  putCardsToSoulWithTrigger(card, state.players.indexOf(player), moved, "deck", { alreadyPlaced: true, faceDown });
   if (player.deck.length === 0) {
     declareDeckLoss(player);
   }
@@ -2337,6 +2924,7 @@ function lookTopSelectToSoulRestToDrop(player, sourceCard, count = 1, amount = 1
   const toDrop = cards.filter((card) => !soulSet.has(card.instanceId));
   sourceCard.soul.push(...toSoul);
   if (toSoul.length > 0) {
+    toSoul.forEach((soulCard) => queueEnteredSoulTriggers(soulCard, state.players.indexOf(player), "deck", sourceCard)); // enteredSoul（デッキから）
     queueSoulCardAddedTriggers(sourceCard, state.players.indexOf(player), toSoul.length, toSoul[0]); // E-XB24
   }
   if (faceDown) {
@@ -2367,6 +2955,7 @@ function putFieldCardToGauge(player, zone, options = {}) {
     return null;
   }
   const lifeLinkNullifiedAtLeave = isAbilitiesNullified(card); // 離場直前に捕捉（能力無効化中はライフリンク無し）
+  const typeAtLeave = effectiveCardType(card); // rule-zones-3: 場離れ誘発はこの時点の型で照合
   player.drop.push(...(card.soul || []));
   card.soul = [];
   reconcileFaceDownSoulDrops(); // ソウル札の公開・selfDroppedFromSoul（第12回メカレビュー: この経路の取りこぼしを是正）
@@ -2376,7 +2965,9 @@ function putFieldCardToGauge(player, zone, options = {}) {
   }
   applyLifeLink(card, state.players.indexOf(player), { nullifiedAtLeave: lifeLinkNullifiedAtLeave });
   // 「場から離れた時」誘発はゲージ置きでも発火（ライフリンクと同一離場サイト）。
-  queueLeaveFieldTriggers(card, state.players.indexOf(player), zone);
+  queueLeaveFieldTriggers(card, state.players.indexOf(player), zone, { eventCardTypeAtLeave: typeAtLeave });
+  // rule-zones-3: 場の一時状態と、装備中だけアイテム扱い（変身/搭乗/着任）の型を離場で戻す。
+  resetLeftFieldCardState(card);
   player.gauge.push(card);
   if (options.byEffect) {
     // 効果でゲージへ置く経路(putTargetToGauge)は『ゲージにカードが置かれた時』(メギトス opponentGaugePlaced)を
@@ -2395,11 +2986,25 @@ function putFieldCardToGauge(player, zone, options = {}) {
 // 通し、本体の宛先だけデッキ下。デッキ配列は先頭=下・末尾=上（putDropToDeckBottom と同じ向き）なので unshift。
 // ホスト離場のためソウル→ドロップは soulCardDropped を発火させない（dbt02 被覆表 #16 と同ポリシー）。
 function putFieldCardToDeckBottom(player, zone) {
+  const card = putFieldCardToDeck(player, zone, { position: "bottom" });
+  if (card) {
+    addLog(`${card.name}をコストでデッキの下に置きました。`);
+  }
+  return card;
+}
+
+// rule-zones-7: 場のカードを持ち主のデッキ（position: "bottom"=下 / "top"=上）へ置く共通の離場経路。
+// ソウルのドロップ送り・裏向きソウルの公開・着任解除・場の一時状態と変身等の型のリセット・ライフリンク・
+// 「場から離れた時」・「場のモンスターが手札かデッキに戻った時」(returnedTo:"deck"＝D・R・システム等
+// returnedToZones に "deck" を持つリスナーのみ)を発火する。ログは呼び出し側が出す。
+function putFieldCardToDeck(player, zone, options = {}) {
   const card = player.field[zone];
   if (!card) {
     return null;
   }
+  const owner = state.players.indexOf(player);
   const lifeLinkNullifiedAtLeave = isAbilitiesNullified(card); // 離場直前に捕捉（能力無効化中はライフリンク無し）
+  const typeAtLeave = effectiveCardType(card);
   player.drop.push(...(card.soul || []));
   card.soul = [];
   reconcileFaceDownSoulDrops(); // ソウル札の公開・selfDroppedFromSoul（第12回メカレビュー: この経路の取りこぼしを是正）
@@ -2407,12 +3012,21 @@ function putFieldCardToDeckBottom(player, zone) {
   if (zone === "item" && player.arrivalCardId === card.instanceId) {
     player.arrivalCardId = null;
   }
-  applyLifeLink(card, state.players.indexOf(player), { nullifiedAtLeave: lifeLinkNullifiedAtLeave });
-  // 「場から離れた時」誘発はデッキ下戻しでも発火（ライフリンクと同一離場サイト）。
-  queueLeaveFieldTriggers(card, state.players.indexOf(player), zone);
-  player.deck.unshift(card);
-  queueDeckBottomPlacedTriggers(state.players.indexOf(player), [card]); // E-XB18: コストで場→デッキ下
-  addLog(`${card.name}をコストでデッキの下に置きました。`);
+  resetLeftFieldCardState(card);
+  applyLifeLink(card, owner, { nullifiedAtLeave: lifeLinkNullifiedAtLeave });
+  // 「場から離れた時」誘発はデッキ戻しでも発火（ライフリンクと同一離場サイト）。
+  queueLeaveFieldTriggers(card, owner, zone, { eventCardTypeAtLeave: typeAtLeave });
+  if (options.position === "top") {
+    player.deck.push(card);
+  } else {
+    player.deck.unshift(card);
+    queueDeckBottomPlacedTriggers(owner, [card]); // E-XB18: 場→デッキ下
+  }
+  queueMonsterReturnedTriggers(card, owner, zone, { ...(options.details || {}), eventCardTypeAtLeave: typeAtLeave, returnedTo: "deck" });
   return card;
 }
 
+// コスト「手札に戻す」の原因（preventReturnToHand の from 判定用）。コストは効果ではない（byEffect:false）。
+function returnPendingTargetCostCause(payerOwner, victimOwner) {
+  return { byCost: true, byEffect: false, byOpponent: payerOwner !== victimOwner, sourceOwner: payerOwner };
+}

@@ -4,7 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>バディファイト リプレイ再生</title>
-    <link rel="stylesheet" href="styles.css?v=20260814e" />
+    <link rel="stylesheet" href="styles.css?v=20261016a" />
+    <!-- スマホ対戦画面の書体（数字=Oxanium・本文=BIZ UDPゴシック）。PC幅では使わない（media で限定・swap）。 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" media="(max-width: 640px)" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&amp;family=Oxanium:wght@600;700;800&amp;display=swap" />
     <style>
       /* 再生ビューア: 盤面/操作パネル/ツールバーは閲覧専用（クリックで局面を壊さないよう無効化）。
          局面の変化は下の再生コントロール（最初から/1ステップ/最後まで）だけで進める。 */
@@ -44,8 +48,23 @@
           var saved = localStorage.getItem("bf-theme");
           if (saved === "light" || saved === "dark") {
             document.documentElement.setAttribute("data-theme", saved);
+          } else if (window.matchMedia && window.matchMedia("(max-width: 640px)").matches) {
+            // スマホの対戦画面は既定ダーク（保存はしない＝テーマ切替で明示選択した時だけ保存）。
+            document.documentElement.setAttribute("data-theme", "dark");
           }
         } catch (e) {}
+        // スマホのドック（☰メニュー/ログ）と従来のヘッダーのトグルで body のクラスと aria-expanded を同期する。
+        window.bfToggleBodyClass = function (cls, selector) {
+          // ドロワー/メニューはドックの真上に出す（リプレイはドックが高いので実測して CSS 変数へ）。
+          var dock = document.querySelector(".replay-controls") || document.querySelector(".action-panel");
+          if (dock && dock.getBoundingClientRect().height > 0) {
+            document.body.style.setProperty("--m-dock-offset", Math.max(0, window.innerHeight - dock.getBoundingClientRect().top) + "px");
+          }
+          var on = document.body.classList.toggle(cls);
+          document.querySelectorAll(selector).forEach(function (el) {
+            el.setAttribute("aria-expanded", on ? "true" : "false");
+          });
+        };
         function effective() {
           return (
             document.documentElement.getAttribute("data-theme") ||
@@ -70,9 +89,15 @@
     <script>
       // リプレイ再生専用ページ: 対話操作・ネットUI・自動開始はせず、再生ドライバの起点だけを使う。
       window.__BUDDYFIGHT_REPLAY__ = true;
+      // ドロップ起動の橋渡しフックを no-op にして盤面を書き換えさせない（閲覧専用。手札/場のメニューは src/20 側で抑止）。
+      window.__onDropAbilityActivate = function () {};
     </script>
   </head>
-  <body>
+  <body class="bf-game">
+    <div class="rotate-notice" role="alert">
+      <p class="rotate-notice-main">縦向きにしてください</p>
+      <p class="rotate-notice-sub">スマホの対戦画面は縦向き専用です</p>
+    </div>
     <main class="app-shell">
       <header class="topbar">
         <div>
@@ -85,13 +110,16 @@
           <label class="deck-picker"><span>2P</span><select id="p2DeckSelect" aria-label="プレイヤー2のデッキ"></select></label>
           <a class="toolbar-link" href="index.html" style="pointer-events:auto">ローカル対戦</a>
           <a class="toolbar-link" href="play.html" style="pointer-events:auto">ネット対戦</a>
-          <button id="newGameButton" type="button">新規</button>
           <button id="exportLogButton" type="button">ログ保存</button>
           <button id="rulesButton" type="button">ルール</button>
         </div>
       </header>
 
       <div class="replay-controls" aria-label="リプレイ操作">
+        <div class="dock-tools mobile-only">
+          <button type="button" class="nav-toggle dock-menu" aria-expanded="false" aria-label="メニュー" onclick="bfToggleBodyClass('nav-open', '.nav-toggle')"><span class="dock-icon" aria-hidden="true">☰</span><span class="dock-tool-label">メニュー</span></button>
+          <button type="button" class="log-toggle dock-log" aria-expanded="false" aria-label="ログを開く" onclick="bfToggleBodyClass('log-open', '.log-toggle')"><span class="dock-log-head">ログ ・ 直前</span><span class="dock-log-line" id="dockLogLine"></span></button>
+        </div>
         <button type="button" id="replayResetButton">⏮ 最初から</button>
         <button type="button" id="replayStepButton">▶ 1ステップ進む</button>
         <button type="button" id="replayRunButton">⏭ 最後まで</button>
@@ -134,7 +162,8 @@
           <div class="hand-preview" id="p2HandPreview"></div>
         </section>
 
-        <section class="action-panel" aria-label="操作">
+        <!-- 再生専用ページなので対局操作パネルは出さない（要素は elements 参照・再生時の攻撃/効果対象注入に使うため残す） -->
+        <section class="action-panel" aria-label="操作" hidden style="display:none">
           <div class="action-grid">
             <button id="drawButton" type="button">ドロー</button>
             <button id="chargeButton" type="button">チャージ&ドロー</button>
@@ -189,6 +218,9 @@
         </div>
         <div class="hand-list" id="handList"></div>
       </section>
+
+      <!-- スマホ: 対抗窓・選択はこの行（手札とドックの間）に差し込む。PC では display:contents（従来の固定表示のまま）。 -->
+      <div id="dockSlot" class="dock-slot"></div>
 
       <section class="log-panel" aria-label="対戦ログ">
         <h2>ログ</h2>
@@ -252,9 +284,11 @@
       // src モジュールは番号順の同期ロードが必須（同一グローバル共有）。document.write の classic script は
       // 順序・同期実行が保証される。バージョンはこの1定数だけを更新する（他ローダと揃える）。
       (function () {
-        var ENGINE_VERSION = "20260817b";
+        var ENGINE_VERSION = "20261016a";
         // データJSON(loadJson)を ?v= 付きURL＋ブラウザキャッシュに載せる（初期ロード最適化 D2）。
         window.__BUDDYFIGHT_DATA_VERSION = ENGINE_VERSION;
+        // リプレイ記録へ刻むエンジン版（src/23）。旧版の記録は再生不可（2026-10-09 オーナー裁定）。
+        window.__BUDDYFIGHT_ENGINE_VERSION = ENGINE_VERSION;
         var modules = [
           "src/01-foundation.js",
           "src/02-data-load.js",
@@ -300,6 +334,7 @@
         var stepBtn = document.getElementById("replayStepButton");
         var runBtn = document.getElementById("replayRunButton");
         var player = null;
+        var OLD_VERSION_MESSAGE = "このリプレイは旧バージョンのため再生できません";
 
         function setStatus(text) { statusEl.textContent = text; }
         function setProgress() {
@@ -344,6 +379,15 @@
           var recording;
           try {
             var res = await fetch("/replay/" + encodeURIComponent(id));
+            if (res.status === 410) {
+              // サーバが旧エンジン版の記録と判定（2026-10-09 オーナー裁定: 版上げ時に旧リプレイは消してよい）。
+              setStatus(OLD_VERSION_MESSAGE);
+              return;
+            }
+            if (res.status === 404) {
+              setStatus("リプレイが見つかりません（保存期限切れ、または旧バージョンのため削除された可能性があります）。");
+              return;
+            }
             if (!res.ok) {
               setStatus("リプレイを取得できません (" + res.status + ")。");
               return;
@@ -354,7 +398,17 @@
             setStatus("リプレイの取得に失敗しました: " + e.message);
             return;
           }
+          // 記録のエンジン版が現行ページ（ENGINE_VERSION）と違う／版の無い旧形式は再生しない（サーバ側の 410 に加え、
+          // 版上げ直後のキャッシュ差などで旧記録が届いた場合もここで止める）。
+          if (!reply.isCompatible(recording)) {
+            setStatus(OLD_VERSION_MESSAGE);
+            return;
+          }
           try {
+            // 記録が持ち回るカスタムデッキを deckProfiles へ注入し、デッキ <select> を作り直す。
+            // 先に作った <select> には注入分の option が無く、ブラウザでは select.value への代入が ""
+            // に落ちて selectedDeckProfile が deckProfiles[index] へフォールバック＝別デッキで再生されていた。
+            reply.prepareRecordingDecks(recording);
             player = reply.createPlayer(recording);
           } catch (e) {
             setStatus("リプレイの読込に失敗しました: " + e.message);

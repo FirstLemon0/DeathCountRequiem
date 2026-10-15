@@ -56,7 +56,7 @@ function canDeclareAttack(attacker) {
     // 「このカードはレフトとライトに攻撃できない」(武装騎神 デュナミス 0001)等。
     return false;
   }
-  if (attacker.card.cannotAttackThisTurn && !hasKeyword(attacker.card, "ignoreAttackForbidden")) {
+  if (attacker.card.cannotAttackThisTurn && !cannotAttackThisTurnIgnored(attacker, player)) {
     // 「そのターン中、そのモンスターは攻撃できない」(グレイプニルのソウルコール等)。
     // レスト(used)と異なりスタンドしても解除されず、ターン終了(clearTurnModifiers)でのみクリアされる。
     // ただし「グレイプニルの効果を受けない」カード(魔狼フェンリル/マーナガルム=ignoreAttackForbidden)は記載通り攻撃できる。
@@ -69,6 +69,28 @@ function canDeclareAttack(attacker) {
     return false;
   }
   return true;
+}
+
+// cannotAttackThisTurn（カード単位の攻撃禁止）を無視できるか。発生源名（cannotAttackThisTurnSources）が記録されて
+// いれば、ignoreAttackForbidden（=「グレイプニル」）と場の継続 ignoreNamedAttackForbid（モンスターのみ）が無視する名前
+// 以外の発生源が1つでも残る限り禁止（ドラゴトラップ等はフェンリルでも攻撃できない）。発生源未記録の旧状態は従来どおり
+// ignoreAttackForbidden で解除する（後方互換）。
+function cannotAttackThisTurnIgnored(attacker, player) {
+  const sources = attacker.card.cannotAttackThisTurnSources || [];
+  if (sources.length === 0) {
+    return hasKeyword(attacker.card, "ignoreAttackForbidden");
+  }
+  const ignored = hasKeyword(attacker.card, "ignoreAttackForbidden") ? ["グレイプニル"] : [];
+  if (effectiveCardType(attacker.card) === "monster") {
+    zones.forEach((zone) => {
+      activeContinuousEffects(player?.field?.[zone]).forEach((effect) => {
+        if (effect.op === "ignoreNamedAttackForbid" && effect.sourceName) {
+          ignored.push(effect.sourceName);
+        }
+      });
+    });
+  }
+  return sources.every((source) => ignored.includes(source));
 }
 
 function sameSlot(left, right) {
@@ -94,7 +116,8 @@ function getPendingBattleTargetInfo(pending = state.pendingAttack) {
     return null;
   }
   if (pending.targetType === "monster") {
-    const card = state.players[pending.targetOwner]?.field[pending.targetZone];
+    // E2: 宣言時の攻撃対象が場を離れ、別のカードが同じエリアに入っていても、それは攻撃対象ではない（null＝対象消失）。
+    const card = pendingAttackTargetCard(pending);
     return card ? { owner: pending.targetOwner, zone: pending.targetZone, card } : null;
   }
   if (pending.targetType === "fighter") {
@@ -115,7 +138,7 @@ function getPendingBattleTargetInfo(pending = state.pendingAttack) {
     return best;
   }
   if (pending.targetType === "item") {
-    const card = state.players[pending.targetOwner]?.field[pending.targetZone];
+    const card = pendingAttackTargetCard(pending);
     return isDefenseItem(card) ? { owner: pending.targetOwner, zone: pending.targetZone, card } : null;
   }
   return null;
@@ -149,7 +172,9 @@ function makeEffectCause(context, victimOwner) {
 
 // 場のカードの継続 grantDestroyImmunity が、対象 card に破壊耐性を付与しているか。
 // 例: 星神アストライオス「君のレフトとライトの《星》は破壊されない」。controller/zoneIn/filter/from でデータ駆動。
-function grantedDestroyImmunityBlocks(card, cause) {
+// options.ignoreOwn: 「能力全てを無効化し、破壊する」の翻訳。対象カード自身が発生源の継続は、能力無効化中と
+// 同じく cannotBeNullified / __turnEffect のものだけを評価する（他カード発の耐性は従来どおり評価）。
+function grantedDestroyImmunityBlocks(card, cause, options = {}) {
   const targetSlot = findFieldCardSlot(card);
   if (!targetSlot) return false;
   return state.players.some((player, sourceOwner) => {
@@ -164,10 +189,11 @@ function grantedDestroyImmunityBlocks(card, cause) {
     return sources.some(({ source, zone }) =>
       activeContinuousEffects(source).some((e) => {
         if (e.op !== "grantDestroyImmunity") return false;
+        if (options.ignoreOwn && source === card && !e.cannotBeNullified && !e.__turnEffect) return false;
         if (e.controller === "self" && targetSlot.owner !== sourceOwner) return false;
         if (e.controller === "opponent" && targetSlot.owner === sourceOwner) return false;
         if (e.excludeSource && source.instanceId === card.instanceId) return false;
-        if (e.zoneIn && !e.zoneIn.includes(targetSlot.zone)) return false;
+        if (e.zoneIn && !zoneListIncludes(e.zoneIn, targetSlot.zone)) return false;
         if (e.filter && !matchesCardFilter(card, e.filter)) return false;
         if (e.from) {
           if (e.from.byBattle && !cause.byBattle) return false;
@@ -191,15 +217,22 @@ function grantedDestroyImmunityBlocks(card, cause) {
 
 // 【対抗】等でそのターン中だけ付与された、ゾーン限定の破壊耐性（state.turnDestroyImmunity）。
 // 例: ドラゴニック・フォースフィールド「このターン中、君のレフトとライトのモンスターは破壊されない」。
-function turnDestroyImmunityBlocks(card) {
+// entry.from（{byEffect,byOpponent,byBattle}）を持つエントリは cause と照合する（「相手のカードの効果で破壊されない」等）。
+// from 無しの既存エントリは従来どおり原因を問わず防ぐ（後方互換）。cause 未指定の呼び出しも従来どおり。
+function turnDestroyImmunityBlocks(card, cause) {
   const list = state.turnDestroyImmunity;
   if (!list || !list.length) return false;
   const targetSlot = findFieldCardSlot(card);
   if (!targetSlot) return false;
   return list.some((entry) => {
     if (entry.owner !== targetSlot.owner) return false;
-    if (entry.zoneIn && !entry.zoneIn.includes(targetSlot.zone)) return false;
+    if (entry.zoneIn && !zoneListIncludes(entry.zoneIn, targetSlot.zone)) return false;
     if (entry.filter && !matchesCardFilter(card, entry.filter)) return false;
+    if (entry.from && cause) {
+      if (entry.from.byBattle && !cause.byBattle) return false;
+      if (entry.from.byEffect && !cause.byEffect) return false;
+      if (entry.from.byOpponent && !cause.byOpponent) return false;
+    }
     return true;
   });
 }
@@ -210,11 +243,28 @@ function turnDestroyImmunityBlocks(card) {
 // 第13回メカレビュー: 以前は canPay も対話候補も耐性を見ず、耐性持ちしか場にいない状態でも支払い成立と
 // 判定され、destroyFieldCard が null を返して何も破壊されないのに効果だけ通っていた（コスト踏み倒し）。
 // ソウルガードは「破壊を置換してソウル1枚を失う」＝コストは払われたと数えるので除外対象にしない。
-function costDestroyBlocked(card, owner) {
+// 公式Q&A No.1933「【使用コスト】や【コールコスト】はカードの効果ではない」・No.1007/1000/850（コストの破壊は「効果で破壊
+// された時」を誘発しない）: 真の【コスト】の破壊は効果の破壊ではない。原因は byCost:true・byEffect:false で表し、
+// 「（相手の）カードの効果で破壊されない」（from.byEffect）耐性はコストの破壊を防がない（＝そのカードでコストを払える）。
+// 原因を問わない「破壊されない」は従来どおり防ぐ。payerOwner＝コストを払う席、victimOwner＝破壊される側。
+function makeCostDestroyCause(payerOwner, sourceCard, victimOwner = payerOwner) {
+  return {
+    byCost: true,
+    byEffect: false,
+    byOpponent: victimOwner !== payerOwner,
+    sourceOwner: payerOwner,
+    sourceType: sourceCard ? effectiveCardType(sourceCard) : null,
+    sourceCard: sourceCard || null,
+  };
+}
+
+// cause 省略時は真の【コスト】の破壊（makeCostDestroyCause 相当）。“C・ドレイン”等の asEffect（効果の破壊）は
+// 呼び出し側が効果の原因（byEffect:true）を渡す。
+function costDestroyBlocked(card, owner, cause = { byCost: true, byEffect: false, byOpponent: false }) {
   if (!card) {
     return true;
   }
-  if (destroyImmunityBlocks(card, { byEffect: true }, owner)) {
+  if (destroyImmunityBlocks(card, cause, owner)) {
     return true;
   }
   // Z9(場に残す)/preventNextDestroy(破壊されない置換)も破壊を成立させない＝コストとして払えない。
@@ -224,9 +274,11 @@ function costDestroyBlocked(card, owner) {
   return false;
 }
 
-function destroyImmunityBlocks(card, cause, owner) {
+// options.ignoreOwn: 対象自身の能力（印字/一時付与/自身発の継続）による耐性だけを無視する（「能力全てを無効化し、
+// 破壊する」）。他カード発の継続・ソウル・ターン耐性は引き続き評価する。
+function destroyImmunityBlocks(card, cause, owner, options = {}) {
   if (!cause) return false;
-  if (grantedDestroyImmunityBlocks(card, cause)) return true;
+  if (grantedDestroyImmunityBlocks(card, cause, options)) return true;
   if (
     soulContinuousGrantsOp(card, "grantDestroyImmunity", (e) => {
       if (e.from) {
@@ -239,7 +291,7 @@ function destroyImmunityBlocks(card, cause, owner) {
   ) {
     return true;
   }
-  if (turnDestroyImmunityBlocks(card)) return true;
+  if (turnDestroyImmunityBlocks(card, cause)) return true;
   const zone = findFieldCardSlot(card)?.zone;
   // E-PR17(PR/0478): そのターン中だけ選択カードへ付与した一時破壊耐性（card.grantedTempDestroyImmunities）。
   // 印字 card.destroyImmunity の新 form と同じ {from:{byEffect,byOpponent,...}} 判定で読む（同ヘルパー共用）。
@@ -249,7 +301,7 @@ function destroyImmunityBlocks(card, cause, owner) {
   // なる。hasKeyword の ownNullified と同じ扱い（他カード発 grantedDestroyImmunity/soulContinuous/turn は上で判定
   // 済み＝ここから下は自カード分のみ）。以前は印字 destroyImmunity が isAbilitiesNullified を見ておらず、能力無効化
   // されたカードが相手効果破壊を防ぎ続けていた（キーワード由来耐性は hasKeyword 経由で正しく消えるのに非対称）。
-  if (isAbilitiesNullified(card)) {
+  if (options.ignoreOwn || isAbilitiesNullified(card)) {
     return false;
   }
   const tempImm = card.grantedTempDestroyImmunities;
@@ -390,6 +442,19 @@ function tryLeaveFieldReplacementSync(card, owner) {
     let answer;
     if (typeof replayIsPlaying === "function" && replayIsPlaying()) {
       answer = replayNextConfirm();
+    } else if (typeof aiShouldAnswerPrompt === "function" && aiShouldAnswerPrompt(owner)) {
+      // CPU席の選択は src/22-ai.js が同期で答える（人間に CPU の判断を代行させない＝R6 ai-prompts-routed）。
+      answer = aiAnswerConfirmSync(owner, `${card.name}のコストを払って場に残しますか？`, { purpose: "leaveFieldReplacement" });
+      if (typeof replayRecordConfirm === "function") {
+        replayRecordConfirm(answer);
+      }
+    } else if (typeof appChoiceUiAvailable === "function" && appChoiceUiAvailable()) {
+      // ブラウザ: 同期経路では確認UIを待てないため、権威サーバと同じ既定（残す）で確定する（ネイティブ確認は出さない）。
+      // 単体の手札戻しは非同期の入口（returnFieldTargetToHandAsync）で先にアプリ内UIで確認済み＝ここへは来ない。
+      answer = true;
+      if (typeof replayRecordConfirm === "function") {
+        replayRecordConfirm(answer);
+      }
     } else if (typeof window !== "undefined" && typeof window.confirm === "function") {
       answer = Boolean(window.confirm(`${card.name}のコストを払って場に残しますか？`));
       if (typeof replayRecordConfirm === "function") {
@@ -418,6 +483,105 @@ function tryLeaveFieldReplacementSync(card, owner) {
   return true;
 }
 
+// setPreventNextDestroy{optional:true}（「次に破壊される場合、場に残せる」＝任意）: 消費する置換エントリが optional なら
+// 持ち主に確認する（confirmChoiceAsync＝権威サーバ往復・CPU seam・リプレイ記録対応）。拒否なら false＝カウンタを消費せず
+// 通常の破壊へ進む。optional でないエントリ（既存の「場に残す」強制形）は確認なしで true＝従来どおり。
+async function acceptOptionalPreventNextDestroy(card, owner) {
+  const replacement = card.preventNextDestroyEffects?.[0];
+  if (!replacement?.optional) {
+    return true;
+  }
+  return Boolean(
+    await confirmChoiceAsync(owner, `${card.name}を場に残しますか？`, {
+      yesLabel: "場に残す",
+      noLabel: "破壊される",
+      purpose: "preventNextDestroy",
+    }),
+  );
+}
+
+// 2026-10-09 オーナー裁定R11: 破壊が置換（ソウルガード・「破壊される/場を離れる場合、かわりに〜」・場に残す効果）で
+// 置き換わった時、呼び出し側が options.outcome（任意のオブジェクト）を渡していれば outcome.replaced に種別を書く。
+// 『貫通』は outcome.replaced を見て「攻撃はヒットし破壊は成功している（場に残るだけ）」としてダメージを通す
+// （src/10 resolvePendingAttack/resolveMultiMonsterAttack）。破壊耐性（「破壊されない」）は置換ではないので書かない。
+// noteDestroyReplaced 自体は null を返す＝場を離れて別の場所へ移る置換（ゲージ・手札・ソウルへ）用。
+// 場に残る置換は下の destroyedInPlace（2026-10-09 オーナー裁定「ソウルガードで場に残っても破壊は成功している」）。
+function noteDestroyReplaced(options, kind) {
+  if (options?.outcome && typeof options.outcome === "object") {
+    options.outcome.replaced = kind;
+  }
+  return null;
+}
+
+// 2026-10-09 オーナー裁定「破壊の後、ソウルによって場に残るなので破壊は成功している」（ライフリンクは除く）。
+// 破壊が『ソウルガード』や「破壊される/場から離れる場合、〜。そうしたら場に残す」型の置換で“場に残った”時は、
+// 破壊は成立したものとして扱う: 戻り値はそのカード（＝「破壊したら」lastDestroySucceeded・destroyedCount・
+// 「攻撃で破壊した時」・反撃で破壊した時・lastDestroyedCards が数える）、破壊記録（このターン破壊された数・
+// destroyedEventWindow＝「破壊された時に使える」【対抗】・ファイト中の破壊記録・破壊した側の数）、
+// 「破壊された時」（自身・味方/相手・attachDestroyReaction・破壊時の特殊コール権）を発生させる。
+// 場を離れていないので、離場系（ライフリンク・「場から離れた時」・movedToDrop・ソウルのドロップ送り・
+// 一時状態リセット・型/サイズの復元）は行わない。outcome.replaced（R11 貫通）に加え outcome.destroyedInPlace=true。
+// 自身の「破壊された時」のうち「このカードを手札に戻す/ソウルに入れる」等の“破壊されたこのカード自身を移す”能力は、
+// このカードがドロップに無い（場に残っている）ため発動しない（destroyedTriggerMovesSelf）。
+function destroyedInPlace(card, owner, zone, options, kind) {
+  noteDestroyReplaced(options, kind);
+  const player = state.players[owner];
+  if (!card || !player || player.field[zone] !== card) {
+    // 置換の解決中に場を離れた/差し替わった（TOCTOU）。この破壊の結果としては何も起こさない（従来の null）。
+    return null;
+  }
+  if (options?.outcome && typeof options.outcome === "object") {
+    options.outcome.destroyedInPlace = true;
+  }
+  const typeAtDestroy = effectiveCardType(card);
+  const wasMonsterAtDestroy = typeAtDestroy === "monster";
+  state.destroyedCardsThisTurn = state.destroyedCardsThisTurn || [[], []];
+  state.destroyedCardsThisTurn[owner].push({ card, sizeAtDestroy: frozenSizeAtDestroy(card), wasMonster: wasMonsterAtDestroy, zone });
+  syncMonstersDestroyedThisTurn();
+  if (wasMonsterAtDestroy) {
+    const destroyerOwner = options?.cause?.sourceOwner;
+    if (destroyerOwner === 0 || destroyerOwner === 1) {
+      state.destroyedByOwnerThisTurn = state.destroyedByOwnerThisTurn || [0, 0];
+      state.destroyedByOwnerThisTurn[destroyerOwner] += 1;
+    }
+  }
+  recordDestroyedEventWindow(card, owner, options?.cause || null, typeAtDestroy, zone);
+  recordSpecialCallOpportunity(card, owner, zone, options || {});
+  if (!options?.suppressDestroyedTriggers && !isAbilitiesNullified(card)) {
+    queueDestroyedTriggers(card, owner, zone, options?.cause || null, { inPlace: true });
+  }
+  queueAllyDestroyedTriggers(card, owner, zone, options?.cause || null, typeAtDestroy);
+  queueDestroyReactionTriggers(card);
+  return card;
+}
+
+// 「破壊された時」の能力が“破壊されたこのカード自身”を別の場所へ移すもの（ドロップからの回収を前提とする）か。
+// 場に残った破壊（destroyedInPlace）では、このカードはドロップに無いので発動させない（場のこのカードを移す誤動作の防止）。
+const DESTROYED_SELF_MOVE_OPS = new Set([
+  "returnSelfToHand",
+  "moveSelfToSelectedSoul",
+  "moveSelfToTargetSoul",
+  "putSelfToGauge",
+  "returnSelfToDeckBottom",
+  "equipSelf",
+  "moveSelfToBuddyZoneFaceDown",
+]);
+function destroyedTriggerMovesSelf(ability) {
+  const scan = (node) => {
+    if (Array.isArray(node)) {
+      return node.some(scan);
+    }
+    if (node && typeof node === "object") {
+      if (typeof node.op === "string" && DESTROYED_SELF_MOVE_OPS.has(node.op)) {
+        return true;
+      }
+      return Object.values(node).some(scan);
+    }
+    return false;
+  };
+  return scan([ability?.cost, ability?.effects, ability?.script]);
+}
+
 async function destroyFieldCard(owner, zone, options = {}) {
   const player = state.players[owner];
   const card = player.field[zone];
@@ -426,7 +590,12 @@ async function destroyFieldCard(owner, zone, options = {}) {
   }
   // 汎用破壊耐性: 旧 {fromEffect/fromOpponentEffect/fromSpell/fromImpact} と
   // 新 [{from:{byEffect,byOpponent,sourceType}, byFilter, conditions}] の両対応
-  if (!options.ignoreDestroyImmunity && options.cause && destroyImmunityBlocks(card, options.cause, owner)) {
+  // ignoreOwnDestroyImmunity: 「能力全てを無効化し、破壊する」＝対象自身の能力由来の耐性だけ無視（他カード発の耐性は有効）。
+  if (
+    !options.ignoreDestroyImmunity &&
+    options.cause &&
+    destroyImmunityBlocks(card, options.cause, owner, { ignoreOwn: Boolean(options.ignoreOwnDestroyImmunity) })
+  ) {
     addLog(`${card.name}は${options.cause.byBattle ? "攻撃" : "効果"}では破壊されません。`);
     return null;
   }
@@ -435,32 +604,38 @@ async function destroyFieldCard(owner, zone, options = {}) {
   if (!options.ignoreDestroyReplacement && card.preventNextLeaveFieldCount > 0) {
     card.preventNextLeaveFieldCount -= 1;
     addLog(`${card.name}は効果により場に残りました。`);
-    return null;
+    return destroyedInPlace(card, owner, zone, options, "preventNextLeaveField");
   }
   // X9(D-BT01/0131): コスト付き離場置換（破壊もカバー。成立時は破壊されていない）。
   if (!options.ignoreDestroyReplacement && (await tryLeaveFieldReplacement(card, owner))) {
-    return null;
+    return destroyedInPlace(card, owner, zone, options, "leaveFieldReplacement");
   }
-  if (!options.ignoreDestroyReplacement && (await applyDestroyReplacement(card, owner, options))) {
-    // 置換が成立した場合、カードは破壊されていない（破壊数・破壊時誘発・貫通判定に数えない）
-    return null;
+  const destroyReplacementResult = options.ignoreDestroyReplacement ? false : await applyDestroyReplacement(card, owner, options);
+  if (destroyReplacementResult) {
+    // 置換が成立した。場に残る型は「破壊は成功・場に残る」（destroyedInPlace）、ゲージへ置く型（"moved"）は破壊されていない
+    // （破壊数・破壊時誘発に数えない。貫通は R11 で outcome.replaced を見る）。
+    return destroyReplacementResult === "moved"
+      ? noteDestroyReplaced(options, "destroyReplacement")
+      : destroyedInPlace(card, owner, zone, options, "destroyReplacement");
   }
-  if (!options.ignoreDestroyReplacement && (await applyAllyDestroyReplacement(card, owner, options))) {
-    // 味方を庇う置換（別カードを犠牲にして card を場に残す）が成立した。
-    return null;
+  const allyDestroyReplacementResult = options.ignoreDestroyReplacement ? false : await applyAllyDestroyReplacement(card, owner, options);
+  if (allyDestroyReplacementResult) {
+    // 味方を庇う置換（別カードを犠牲にして card を場に残す）が成立した。手札/発生源のソウルへ移す型（"moved"）は破壊されていない。
+    return allyDestroyReplacementResult === "moved"
+      ? noteDestroyReplaced(options, "allyDestroyReplacement")
+      : destroyedInPlace(card, owner, zone, options, "allyDestroyReplacement");
   }
   // E2(D-EB02/0031): 味方を庇う離場置換（破壊も離場の一種。相手効果=byEffect のみ庇う。戦闘破壊は byBattle のため不発）。
   if (!options.ignoreDestroyReplacement && fieldHasLeaveFieldReplacer(owner) && (await applyAllyLeaveFieldReplacement(card, owner, options.cause))) {
-    return null;
+    return destroyedInPlace(card, owner, zone, options, "allyLeaveFieldReplacement");
   }
   // E4(D-SS03/0029 バリアブル・ビット): ソウル内カードによる離場置換（破壊=戦闘/効果をカバー。from 無しで全離場）。
   if (!options.ignoreDestroyReplacement && soulHasLeaveFieldReplacer(card) && (await applySoulLeaveFieldReplacement(card, owner, options.cause))) {
-    return null;
+    return destroyedInPlace(card, owner, zone, options, "soulLeaveFieldReplacement");
   }
-  if (!options.ignoreDestroyReplacement && card.preventNextDestroyCount > 0) {
+  if (!options.ignoreDestroyReplacement && card.preventNextDestroyCount > 0 && (await acceptOptionalPreventNextDestroy(card, owner))) {
     card.preventNextDestroyCount -= 1;
     const replacement = card.preventNextDestroyEffects?.shift();
-    const countsAsDestroyed = Boolean(replacement?.countsAsDestroyed);
     if (replacement?.gainLife && !isLifeGainByEffectPrevented(replacement.owner ?? owner)) {
       state.players[replacement.owner ?? owner].life += replacement.gainLife;
       addLog(`${replacement.source || card.name}の効果で${state.players[replacement.owner ?? owner].name}のライフを${replacement.gainLife}回復しました。`);
@@ -471,11 +646,11 @@ async function destroyFieldCard(owner, zone, options = {}) {
     // E2(D-BT02/0110 我らは不死なり): mode:"returnToHand" は破壊を「場に残す」ではなく「手札へ戻す」に
     // 置換する。正規の単体手札戻し経路(returnFieldTargetToHand)へ委譲し、F5 の複製バグを再発させない
     // （ソウルのドロップ送り・ゾーンクリア・ライフリンク・「手札に戻った時」誘発込み）。effects(デッキ上→
-    // ゲージ等)は手札戻しの後に microtask で解決する。破壊としては数えない（countsAsDestroyed は無視）。
+    // ゲージ等)は手札戻しの後に microtask で解決する。手札へ移る（場に残らない）ので破壊としては数えない。
     if (replacement?.returnToHand) {
       queuePreventNextDestroyReplacementEffects(card, owner, replacement);
-      returnFieldTargetToHand({ owner, zone }, replacement.source || card.name);
-      return null;
+      await returnFieldTargetToHandAsync({ owner, zone }, replacement.source || card.name);
+      return noteDestroyReplaced(options, "preventNextDestroy");
     }
     if (replacement?.grantKeyword) {
       card.turnKeywords ||= [];
@@ -483,14 +658,22 @@ async function destroyFieldCard(owner, zone, options = {}) {
     }
     queuePreventNextDestroyReplacementEffects(card, owner, replacement);
     addLog(`${card.name}は効果により場に残りました。`);
-    if (countsAsDestroyed) {
-      recordSpecialCallOpportunity(card, owner, zone, options);
-      queueDestroyedTriggers(card, owner, zone, options.cause);
-      return card;
-    }
-    return null;
+    // 2026-10-09 オーナー裁定: 場に残っても破壊は成功している（旧 countsAsDestroyed フラグ＝使用0件は既定化して吸収）。
+    return destroyedInPlace(card, owner, zone, options, "preventNextDestroy");
   }
-  if (!options.ignoreSoulguard && canUseSoulguard(card) && (await shouldUseSoulguard(card, owner))) {
+  // TOCTOU再検証(E12): ソウルガード確認(await)中に、並行する別の破壊フローが同じカードのソウルガードを先に
+  // 使い切る/場から動かすことがある（同一カードへの破壊2本が同時進行）。以前は再確認せず card.soul.pop() し、
+  // 2本目が undefined を drop へ積んで以降の全フェイズが TypeError で進行不能になっていた(seed300769)。
+  // await 後に「まだ同じ場所に居るか」「ソウルが残っているか」を確かめ、場を離れていればこの破壊は不発、
+  // ソウルが尽きていればソウルガードは使えない＝通常の破壊へ進む（逐次処理した場合と同じ結果）。
+  let soulguardAccepted = false;
+  if (!options.ignoreSoulguard && canUseSoulguard(card)) {
+    soulguardAccepted = await shouldUseSoulguard(card, owner);
+    if (soulguardAccepted && player.field[zone] !== card) {
+      return null;
+    }
+  }
+  if (soulguardAccepted && canUseSoulguard(card)) {
     // ソウルガードでドロップに置くソウルは、ソウルが2枚以上なら持ち主が選ぶ（1枚なら自動）。
     // 以前は常に先頭(最後に入れた)ソウルを pop していた。promptSeat=owner＝自分のソウル(自席には公開)から選ぶ。
     let soulCard;
@@ -507,18 +690,25 @@ async function destroyFieldCard(owner, zone, options = {}) {
           promptSeat: owner,
         },
       );
+      if (player.field[zone] !== card) {
+        return null;
+      }
       const pickedId = picked?.[0]?.card?.instanceId;
       const idx = card.soul.findIndex((soul) => soul.instanceId === pickedId);
       soulCard = idx >= 0 ? card.soul.splice(idx, 1)[0] : card.soul.pop();
     } else {
       soulCard = card.soul.pop();
     }
-    player.drop.push(soulCard);
-    addLog(`${card.name}はソウルガードで場に残りました。`);
-    // E1(D-BT02/0065): ソウルガードでソウル1枚がドロップへ移り、card は場に残る。
-    // 「（サイズ3の《竜王番長》の）ソウルがドロップゾーンに置かれた時」の soulCardDropped を発火する。
-    queueSoulCardDroppedTriggers(card, owner, 1);
-    return null;
+    if (soulCard) {
+      player.drop.push(soulCard);
+      addLog(`${card.name}はソウルガードで場に残りました。`);
+      // E1(D-BT02/0065): ソウルガードでソウル1枚がドロップへ移り、card は場に残る。
+      // 「（サイズ3の《竜王番長》の）ソウルがドロップゾーンに置かれた時」の soulCardDropped を発火する。
+      queueSoulCardDroppedTriggers(card, owner, 1);
+      // 2026-10-09 オーナー裁定: ソウルガードで場に残っても破壊は成功している（ライフリンクは発生しない）。
+      return destroyedInPlace(card, owner, zone, options, "soulguard");
+    }
+    // ソウル選択(await)中にソウルが尽きた＝ソウルガード不成立。通常の破壊へ進む。
   }
   // TOCTOU再検証: 上の離場置換/破壊置換/ソウルガード等のawait中に、並行する別の除去がこのカードを
   // 既に場から動かしていることがある（例: 起動能力のコスト捨てで誘発した破壊(ロータ0049)と能力本体の
@@ -549,6 +739,9 @@ async function destroyFieldCard(owner, zone, options = {}) {
   // hasKeyword の ownNullified で無効化される類と対称）。ただし applyLifeLink(下)の時点では card は既に場外
   // （直下で field[zone]=null）で isAbilitiesNullified=false になるため、場を離れる直前のここで捕捉しておく。
   const lifeLinkNullifiedAtDestroy = isAbilitiesNullified(card);
+  // rule-zones-3: 破壊時点の型（変身/搭乗/着任で装備中はアイテム扱い）。ドロップでは印字の型に戻すが（関数末尾）、
+  // 破壊/場離れ誘発・破壊イベント窓はこの時点の型で照合する（eventCardTypeAtLeave / typeAtDestroy）。
+  const typeAtDestroy = effectiveCardType(card);
   player.drop.push(card);
   player.field[zone] = null;
   // r3 L4(S-UB-C03/0066): 裏向きトークン化による印字値の恒久上書きの復元(restoreFaceDownMonsterPrint)は、
@@ -571,6 +764,7 @@ async function destroyFieldCard(owner, zone, options = {}) {
     card,
     sizeAtDestroy: frozenSizeAtDestroy(card),
     wasMonster: wasMonsterAtDestroy,
+    zone, // pt-fix-d: 破壊時ゾーン（destroyedThisTurnMatchingCountGte の zoneIn）
   });
   syncMonstersDestroyedThisTurn();
   // E-XB70(X2-SP/0044 ランペイジ・ブラスター・レッドヒート！): 破壊“した”側（destroyer）の席別モンスター破壊数を
@@ -590,7 +784,7 @@ async function destroyFieldCard(owner, zone, options = {}) {
   if (!options.suppressLifeLink && !lifeLinkNullifiedAtDestroy) {
     applyLifeLink(card, owner);
   }
-  recordDestroyedEventWindow(card, owner, options.cause);
+  recordDestroyedEventWindow(card, owner, options.cause, typeAtDestroy, zone);
   // 破壊されてドロップへ行ったカードは、場限定のサイズ上書き(conditionalSize=大首領アンノウン0029等)を解除する。
   // 破壊された瞬間のサイズは destroyedEventWindow に凍結済みなので対抗札(lastDestroyedCardMatches)は不変。
   // ドロップ滞在中のサイズ参照(ドロップからのサイズ指定コール等)が印字サイズで正しく判定される。
@@ -611,12 +805,14 @@ async function destroyFieldCard(owner, zone, options = {}) {
   // queueLeaveFieldTriggers は“他のカード”の allyLeaveField/opponentLeaveField 放送なので、破壊されたカード自身の
   // 能力無効化では抑制しない（ラグナロク型の suppressDestroyedTriggers だけが従来どおり止める＝既存挙動を維持）。
   if (!options.suppressDestroyedTriggers) {
-    queueLeaveFieldTriggers(card, owner, zone);
+    queueLeaveFieldTriggers(card, owner, zone, { eventCardTypeAtLeave: typeAtDestroy });
   }
   // 味方破壊時誘発は「破壊されたモンスター自身の能力」ではないため、能力無効化(ラグナロク)でも抑制しない。
   // 非モンスター(呪文/アイテム)の『味方が破壊された時』反応が正しく発火する（近似: 他モンスターの同種反応も発火し得る）。
-  queueAllyDestroyedTriggers(card, owner, zone, options.cause);
+  queueAllyDestroyedTriggers(card, owner, zone, options.cause, typeAtDestroy);
   queueDestroyReactionTriggers(card);
+  // rule-zones-3: ver2.05『変身』『搭乗』『着任』「装備されている間は…アイテムとして扱います」＝ドロップでは印字の型。
+  card.currentType = card.baseType || card.type;
   // 裏向きトークン(《あの子》/晴明/ビリ・キナータ)はドロップ到達後に実カードへ復元する。破壊記録・applyLifeLink・
   // 破壊時誘発はトークンの場での状態(サイズ0/キーワード無し)で処理済み。同期の後続処理より後・return 直前で復元する。
   restoreFaceDownMonsterPrint(card);
@@ -632,16 +828,14 @@ function queuePreventNextDestroyReplacementEffects(card, owner, replacement) {
     return;
   }
   const effectOwner = replacement.owner ?? owner;
-  Promise.resolve()
-    .then(async () => {
+  scheduleTriggerJob(async () => {
       const player = state.players[effectOwner];
       const context = { card, player, owner: effectOwner };
       for (const effect of effects) {
         await executeAbilityEffect(effect, context);
       }
       render();
-    })
-    .catch((error) => {
+    }, (error) => {
       console.error(error);
       render();
     });
@@ -655,16 +849,14 @@ function queueDestroyReactionTriggers(card) {
     return;
   }
   card.destroyReaction = null;
-  Promise.resolve()
-    .then(async () => {
+  scheduleTriggerJob(async () => {
       const player = state.players[reaction.owner];
       const context = { card, player, owner: reaction.owner };
       for (const effect of reaction.effects) {
         await executeAbilityEffect(effect, context);
       }
       render();
-    })
-    .catch((error) => {
+    }, (error) => {
       console.error(error);
       render();
     });
@@ -672,7 +864,15 @@ function queueDestroyReactionTriggers(card) {
 
 // 「場から離れた時」(allyLeaveField/opponentLeaveField) の誘発。現状は破壊経路から発火する
 // （攻撃フェイズの自軍モンスター破壊が主要ケース。不可視の断罪銃 0012）。listener がある時のみ。
-function queueLeaveFieldTriggers(card, owner, zone) {
+// details: runFieldEventTriggers へ渡す追加文脈（例 eventCardTypeAtLeave=離場時点の型。省略時は従来どおり）。
+function queueLeaveFieldTriggers(card, owner, zone, details = {}) {
+  // 離場した発生源の「そのターン中」解決済み継続を退避（発生源が場を離れても効果は続く）。
+  if (card?.turnContinuous?.length) {
+    detachTurnContinuousFromLeavingCard(card, owner);
+  }
+  // 「場から離れた時に使える」札(lastLeftFieldCardMatches)用の離場窓。破壊・手札戻し・ソウル入り・ドロップ/デッキ/
+  // ゲージ送りの全離場がこの関数を通る（リスナーの有無に関係なく記録する）。
+  recordLeftFieldEventWindow(card, owner, zone, details.eventCardTypeAtLeave || null);
   const hasListener = [0, 1].some((playerIndex) =>
     zones.some((fieldZone) => {
       const sourceCard = state.players[playerIndex]?.field?.[fieldZone];
@@ -689,12 +889,10 @@ function queueLeaveFieldTriggers(card, owner, zone) {
   if (!hasListener) {
     return;
   }
-  Promise.resolve()
-    .then(async () => {
-      await runFieldEventTriggers("leaveField", owner, card, zone);
+  scheduleTriggerJob(async () => {
+      await runFieldEventTriggers("leaveField", owner, card, zone, details);
       render();
-    })
-    .catch((error) => {
+    }, (error) => {
       console.error(error);
       render();
     });
@@ -710,7 +908,8 @@ async function applyAllyDestroyReplacement(card, owner, options = {}) {
   const player = state.players[owner];
   for (const zone of zones) {
     const replacer = player.field[zone];
-    if (!replacer || replacer.instanceId === card.instanceId) {
+    // 庇う置換は replacer の■能力。能力を無効化されていれば使えない（allyLeaveFieldReplacement と同基準）。
+    if (!replacer || replacer.instanceId === card.instanceId || isAbilitiesNullified(replacer)) {
       continue;
     }
     const rule = replacer.allyDestroyReplacement;
@@ -739,7 +938,8 @@ async function applyAllyDestroyReplacement(card, owner, options = {}) {
     if (rule.optional && !(await confirmChoiceAsync(owner, confirmMessage, { purpose: "destroy-replacement" }))) {
       continue;
     }
-    const payment = payStructuredCost(player, cost, { sourceCard: replacer, selectedCard: replacer });
+    let payment = payCostAsk(player, cost, { sourceCard: replacer, selectedCard: replacer }); // 選択が要るコストは本人に問う
+    if (payment?.then) payment = await payment;
     if (!payment.ok) {
       continue;
     }
@@ -766,7 +966,7 @@ async function applyAllyDestroyReplacement(card, owner, options = {}) {
         queueLeaveFieldTriggers(card, owner, slot.zone);
       }
       addLog(`${card.name}は破壊されず${replacer.name}のソウルに入りました。`);
-      return true;
+      return "moved";
     }
     if (rule.saveTo) {
       // 破壊のかわりに saveTo（手札等）へ移す（紅蓮のリング 0031「そのアイテムを手札に戻す」）。
@@ -774,12 +974,14 @@ async function applyAllyDestroyReplacement(card, owner, options = {}) {
       if (slot) {
         player.drop.push(...(card.soul || []));
         card.soul = [];
+        const typeAtLeave = effectiveCardType(card);
         card.currentType = card.baseType || card.type;
         player.field[slot.zone] = null;
         (player[rule.saveTo] ||= []).push(card);
+        recordLeftFieldEventWindow(card, owner, slot.zone, typeAtLeave); // 破壊のかわりに手札等へ＝場を離れた
       }
       addLog(`${replacer.name}を置いて${card.name}は${rule.saveTo === "hand" ? "手札" : rule.saveTo}に移りました。`);
-      return true;
+      return "moved";
     }
     addLog(`${replacer.name}を置いて${card.name}は場に残りました。`);
     return true;
@@ -835,7 +1037,8 @@ async function applyAllyLeaveFieldReplacement(card, owner, cause) {
       if (rule.optional && !(await confirmChoiceAsync(owner, `${replacer.name}を置いて${card.name}を場に残しますか？`, { purpose: "leavefield-replacement" }))) {
         continue;
       }
-      const payment = payStructuredCost(player, cost, { sourceCard: replacer, selectedCard: replacer });
+      let payment = payCostAsk(player, cost, { sourceCard: replacer, selectedCard: replacer }); // 選択が要るコストは本人に問う
+      if (payment?.then) payment = await payment;
       if (!payment.ok) {
         continue;
       }
@@ -915,12 +1118,18 @@ async function applySoulLeaveFieldReplacement(card, owner, cause) {
           continue; // replacer が既に消費/移動済み。
         }
         if (cost.length) {
-          const paid = payStructuredCost(player, cost, { sourceCard: replacer, selectedCard: replacer });
+          let paid = payCostAsk(player, cost, { sourceCard: replacer, selectedCard: replacer }); // 選択が要るコストは本人に問う
+          if (paid?.then) paid = await paid;
           if (!paid.ok) {
             continue;
           }
         }
-        card.soul.splice(idx, 1);
+        // 支払いの選択(await)を挟んだ場合に備え、replacer の位置を取り直す（TOCTOU）。
+        const idxNow = card.soul.indexOf(replacer);
+        if (idxNow < 0) {
+          continue;
+        }
+        card.soul.splice(idxNow, 1);
         putCardsToDropWithTrigger(player, owner, [replacer], "soul");
         // ホスト存命のままソウル1枚がドロップへ → soulCardDropped 誘発(整合)。
         queueSoulCardDroppedTriggers(card, owner, 1);
@@ -936,7 +1145,8 @@ async function applySoulLeaveFieldReplacement(card, owner, cause) {
 
 async function applyDestroyReplacement(card, owner, options = {}) {
   const replacement = card.destroyReplacement;
-  if (!replacement || options.ignoreDestroyReplacement) {
+  // 「このカードが破壊される場合〜」は card の■能力。能力無効化中は使えない（ソウルガード/leaveFieldReplacement と同基準）。
+  if (!replacement || options.ignoreDestroyReplacement || isAbilitiesNullified(card)) {
     return false;
   }
   const player = state.players[owner];
@@ -957,10 +1167,12 @@ async function applyDestroyReplacement(card, owner, options = {}) {
   if (replacement.optional && !(await confirmChoiceAsync(owner, `${card.name}の破壊置換を使いますか？`, { purpose: "destroy-replacement" }))) {
     return false;
   }
-  const payment = payStructuredCost(player, replacementCost, {
+  // 統合 follow-up: 手札を捨てる等の選択が要るコスト（8枚）は本人に問う（同期の支払いは先頭から自動＝既定でしか決められない）。
+  let payment = payCostAsk(player, replacementCost, {
     sourceCard: card,
     selectedCard: card,
   });
+  if (payment?.then) payment = await payment;
   if (!payment.ok) {
     return false;
   }
@@ -982,7 +1194,7 @@ async function applyDestroyReplacement(card, owner, options = {}) {
       queueGaugePlacedTriggers(owner, [card]); // 相手のゲージにカードが置かれた時（0020）
     }
     addLog(`${card.name}は破壊置換によりゲージに置かれました。`);
-    return true;
+    return "moved"; // 場を離れてゲージへ＝破壊されていない（destroyedInPlace にしない）
   }
   addLog(`${card.name}は破壊置換により場に残りました。`);
   return true;
@@ -1064,7 +1276,7 @@ function specialCallOpportunityMatches(event, owner, spec = {}) {
   if (spec.zone && event.destroyedZone !== spec.zone) {
     return false;
   }
-  if (Array.isArray(spec.zoneIn) && !spec.zoneIn.includes(event.destroyedZone)) {
+  if (Array.isArray(spec.zoneIn) && !zoneListIncludes(spec.zoneIn, event.destroyedZone)) {
     return false;
   }
   return matchesCardFilter(event.destroyedCard, spec.filter || {});
@@ -1182,7 +1394,7 @@ function queueSelfDroppedFromSoulTriggers(card, owner, info = {}) {
         zone: "drop",
         __abilityFilter: matches,
       }),
-    { errorLabel: `${card.name}のソウル落下時能力の処理中にエラーが発生しました。` },
+    { errorLabel: `${card.name}のソウル落下時能力の処理中にエラーが発生しました。`, owner },
   );
 }
 
@@ -1230,13 +1442,30 @@ function syncMonstersDestroyedThisTurn() {
   );
 }
 
-function recordDestroyedEventWindow(card, owner, cause = null) {
+function recordDestroyedEventWindow(card, owner, cause = null, typeAtDestroy = null, zone = null) {
   const sizeAtDestroy = frozenSizeAtDestroy(card);
+  // audit2(b029-2): ファイト単位の破壊記録（destroyedThisFightMatchingCountGte 用）。カード参照ではなく破壊時点の
+  // 値のスナップショットを積む（ターン終了でクリアしない・JSON 直列化のみで room/replay 往復）。
+  if (owner === 0 || owner === 1) {
+    state.fightDestroyed = state.fightDestroyed || [[], []];
+    state.fightDestroyed[owner].push({
+      name: card.name,
+      alsoNames: Array.isArray(card.alsoNames) ? [...card.alsoNames] : undefined,
+      size: sizeAtDestroy,
+      attributes: [...(card.attributes || [])],
+      world: card.world,
+      worlds: Array.isArray(card.worlds) ? [...card.worlds] : undefined,
+      type: typeAtDestroy || card.type,
+      turnCount: state.turnCount,
+    });
+  }
   // X7(D-BT01/0114): 破壊要因を窓に保存（lastDestroyedCardMatches の causeByEffect/destroyerController 用）。
   const entry = {
     card,
     owner,
     sizeAtDestroy,
+    typeAtDestroy, // rule-zones-3: 破壊時点の型（ドロップでは印字の型へ戻るため凍結）。null=従来どおり現在の型
+    zone, // audit2(b078-5): 破壊時に居たゾーン（lastDestroyedCardMatches の zoneIn/zoneNot 用）。null=未記録
     cause: cause
       ? { byEffect: Boolean(cause.byEffect), byBattle: Boolean(cause.byBattle), destroyerOwner: cause.sourceOwner ?? null }
       : null,
@@ -1247,6 +1476,23 @@ function recordDestroyedEventWindow(card, owner, cause = null) {
   }
   state.destroyedEventWindow = {
     kind: "destroyed",
+    entries: [entry],
+    turnCount: state.turnCount,
+  };
+}
+
+// 離場一般の応答窓（destroyedEventWindow の非破壊版）。typeAtLeave＝離場時点の型（変身等は離場後に印字の型へ戻る）。
+function recordLeftFieldEventWindow(card, owner, zone, typeAtLeave = null) {
+  if (!card) {
+    return;
+  }
+  const entry = { card, owner, zone, typeAtLeave: typeAtLeave || effectiveCardType(card) };
+  if (state.leftFieldEventWindow && state.leftFieldEventWindow.turnCount === state.turnCount) {
+    state.leftFieldEventWindow.entries.push(entry);
+    return;
+  }
+  state.leftFieldEventWindow = {
+    kind: "leftField",
     entries: [entry],
     turnCount: state.turnCount,
   };
@@ -1274,9 +1520,10 @@ function expireTransientResponseWindows(options = {}) {
   state.counterEventWindow = null;
   state.destroyedEventWindow = null;
   state.enteredEventWindow = null;
+  state.leftFieldEventWindow = null;
 }
 
-function queueDestroyedTriggers(card, owner, zone, cause = null) {
+function queueDestroyedTriggers(card, owner, zone, cause = null, details = {}) {
   // E-XB25(R22): 早期リターンのガードは印字 abilities だけでなく一時付与 grantedTempAbilities も見る。
   // runTriggeredAbilities は両方を走査する（src/14）のに、ここが card.abilities のみ参照していたため、
   // 「破壊された時」の triggered が付与のみ（印字に destroyed 無し）のカードでは microtask が queue されず
@@ -1294,63 +1541,308 @@ function queueDestroyedTriggers(card, owner, zone, cause = null) {
   ) {
     return;
   }
-  Promise.resolve()
-    .then(async () => {
+  const job = async (skipAbilities = false) => {
+    // skipAbilities: 攻撃の★ルール処理★で決着済み（battleTriggerHold 解放時に winner 成立）なら能力は解決しない。
+    if (!skipAbilities) {
       await runTriggeredAbilities(card, "destroyed", {
         card,
         player: state.players[owner],
         owner,
         zone,
         destroyCause: cause,
+        // 2026-10-09 オーナー裁定: 場に残った破壊（destroyedInPlace）では“このカード自身を移す”能力は発動しない。
+        ...(details.inPlace ? { destroyedInPlace: true, __abilityFilter: (ability) => !destroyedTriggerMovesSelf(ability) } : {}),
       });
-      // 破壊時能力で使われなかったソウルはドロップへ（destroyFieldCard で遅延した分の回収）。
-      if ((card.soul || []).length > 0) {
-        state.players[owner].drop.push(...card.soul);
-        card.soul = [];
-        reconcileFaceDownSoulDrops(); // 遅延ソウル落下でも selfDroppedFromSoul を発火（destroyTriggerUsesSoul 経路の網羅）
+    }
+    // 破壊時能力で使われなかったソウルはドロップへ（destroyFieldCard で遅延した分の回収）。
+    // 場に残った破壊（details.inPlace）ではソウルはカードと共に場に残る。
+    if (!details.inPlace && (card.soul || []).length > 0) {
+      state.players[owner].drop.push(...card.soul);
+      card.soul = [];
+      reconcileFaceDownSoulDrops(); // 遅延ソウル落下でも selfDroppedFromSoul を発火（destroyTriggerUsesSoul 経路の網羅）
+    }
+    render();
+  };
+  const onError = (error) => {
+    console.error(error);
+    addLog(`${card.name}の破壊時能力の処理中にエラーが発生しました。`);
+    render();
+  };
+  if (battleTriggerHold) {
+    holdBattleTriggerRunner(() => job(Boolean(state.winner)).catch(onError), owner);
+    return;
+  }
+  scheduleTriggerJob(() => job(false), onError, owner);
+}
+
+// ルールver2.05 p.13 アタックフェイズ: 3.1 破壊 → 3.2.1『貫通』 → 3.3 ★ルール処理★ → 3.4 プレイタイミング
+//（「ダメージを与えた時」「モンスターを破壊した時」に発動する能力はここで解決）／p.23 自動能力は待機状態になり
+// プレイタイミングで解決。攻撃による破壊〜貫通の間に queue された誘発（破壊された時/場を離れた時 等）を
+// battleTriggerHold に溜め、貫通とルール処理の後で releaseBattleTriggers が順に解決する。
+// クロージャを持つため state には置かない（microtask 方式と同じく一時的な実行待ち列）。
+let battleTriggerHold = null;
+
+function holdBattleTriggers() {
+  const previous = battleTriggerHold;
+  battleTriggerHold = [];
+  return previous;
+}
+
+async function releaseBattleTriggers(previous) {
+  const held = battleTriggerHold || [];
+  battleTriggerHold = previous;
+  // rule-counter-8(対抗窓改修): 同時に待機状態になった自動能力をターンファイターのものから解決する
+  // （④2.1.1/2.1.2）。runner.__triggerOwner を持たないもの（場全体への配信等）は発生順のまま非ターン側と同列。
+  const ordered = orderTriggerJobsByTurn(held, (runner) => runner.__triggerOwner);
+  for (const runner of ordered) {
+    await runner();
+  }
+}
+
+// 誘発 job 列を「ターンファイターの job（発生順）→ それ以外（発生順）」へ安定に並べ替える。
+function orderTriggerJobsByTurn(list, ownerOf) {
+  const active = state?.active;
+  const first = [];
+  const rest = [];
+  for (const item of list) {
+    (ownerOf(item) === active ? first : rest).push(item);
+  }
+  return [...first, ...rest];
+}
+
+// battleTriggerHold へ積む runner に発動者席を添える（releaseBattleTriggers の並べ替え用）。
+function holdBattleTriggerRunner(runner, owner) {
+  if (owner === 0 || owner === 1) {
+    runner.__triggerOwner = owner;
+  }
+  battleTriggerHold.push(runner);
+}
+
+// ==========================================================================
+// 対抗窓改修（rule-counter-1/8・rule-damage-4・rule-keywords-10）: 誘発の待機キューと単一ドライバ。
+// 設計の正: docs/対抗窓改修_設計_2026-10-08.md
+// 遅延誘発（旧 microtask）は待機キューへ積み、能力本体の解決中(abilityBodyDepth>0)は待たせ、
+// 解決し終えた静止点から1つずつ（ターンファイター優先で）解決する（④2.1〜2.3・2.3.1）。
+// キューはクロージャ（state 外）。静止点（applyAction 後・部屋保存時）では必ず空。
+// ==========================================================================
+const triggerDriver = { queue: [], running: false, scheduled: false, seq: 0, lifeZeroSacrificePending: new Set(), lifeZeroSkip: null };
+
+// 遅延誘発 job を予約する。run: async () => void、onError: 例外時、owner: 発動者席（不明なら null）。
+function scheduleTriggerJob(run, onError, owner = null) {
+  const handleError =
+    typeof onError === "function"
+      ? onError
+      : (error) => {
+          console.error(error);
+        };
+  triggerDriver.seq += 1;
+  triggerDriver.queue.push({ run, onError: handleError, owner, seq: triggerDriver.seq });
+  kickTriggerDriver();
+}
+
+// ドライバを（次の microtask で）起こす。能力本体の解決中や実行中は何もしない（終わった側が起こす）。
+function kickTriggerDriver() {
+  if (triggerDriver.running || triggerDriver.scheduled || triggerDriver.queue.length === 0) {
+    return;
+  }
+  triggerDriver.scheduled = true;
+  Promise.resolve().then(drainTriggerQueue);
+}
+
+function triggerHoldDepth() {
+  return typeof triggerResolutionHold === "number" ? triggerResolutionHold : 0;
+}
+
+function triggerBodyDepth() {
+  return typeof abilityBodyDepth === "number" ? abilityBodyDepth : 0;
+}
+
+async function drainTriggerQueue() {
+  triggerDriver.scheduled = false;
+  if (triggerDriver.running || triggerBodyDepth() > 0 || triggerHoldDepth() > 0) {
+    return; // 本体/自動能力の解決中は待たせる（executeAbilityBody・runTriggeredAbilities の終わりで kick される）
+  }
+  triggerDriver.running = true;
+  try {
+    while (triggerDriver.queue.length > 0) {
+      const ordered = orderTriggerJobsByTurn(triggerDriver.queue, (job) => job.owner);
+      const next = ordered[0];
+      triggerDriver.queue.splice(triggerDriver.queue.indexOf(next), 1);
+      try {
+        await next.run();
+      } catch (error) {
+        try {
+          next.onError(error);
+        } catch (_handlerError) {
+          // onError 自体の失敗は握る（ドライバを止めない）
+        }
       }
-      render();
-    })
-    .catch((error) => {
-      console.error(error);
-      addLog(`${card.name}の破壊時能力の処理中にエラーが発生しました。`);
-      render();
-    });
+    }
+  } finally {
+    triggerDriver.running = false;
+    if (triggerDriver.queue.length > 0 && triggerBodyDepth() === 0 && triggerHoldDepth() === 0) {
+      kickTriggerDriver();
+    }
+  }
+}
+
+// 新しい対戦の開始時にキューを捨てる（前の対戦の残りを持ち越さない）。
+function resetTriggerDriver() {
+  triggerDriver.queue = [];
+  triggerDriver.running = false;
+  triggerDriver.scheduled = false;
+  triggerDriver.lifeZeroSacrificePending = new Set();
 }
 
 // queue*Triggers 系 microtask の共通定型: winner決着済みならスキップ→runner実行→render。
 // エラー時は console.error＋（errorLabel があれば）ログ表示＋render（3関数に散っていた定型の集約。挙動不変）。
-function queueTriggerMicrotask(runner, { errorLabel } = {}) {
-  Promise.resolve()
-    .then(async () => {
-      if (state.winner) {
-        return;
+function queueTriggerMicrotask(runner, { errorLabel, owner = null } = {}) {
+  const job = async () => {
+    if (state.winner) {
+      return;
+    }
+    await runner();
+    // E-Y1(奇襲): あらゆる誘発解決後に、ドロップへ落ちた裏向きソウル札を公開＋奇襲コール権/自己ドロップ誘発を消化する
+    // 共通の安全網（破壊のソウル一括ドロップ・手札/デッキ戻し等、個別 soul→drop 経路を全て網羅する）。
+    // faceDown は新フラグでオプトイン挿入時のみ立つため、既存カード/対戦では常に空振り＝挙動完全不変。
+    reconcileFaceDownSoulDrops();
+    render();
+  };
+  const onError = (error) => {
+    console.error(error);
+    if (errorLabel) {
+      addLog(errorLabel);
+    }
+    render();
+  };
+  // 攻撃の破壊〜貫通/ルール処理の間は battleTriggerHold に溜め、プレイタイミングで解決する（ver2.05 p.13 3.4）。
+  if (battleTriggerHold) {
+    holdBattleTriggerRunner(() => job().catch(onError), owner);
+    return;
+  }
+  scheduleTriggerJob(job, onError, owner);
+}
+
+// pt-fix-c(b) オーナー裁定: 【コールコスト】/【使用コスト】等の“宣言のコスト”で場のカードがドロップに置かれた時も
+// 「（場の）このカードがドロップゾーンに置かれた時」は誘発する（ver2.05 ④ 自動能力＝示された事象の発生で発動・
+// 待機状態。コストを除外する規定は無い。Q&A No.1284: 【コールコスト】で誘発した能力は待機し、コールの後で解決。
+// Q&A No.665: 【使用コスト】でドロップに置いたモンスターの『ライフリンク』は発動。対して「カードの効果で破壊
+// された時」はコストでは不発＝No.1007/1000 は“効果で”の限定ゆえ）。誘発は事象の時点で待機し、宣言（コール/魔法/
+// 装備/設置/起動）の解決後に解決する＝コスト支払い中に積んだ movedToDrop 系を控え、pendingAction に持たせて
+// resolvePendingAction の後で放つ（state に置く＝部屋保存/リプレイでも失われない。カード実体ではなく instanceId）。
+// 効果本体の解決中（abilityBodyDepth/triggerResolutionHold>0）の支払いは控えない＝従来どおり待機キューへ（本体の後で解決）。
+let costDropCaptureDepth = 0;
+
+function costDropCaptureActive() {
+  return costDropCaptureDepth > 0 && triggerBodyDepth() === 0 && triggerHoldDepth() === 0;
+}
+
+function holdCostDropTrigger(kind, card, owner, fromZone) {
+  if (!card?.instanceId) {
+    return false;
+  }
+  state.heldCostDropTriggers ||= [];
+  state.heldCostDropTriggers.push({ kind, instanceId: card.instanceId, owner, fromZone });
+  return true;
+}
+
+// 控えている（まだ pendingAction に渡していない）コスト由来ドロップ誘発を取り出す。
+function takeHeldCostDropTriggers() {
+  const held = state.heldCostDropTriggers || [];
+  if (state.heldCostDropTriggers) {
+    delete state.heldCostDropTriggers;
+  }
+  return held;
+}
+
+// 控えた誘発を待機キューへ放つ（宣言の解決後／宣言に至らなかった時）。カードはドロップ（無ければ全域）から引き直す。
+function releaseCostDropTriggers(entries) {
+  (entries || []).forEach((entry) => {
+    const player = state.players[entry.owner];
+    if (!player) {
+      return;
+    }
+    const card =
+      player.drop.find((c) => c?.instanceId === entry.instanceId) || findCardInstanceAnywhere(entry.instanceId);
+    if (!card) {
+      return;
+    }
+    if (entry.kind === "field") {
+      queueMovedToDropFieldTriggersNow(card, entry.owner, entry.fromZone);
+    } else {
+      queueMovedToDropTriggersNow(card, entry.owner, entry.fromZone);
+    }
+  });
+}
+
+function releaseHeldCostDropTriggers() {
+  if (state.heldCostDropTriggers?.length) {
+    releaseCostDropTriggers(takeHeldCostDropTriggers());
+  }
+}
+
+function findCardInstanceAnywhere(instanceId) {
+  for (const player of state.players) {
+    const piles = [player.drop, player.hand, player.deck, player.gauge];
+    for (const pile of piles) {
+      const hit = (pile || []).find((c) => c?.instanceId === instanceId);
+      if (hit) {
+        return hit;
       }
-      await runner();
-      // E-Y1(奇襲): あらゆる誘発解決後に、ドロップへ落ちた裏向きソウル札を公開＋奇襲コール権/自己ドロップ誘発を消化する
-      // 共通の安全網（破壊のソウル一括ドロップ・手札/デッキ戻し等、個別 soul→drop 経路を全て網羅する）。
-      // faceDown は新フラグでオプトイン挿入時のみ立つため、既存カード/対戦では常に空振り＝挙動完全不変。
-      reconcileFaceDownSoulDrops();
-      render();
-    })
-    .catch((error) => {
-      console.error(error);
-      if (errorLabel) {
-        addLog(errorLabel);
+    }
+    for (const zone of Object.keys(player.field || {})) {
+      const fieldCard = player.field[zone];
+      if (fieldCard?.instanceId === instanceId) {
+        return fieldCard;
       }
-      render();
-    });
+      const soulHit = (fieldCard?.soul || []).find((c) => c?.instanceId === instanceId);
+      if (soulHit) {
+        return soulHit;
+      }
+    }
+  }
+  return null;
+}
+
+// コスト支払い（payStructuredCost/WithSelection）を囲む。失敗時、または外側の解決中でない最上位の支払いが
+// 宣言に至らなかった場合に備え、失敗なら即放つ（成功時は beginPendingAction/executeAbilityBody が引き取る）。
+function enterCostDropCapture() {
+  costDropCaptureDepth += 1;
+}
+
+function exitCostDropCapture(result) {
+  costDropCaptureDepth = Math.max(0, costDropCaptureDepth - 1);
+  if (costDropCaptureDepth === 0 && !(result && result.ok)) {
+    releaseHeldCostDropTriggers();
+  }
 }
 
 // 「このカードが場かデッキからドロップゾーンに置かれた時」の誘発（H-SS01 リーゼントホーン等）。
 // fromZone: "field" | "deck"。ability.fromZones（省略時は両方）で絞る。
 // 対応経路: 破壊(destroyFieldCard)・ルール/効果ドロップ(dropFieldCardByRule)・mill(moveTopDeckToDrop)・
-// script の moveSelected(to:"drop")。コストstep由来のドロップ等は対象外（意図的近似）。
+// script の moveSelected(to:"drop")・宣言のコストstep（pt-fix-c(b): 宣言の解決後まで控える＝上記）。
 function queueMovedToDropTriggers(card, owner, fromZone) {
+  if (costDropCaptureActive() && fromZone === "field" && movedToDropSelfMatcherHits(card, fromZone)) {
+    holdCostDropTrigger("self", card, owner, fromZone);
+    return;
+  }
+  queueMovedToDropTriggersNow(card, owner, fromZone);
+}
+
+function movedToDropSelfMatcherHits(card, fromZone) {
+  return (card?.abilities || []).some(
+    (ability) =>
+      ability.kind === "triggered" &&
+      ability.event === "movedToDrop" &&
+      (!ability.fromZones || zoneListIncludes(ability.fromZones, fromZone)),
+  );
+}
+
+function queueMovedToDropTriggersNow(card, owner, fromZone) {
   const matches = (ability) =>
     ability.kind === "triggered" &&
     ability.event === "movedToDrop" &&
-    (!ability.fromZones || ability.fromZones.includes(fromZone));
+    (!ability.fromZones || zoneListIncludes(ability.fromZones, fromZone));
   if (!(card.abilities || []).some(matches)) {
     return;
   }
@@ -1364,7 +1856,7 @@ function queueMovedToDropTriggers(card, owner, fromZone) {
         fromZone,
         __abilityFilter: matches,
       }),
-    { errorLabel: `${card.name}のドロップ時能力の処理中にエラーが発生しました。` },
+    { errorLabel: `${card.name}のドロップ時能力の処理中にエラーが発生しました。`, owner },
   );
 }
 
@@ -1383,7 +1875,19 @@ function queueMovedToDropFieldTriggers(card, owner, fromZone) {
   if (fromZone !== "field" || !card) {
     return;
   }
-  const hasListener = [0, 1].some((playerIndex) =>
+  if (costDropCaptureActive()) {
+    // pt-fix-c(b): 宣言のコストで場からドロップ＝場の他カードの「ドロップに置かれた時」も宣言の解決後まで控える
+    // （リスナーが居る時だけ控える＝既存対戦の state は不変）。
+    if (movedToDropFieldListenerExists()) {
+      holdCostDropTrigger("field", card, owner, fromZone);
+    }
+    return;
+  }
+  queueMovedToDropFieldTriggersNow(card, owner, fromZone);
+}
+
+function movedToDropFieldListenerExists() {
+  return [0, 1].some((playerIndex) =>
     zones.some((fieldZone) => {
       const sourceCard = state.players[playerIndex]?.field?.[fieldZone];
       return (
@@ -1392,15 +1896,20 @@ function queueMovedToDropFieldTriggers(card, owner, fromZone) {
       );
     }),
   );
+}
+
+function queueMovedToDropFieldTriggersNow(card, owner, fromZone) {
+  if (fromZone !== "field" || !card) {
+    return;
+  }
+  const hasListener = movedToDropFieldListenerExists();
   if (!hasListener) {
     return;
   }
-  Promise.resolve()
-    .then(async () => {
+  scheduleTriggerJob(async () => {
       await runFieldEventTriggers("movedToDrop", owner, card, "drop", { fromZone });
       render();
-    })
-    .catch((error) => {
+    }, (error) => {
       console.error(error);
       addLog(`${card?.name ?? "カード"}のドロップ移動フィールド誘発の処理中にエラーが発生しました。`);
       render();
@@ -1411,14 +1920,49 @@ function queueMovedToDropFieldTriggers(card, owner, fromZone) {
 // fromZone: "field" | "drop" | "hand"。ability.fromZones（省略時は全部）で絞る。
 // 対応経路: 星合体/ソウル投入 script（moveSelfToSelectedSoul/moveSelectedToSelectedSoul）・
 // moveSelfToTargetSoul・コストの putDropToSoul/putOwnFieldCardsToSoul。
-function queueEnteredSoulTriggers(card, owner, fromZone, hostCard) {
-  const matches = (ability) =>
+function enteredSoulAbilityMatcher(fromZone) {
+  return (ability) =>
     ability.kind === "triggered" &&
     ability.event === "enteredSoul" &&
-    (!ability.fromZones || ability.fromZones.includes(fromZone));
+    (!ability.fromZones || zoneListIncludes(ability.fromZones, fromZone));
+}
+
+function queueEnteredSoulTriggers(card, owner, fromZone, hostCard) {
+  const matches = enteredSoulAbilityMatcher(fromZone);
   if (!(card.abilities || []).some(matches)) {
     return;
   }
+  // ホストがまだ場に無い（コール/装備/設置のコストで手札等のホストのソウルに入った）場合、誘発はその行動が
+  // 終わってホストが場に置かれてから解決する（ver2.05: 行動の途中で誘発した自動能力は待機し、行動の完了後に
+  // 解決する）。「そのカードの攻撃力＋4000」等がホストの登場時リセットで消えないよう、登場時に flush する。
+  // 直列化（部屋保存/リプレイ）に card 実体を二重保持しないよう instanceId で控える。
+  // 控えるのはコールされるモンスターのホストだけ（場に置かれる全コール経路が resetEnteringFieldCardState を通る）。
+  // アイテム/設置魔法/フラッグ等のホストは従来どおり即時に積む（後方互換）。
+  if (hostCard && hostCard.type === "monster" && !findFieldCardSlot(hostCard) && !state.players.some((p) => p?.flag === hostCard)) {
+    hostCard.deferredEnteredSoulTriggers ||= [];
+    hostCard.deferredEnteredSoulTriggers.push({ instanceId: card.instanceId, owner, fromZone });
+    return;
+  }
+  queueEnteredSoulTriggersNow(card, owner, fromZone, hostCard, matches);
+}
+
+// 登場するホスト(card)に控えた enteredSoul 誘発を解決待ちへ積む（resetEnteringFieldCardState から呼ぶ）。
+// 控えたソウル札がまだこのホストのソウルに居る時だけ発火する。
+function flushDeferredEnteredSoulTriggers(hostCard) {
+  const deferred = hostCard?.deferredEnteredSoulTriggers;
+  if (!deferred?.length) {
+    return;
+  }
+  hostCard.deferredEnteredSoulTriggers = [];
+  deferred.forEach(({ instanceId, owner, fromZone }) => {
+    const soulCard = (hostCard.soul || []).find((c) => c.instanceId === instanceId);
+    if (soulCard) {
+      queueEnteredSoulTriggersNow(soulCard, owner, fromZone, hostCard, enteredSoulAbilityMatcher(fromZone));
+    }
+  });
+}
+
+function queueEnteredSoulTriggersNow(card, owner, fromZone, hostCard, matches) {
   queueTriggerMicrotask(
     () =>
       runTriggeredAbilities(card, "enteredSoul", {
@@ -1430,7 +1974,7 @@ function queueEnteredSoulTriggers(card, owner, fromZone, hostCard) {
         hostCard,
         __abilityFilter: matches,
       }),
-    { errorLabel: `${card.name}のソウル投入時能力の処理中にエラーが発生しました。` },
+    { errorLabel: `${card.name}のソウル投入時能力の処理中にエラーが発生しました。`, owner },
   );
 }
 
@@ -1547,7 +2091,11 @@ function queueDrewTriggers(drawerOwner) {
   if (!hasListener) {
     return;
   }
-  queueTriggerMicrotask(() => runFieldEventTriggers("drew", drawerOwner), {
+  // 誘発の発生時点のフェイズを記録する（phaseIs はこれを優先評価）。チャージ＆ドロー（ver2.05 スタートフェイズ 3.2）は
+  // drawCards の直後に同期で state.phase="main" へ切り替わり、誘発は microtask で後から評価されるため、
+  // 「スタートフェイズ以外に手札が増えた時」(H-PP01/0024 BAR キング・ソロモン)の除外が効かなかった。
+  const eventPhase = state.phase;
+  queueTriggerMicrotask(() => runFieldEventTriggers("drew", drawerOwner, undefined, undefined, { eventPhase }), {
     errorLabel: "ドロー時能力の処理中にエラーが発生しました。",
   });
 }
@@ -1584,8 +2132,7 @@ function queueDamageReceivedTriggers(owner, amount, options = {}) {
   }
   const damageSourceLabel = options.sourceAbilityLabel || null;
   const byAttack = Boolean(options.byAttack);
-  Promise.resolve()
-    .then(async () => {
+  scheduleTriggerJob(async () => {
       if (state.winner) {
         return;
       }
@@ -1608,8 +2155,7 @@ function queueDamageReceivedTriggers(owner, amount, options = {}) {
         });
       }
       render();
-    })
-    .catch((error) => {
+    }, (error) => {
       console.error(error);
       render();
     });
@@ -1619,7 +2165,7 @@ function queueDamageReceivedTriggers(owner, amount, options = {}) {
 // 破壊されたカード自身の destroyed 誘発(queueDestroyedTriggers)とは別に、ally/opponent Destroyed を
 // 場の全枠(set枠含む)へ配送する。設置呪文「飢えたるヤミゲドウ」等が set ゾーンで反応するための経路。
 // 反応するカードが場に無ければ何もしない。発火対象はモンスターに限らず(条件 eventCardMatches で絞る)。
-function queueAllyDestroyedTriggers(card, owner, zone, cause = null) {
+function queueAllyDestroyedTriggers(card, owner, zone, cause = null, typeAtDestroy = null) {
   const hasListener = [0, 1].some((playerIndex) =>
     zones.some((fieldZone) => {
       const sourceCard = state.players[playerIndex]?.field?.[fieldZone];
@@ -1636,12 +2182,13 @@ function queueAllyDestroyedTriggers(card, owner, zone, cause = null) {
   if (!hasListener) {
     return;
   }
-  Promise.resolve()
-    .then(async () => {
-      await runFieldEventTriggers("destroyed", owner, card, zone, { destroyCause: cause });
+  scheduleTriggerJob(async () => {
+      await runFieldEventTriggers("destroyed", owner, card, zone, {
+        destroyCause: cause,
+        ...(typeAtDestroy ? { eventCardTypeAtLeave: typeAtDestroy } : {}),
+      });
       render();
-    })
-    .catch((error) => {
+    }, (error) => {
       console.error(error);
       addLog(`${card?.name ?? "カード"}の破壊フィールド誘発の処理中にエラーが発生しました。`);
       render();
@@ -1662,7 +2209,7 @@ function queueReturnedToHandTriggers(card, owner, fromZone) {
   const matches = (ability) =>
     ability.kind === "triggered" &&
     ability.event === "returnedToHand" &&
-    (!ability.fromZones || ability.fromZones.includes(fromZone));
+    (!ability.fromZones || zoneListIncludes(ability.fromZones, fromZone));
   if (!(card?.abilities || []).some(matches)) {
     return;
   }
@@ -1675,23 +2222,44 @@ function queueReturnedToHandTriggers(card, owner, fromZone) {
         fromZone,
         __abilityFilter: matches,
       }),
-    { errorLabel: `${card.name}の手札復帰時能力の処理中にエラーが発生しました。` },
+    { errorLabel: `${card.name}の手札復帰時能力の処理中にエラーが発生しました。`, owner },
   );
 }
 
+// details.eventCardTypeAtLeave: 離場時点の型（変身/搭乗/着任で装備中だけアイテム扱いのカードは、離場後に印字の型へ
+// 戻るため、呼び出し側が離場直前に捕捉して渡す。省略時は従来どおり現在の型で判定）。
+// details.returnedTo: "deck"＝場からデッキ（上/下）へ戻った（rule-zones-7）。「手札かデッキに戻った時」と書かれた
+// リスナー（ability.returnedToZones に "deck" を含むもの）だけが反応し、cardReturned（「手札に戻った時」専用）は
+// 発火しない。省略時＝手札（従来どおり全 monsterReturned/cardReturned リスナーが対象）。
 function queueMonsterReturnedTriggers(card, owner, zone, details = {}) {
-  Promise.resolve()
-    .then(async () => {
-      if (effectiveCardType(card) === "monster") {
+  const typeAtLeave = details.eventCardTypeAtLeave || effectiveCardType(card);
+  const toDeck = details.returnedTo === "deck";
+  scheduleTriggerJob(async () => {
+      if (typeAtLeave === "monster") {
         // Z14(b)(S-UB-C03/0017): details.returnCause を "monsterReturned" 誘発コンテキストへ伝播する。
-        await runFieldEventTriggers("monsterReturned", owner, card, zone, details);
+        await runFieldEventTriggers(
+          "monsterReturned",
+          owner,
+          card,
+          zone,
+          toDeck
+            ? {
+                ...details,
+                __abilityFilter: (ability) =>
+                  Array.isArray(ability.returnedToZones) && ability.returnedToZones.includes("deck"),
+              }
+            : details,
+        );
+      }
+      if (toDeck) {
+        render();
+        return;
       }
       // レビュー修正(D-BT01/0096/0100/0107): 「場のカードが手札に戻った時」= カード種を問わない cardReturned も
       // 発火（新イベント・既存カードにリスナー無し＝後方互換。details は複製して汚染を避ける）。
       await runFieldEventTriggers("cardReturned", owner, card, zone, { ...details });
       render();
-    })
-    .catch((error) => {
+    }, (error) => {
       console.error(error);
       addLog(`${card?.name ?? "カード"}の復帰誘発の処理中にエラーが発生しました。`);
       render();
@@ -1706,12 +2274,10 @@ function queueDiscardedFromHandTriggers(card, owner, cause = null) {
   if (!(card.abilities || []).some((ability) => ability.kind === "triggered" && ability.event === "discardedFromHand")) {
     return;
   }
-  Promise.resolve()
-    .then(async () => {
+  scheduleTriggerJob(async () => {
       await runTriggeredAbilities(card, "discardedFromHand", { card, player: state.players[owner], owner, discardCause: cause });
       render();
-    })
-    .catch((error) => {
+    }, (error) => {
       console.error(error);
       addLog(`${card.name}の手札破棄時能力の処理中にエラーが発生しました。`);
       render();
@@ -1761,6 +2327,7 @@ function dropFieldCardByRule(player, zone) {
   // カードが残ると上書き消失/無限ループを招くため、既存 Z9(preventNextLeaveFieldCount) と同じく
   // 破壊＋手札戻しのみカバーする（意図的近似・D-BT01実装メモ参照）。
   const lifeLinkNullifiedAtLeave = isAbilitiesNullified(card); // 離場直前に捕捉（能力無効化中はライフリンク無し）
+  const typeAtLeave = effectiveCardType(card); // rule-zones-3: 場離れ誘発はこの時点の型で照合
   player.drop.push(...(card.soul || []));
   card.soul = [];
   // ルール処理で場からドロップ＝ソウル札もドロップへ落ちる。破壊経路(destroyFieldCard:505)と同様、裏向き奇襲札の
@@ -1776,6 +2343,11 @@ function dropFieldCardByRule(player, zone) {
     player.arrivalCardId = null;
   }
   applyLifeLink(card, state.players.indexOf(player), { nullifiedAtLeave: lifeLinkNullifiedAtLeave });
+  // E10: ルール処理でドロップへ置かれるのも『場を離れる』。他カードの allyLeaveField/opponentLeaveField 放送を
+  // 破壊・手札戻し経路と同様に行う（以前はこの経路だけ放送が無く、場離れ誘発が黙って落ちていた）。
+  queueLeaveFieldTriggers(card, state.players.indexOf(player), zone, { eventCardTypeAtLeave: typeAtLeave });
+  // rule-zones-3: 装備中だけアイテム扱い（変身/搭乗/着任）の型をドロップでは印字の型へ戻す。
+  card.currentType = card.baseType || card.type;
   return card;
 }
 
@@ -1808,15 +2380,20 @@ function soulguardNullifiedFor(card) {
 
 // 「はい/いいえ」の確認を、権威サーバでは該当プレイヤー(owner)へ往復で問う。
 // 往復は既存の選択ダイアログ(chooseCardEntries の2択)を再利用するため、サーバ/クライアント
-// 双方とも追加の prompt 種別を要しない。ブラウザ/中継/テストは従来の同期 window.confirm を維持
-// （＝後方互換。回帰テストは window.confirm 経路のまま挙動不変）。
+// 双方とも追加の prompt 種別を要しない。ブラウザ（ローカル対戦）はアプリ内の選択UI（スマホ=ドック／PC=モーダル）
+// で問う（プレイテスト T8: ネイティブ window.confirm を廃止）。DOM の無いテスト環境だけ従来の window.confirm
+// （＝回帰テストは window.confirm 経路のまま挙動不変）。
 async function confirmChoiceAsync(owner, message, options = {}) {
   // B3: リプレイ再生中は記録済みの真偽値を返す（UI/往復を出さない）。確認は seam(chooseCardEntries)とは
   // 別種の応答として記録キューに載っているため、ここで消費する（選択応答と混線しない）。
   if (typeof replayIsPlaying === "function" && replayIsPlaying()) {
-    return replayNextConfirm();
+    // R1: 順序配信。配信を要求順・macrotask 境界に揃える（src/23）。
+    return replayPlaybackConfirmAsync();
   }
+  // R1: 記録中は応答枠を要求時の step に確保する（追跡オフなら null＝下の従来経路そのまま）。
+  const replayTicket = typeof replayReservePrompt === "function" ? replayReservePrompt() : null;
   let answer;
+  try {
   if (globalThis.__BUDDYFIGHT_SERVER__ && typeof globalThis.__serverPrompt === "function") {
     // 権威サーバ: 該当プレイヤーへ2択を往復で問う。既存の選択ダイアログ往復を再利用するが、記録は
     // 「確認応答(真偽値)」へ一本化するため、記録フック付きの chooseCardEntries ではなく素の Impl を呼ぶ
@@ -1832,10 +2409,19 @@ async function confirmChoiceAsync(owner, message, options = {}) {
   } else if (typeof aiShouldAnswerPrompt === "function" && aiShouldAnswerPrompt(owner)) {
     // CPU対戦: CPU席宛の確認は src/22-ai.js が答える（window.confirm を人間に出さない）。
     answer = await aiAnswerConfirm(owner, message, options);
+  } else if (typeof appChoiceUiAvailable === "function" && appChoiceUiAvailable()) {
+    answer = await showConfirmChoiceDialog(message, options);
   } else if (typeof window !== "undefined" && typeof window.confirm === "function") {
     answer = window.confirm(message);
   } else {
-    answer = true;
+    answer = options.defaultAnswer ?? true;
+  }
+  } catch (error) {
+    if (replayTicket) replayAbandonPrompt(replayTicket);
+    throw error;
+  }
+  if (replayTicket) {
+    return replayDeliverPrompt(replayTicket, answer, replayConfirmResponse);
   }
   // B3: 記録中なら確認応答として控える（ローカル/サーバ/CPU いずれの経路も同一キューへ一本化）。
   if (typeof replayRecordConfirm === "function") {
@@ -1850,6 +2436,57 @@ async function shouldUseSoulguard(card, owner) {
     addLog(`${card.name}の『ソウルガード』を使いませんでした。`);
   }
   return useSoulguard;
+}
+
+// rule-zones-1: ver2.05 ④『ソウルガード』「場から離れる場合、ソウル１枚をドロップゾーンに置くことで場に残すことが
+// できます。『ソウルガード』は置換効果です。」＝破壊に限らず、効果による手札戻し・デッキ/ゲージ/ドロップ置きでも使える。
+// destroyFieldCard（破壊）と同じ確認・ソウル選択（2枚以上なら持ち主が選ぶ）を行う。true=場に残った（または確認中に
+// 既に場を離れた）＝呼び出し側は移動しない。コストの支払い・★ルール処理★による移動では呼ばない（置換するとコスト/
+// ルール処理そのものが成立しなくなるため。裁定未確認の範囲は従来どおり）。
+async function trySoulguardOnLeave(card, owner, zone) {
+  const player = state.players[owner];
+  if (!card || !player || player.field[zone] !== card || !canUseSoulguard(card)) {
+    return false;
+  }
+  if (!(await shouldUseSoulguard(card, owner))) {
+    return false;
+  }
+  if (player.field[zone] !== card) {
+    return true;
+  }
+  if (!canUseSoulguard(card)) {
+    return false;
+  }
+  let soulCard;
+  if (card.soul.length > 1) {
+    const picked = await chooseCardEntries(
+      card.soul.map((soul) => ({ card: soul })),
+      {
+        title: "ソウルガード：ドロップに置くソウルを選ぶ",
+        lead: `${card.name}のソウルから、ドロップに置く1枚を選んでください。`,
+        min: 1,
+        max: 1,
+        forceDialog: true,
+        allowCancel: false,
+        promptSeat: owner,
+      },
+    );
+    if (player.field[zone] !== card) {
+      return true;
+    }
+    const pickedId = picked?.[0]?.card?.instanceId;
+    const idx = card.soul.findIndex((soul) => soul.instanceId === pickedId);
+    soulCard = idx >= 0 ? card.soul.splice(idx, 1)[0] : card.soul.pop();
+  } else {
+    soulCard = card.soul.pop();
+  }
+  if (!soulCard) {
+    return false;
+  }
+  player.drop.push(soulCard);
+  addLog(`${card.name}はソウルガードで場に残りました。`);
+  queueSoulCardDroppedTriggers(card, owner, 1);
+  return true;
 }
 
 function lifeLinkAmount(card) {
@@ -1898,6 +2535,17 @@ function applyLifeLink(card, owner, options = {}) {
     return recordLifeLinkEvent(card, owner, { amount: 0, instantDefeat: false });
   }
   const event = recordLifeLinkEvent(card, owner, { amount, instantDefeat });
+  // 対抗窓改修(rule-damage-4・rule-keywords-10): 「『ライフリンク』に対して【対抗】を使用することができます」。
+  // ライフリンクは常に待機キュー（攻撃の破壊〜貫通の間は battleTriggerHold）へ積み、他の誘発と同じ
+  // 順序規則（ターンファイター優先・能力本体の解決後）で解決する。窓を開くか（＝使える【対抗】を持つ席がいるか）は
+  // 解決時の判定だけに使い、ダメージの順序は手札の中身に左右されない（独立レビュー H1: 勝者反転の是正）。
+  // 保留中は勝敗が決まらない。打ち消し系は保留中のイベントを直接打ち消せる。
+  deferLifeLinkForCounterWindow(card, owner, event, { amount, instantDefeat });
+  return event;
+}
+
+// 保留したライフリンクの解決（ダメージ/即敗北の適用）。
+function applyLifeLinkDamageNow(card, owner, event, { amount, instantDefeat }, damageOptions = { log: false }) {
   if (instantDefeat) {
     // E-XB1(X-BT02/0113): 「ファイトに敗北しない」保護中は即死ライフリンクでも敗北しない
     //（一度免れた即死は再誘発しない＝期限失効後の checkWinner はライフ0/デッキ0 のみ再判定する）。
@@ -1910,17 +2558,81 @@ function applyLifeLink(card, owner, options = {}) {
       state.winnerSeat = 1 - owner; // D5(戦績): ライフリンクによる即敗北（効果起因）
       state.winReason = "effect";
     }
-    addLog(`${card.name}'s Life Link causes defeat for ${state.players[owner].name}.`);
+    addLog(`${card.name}のライフリンクにより${state.players[owner].name}は敗北しました。`);
     return event;
   }
   // 継続 reduceLifeLinkDamage による軽減（護竜王 0111「filter一致カードのライフリンクで受けるダメージをN減らす」）。
   amount = Math.max(0, amount - lifeLinkDamageReductionFor(owner, card));
   event.amount = amount;
-  event.appliedDamage = amount > 0 ? applyDamageToPlayer(owner, amount, { log: false }) : 0;
+  event.appliedDamage = amount > 0 ? applyDamageToPlayer(owner, amount, damageOptions) : 0;
   if (amount > 0) {
     addLog(`${card.name}のライフリンクにより${state.players[owner].name}に${amount}ダメージ。`);
   }
   return event;
+}
+
+// 保留したライフリンクを待機キュー（攻撃の破壊〜貫通の間は battleTriggerHold）へ積む。解決時に
+// ターンファイター→非ターンファイターの順で（各自、使える【対抗】がある時だけ）窓を開き、打ち消されていなければ適用する。
+function deferLifeLinkForCounterWindow(card, owner, event, { amount, instantDefeat }) {
+  event.pending = true;
+  const job = async () => {
+    let announced = false;
+    try {
+      const turnSeat = state.active === 0 || state.active === 1 ? state.active : owner;
+      for (const seat of [turnSeat, 1 - turnSeat]) {
+        if (event.canceled || state.winner) {
+          break;
+        }
+        const options = counterWindowOptionsIfOpen(seat, card?.instanceId ? [card.instanceId] : null);
+        if (!options) {
+          continue;
+        }
+        if (!announced) {
+          announced = true; // 窓が実際に開く時だけ告知する
+          addLog(`${card.name}のライフリンクが発動しました（【対抗】の確認後に解決します）。`);
+        }
+        const shown = Math.max(0, amount - lifeLinkDamageReductionFor(owner, card));
+        await runCounterWindowFor(seat, options, {
+          kind: "lifeLink",
+          sourceName: card.name,
+          sourceInstanceId: card.instanceId || null,
+          sourceOwner: owner,
+          damagedSeat: owner,
+          damage: instantDefeat ? null : shown,
+          instantDefeat,
+          lead: instantDefeat
+            ? `${card.name}のライフリンク（即死）で${state.players[owner].name}は敗北します。先に【対抗】を使えます。`
+            : `${card.name}のライフリンクで${state.players[owner].name}は${shown}ダメージを受けます。先に【対抗】を使えます。`,
+        });
+      }
+    } finally {
+      event.pending = false;
+    }
+    if (event.canceled) {
+      return; // 打ち消し（cancelRecentLifeLink 等）は保留中のイベントを直接打ち消す＝ダメージは発生しない
+    }
+    // 決着後でもダメージ自体は適用する（従来の同期適用と同じ。勝者は先に確定した側のまま＝checkWinner は上書きしない）。
+    // 任意コスト付きの軽減（メラク等）は、適用の前に本人へ非同期で問う（要らなければ await しない＝tick 不変）。
+    const lifeLinkDamageOptions = { log: false };
+    if (!instantDefeat) {
+      const reducedAmount = Math.max(0, amount - lifeLinkDamageReductionFor(owner, card));
+      if (reducedAmount > 0 && damageNeedsAsyncDecision(owner, reducedAmount, lifeLinkDamageOptions)) {
+        await prepareDamageDecisions(owner, reducedAmount, lifeLinkDamageOptions);
+      }
+    }
+    applyLifeLinkDamageNow(card, owner, event, { amount, instantDefeat }, lifeLinkDamageOptions);
+    render();
+  };
+  const onError = (error) => {
+    console.error(error);
+    addLog(`${card.name}のライフリンクの処理中にエラーが発生しました。`);
+    render();
+  };
+  if (battleTriggerHold) {
+    holdBattleTriggerRunner(() => job().catch(onError), owner);
+    return;
+  }
+  scheduleTriggerJob(job, onError, owner);
 }
 
 // 継続 nullifyLifeLink（conditions/filter一致で対象カードのライフリンクを無効化）が card に効いているか。
@@ -2020,7 +2732,7 @@ function cancelRecentLifeLink(owner, spec = {}, sourceName = "") {
     state.players[event.owner].life += event.appliedDamage;
   }
   clearWinnerIfNoCurrentLoss();
-  addLog(`${sourceName || event.cardName} canceled ${event.cardName}'s Life Link.`);
+  addLog(`${sourceName || event.cardName}の効果で${event.cardName}のライフリンクを打ち消しました。`);
   return event;
 }
 
@@ -2055,7 +2767,7 @@ function cancelCallOpportunityLifeLink(owner, spec = {}, sourceName = "") {
     state.players[event.owner].life += event.appliedDamage;
   }
   clearWinnerIfNoCurrentLoss();
-  addLog(`${sourceName || event.cardName} canceled ${event.cardName}'s Life Link.`);
+  addLog(`${sourceName || event.cardName}の効果で${event.cardName}のライフリンクを打ち消しました。`);
   return event;
 }
 
@@ -2233,6 +2945,7 @@ async function finishAndAdvanceTurn() {
     state.active = opponentIndex();
   }
   state.turnCount += 1;
+  state.counterWindowPass = [null, null]; // 対抗窓改修: 「このターンはパス」はターン終了まで
   standPlayer(activePlayer());
   state.phase = "draw";
   state.selected = null;
@@ -2278,6 +2991,8 @@ async function finishAndAdvanceTurn() {
   // 期限を判定し、失効した席がライフ0/デッキ0 のまま延命していればその場で敗北を確定させる（延命ループ防止）。
   expireLossPreventionForTurnStart();
   addLog(`${activePlayer().name}のターンです。`);
+  // E5: ターン限定のサイズ修整が切れた後の★ルール処理★（両ファイターのサイズ超過を再検査）。
+  await runSizeRuleProcessing();
   // E-XB28: 新しく開始した席に「攻撃禁止」予約があれば、このターンへ適用する（スキップ後に来る使用者のターン）。
   // fieldAttackBanThisTurn は直上のクリア後に立てるため、このターン限定で効き、次のターン境界で失効する。
   if (state.scheduledAttackBan?.[state.active]) {
@@ -2316,24 +3031,58 @@ async function runEndTurnEffects(endingOwner) {
   for (const [owner, player] of state.players.entries()) {
     for (const zone of zones) {
       const card = player.field[zone];
-      if (card?.destroyAtEndOfTurnOwner === endingOwner) {
+      // 裁定2026-10-08「誰のターンと書かれていなければ両方のターン」: 印字『■ターン終了時、このカードを破壊する。』
+      // (旧レガシー1枚キー destroyAtEndOfTurn:true＝BT02/0040・0060)は、場にある限り両者のターン終了時に誘発する
+      // 自動能力。登場時に立てる destroyAtEndOfTurnOwner(=コール者のターン)だけだと、相手ターン中に場へ出た場合や
+      // ソウルガード等で場に残った後に二度と破壊されなかった。能力無効化中は誘発しない（自動能力）。
+      // コール者のターン終了時の既存経路（destroyAtEndOfTurnOwner）は従来どおり。
+      const printedTurnEndDestroy =
+        card?.destroyAtEndOfTurn === true && typeof isAbilitiesNullified === "function" && !isAbilitiesNullified(card);
+      if (card?.destroyAtEndOfTurnOwner === endingOwner || printedTurnEndDestroy) {
         const destroyedName = card.name;
         card.destroyAtEndOfTurnOwner = null;
-        const destroyed = await destroyFieldCard(owner, zone, { ignoreSoulguard: true });
+        // rule-zones-2: 予約された「ターン終了時に破壊」もソウルガードで場に残せる（離場の原因を問わない置換効果）。
+        // pt-fix-c T7-2: 「ターン終了時、破壊する」も効果による破壊＝cause を渡す（「カードの効果で破壊された時」用）。
+        const destroyed = await destroyFieldCard(owner, zone, {
+          cause: {
+            byEffect: true,
+            byOpponent: false,
+            sourceOwner: owner,
+            sourceType: printedTurnEndDestroy ? effectiveCardType(card) : null,
+            sourceCard: printedTurnEndDestroy ? card : null,
+          },
+        });
         if (destroyed) {
-          addLog(`${destroyedName}はターン終了時の効果で破壊されました。`);
+          addDestroyLog(`${destroyedName}はターン終了時の効果で破壊されました。`, destroyedName);
         }
-      } else if (card?.putToGaugeAtEndOfTurnOwner === endingOwner) {
+      } else if (
+        card?.putToGaugeAtEndOfTurnOwner != null &&
+        (card.putToGaugeAtEndOfTurnTurn ?? card.putToGaugeAtEndOfTurnOwner) === endingOwner
+      ) {
         // 「ターン終了時、そのモンスターを君のゲージに置く」。ソウルはドロップへ、本体をゲージへ。
+        // 裁定2026-10-08: 効果が作る遅延の『ターン終了時』（誰のターンか書かれていない）は予約したそのターンの終了時。
+        // putToGaugeAtEndOfTurnTurn＝予約時の state.active（未設定の旧 state は従来どおり送り先＝予約者のターン）。
         const destOwner = card.putToGaugeAtEndOfTurnOwner;
         card.putToGaugeAtEndOfTurnOwner = null;
-        player.field[zone] = null;
-        if ((card.soul || []).length > 0) {
-          player.drop.push(...card.soul);
-          card.soul = [];
+        card.putToGaugeAtEndOfTurnTurn = null;
+        if (destOwner === owner) {
+          // E9: 正規の離場→ゲージ経路へ委譲（ソウルのドロップ送り＋reconcileFaceDownSoulDrops・着任解除・
+          // ライフリンク・場離れ放送・『ゲージにカードが置かれた時』(byEffect=queueGaugePlacedTriggers)込み）。
+          // 以前は手書きの移動でライフリンク/場離れ誘発/裏向きソウル処理/着任解除を取りこぼしていた。
+          // rule-zones-1: 効果によるゲージ置きも場を離れる＝ソウルガード（置換効果）で場に残せる。
+          if (!(await trySoulguardOnLeave(card, owner, zone))) {
+            putFieldCardToGauge(player, zone, { byEffect: true });
+          }
+        } else {
+          // 他人の場のカードを自分のゲージへ置く予約（現行カードデータには無い）。従来どおりの移動を保持する。
+          player.field[zone] = null;
+          if ((card.soul || []).length > 0) {
+            player.drop.push(...card.soul);
+            card.soul = [];
+          }
+          state.players[destOwner].gauge.push(card);
+          queueGaugePlacedTriggers(destOwner, [card]); // 相手のゲージにカードが置かれた時（0020）
         }
-        state.players[destOwner].gauge.push(card);
-        queueGaugePlacedTriggers(destOwner, [card]); // 相手のゲージにカードが置かれた時（0020）
         addLog(`${card.name}はターン終了時の効果でゲージに置かれました。`);
       }
     }
@@ -2341,6 +3090,16 @@ async function runEndTurnEffects(endingOwner) {
 }
 
 function clearTurnModifiers() {
+  state.deferredMultiAttackStands = []; // E3: 保留中の多回攻撃スタンドはターンを跨がない
+  // E3: 能力本体の入れ子深さ（実行時の一時値）もターン境界で 0 に戻す。応答の来ない選択待ち等で深さが
+  // 戻らなかった場合に、以降の多回攻撃スタンドが永久に保留され続けないための安全弁（通常は既に 0）。
+  if (typeof abilityBodyDepth === "number") {
+    abilityBodyDepth = 0;
+    if (typeof triggerResolutionHold === "number") {
+      triggerResolutionHold = 0; // 同じ安全弁（応答の来ない選択待ち等で深さが戻らなかった場合）
+    }
+    kickTriggerDriver(); // 対抗窓改修: 深さを戻したら待たせていた誘発を流す（通常はキュー空＝no-op）
+  }
   state.spiritStrikeDamageBonus = [0, 0]; // 霊撃ブースト（ターンスコープ）をリセット
   state.standedByEffectThisTurn = [[], []]; // E-PR16(PR/0470): このターン効果でスタンドしたカード履歴をリセット
   state.movedThisTurn = [[], []]; // E-XB69(X2-SP/0014,0027): このターン『移動』したモンスターの席別 instanceId 履歴をリセット
@@ -2353,8 +3112,11 @@ function clearTurnModifiers() {
   state.callRestrictionsThisTurn = []; // X6(D-BT01/0064): ターン限定コール制限をリセット
   state.callCountCapsThisTurn = []; // E-XB7(X-SS03/0060): ターン内総コール枚数キャップをリセット
   state.turnFlagNameAliases = [[], []]; // E12(D-SS02/0005): ターン限定フラッグ名エイリアスをリセット
+  state.phaseCallRights = null; // grantPhaseCallRight（フェイズ中のコール権）はターンを跨がない
   state.turnNullifies = []; // E2(D-SS03/0010): ターン限定の全体能力無効化(nullifyFieldAbilities)をリセット
+  state.turnDetachedContinuous = []; // 離場した発生源から退避した「そのターン中」継続をリセット
   state.turnPlayerContinuous = [[], []]; // E-XB64(X2-BT01/0052): プレイヤー単位のターン限定継続（匿名アンカー・魔法発）をリセット
+  state.turnSourcedContinuous = [[], []]; // 監査 rule-continuous-1: 発生源から切り離したターン限定継続（addTurnContinuous）をリセット
   // X11b(D-BT01/0131): ターンスコープのサイズ上書き(setConditionalSizeScope turnScoped)と
   // X19 ターン限定継続(turnContinuous)を解除。
   state.players.forEach((player) => {
@@ -2400,6 +3162,7 @@ function clearTurnModifiers() {
       if (card?.continuous?.some((effect) => effect.__turnCopy)) {
         card.continuous = card.continuous.filter((effect) => !effect.__turnCopy);
       }
+      restoreTurnCopiedCardFields(card); // カード単位フィールドで得た能力（destroyImmunity 等）を元へ戻す
       if (card?.turnKeywords?.length && !zones.some((zone) => player.field[zone] === card)) {
         card.turnKeywords = []; // 場を離れたカードに残ったターンスコープキーワードの残留防止
       }
@@ -2429,6 +3192,7 @@ function clearTurnModifiers() {
     player.nextActivatedCostMayUseOpponentGauge = false;
     player.nextSpellCostMayUseOpponentGauge = false; // E-XB73(X2-SP/0041): 魔法【使用コスト】用の相手ゲージ許可もターン終了で失効
     player.setLockedIdsThisTurn = []; // 「そのターン中は『設置』できない」ロック(発進準備OK！等)をターン終了で解除
+    player.setLockedNamesThisTurn = []; // audit2(b010-2): 名前単位の設置ロックも同時に解除
     zones.forEach((zone) => {
       const card = player.field[zone];
       if (card) {
@@ -2446,6 +3210,7 @@ function clearTurnModifiers() {
         card.preventNextDestroyCount = 0;
         card.preventNextDestroyEffects = []; // 未発火の破壊置換effect(反撃付与等)が翌ターンへ残留しないようクリア
         card.cannotAttackThisTurn = false; // 「そのターン中攻撃できない」(グレイプニル等)をターン終了で解除
+        if (card.cannotAttackThisTurnSources) card.cannotAttackThisTurnSources = [];
         card.cannotStandThisTurn = false; // Z14(g)(S-UB-C03/0038): 「そのターン中スタンドできない」をターン終了で解除
         card.turnTreatAsBuddy = false; // 「バディモンスターとして扱う」(treatAsBuddyThisTurn)をターン終了で解除
         // gainNameAsSelected（追加のカード名・ターンスコープ）をリセット。ただし印字の恒久additionalNames
@@ -2486,6 +3251,7 @@ function standPlayer(player) {
     player.flag.counterattack = false;
     player.flag.doubleAttackUsed = false;
     player.flag.tripleAttackStandCount = 0;
+    delete player.flag.multiAttackUses; // rulings-e: 『Ｎ回攻撃』の N 別使用回数（src/10 standAttackerForMultiAttack）
   }
   zones.forEach((zone) => {
     const card = player.field[zone];
@@ -2504,6 +3270,7 @@ function standPlayer(player) {
       card.counterattack = false;
       card.doubleAttackUsed = false;
       card.tripleAttackStandCount = 0;
+      delete card.multiAttackUses; // rulings-e: 『Ｎ回攻撃』の N 別使用回数もターン開始でリセット
     }
   });
 }
@@ -2539,9 +3306,20 @@ function applyLifeZeroReplacementEffects(effects, owner, sourceCard = null) {
       player.drop.push(...discarded);
       if (discarded.length) addLog(`${player.name}は手札を全て捨てました。`);
     } else if (eff.op === "dealDamage") {
-      const receiver = eff.player === "opponent" ? state.players[1 - owner] : player;
-      receiver.life -= eff.amount || 0;
-      addLog(`${sourceCard?.name || player.name}の効果で${receiver.name}に${eff.amount || 0}ダメージ！`);
+      // E11: 直接 life を減らさず、全ダメージが合流する applyDamageToPlayer を通す（受け手の軽減/無効化・
+      // 被ダメ記録・『ダメージを受けた時』誘発・勝敗判定）。同期関数なのでこの同期経路からそのまま呼べる。
+      const receiverIndex = eff.player === "opponent" ? 1 - owner : owner;
+      const receiver = state.players[receiverIndex];
+      const dealt = applyDamageToPlayer(receiverIndex, eff.amount || 0, {
+        byEffect: true,
+        sourceOwner: owner,
+        sourceCard: sourceCard || null,
+        sourceName: sourceCard?.name || player.name,
+        log: false,
+      });
+      if (dealt > 0) {
+        addLog(`${sourceCard?.name || player.name}の効果で${receiver.name}に${dealt}ダメージ！`);
+      }
     } else if (eff.op === "gainLife") {
       player.life += eff.amount || 0;
     } else if (eff.op === "draw") {
@@ -2549,15 +3327,139 @@ function applyLifeZeroReplacementEffects(effects, owner, sourceCard = null) {
       drawCards(player, eff.amount || 1);
     } else if (eff.op === "preventAllDamageThisTurn") {
       // src/15 の同名 op と同意味論（once:false + preventAll・untilTurnOwner=state.active で当該ターン終了に失効）。
+      const whileCond = captureWhileConditions(eff, owner); // 裁定 R9（未指定は null＝従来どおり常時）
       addNextDamagePrevention(owner, {
         preventAll: true,
         once: false,
+        damageClass: "noDamage", // 裁定 rulings-d: 分類(a)「受けない」
+        ...(eff.onlyAttack === true ? { onlyAttack: true } : {}),
         source: sourceCard?.name,
         sourceCard: sourceCard || null,
+        ...(whileCond ? { whileCond } : {}),
       });
       addLog(`${sourceCard?.name || "効果"}により、このターン中${player.name}はダメージを受けません。`);
     }
   }
+}
+
+// 裁定 rulings-d（Q1610）: ×天バスター系の致死（ライフ変更ロック中）で、場の強制 lifeZeroReplacement を
+// 「ライフを変更しない」形で解決する。対象は topDeckFilter / soulFilter 型（「このカードをドロップゾーンに置き、
+// デッキの上から１枚（ソウル全て）をドロップゾーンに置く。そのカードが魔法なら、君のライフはNになる」）と
+// sacrificeFilter 型（「『搭乗』しているカード１枚を破壊する。破壊したら、君のライフは１になり、このカードを破壊する」）。
+// どれも印字上は強制。置く/破壊する処理は行い、ライフ・ドロー・追加効果（ライフ変更に続く部分）は行わない。
+// soulCost 型（「捨ててよい。捨てたら」）は任意＝ライフが変わらないので使わない。
+function lockedLifeZeroReplacement(player, owner) {
+  const replacementSlot = [...setZones, "item", ...fieldZones]
+    .map((zone) => ({ zone, card: player.field[zone] }))
+    .find(
+      ({ card }) =>
+        card?.lifeZeroReplacement &&
+        !isAbilitiesNullified(card) &&
+        !card.lifeZeroReplacement.soulCost &&
+        !triggerDriver.lifeZeroSacrificePending.has(card.instanceId) &&
+        (card.lifeZeroReplacement.topDeckFilter || card.lifeZeroReplacement.soulFilter || card.lifeZeroReplacement.sacrificeFilter),
+    );
+  if (!replacementSlot) {
+    addLog(`${player.name}のライフは変更されません（復活できない）。`);
+    return;
+  }
+  const { zone, card } = replacementSlot;
+  const replacement = card.lifeZeroReplacement;
+  if (replacement.sacrificeFilter) {
+    // 2026-10-13 rulings-f: 生贄は通常の破壊経路（ソウルガード等の任意確認・破壊耐性・破壊時誘発）で破壊する。
+    // ライフ変更ロック中なので「破壊したら」でもライフは変えず、このカードの破壊だけ行う。
+    const sac = findLifeZeroSacrifice(player, owner, zone, card);
+    if (sac) {
+      scheduleLifeZeroSacrifice(owner, zone, card, sac, { changeLife: false });
+    }
+  } else {
+    if (replacement.soulFilter) {
+      const soulCards = card.soul?.splice(0) || [];
+      player.drop.push(...soulCards);
+    }
+    if (replacement.topDeckFilter) {
+      const topDeckCard = player.deck.pop() || null;
+      if (topDeckCard) {
+        player.drop.push(topDeckCard);
+        queueDeckMilledTriggers(owner, [topDeckCard], {
+          byEffect: true,
+          byOpponent: false,
+          sourceOwner: owner,
+          sourceCard: card || null,
+        });
+      } else {
+        declareDeckLoss(player);
+      }
+    }
+    dropFieldCardByRule(player, zone);
+  }
+  addLog(`${card.name}の効果は発動しましたが、${player.name}のライフは変更されません（復活できない）。`);
+}
+
+// rulings-f: ライフ0置換の生贄（『搭乗』しているカード等）を探す。既定は破壊耐性で破壊できないものを除く（Q777）。
+function lifeZeroSacrificeCause(owner, card) {
+  return { byEffect: true, byOpponent: false, sourceOwner: owner, sourceType: card ? effectiveCardType(card) : null, sourceCard: card || null };
+}
+function findLifeZeroSacrifice(player, owner, zone, card, options = {}) {
+  const replacement = card.lifeZeroReplacement;
+  const searchZones = expandZoneList(replacement.sacrificeZones) || zones;
+  const cause = lifeZeroSacrificeCause(owner, card);
+  return (
+    searchZones
+      .map((z) => ({ z, c: player.field[z] }))
+      .find(
+        ({ z, c }) =>
+          c &&
+          z !== zone &&
+          matchesCardFilter(c, replacement.sacrificeFilter) &&
+          (options.includeImmune || !destroyImmunityBlocks(c, cause, owner)),
+      ) || null
+  );
+}
+
+// rulings-f: ライフ0置換の生贄を通常の破壊経路で破壊し、「破壊したら」このカードを破壊する（ブレイブフォート H-EB02/0029）。
+// ソウルガード等の確認は destroyFieldCard → confirmChoiceAsync が持ち主の席（ローカル/CPU/権威サーバ/リプレイ）へ回す。
+// changeLife: 呼び出し側が先にライフを確定させた（通常時）。破壊が成立しなかったらライフを戻し敗北処理をやり直す。
+function scheduleLifeZeroSacrifice(owner, zone, card, sac, { changeLife }) {
+  const pending = triggerDriver.lifeZeroSacrificePending;
+  pending.add(card.instanceId);
+  const replacement = card.lifeZeroReplacement;
+  const job = async () => {
+    const player = state.players[owner];
+    const cause = lifeZeroSacrificeCause(owner, card);
+    const destroyed =
+      player.field[sac.z] === sac.c ? await destroyFieldCard(owner, sac.z, { cause, outcome: {} }) : null;
+    if (!destroyed) {
+      if (changeLife) {
+        player.life = Math.min(player.life, sac.lifeBefore ?? 0);
+        addLog(`${sac.c.name}を破壊できなかったため、${card.name}の効果で${player.name}のライフは変わりません。`);
+      }
+      pending.delete(card.instanceId);
+      if (changeLife) {
+        // このライフ0に対しては同じ置換を再使用しない（他の置換/セーフガードは従来どおり）。
+        triggerDriver.lifeZeroSkip = card.instanceId;
+        try {
+          checkWinner();
+        } finally {
+          triggerDriver.lifeZeroSkip = null;
+        }
+      }
+      return;
+    }
+    pending.delete(card.instanceId);
+    if (changeLife) {
+      addLog(`${card.name}の効果で${sac.c.name}を破壊し、${player.name}のライフは${player.life}になりました。`);
+      if ((replacement?.draw || 0) > 0 && !isDrawByEffectPrevented(owner)) {
+        drawCards(player, replacement.draw || 0);
+      }
+    }
+    const fortSlot = findFieldCardSlot(card);
+    if (fortSlot && fortSlot.owner === owner) {
+      await destroyFieldCard(owner, fortSlot.zone, { cause });
+    }
+  };
+  // 攻撃の破壊〜貫通の間は battleTriggerHold に溜まり、プレイタイミングで解決する（他の誘発と同じ）。
+  queueTriggerMicrotask(job, { owner });
 }
 
 function resolveLifeZeroReplacements() {
@@ -2566,9 +3468,15 @@ function resolveLifeZeroReplacements() {
       return;
     }
     // E-Y6(0048/0028): この致死ダメージが「相手のカードで相手のライフは変更されない（復活できない）」を
-    // 指定していれば、受け手(owner)の lifeZeroReplacement / lifeZeroSafeguard を丸ごとスキップして敗北確定させる。
-    // フラグは applyDamageToPlayer の checkWinner 呼び出しの間だけ立つ（この致死限定）。
-    if (state.suppressLifeZeroReplacementFor === owner) {
+    // 指定していれば、受け手(owner)のライフは変更されない＝敗北確定。フラグは applyDamageToPlayer の checkWinner
+    // 呼び出しの間だけ立つ（この致死限定）。
+    // 裁定 rulings-d（Q1610/Q1611）: ライフを変更する部分だけが行われない。強制の置換（「このカードをドロップゾーンに
+    // 置き、デッキの上から１枚をドロップゾーンに置く。そのカードが魔法なら、君のライフは２になる」Ｄ・Ｒ・システム等）は
+    // 発動して置く処理までは行い、ライフは0のまま（Q1610）。「〜てよい」の任意置換（手札重ね・ソウル捨て）と
+    // プレイヤー単位のセーフガード（バーンノヴァ救援等のライフ1化＝Q1611 コールコストが払えない）は行わない。
+    const lifeLocked = state.suppressLifeZeroReplacementFor === owner;
+    if (lifeLocked) {
+      lockedLifeZeroReplacement(player, owner);
       return;
     }
     // FE1(X-BT01/0128 ドラゴン・ドライ rule③): 「君のライフが0になるなら、手札のこのカードを君の
@@ -2607,15 +3515,34 @@ function resolveLifeZeroReplacements() {
       .find(
         ({ card }) =>
           card?.lifeZeroReplacement &&
+          // 場のカードの■能力。能力無効化中は置換できない（破壊置換・ソウルガードと同基準）。
+          !isAbilitiesNullified(card) &&
+          // rulings-f: 生贄の破壊を待っている（または破壊に失敗した）同じ置換は二度使わない。
+          !triggerDriver.lifeZeroSacrificePending.has(card.instanceId) &&
+          triggerDriver.lifeZeroSkip !== card.instanceId &&
           // soulCost 型はソウルが足りる時だけ置換候補になる（不足時は次の敗北処理へ）
           (!card.lifeZeroReplacement.soulCost ||
             (card.soul || []).length >= (card.lifeZeroReplacement.soulCost.amount || 1)),
       );
     if (!replacementSlot) {
       // プレイヤー単位の一回限りセーフガード（実は生きていた！）。場札の置換が無い場合に消費する。
+      // 監査 rule-damage-5: duration:"attackPhase" はアタックフェイズを過ぎたら失効（R-BR21 と同じく攻撃中の
+      //   state.phase="defense" は宣言時の pendingAttack.phase で論理フェイズを判定）。
+      const sg = player.lifeZeroSafeguard;
+      if (sg?.duration === "attackPhase") {
+        const logicalPhase = state.pendingAction?.phase || state.phase;
+        const inAttackPhase =
+          sg.turnCount === state.turnCount && (logicalPhase === "attack" || state.pendingAttack?.phase === "attack");
+        if (!inAttackPhase) {
+          player.lifeZeroSafeguard = null;
+        }
+      }
       if (player.lifeZeroSafeguard) {
         const safeguard = player.lifeZeroSafeguard;
-        player.lifeZeroSafeguard = null;
+        // once:false（期間型）は消費しない（期間中は何度でも置換する）。
+        if (safeguard.once !== false) {
+          player.lifeZeroSafeguard = null;
+        }
         player.life = safeguard.life || 1;
         addLog(`${player.name}は「実は生きていた！」でライフが${player.life}になりました。`);
         // 追加効果（蒼舞天滝陣 0037: 手札全捨て＋相手にダメージ2 等）を同期実行する。共通ディスパッチ
@@ -2633,20 +3560,25 @@ function resolveLifeZeroReplacements() {
       // R-BR28(ブラウザレビュー): 『搭乗』しているカード＝装備枠(item)のみ。sacrificeZones で走査ゾーンを
       // 絞る（未指定なら従来どおり全ゾーン＝完全後方互換。keyword:"ride" は静的なので未搭乗の場のライド
       // モンスターも拾ってしまうため、0029 は sacrificeZones:["item"...] で装備済みのみに限定する）。
-      const searchZones = replacement.sacrificeZones || zones;
-      const sac = searchZones
-        .map((z) => ({ z, c: player.field[z] }))
-        .find(({ z, c }) => c && z !== zone && matchesCardFilter(c, replacement.sacrificeFilter));
+      // 2026-10-13 rulings-f（オーナー裁定・Q776/Q777）: 生贄は通常の破壊経路（destroyFieldCard）で破壊する。
+      // ソウルガード等で場に残っても破壊は成功（2026-10-09 裁定）＝ライフ1・このカードを破壊（Q776 カイゼリオン）。
+      // 「カードの効果で破壊されない」カードは破壊できない＝「破壊したら」以降は解決しない（Q777 ガンザウラー）。
+      // checkWinner は同期経路でソウルガード確認（往復）を待てないため、破壊が成立し得る（耐性の無い）生贄がいる時は
+      // ライフ1を先に確定させて敗北を止め、破壊と「このカードを破壊」は誘発ジョブ（scheduleLifeZeroSacrifice）で
+      // 通常の破壊経路に流す。ジョブで破壊が成立しなかったら（場を離れて別の場所へ移る置換・状況の変化）ライフを
+      // 戻して敗北処理をやり直す。
+      const sac = findLifeZeroSacrifice(player, owner, zone, card);
       if (!sac) {
+        const immune = findLifeZeroSacrifice(player, owner, zone, card, { includeImmune: true });
+        if (immune) {
+          addLog(`${immune.c.name}は効果では破壊されないため、${card.name}の効果でライフは変わりません。`);
+        }
         return;
       }
-      dropFieldCardByRule(player, sac.z);
-      dropFieldCardByRule(player, zone);
+      sac.lifeBefore = player.life;
       player.life = replacement.life || 1;
-      if ((replacement.draw || 0) > 0 && !isDrawByEffectPrevented(state.players.indexOf(player))) {
-        drawCards(player, replacement.draw || 0);
-      }
-      addLog(`${card.name}の効果で${sac.c.name}を破壊し、${player.name}のライフは${player.life}になりました。`);
+      addLog(`${card.name}の効果で${sac.c.name}を破壊します。${player.name}のライフは${player.life}になります。`);
+      scheduleLifeZeroSacrifice(owner, zone, card, sac, { changeLife: true });
       return;
     }
     if (replacement.soulCost) {

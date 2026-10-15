@@ -3,8 +3,9 @@
 // サーバ配信viewの描画」のみ（シンクライアント）。手札・山札は役割別に伏せ字化して配信。
 // 現 netplay-server.js（中継方式）とは別エンドポイント /auth/* で提供する。
 //
-// 注意(P1後続): 選択ダイアログ/じゃんけん等のプロンプトは現状サーバ側で自動解決
-// （engine-host の window.prompt/confirm）。本来はアクティブ/応答プレイヤーへ往復させる。
+// 選択ダイアログ/じゃんけん/任意能力ゲート等のプロンプトは該当席のクライアントへ往復させる
+// （engine の __serverPrompt → dispatchPrompt → SSE prompt_request → POST /prompt で再開）。
+// 宛先席が不在/未接続・60秒無応答の時だけ engine 側の既定値（先頭min枚等）で自動解決する。
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
@@ -12,6 +13,7 @@ const crypto = require("crypto");
 const { GameRoom } = require("./engine-host");
 const roomStore = require("./room-store");
 const replayStore = require("./replay-store");
+const { engineVersion } = require("./engine-version");
 const userStore = require("./user-store");
 const deckCode = require("../deck-code");
 
@@ -39,6 +41,38 @@ const ROOM_TTL_HOURS = Number(process.env.ROOM_TTL_HOURS) || 48; // 永続層(ro
 const ROOM_PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const REPLAY_TTL_DAYS = Number(process.env.REPLAY_TTL_DAYS) || 30; // 保存済みリプレイの古い共有を掃除
 
+// ---- 濫用対策の上限（F3/F9）。env で変更可。スモークは LIMITS を直接書き換えて検証する（読むのは呼出時） ----
+function envInt(name, def) {
+  const v = Number(process.env[name]);
+  return Number.isFinite(v) && v > 0 ? Math.floor(v) : def;
+}
+const LIMITS = {
+  jsonBodyBytes: envInt("JSON_BODY_LIMIT_BYTES", 64 * 1024), // 全APIのJSON本文上限（部屋/ユーザーAPIとも数KBで足りる）
+  maxRooms: envInt("MAX_ROOMS", 200), // 同時に存在できる部屋（ロビー含む）
+  maxActiveGames: envInt("MAX_ACTIVE_GAMES", 16), // 同時に盤面(GameRoom≒1局30MB超)を持てる部屋
+  maxMembersPerRoom: envInt("MAX_MEMBERS_PER_ROOM", 12), // 1部屋の参加者（対戦2＋観戦）
+  lobbyIdleTtlMs: envInt("LOBBY_IDLE_TTL_MINUTES", 30) * 60 * 1000, // 未開始＆全員オフラインの部屋の寿命
+  maxRestoreRooms: envInt("MAX_RESTORE_ROOMS", 200), // 起動時に復元する部屋の上限（新しい順）
+  rateWindowMs: RATE_LIMIT_WINDOW_MS,
+  rate: {
+    auth: RATE_LIMIT_MAX, // register/login（従来値）
+    create: envInt("RATE_ROOM_CREATE_MAX", 30), // 部屋作成/IP/10分
+    join: envInt("RATE_ROOM_JOIN_MAX", 120), // 参加/IP/10分
+    start: envInt("RATE_ROOM_START_MAX", 60), // 対戦開始/IP/10分
+  },
+};
+const NAME_MAX = 24; // 部屋の表示名（登録名と同じ上限）
+const DECK_NAME_MAX = 60; // デッキ名（共有コード検証と同じ上限）
+const DECK_ID_MAX = 128;
+const LABEL_MAX = 64;
+const DECK_CODE_MAX = 16 * 1024;
+
+function clampText(value, max) {
+  if (typeof value !== "string") return "";
+  const s = value.trim();
+  return s.length > max ? s.slice(0, max) : s;
+}
+
 // ROOM_STORE_BACKEND 未指定なら USER_STORE_BACKEND を継承（ユーザーDBが turso なら部屋も turso）。
 function resolveRoomStoreBackend() {
   return process.env.ROOM_STORE_BACKEND || process.env.USER_STORE_BACKEND || "file";
@@ -52,6 +86,26 @@ function resolveReplayStoreBackend() {
     process.env.USER_STORE_BACKEND ||
     "file"
   );
+}
+
+// 2026-10-09 オーナー裁定「リプレイについてはバージョンアップ時に前のは消していい」:
+// 保存済みリプレイのうちエンジン版（recording.engineVersion）が現行（index.html の ENGINE_VERSION）と違うもの
+// （版の無い旧形式を含む）は再生できないので、ストア初期化時（＝サーバ起動時）に削除する。取り残し（削除失敗・
+// 別版インスタンスが後から保存した等）は GET /replay/:id が 410、/auth/replays が非表示で扱う。
+function isCurrentVersionReplayBlob(blob) {
+  return replayStore.blobEngineVersion(blob) === engineVersion();
+}
+
+async function pruneOldVersionReplays() {
+  try {
+    const removed = await replayStore.pruneOtherVersions(engineVersion());
+    if (removed) {
+      console.log(`[replay-store] 旧バージョン（現行 ${engineVersion()} 以外）のリプレイを ${removed} 件削除しました`);
+    }
+  } catch (error) {
+    // 掃除の失敗で保存/取得まで止めない（旧版は GET 410・一覧非表示で扱われる）。
+    console.warn(`[replay-store] 旧バージョンのリプレイ削除に失敗: ${error.message}`);
+  }
 }
 
 // リプレイストアの遅延初期化（memoize）。直接起動時は main が先に呼ぶが、require 経路（スモーク/e2e）でも
@@ -69,6 +123,7 @@ function ensureReplayStoreInitialized() {
         tursoUrl: process.env.TURSO_DATABASE_URL,
         tursoToken: process.env.TURSO_AUTH_TOKEN,
       })
+      .then(() => pruneOldVersionReplays())
       .catch((error) => {
         replayStoreInitPromise = null; // 失敗時は次のリクエストで再試行できるように
         throw error;
@@ -100,41 +155,92 @@ const contentTypes = {
   ".json": "application/json; charset=utf-8",
   ".png": "image/png",
   ".svg": "image/svg+xml",
+  ".webp": "image/webp",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".ico": "image/x-icon",
+  ".woff2": "font/woff2",
+  ".woff": "font/woff",
+  ".webmanifest": "application/manifest+json",
 };
 
 function randomId(size = 4) {
   return crypto.randomBytes(size).toString("hex").toUpperCase();
 }
 
-function sendJson(res, statusCode, payload) {
+// 応答ヘッダ送出済み（SSE 開通後の例外など）なら JSON は書けない。二重 writeHead で例外を重ねず、
+// 未終了なら閉じるだけにする（F2）。
+function responseAlreadyStarted(res) {
+  if (!res.headersSent && !res.writableEnded) return false;
+  try {
+    if (!res.writableEnded) res.end();
+  } catch {
+    /* 既に壊れたソケットは無視 */
+  }
+  return true;
+}
+
+function sendJson(res, statusCode, payload, extraHeaders = null) {
+  if (responseAlreadyStarted(res)) return;
   const body = JSON.stringify(payload);
   res.writeHead(statusCode, {
     "Content-Type": "application/json; charset=utf-8",
     "Content-Length": Buffer.byteLength(body),
+    ...(extraHeaders || {}),
   });
   res.end(body);
 }
 
-function readJson(req) {
+function httpError(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
+
+// JSON 本文の読込。上限超過=413 / 壊れたJSON・オブジェクト以外=400（statusCode 付き例外→最上位で応答）。
+// 旧実装は 20MB まで受理しており、巨大な deck.custom 等を素通ししていた（F2/F3/F9）。
+function readJson(req, limit = LIMITS.jsonBodyBytes) {
   return new Promise((resolve, reject) => {
-    let body = "";
+    const chunks = [];
+    let size = 0;
+    let done = false;
     req.on("data", (chunk) => {
-      body += chunk;
-      if (body.length > 20 * 1024 * 1024) {
-        reject(new Error("request too large"));
-        req.destroy();
+      if (done) return;
+      size += chunk.length;
+      if (size > limit) {
+        done = true;
+        req.pause(); // 以降は読まない（応答後に Connection: close で切る）
+        reject(httpError(413, "request too large"));
+        return;
       }
+      chunks.push(chunk);
     });
     req.on("end", () => {
+      if (done) return;
+      done = true;
+      const body = Buffer.concat(chunks).toString("utf8");
       if (!body) {
         resolve({});
         return;
       }
+      let parsed;
       try {
-        resolve(JSON.parse(body));
+        parsed = JSON.parse(body);
       } catch {
-        reject(new Error("invalid json"));
+        reject(httpError(400, "invalid json"));
+        return;
       }
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        reject(httpError(400, "JSON object expected"));
+        return;
+      }
+      resolve(parsed);
+    });
+    req.on("error", (error) => {
+      if (done) return;
+      done = true;
+      reject(error);
     });
   });
 }
@@ -144,6 +250,7 @@ function readJson(req) {
 // 既存の部屋API(/auth/rooms/*)は同一オリジンのまま無改変（CORSヘッダも付けない）。
 
 function sendJsonCors(res, statusCode, payload) {
+  if (responseAlreadyStarted(res)) return;
   const body = JSON.stringify(payload);
   res.writeHead(statusCode, {
     "Content-Type": "application/json; charset=utf-8",
@@ -155,6 +262,7 @@ function sendJsonCors(res, statusCode, payload) {
   res.end(body);
 }
 function sendNoContentCors(res, statusCode = 204) {
+  if (responseAlreadyStarted(res)) return;
   res.writeHead(statusCode, {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Authorization, Content-Type",
@@ -264,21 +372,59 @@ async function resolveOptionalUserId(req) {
   }
 }
 
-// register/login のレート制限（同一IPで10回/10分。プロセス内カウンタで十分な個人運用規模）。
-const rateLimitHits = new Map(); // ip -> timestamps[]
-function checkRateLimit(ip) {
+// レート制限（プロセス内カウンタで十分な個人運用規模）。bucket ごとに別勘定:
+//   auth=register/login（同一IPで10回/10分）, create/join/start=部屋API（F3。上限は LIMITS.rate）。
+const rateLimitHits = new Map(); // `${bucket}|${ip}` -> timestamps[]
+function checkRateLimit(ip, bucket = "auth") {
   const now = Date.now();
-  const arr = (rateLimitHits.get(ip) || []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
-  if (arr.length >= RATE_LIMIT_MAX) {
-    rateLimitHits.set(ip, arr);
+  const max = LIMITS.rate[bucket] ?? RATE_LIMIT_MAX;
+  const key = `${bucket}|${ip}`;
+  const arr = (rateLimitHits.get(key) || []).filter((t) => now - t < LIMITS.rateWindowMs);
+  if (arr.length >= max) {
+    rateLimitHits.set(key, arr);
     return false;
   }
   arr.push(now);
-  rateLimitHits.set(ip, arr);
+  rateLimitHits.set(key, arr);
   return true;
 }
+// 窓を過ぎたエントリを捨てる（F6: IP ごとに Map が単調増加しないように定期掃除）。
+function pruneRateLimitHits(now = Date.now()) {
+  for (const [key, arr] of rateLimitHits) {
+    const live = arr.filter((t) => now - t < LIMITS.rateWindowMs);
+    if (live.length === 0) rateLimitHits.delete(key);
+    else if (live.length !== arr.length) rateLimitHits.set(key, live);
+  }
+}
+setInterval(() => pruneRateLimitHits(), 5 * 60 * 1000).unref();
+
+// 逆プロキシ越しの接続元（F6）。env TRUST_PROXY:
+//   未設定/0/false = X-Forwarded-For を信用しない（socket の接続元のみ。直結運用の既定）
+//   true/1         = 直前の1段（Render/fly.io 等の前段プロキシ）を信用
+//   N(整数)        = 直前のN段を信用
+// 信用するのは「右端から N 段」だけ。それより左＝クライアントが自由に書ける部分は使わない
+// （偽の X-Forwarded-For を送ってもレート制限/キックブロックを回避できない）。
+function trustedProxyHops() {
+  const raw = String(process.env.TRUST_PROXY || "").trim().toLowerCase();
+  if (!raw || raw === "0" || raw === "false" || raw === "no" || raw === "off") return 0;
+  if (raw === "true" || raw === "yes" || raw === "on") return 1;
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? Math.min(n, 10) : 0;
+}
 function clientIp(req) {
-  return req.socket?.remoteAddress || "unknown";
+  const remote = req?.socket?.remoteAddress || "unknown";
+  const hops = trustedProxyHops();
+  if (!hops) return remote;
+  const header = req.headers?.["x-forwarded-for"];
+  const forwarded = (Array.isArray(header) ? header.join(",") : String(header || ""))
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!forwarded.length) return remote;
+  // chain = [client?, ..., proxy(n-1), 接続元]。末尾から hops 個が信頼プロキシ＝その直前が最初の非信頼ホップ。
+  const chain = [...forwarded, remote];
+  const picked = chain[Math.max(0, chain.length - 1 - hops)] || remote;
+  return picked.slice(0, 64);
 }
 
 // デッキ保存の検証用データ（全カードID・全フラッグID）。getDeckList と同様の遅延キャッシュ方式だが、
@@ -291,6 +437,8 @@ async function getDeckValidationSets() {
   const flagIds = new Set();
   const unlimitedCardIds = new Set(); // E-XC3: deckUnlimitedCopies なカードID（同名4枚超を許容）
   const limitCardMeta = []; // E-PR10(limitWith): buildLimitGroups 用の {id,name,limitWith}
+  const buddyCountRules = {}; // audit2(b080-10): id→deckLimitUnlessBuddyCount（俺のバディ！）
+  const cardNames = {}; // audit2(b080-10): id→カード名（バディの同名枚数集計用）
   const stripBom = (text) => text.replace(/^﻿/, "");
   try {
     const cardsets = JSON.parse(stripBom(fs.readFileSync(path.join(rootDir, "data", "cardsets.json"), "utf8")));
@@ -303,6 +451,8 @@ async function getDeckValidationSets() {
           if (card.id) cardIds.add(card.id);
           if (card.id && card.deckUnlimitedCopies) unlimitedCardIds.add(card.id); // E-XC3
           if (card.id) limitCardMeta.push({ id: card.id, name: card.name, limitWith: card.limitWith }); // E-PR10
+          if (card.id) cardNames[card.id] = card.name;
+          if (card.id && card.deckLimitUnlessBuddyCount) buddyCountRules[card.id] = card.deckLimitUnlessBuddyCount;
         }
       } catch (error) {
         console.warn(`[user-store] カードセット読込失敗: ${set.file}: ${error.message}`);
@@ -322,23 +472,74 @@ async function getDeckValidationSets() {
   }
   // E-PR10(limitWith): id→グループ名の写像（limitWith 皆無なら null＝グループ制約なし＝後方互換）。
   const limitGroups = deckCode.buildLimitGroups(limitCardMeta);
-  deckValidationCache = { cardIds, flagIds, unlimitedCardIds, limitGroups };
+  deckValidationCache = { cardIds, flagIds, unlimitedCardIds, limitGroups, buddyCountRules, cardNames };
   return deckValidationCache;
 }
 
-// env ADMIN_USER_NAME/ADMIN_USER_PASSWORD があれば起動時に管理者を確保（存在すればパス更新+is_admin=1）。
+// 部屋に持ち込まれる deck（{id, name?, custom?}）の検証・正規化（F2）。作成/参加/setDeck/復元の全入口で通す。
+// custom（play.js が builder の自作デッキを同梱する定義）は共有コードと同じ validateDeckCodePayload で検証する:
+//   実在カード/フラッグ・同名4枚(deckUnlimitedCopies は例外)・limitWith グループ4枚・100種/合計200枚・名前60字。
+//   ※50枚ちょうどの下限は課さない（builder は作りかけデッキも保存でき、従来も開始できたため挙動を変えない）。
+// 旧実装は custom を無検証で engine へ渡し、recipe [[id,1e6]] で開始時に数秒〜十数秒イベントループを塞ぎ、
+// 永続化の JSON.stringify でプロセスごと落ちた。正規化後は既知フィールドのみ（余計なキーを持ち込ませない）。
+// 戻り値: { deck } | { error }
+async function normalizeRoomDeck(deck) {
+  if (deck === undefined || deck === null || deck === "" || deck === false) return { deck: null }; // 旧実装の if (body.deck) 互換
+  if (typeof deck !== "object" || Array.isArray(deck)) return { error: "デッキの指定が不正です" };
+  const id = typeof deck.id === "string" ? deck.id.trim() : "";
+  if (!id || id.length > DECK_ID_MAX) return { error: "デッキIDが不正です" };
+  const name = clampText(deck.name, DECK_NAME_MAX);
+  if (deck.custom === undefined || deck.custom === null) {
+    return { deck: name ? { id, name } : { id } };
+  }
+  const custom = deck.custom;
+  if (typeof custom !== "object" || Array.isArray(custom)) return { error: "自作デッキの形式が不正です" };
+  const sets = await getDeckValidationSets();
+  const result = deckCode.validateDeckCodePayload(
+    {
+      ver: 1,
+      name: clampText(custom.name, DECK_NAME_MAX) || name || id.slice(0, DECK_NAME_MAX),
+      flag: custom.flag,
+      buddy: custom.buddy,
+      recipe: custom.recipe,
+    },
+    sets,
+  );
+  if (!result.ok) return { error: `自作デッキが不正です: ${String(result.reason).slice(0, 160)}` };
+  const n = result.normalized;
+  // engine は deck.id で deckProfiles から引くため custom.id は必ず deck.id に揃える。
+  return {
+    deck: { id, name: name || n.name, custom: { id, name: n.name, flag: n.flag, buddy: n.buddy, recipe: n.recipe } },
+  };
+}
+
+// env ADMIN_USER_NAME/ADMIN_USER_PASSWORD があれば起動時に管理者を確保する。
+// 【F5・セキュリティ】同名の「一般ユーザー」が既にいても自動昇格しない。登録は誰でもできるため、
+// 攻撃者が管理者名を先回り登録しておくと、旧実装（存在すれば is_admin=1 に昇格）では再起動後に
+// 攻撃者の既存セッションがそのまま管理者になった。昇格はスキップし大きく警告する
+// （運用者がその一般ユーザーを削除/改名してから再起動すれば、正規の管理者が作られる）。
+// 既存の管理者はパスワードが env と異なる時だけ更新し、その際は全セッションを失効させる
+// （旧パスワードで得たトークンを無効化。同一パスなら再起動のたびにログアウトさせない）。
 async function ensureAdminUser() {
   const name = process.env.ADMIN_USER_NAME;
   const password = process.env.ADMIN_USER_PASSWORD;
   if (!name || !password) return;
-  const passHash = hashPassword(password);
   const existing = await userStore.getUserByName(name);
   if (existing) {
-    await userStore.setPassword(existing.id, passHash);
-    await userStore.setAdmin(existing.id, true);
-  } else {
-    await userStore.createUser({ name, passHash, isAdmin: true });
+    if (!existing.isAdmin) {
+      console.warn(
+        `[admin] 警告: ADMIN_USER_NAME="${name}" と同名の一般ユーザーが既に存在するため、管理者への昇格を行いません。` +
+          "第三者による先回り登録の可能性があります。そのユーザーを削除/改名してから再起動してください。",
+      );
+      return;
+    }
+    if (!verifyPassword(password, existing.passHash)) {
+      await userStore.setPassword(existing.id, hashPassword(password));
+      await userStore.deleteSessionsByUser(existing.id);
+    }
+    return;
   }
+  await userStore.createUser({ name, passHash: hashPassword(password), isAdmin: true });
 }
 
 // ---- 部屋・メンバー・席モデル ----
@@ -372,21 +573,22 @@ function createRoom() {
 
 // キック後の再入室ブロックの鍵（ログインユーザーは userId、未ログインは接続元アドレス）。
 const KICK_BLOCK_MS = 2 * 60 * 1000;
-function kickBlockKeys(req, userId) {
+// addr は clientIp(req)（TRUST_PROXY 設定時は X-Forwarded-For の非信頼ホップ。F6）。
+function kickBlockKeys(addr, userId) {
   const keys = [];
   if (userId) keys.push(`user:${userId}`);
-  const addr = req?.socket?.remoteAddress;
   if (addr) keys.push(`addr:${addr}`);
   return keys;
 }
 function isKickBlocked(room, req, userId) {
   const now = Date.now();
+  const mine = kickBlockKeys(clientIp(req), userId);
   for (const [key, until] of room.kickBlocks || []) {
     if (until <= now) {
       room.kickBlocks.delete(key); // 期限切れは掃除
       continue;
     }
-    if (kickBlockKeys(req, userId).includes(key)) {
+    if (mine.includes(key)) {
       return Math.ceil((until - now) / 1000);
     }
   }
@@ -449,7 +651,14 @@ function persistNow(room) {
   // save が同期でチェーンが microtask で drain しきるため安全だが、turso backend では前段 save の fetch が
   // 滞留する間に別アクションが busy=true で state を途中変異させ、遅延実行時の live state（effect 解決途中）を
   // 保存しうる。捕捉時に clone しておけば file/turso 両方で「busy=false の瞬間の局面」が保証される。
-  const snapshot = JSON.parse(JSON.stringify(snapshotRoom(room)));
+  // F2: 直列化の失敗（巨大/循環データ等）でリクエストやタイマーごとプロセスを落とさない。保存は諦めて警告のみ。
+  let snapshot;
+  try {
+    snapshot = JSON.parse(JSON.stringify(snapshotRoom(room)));
+  } catch (error) {
+    console.warn(`[persist] room ${room.id} のスナップショット作成に失敗（保存をスキップ）: ${error.message}`);
+    return;
+  }
   enqueuePersist(room.id, () => roomStore.save(room.id, snapshot));
 }
 
@@ -466,7 +675,12 @@ function schedulePersist(room) {
   if (persistTimers.has(room.id)) return;
   const timer = setTimeout(() => {
     persistTimers.delete(room.id);
-    persistNow(room);
+    try {
+      persistNow(room);
+    } catch (error) {
+      // タイマー内の例外は uncaughtException になりプロセスが落ちるため、ここで握って警告する。
+      console.warn(`[persist] room ${room.id} の遅延保存に失敗: ${error && error.message}`);
+    }
   }, 200);
   timer.unref?.();
   persistTimers.set(room.id, timer);
@@ -493,12 +707,38 @@ async function flushPersist(roomId) {
 }
 
 // 起動時に永続ファイルから rooms を再構築・局面復元（members は sse=null で再接続待機）。
+// F3: 復元数に上限を設ける（新しい順に maxRestoreRooms 部屋・うち盤面持ちは maxActiveGames まで）。
+// 呼び元（main）は期限切れを pruneExpired で先に掃除してから呼ぶ。
 async function restoreRooms() {
-  for (const snap of await roomStore.loadAll()) {
+  const snaps = (await roomStore.loadAll())
+    .filter((snap) => snap && typeof snap.id === "string")
+    .sort((a, b) => (Number(b.updatedAt) || 0) - (Number(a.updatedAt) || 0));
+  let restoredGames = 0;
+  let skipped = 0;
+  for (const snap of snaps) {
+    if (rooms.has(snap.id)) continue; // 生きている部屋をスナップショットで上書きしない（起動時は空なので無関係）
+    if (rooms.size >= LIMITS.maxRestoreRooms) {
+      skipped += 1;
+      continue;
+    }
+    const wantsGame = Boolean(snap.started && snap.state);
+    if (wantsGame && restoredGames >= LIMITS.maxActiveGames) {
+      skipped += 1;
+      continue;
+    }
     try {
+      // 旧版で無検証のまま保存された deck/name もここで正規化する（不正な custom は持ち込みを外す）。
+      const members = [];
+      for (const m of (snap.members || []).slice(0, LIMITS.maxMembersPerRoom)) {
+        const normalized = await normalizeRoomDeck(m.deck);
+        if (normalized.error) {
+          console.warn(`[restore] room ${snap.id} member ${m.clientId} のデッキを破棄: ${normalized.error}`);
+        }
+        members.push({ ...m, name: clampText(m.name, NAME_MAX) || "プレイヤー", deck: normalized.deck || null, sse: null });
+      }
       const room = {
         id: snap.id,
-        members: new Map((snap.members || []).map((m) => [m.clientId, { ...m, sse: null }])),
+        members: new Map(members.map((m) => [m.clientId, m])),
         seats: snap.seats || [null, null],
         game: null,
         // state 欠損（started:true なのに state:null）の破損スナップショットを「開始済みだが盤面なし」の
@@ -527,11 +767,15 @@ async function restoreRooms() {
         game.api.setState(snap.state);
         game.started = true;
         room.game = game;
+        restoredGames += 1;
       }
       rooms.set(room.id, room);
     } catch (error) {
       console.warn(`[restore] room ${snap?.id} の復元に失敗（スキップ）: ${error.message}`);
     }
+  }
+  if (skipped) {
+    console.warn(`[restore] 上限(部屋${LIMITS.maxRestoreRooms}/対戦${LIMITS.maxActiveGames})超過のため ${skipped} 部屋を復元しませんでした`);
   }
 }
 
@@ -541,7 +785,7 @@ function addMember(room, { name, userId = null, remoteAddress = null }) {
   // userId: 参加時に Bearer が有効だった場合のログイン済みユーザーID（未ログインは null）。
   // 決着時に席へ紐づくログインユーザーへ戦績を記録するために控える（D5）。
   // remoteAddress: キック後の再入室ブロックの鍵に使う（clientId は参加のたび新規で鍵にならない）。
-  const member = { clientId, token, name: name || "プレイヤー", role: null, deck: null, sse: null, userId, remoteAddress };
+  const member = { clientId, token, name: clampText(name, NAME_MAX) || "プレイヤー", role: null, deck: null, sse: null, userId, remoteAddress };
   // 既定の席割り: 1人目=seat0, 2人目=seat1, 以降=観戦（あとで変更可）
   if (!room.seats[0]) {
     room.seats[0] = clientId;
@@ -615,8 +859,26 @@ function swapSeats(room) {
   return { ok: true };
 }
 
+// F7: ロビーの「席入替」「開始」を操作できるのは対戦席の本人かホスト（観戦者は不可）。
+function canControlLobby(room, member) {
+  return member.role === 0 || member.role === 1 || member.clientId === room.hostClientId;
+}
+
+// F3: 盤面(GameRoom)を保持している部屋の数（開始処理中も含める）。
+function countActiveGames() {
+  let n = 0;
+  for (const room of rooms.values()) {
+    if (room.game || room.starting) n += 1;
+  }
+  return n;
+}
+
 // 行動可能席か（クライアントの selectFieldCard 許可条件と同等）。
-function canActorActNow(state, seat) {
+// action = { type, params, game } を渡すと、保留の無い局面での非ターン席の【対抗】使用も判定する
+// （rule-counter-5・ver2.05 ②【対抗】の流れ 6.）。非ターン席に許すのは type:"use" のうち、エンジンの
+// game.canUseOffTurnCounter が「今【対抗】として使える」と答えた選択だけ。draw/charge/call/attack/endTurn/
+// フェイズ移行・【対抗】でない use は従来どおり拒否する（ルール判定はエンジン側 finder に委ね、ここで複製しない）。
+function canActorActNow(state, seat, action = null) {
   if (!Number.isInteger(seat)) return false;
   if (state.winner) return false;
   if (state.pendingAttack) {
@@ -625,7 +887,13 @@ function canActorActNow(state, seat) {
   if (state.pendingAction) {
     return seat === state.pendingAction.responder;
   }
-  return seat === state.active;
+  if (seat === state.active) return true;
+  return Boolean(
+    action &&
+      action.type === "use" &&
+      typeof action.game?.canUseOffTurnCounter === "function" &&
+      action.game.canUseOffTurnCounter(seat, action.params || {}),
+  );
 }
 
 // ---- 配信 ----
@@ -653,12 +921,14 @@ function lobbyPayload(room, you) {
 // 以後のブロードキャストが「もういない相手」へ書き続ける）。
 function closeSseOf(member) {
   if (!member?.sse) return;
+  const res = member.sse;
+  member.sse = null;
   try {
-    member.sse.end();
+    if (typeof res.__bfCleanup === "function") res.__bfCleanup(); // ハートビート停止（F8）
+    res.end();
   } catch (error) {
     /* 既に閉じている場合は無視 */
   }
-  member.sse = null;
 }
 
 function writeSse(res, message) {
@@ -740,15 +1010,38 @@ function dispatchPrompt(room, req) {
     allowCancel: req.allowCancel,
     searchable: req.searchable,
     candidates: req.candidates,
+    // 対抗窓改修: 誘発/ライフリンクの対抗窓（kind:"counterWindow"）の公開情報（種別・発生源名・窓ID）。候補は応答席にだけ届く。
+    ...(req.kind === "counterWindow" ? { counterWindow: req.counterWindow || null } : {}),
   };
+  if (req.kind === "counterWindow") {
+    // 窓は操作の途中（誘発の解決前）で開く。応答席の盤面が操作開始前のままにならないよう、最新 view を全員へ配る
+    // （viewFor が席別に伏せる）。待つ側には「相手が対抗を検討中」だけを知らせる（何を持っているかは送らない）。
+    broadcastView(room, "対抗確認");
+    notifyCounterWindow(room, targetSeat, true);
+  }
   return new Promise((resolve) => {
+    const finish = (value) => {
+      if (req.kind === "counterWindow") {
+        notifyCounterWindow(room, targetSeat, false);
+      }
+      resolve(value);
+    };
     const timer = setTimeout(() => {
       room.pendingPrompts.delete(requestId);
-      resolve(null);
+      finish(null); // 対抗窓は無応答＝パス
     }, 60 * 1000);
-    room.pendingPrompts.set(requestId, { resolve, timer, clientId: target.clientId, payload });
+    room.pendingPrompts.set(requestId, { resolve: finish, timer, clientId: target.clientId, payload });
     writeSse(target.sse, payload);
   });
+}
+
+// 対抗窓改修: 応答席以外（相手席・観戦）へ、窓の開閉だけを知らせる。
+function notifyCounterWindow(room, responderSeat, open) {
+  for (const member of room.members.values()) {
+    if (member.sse && member.role !== responderSeat) {
+      writeSse(member.sse, { type: "counter_window", open: Boolean(open), responder: responderSeat });
+    }
+  }
 }
 
 // ---- API ----
@@ -778,6 +1071,11 @@ async function handleApi(req, res, url) {
       sendJsonCors(res, 404, { error: "リプレイが見つかりません" });
       return true;
     }
+    if (!isCurrentVersionReplayBlob(blob)) {
+      // 旧エンジン版の記録は再生できない（現行エンジンは旧セマンティクスを持たない）。実体は次回起動時の掃除で消える。
+      sendJsonCors(res, 410, { error: "このリプレイは旧バージョンのため再生できません", gone: "old-version" });
+      return true;
+    }
     sendJsonCors(res, 200, { id: parts[1], recording: blob.replay });
     return true;
   }
@@ -794,6 +1092,12 @@ async function handleApi(req, res, url) {
     try {
       await ensureUserStoreInitialized();
     } catch (error) {
+      if (url.pathname === "/auth/dbhealth") {
+        // F13: 未認証の診断には失敗理由（Turso ホスト等を含みうる）を出さない。詳細はサーバログで確認する。
+        console.warn(`[dbhealth] ユーザーDB初期化失敗: ${error && error.message}`);
+        sendJsonCors(res, 503, { ok: false });
+        return true;
+      }
       sendJsonCors(res, 503, {
         error: "ユーザーDBに接続できません",
         detail: String(error && error.message ? error.message : error),
@@ -803,9 +1107,27 @@ async function handleApi(req, res, url) {
     }
   }
 
-  // 接続診断: デプロイ先URL/ローカルでブラウザから開くだけで、バックエンド種別と実DB往復の成否・
-  // 失敗理由が確認できる（登録できない時の一次切り分け用）。認証不要・データは返さない。
+  // 接続診断: デプロイ先URL/ローカルでブラウザから開くだけで、実DB往復の成否が確認できる（一次切り分け用）。
+  // F13: 未認証/一般ユーザーには {ok} だけを返す。バックエンド種別・Turso ホスト・dataDir 絶対パス・件数・
+  // 失敗理由の詳細は管理者（Bearer の isAdmin）にだけ返す（旧実装は認証不要で全部出していた）。
   if (req.method === "GET" && url.pathname === "/auth/dbhealth") {
+    let isAdmin = false;
+    try {
+      const caller = await authenticateRequest(req);
+      isAdmin = Boolean(caller && caller.isAdmin);
+    } catch {
+      isAdmin = false;
+    }
+    if (!isAdmin) {
+      try {
+        await userStore.ping();
+        sendJsonCors(res, 200, { ok: true });
+      } catch (error) {
+        console.warn(`[dbhealth] ping 失敗: ${error && error.message}`);
+        sendJsonCors(res, 503, { ok: false });
+      }
+      return true;
+    }
     // room-store は起動直後(require経路のスモーク等)だと未initの場合があるため個別に try する
     // （既存キー(ok/backend/...)は壊さず、roomBackend/roomCountを追加するだけ）。
     let roomInfo = { roomBackend: resolveRoomStoreBackend(), roomCount: null, roomError: null };
@@ -933,9 +1255,11 @@ async function handleApi(req, res, url) {
       });
       return true;
     }
-    const recent = await replayStore.listRecent(200);
+    // F11: 全体の直近200件から絞ると他人の保存が多い時に自分の古いリプレイが消えるため、保存者で引く。
+    const recent = await replayStore.listByUser(user.id, 200);
     const mine = recent
-      .filter((entry) => entry.recording && entry.recording.userId === user.id)
+      // 旧エンジン版のリプレイは再生できないので一覧に出さない（起動時の削除の取り残し対策）。
+      .filter((entry) => entry.recording && entry.recording.userId === user.id && isCurrentVersionReplayBlob(entry.recording))
       .map((entry) => ({
         id: entry.id,
         createdAt: entry.createdAt,
@@ -1021,6 +1345,10 @@ async function handleApi(req, res, url) {
       return true;
     }
     const body = await readJson(req);
+    if (typeof body.code !== "string" || body.code.length > DECK_CODE_MAX) {
+      sendJsonCors(res, 400, { error: "共有コードが不正です" });
+      return true;
+    }
     let payload;
     try {
       payload = deckCode.decodeDeckShareCode(body.code);
@@ -1028,8 +1356,15 @@ async function handleApi(req, res, url) {
       sendJsonCors(res, 400, { error: `共有コードが不正です: ${error.message}` });
       return true;
     }
-    const { cardIds, flagIds, unlimitedCardIds, limitGroups } = await getDeckValidationSets();
-    const result = deckCode.validateDeckCodePayload(payload, { cardIds, flagIds, unlimitedCardIds, limitGroups });
+    const { cardIds, flagIds, unlimitedCardIds, limitGroups, buddyCountRules, cardNames } = await getDeckValidationSets();
+    const result = deckCode.validateDeckCodePayload(payload, {
+      cardIds,
+      flagIds,
+      unlimitedCardIds,
+      limitGroups,
+      buddyCountRules,
+      cardNames,
+    });
     if (!result.ok) {
       sendJsonCors(res, 400, { error: result.reason });
       return true;
@@ -1040,7 +1375,8 @@ async function handleApi(req, res, url) {
       sendJsonCors(res, 409, { error: "マイデッキの保存上限に達しています" });
       return true;
     }
-    const name = typeof body.name === "string" && body.name.trim() ? body.name.trim() : result.normalized.name;
+    // F9: 表示名は共有コード検証と同じ60字に丸める（name だけ無制限に溜められないように）。
+    const name = clampText(body.name, DECK_NAME_MAX) || result.normalized.name;
     const cardCount = result.normalized.recipe.reduce((sum, [, c]) => sum + c, 0);
     const deck = await userStore.putDeck(user.id, {
       name,
@@ -1074,11 +1410,15 @@ async function handleApi(req, res, url) {
     }
     const body = await readJson(req);
     const patch = { id: existing.id };
-    if (typeof body.name === "string" && body.name.trim()) {
-      patch.name = body.name.trim();
+    if (clampText(body.name, DECK_NAME_MAX)) {
+      patch.name = clampText(body.name, DECK_NAME_MAX); // F9
     }
     if (typeof body.position === "number" && Number.isFinite(body.position)) {
       patch.position = body.position;
+    }
+    if (typeof body.code === "string" && body.code.length > DECK_CODE_MAX) {
+      sendJsonCors(res, 400, { error: "共有コードが不正です" });
+      return true;
     }
     if (typeof body.code === "string" && body.code) {
       let payload;
@@ -1088,8 +1428,15 @@ async function handleApi(req, res, url) {
         sendJsonCors(res, 400, { error: `共有コードが不正です: ${error.message}` });
         return true;
       }
-      const { cardIds, flagIds, unlimitedCardIds, limitGroups } = await getDeckValidationSets();
-      const result = deckCode.validateDeckCodePayload(payload, { cardIds, flagIds, unlimitedCardIds, limitGroups });
+      const { cardIds, flagIds, unlimitedCardIds, limitGroups, buddyCountRules, cardNames } = await getDeckValidationSets();
+      const result = deckCode.validateDeckCodePayload(payload, {
+        cardIds,
+        flagIds,
+        unlimitedCardIds,
+        limitGroups,
+        buddyCountRules,
+        cardNames,
+      });
       if (!result.ok) {
         sendJsonCors(res, 400, { error: result.reason });
         return true;
@@ -1183,14 +1530,26 @@ async function handleApi(req, res, url) {
 
   // POST /auth/rooms  （部屋作成＋作成者を席0で参加）
   if (req.method === "POST" && url.pathname === "/auth/rooms") {
-    const body = await readJson(req);
-    const room = createRoom();
-    const userId = await resolveOptionalUserId(req); // D5: ログイン中なら席に userId を紐づける
-    const member = addMember(room, { name: body.name, userId, remoteAddress: req.socket?.remoteAddress || null });
-    room.hostClientId = member.clientId; // 部屋を立てた人がホスト（キックの権限者）
-    if (body.deck) {
-      member.deck = body.deck;
+    // F3: 部屋の乱造でメモリ/永続層を食い潰させない（IPごとのレート制限＋総数上限）。
+    if (!checkRateLimit(clientIp(req), "create")) {
+      sendJson(res, 429, { error: "部屋の作成が多すぎます。しばらくしてから再試行してください" });
+      return true;
     }
+    if (rooms.size >= LIMITS.maxRooms) {
+      sendJson(res, 503, { error: "サーバーが混雑しています（部屋数の上限）。しばらくしてから再試行してください" });
+      return true;
+    }
+    const body = await readJson(req);
+    const deckResult = await normalizeRoomDeck(body.deck); // F2
+    if (deckResult.error) {
+      sendJson(res, 400, { error: deckResult.error });
+      return true;
+    }
+    const userId = await resolveOptionalUserId(req); // D5: ログイン中なら席に userId を紐づける
+    const room = createRoom();
+    const member = addMember(room, { name: body.name, userId, remoteAddress: clientIp(req) });
+    room.hostClientId = member.clientId; // 部屋を立てた人がホスト（キックの権限者）
+    member.deck = deckResult.deck;
     schedulePersist(room);
     sendJson(res, 201, { roomId: room.id, clientId: member.clientId, token: member.token, role: member.role, isHost: true });
     return true;
@@ -1210,7 +1569,21 @@ async function handleApi(req, res, url) {
   // 「参加」を2回押す・戻る/リロード後にもう一度押す、で観戦者が増殖して席が埋まり、
   // 開始ゲート（両席＋両者デッキ）が満たせなくなる事故を防ぐ。
   if (req.method === "POST" && parts[3] === "join") {
+    if (!checkRateLimit(clientIp(req), "join")) {
+      sendJson(res, 429, { error: "参加の試行が多すぎます。しばらくしてから再試行してください" });
+      return true;
+    }
     const body = await readJson(req);
+    // F2: deck は「指定があれば」検証する（未指定=既存のデッキを維持）。
+    let joinDeck;
+    if (body.deck !== undefined && body.deck !== null) {
+      const deckResult = await normalizeRoomDeck(body.deck);
+      if (deckResult.error) {
+        sendJson(res, 400, { error: deckResult.error });
+        return true;
+      }
+      joinDeck = deckResult.deck;
+    }
     const userId = await resolveOptionalUserId(req); // D5
     // ① 自分のトークンを持っている＝この部屋に既にいる（所持自体が本人証明）。
     let member = body.token ? memberByToken(room, body.token) : null;
@@ -1220,8 +1593,9 @@ async function handleApi(req, res, url) {
       member = [...room.members.values()].find((m) => m.userId && m.userId === userId) || null;
     }
     if (member) {
-      if (body.name) member.name = body.name;
-      if (body.deck) member.deck = body.deck;
+      if (clampText(body.name, NAME_MAX)) member.name = clampText(body.name, NAME_MAX);
+      // 開始後の再参加ではデッキを差し替えない（盤面は開始時のデッキで確定済み。F7）。
+      if (joinDeck && !room.started) member.deck = joinDeck;
       room.updatedAt = Date.now();
       broadcastLobby(room);
       schedulePersist(room);
@@ -1241,10 +1615,15 @@ async function handleApi(req, res, url) {
       sendJson(res, 403, { error: `この部屋からキックされています（あと約${blockedFor}秒で再参加できます）` });
       return true;
     }
-    member = addMember(room, { name: body.name, userId, remoteAddress: req.socket?.remoteAddress || null });
+    // F3: 1部屋の参加者数に上限（観戦者の無限増殖でロビー配信/永続化が肥大化しないように）。
+    if (room.members.size >= LIMITS.maxMembersPerRoom) {
+      sendJson(res, 409, { error: `この部屋は満員です（最大${LIMITS.maxMembersPerRoom}人）` });
+      return true;
+    }
+    member = addMember(room, { name: body.name, userId, remoteAddress: clientIp(req) });
     reassignHostIfNeeded(room); // 復元直後などホスト不在の部屋なら最初の参加者がホストになる
-    if (body.deck) {
-      member.deck = body.deck;
+    if (joinDeck && !room.started) {
+      member.deck = joinDeck;
     }
     broadcastLobby(room);
     schedulePersist(room);
@@ -1300,7 +1679,7 @@ async function handleApi(req, res, url) {
       writeSse(target.sse, { type: "kicked", text: `部屋 ${room.id} から退出させられました` });
     }
     // 同じ相手がすぐ入り直せるとキックの意味が無いので、しばらく再入室を断る。
-    for (const key of kickBlockKeys({ socket: { remoteAddress: target.remoteAddress } }, target.userId)) {
+    for (const key of kickBlockKeys(target.remoteAddress, target.userId)) {
       room.kickBlocks.set(key, Date.now() + KICK_BLOCK_MS);
     }
     vacateSeatOf(room, target.clientId);
@@ -1521,6 +1900,19 @@ async function handleApi(req, res, url) {
     // 逆プロキシ/CDN(Render等)はSSEの最初の数KBをバッファして即時flushしないことがある。
     // 大きめの初回コメント(パディング)を流してバッファ閾値を超えさせ、hello/view を即届かせる。
     res.write(`:${" ".repeat(2048)}\n\n`);
+    // F8: 同じメンバーの旧SSEを閉じてから差し替える（1メンバー1本に制限）。旧実装は前の応答を開いたまま
+    // 参照だけ捨てたため、同一 token で開き直すたびに接続とハートビート interval が漏れ続けた。
+    // 旧接続へは retry を極大にしてから閉じる＝旧タブの EventSource が自動再接続して新タブと奪い合わない。
+    if (member.sse && member.sse !== res) {
+      const prev = member.sse;
+      try {
+        prev.write("retry: 86400000\n\n");
+        writeSse(prev, { type: "notice", text: "別の画面で同じ席に接続したため、この画面への配信を停止しました" });
+      } catch {
+        /* 既に切れている旧接続は無視 */
+      }
+      closeSseOf(member);
+    }
     member.sse = res;
     room.updatedAt = Date.now();
     // キープアライブ: アイドルSSEはモバイル回線/逆プロキシ(Render/fly.io等)に切られやすく、
@@ -1533,6 +1925,9 @@ async function handleApi(req, res, url) {
         clearInterval(heartbeat);
       }
     }, 15000);
+    heartbeat.unref?.();
+    res.__bfCleanup = () => clearInterval(heartbeat);
+    res.on("close", () => clearInterval(heartbeat));
     // hello: 現在のロビー＋（開始済みなら）自分のview（type は最後に置いて上書き防止）
     writeSse(res, { ...lobbyPayload(room, member), type: "hello" });
     const view = viewPayloadFor(room, member, "現局面");
@@ -1571,27 +1966,70 @@ async function handleApi(req, res, url) {
         return true;
       }
     } else if (body.action === "swapSeats") {
+      // F7: 席入替は対戦者本人かホストのみ（観戦者が勝手に席を入れ替えられないように）。
+      if (!canControlLobby(room, member)) {
+        sendJson(res, 403, { error: "席の入替は対戦者かホストだけが行えます" });
+        return true;
+      }
       const result = swapSeats(room);
       if (result.error) {
         sendJson(res, 409, result);
         return true;
       }
     } else if (body.action === "setDeck") {
-      member.deck = body.deck || null;
+      // F7: 開始後のデッキ差し替えは無意味かつ復元時の混線源なので拒否。F2: 中身は必ず検証する。
+      if (room.started) {
+        sendJson(res, 409, { error: "ゲーム開始後はデッキを変更できません" });
+        return true;
+      }
+      const deckResult = await normalizeRoomDeck(body.deck);
+      if (deckResult.error) {
+        sendJson(res, 400, { error: deckResult.error });
+        return true;
+      }
+      member.deck = deckResult.deck;
     } else if (body.action === "start") {
       if (room.started) {
         sendJson(res, 409, { error: "already started" });
+        return true;
+      }
+      // F7: 開始できるのは対戦者本人かホストのみ（観戦者による勝手な開始を防ぐ）。
+      if (!canControlLobby(room, member)) {
+        sendJson(res, 403, { error: "対戦の開始は対戦者かホストだけが行えます" });
         return true;
       }
       if (!room.seats[0] || !room.seats[1]) {
         sendJson(res, 409, { error: "両席が埋まっていません" });
         return true;
       }
+      // F7: play.js の開始ゲートと同じく両者のデッキ確定を必須にする（未確定だと engine が既定デッキで黙って始める）。
+      const seatMembers = room.seats.map((id) => room.members.get(id));
+      if (seatMembers.some((m) => !m || !m.deck)) {
+        sendJson(res, 409, { error: "両者のデッキが確定していません" });
+        return true;
+      }
+      if (room.busy || room.starting) {
+        sendJson(res, 409, { error: "他の操作を処理中です" });
+        return true;
+      }
+      // F3: 開始（=GameRoom 生成。1局30MB超・数百ms）の連打と同時対局数を抑える。
+      if (!checkRateLimit(clientIp(req), "start")) {
+        sendJson(res, 429, { error: "開始の試行が多すぎます。しばらくしてから再試行してください" });
+        return true;
+      }
+      if (countActiveGames() >= LIMITS.maxActiveGames) {
+        sendJson(res, 503, { error: "サーバーが混雑しています（同時対戦数の上限）。しばらくしてから再試行してください" });
+        return true;
+      }
+      // 開始処理（loadData の await）中の二重開始で GameRoom が2つ作られないよう印を立てる。
+      room.starting = true;
       try {
         await startGame(room);
       } catch (error) {
         sendJson(res, 500, { error: `開始に失敗: ${error.message}` });
         return true;
+      } finally {
+        room.starting = false;
       }
       broadcastLobby(room);
       broadcastView(room, "ゲーム開始");
@@ -1625,8 +2063,19 @@ async function handleApi(req, res, url) {
       return true;
     }
     const state = room.game.api.getState();
-    if (!canActorActNow(state, member.role)) {
-      sendJson(res, 409, { error: "今あなたの操作番ではありません" });
+    // 別アクションの処理中（プロンプト往復のホールド含む）は先に弾く。下の可否判定は busy 中に
+    // エンジンの finder を走らせない（ホールド中の applyAction が触っている state.selected を乱さない）。
+    if (room.busy) {
+      sendJson(res, 409, { error: "他の操作を処理中です" });
+      return true;
+    }
+    if (!canActorActNow(state, member.role, { type: body.type, params: body.params || {}, game: room.game })) {
+      const offTurnIdle = !state.winner && !state.pendingAttack && !state.pendingAction && member.role !== state.active;
+      sendJson(res, 409, {
+        error: offTurnIdle
+          ? "相手のターン中は、今使える【対抗】のカード・能力しか使えません"
+          : "今あなたの操作番ではありません",
+      });
       return true;
     }
     // 攻撃/効果の「解決」は対抗ウィンドウを担当する席（防御側/応答側）のみが送れる。
@@ -1661,7 +2110,8 @@ async function handleApi(req, res, url) {
       room.busy = false;
     }
     room.updatedAt = Date.now();
-    broadcastView(room, body.label || body.type);
+    // F9: label はクライアント任意文字列で全員へ配信されるため長さを丸める。
+    broadcastView(room, clampText(typeof body.label === "string" && body.label ? body.label : String(body.type || ""), LABEL_MAX));
     await maybeRecordMatch(room); // D5: 決着していれば席のログインユーザーへ戦績を記録（best-effort・内部で握る）
     persistNow(room); // busy=false 確定後の最新局面を保存（往復ホールド後もここで保存される）
     sendJson(res, 200, { ok: true });
@@ -1806,10 +2256,67 @@ async function backfillMatchReplayId(room, replayId) {
   }
 }
 
+// ---- 静的配信の許可リスト（F4） ----
+// 旧実装はリポジトリ直下を丸ごと配信しており、HANDOFF.md/CLAUDE.md/server/*.js/_scratch/**/.gitignore 等の
+// 内部資料・サーバソースまで取得できた。配信はページが実際に読むファイルだけに限る:
+//   ・直下: ユーザー向けページ(*.html)と、それらが <script>/<link> で読むクライアント js/css
+//     （index/play/replay は ENGINE_VERSION ローダで src/* ＋ deck-picker/deck-code/user-api(+play.js) を読む。
+//      builder/gallery は builder.js/gallery.js/deck-code.js/deck-picker.js/user-api.js と各 css を手書き ?v= で読む。
+//      netplay.html は旧中継版だが e2e の読込確認対象なので残す＝読むのは src/* と styles.css のみ）
+//   ・src/*.js（直下のみ）・data/**（カードJSON・imgpack・画像）
+// それ以外（*.md・ドットで始まるパス・server/ tools/ tests/ e2e/ docs/ _scratch/ 等）は配信しない。
+// ページが新しいファイルを読むようになったら、ここに足すこと（足し忘れは 404 で即気付ける）。
+const STATIC_ROOT_FILES = new Set([
+  "index.html",
+  "play.html",
+  "replay.html",
+  "builder.html",
+  "gallery.html",
+  "netplay.html",
+  "play.js",
+  "builder.js",
+  "gallery.js",
+  "deck-picker.js",
+  "deck-code.js",
+  "user-api.js",
+  "styles.css",
+  "builder.css",
+  "gallery.css",
+]);
+const STATIC_DATA_EXTS = new Set([".json", ".webp", ".png", ".jpg", ".jpeg", ".gif", ".svg"]);
+// 明示拒否（403）にする危険パス。許可リスト外は通常 404 だが、これらは「あるが見せない」ことを明確にする。
+const STATIC_DENY_DIRS = new Set(["server", "tools", "tests", "e2e", "docs", "_scratch", "node_modules"]);
+
+// requestPath（先頭 / 付き・デコード済み）→ "allow" | "deny" | "missing"
+function staticAccess(requestPath) {
+  const rel = requestPath.replace(/^\/+/, "");
+  const segments = rel.split("/");
+  if (!rel || segments.some((seg) => seg === "" || seg === "." || seg === "..")) return "deny";
+  if (segments.some((seg) => seg.startsWith("."))) return "deny"; // .git/ .gitignore .env 等
+  if (/\.md$/i.test(rel)) return "deny";
+  if (STATIC_DENY_DIRS.has(segments[0])) return "deny";
+  if (segments.length === 1) return STATIC_ROOT_FILES.has(rel) ? "allow" : "missing";
+  if (segments[0] === "src") return segments.length === 2 && rel.endsWith(".js") ? "allow" : "missing";
+  if (segments[0] === "data") {
+    return STATIC_DATA_EXTS.has(path.extname(rel).toLowerCase()) ? "allow" : "missing";
+  }
+  return "missing";
+}
+
 function serveStatic(req, res, url) {
   // 権威サーバのクライアントは play.html（手札秘匿のシンクライアント）。
   // ルート直打ち時は play.html を返す（netplay.html は中継版=netplay-server.js 用で /auth/* に繋がらない）。
-  const requestPath = url.pathname === "/" ? "/play.html" : decodeURIComponent(url.pathname);
+  let requestPath;
+  try {
+    requestPath = url.pathname === "/" ? "/play.html" : decodeURIComponent(url.pathname);
+  } catch {
+    sendJson(res, 400, { error: "bad request" }); // 壊れた %エンコード
+    return;
+  }
+  if (requestPath.includes("\0") || requestPath.includes("\\")) {
+    sendJson(res, 403, { error: "forbidden" });
+    return;
+  }
   const filePath = path.resolve(rootDir, `.${requestPath}`);
   if (filePath !== rootDir && !filePath.startsWith(rootDir + path.sep)) {
     sendJson(res, 403, { error: "forbidden" });
@@ -1818,6 +2325,15 @@ function serveStatic(req, res, url) {
   // 永続データ(token を含む)は静的配信しない（dataDir を誤って root 内に置いた場合の二重防御）。
   if (filePath === dataDir || filePath.startsWith(dataDir + path.sep)) {
     sendJson(res, 403, { error: "forbidden" });
+    return;
+  }
+  const access = staticAccess(path.relative(rootDir, filePath).split(path.sep).join("/"));
+  if (access === "deny") {
+    sendJson(res, 403, { error: "forbidden" });
+    return;
+  }
+  if (access !== "allow") {
+    sendJson(res, 404, { error: "not found" });
     return;
   }
   fs.readFile(filePath, (error, content) => {
@@ -1842,8 +2358,16 @@ function serveStatic(req, res, url) {
 }
 
 const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, `http://${req.headers.host}`);
+  let url = null;
   try {
+    // F1: URL 解析も try の内側で、Host ヘッダは使わない（固定ベース）。旧実装は try の外で
+    // `http://${req.headers.host}` を解析しており、`Host: [` のような壊れたヘッダ1本でプロセスごと落ちた。
+    try {
+      url = new URL(req.url || "/", "http://localhost");
+    } catch {
+      sendJson(res, 400, { error: "bad request" });
+      return;
+    }
     if (await handleApi(req, res, url)) {
       return;
     }
@@ -1853,26 +2377,67 @@ const server = http.createServer(async (req, res) => {
     }
     serveStatic(req, res, url);
   } catch (error) {
+    // 本文の上限超過(413)・壊れたJSON(400)は statusCode 付きで来る。413 は残りの本文を読まずに切断する。
+    const status = error && error.statusCode;
+    if (status) {
+      if (status === 413) res.on("finish", () => req.destroy());
+      const payload = { error: error.message };
+      if (url && isUserApiPath(url.pathname)) sendJsonCors(res, status, payload);
+      else sendJson(res, status, payload, status === 413 ? { Connection: "close" } : null);
+      return;
+    }
     // ユーザーAPI経路の例外（Turso往復失敗など）は CORS 付き 503 で本当の理由を返す
     // （別オリジン配信のbuilder/index から fetch した時、CORS無し500だとブラウザが本文を読めず
     //  原因不明の「接続できません」になるため）。それ以外は従来どおり 500。
-    if (isUserApiPath(url.pathname)) {
+    if (url && isUserApiPath(url.pathname)) {
       sendJsonCors(res, 503, { error: "ユーザーDB処理に失敗しました", detail: error.message });
     } else {
       sendJson(res, 500, { error: error.message });
     }
   }
 });
+// 不正な HTTP（壊れたリクエスト行等）はソケット単位で 400 を返して閉じる（既定でも落ちないが明示）。
+server.on("clientError", (error, socket) => {
+  if (socket.writable) socket.end("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+  else socket.destroy();
+});
 
-setInterval(() => {
-  const now = Date.now();
+// 部屋の掃除（1分ごと）:
+//   ・未開始かつ全員オフラインで LIMITS.lobbyIdleTtlMs（既定30分）放置 → 閉じる（F3: 作るだけの部屋を溜めない）
+//   ・全員オフラインで roomTtlMs（6時間）放置 → 閉じる（従来どおり）
+function sweepRooms(now = Date.now()) {
+  let closed = 0;
   for (const [roomId, room] of rooms) {
     const anyOnline = [...room.members.values()].some((m) => m.sse);
-    if (!anyOnline && now - room.updatedAt > roomTtlMs) {
+    if (anyOnline || room.busy || room.starting) continue;
+    const idle = now - room.updatedAt;
+    if ((!room.started && idle > LIMITS.lobbyIdleTtlMs) || idle > roomTtlMs) {
       closeAndForgetRoom(room, roomId); // 孤児スナップショットも掃除（飛行中の save は closed ガードで弾く）
+      closed += 1;
     }
   }
-}, 10 * 60 * 1000).unref();
+  return closed;
+}
+setInterval(() => sweepRooms(), 60 * 1000).unref();
+
+// 最終防衛線（直接起動時のみ登録。スモーク等の require 経路ではテスト失敗を握り潰さないよう登録しない）。
+// リクエスト処理中の取りこぼし例外でプロセスごと落ちて全対局が消えるのを防ぐため、ログを残して継続する。
+// ただし短時間に多発する場合は状態破損の恐れがあるので終了し、外側の再起動（Render/fly.io/bat）に任せる。
+function installProcessGuards() {
+  const recent = [];
+  const note = (kind, error) => {
+    console.error(`[guard] ${kind}:`, error && error.stack ? error.stack : error);
+    const now = Date.now();
+    recent.push(now);
+    while (recent.length && now - recent[0] > 60 * 1000) recent.shift();
+    if (recent.length > 20) {
+      console.error("[guard] 1分間に未処理例外が20件を超えたため、状態破損を避けて終了します");
+      process.exit(1);
+    }
+  };
+  process.on("unhandledRejection", (reason) => note("unhandledRejection", reason));
+  process.on("uncaughtException", (error) => note("uncaughtException", error));
+}
 
 // 指定ポートが使用中/予約(EADDRINUSE/EACCES)なら次のポートへ自動フォールバック。
 // 起動成功後、--open 指定時は実際のポートで既定ブラウザを開く。
@@ -1924,6 +2489,7 @@ function openInBrowser(url) {
 }
 
 if (require.main === module) {
+  installProcessGuards();
   // 直接起動時のみ永続層を初期化し rooms を復元（モジュール import 経路＝スモークでは復元しない）。
   (async () => {
     try {
@@ -1933,10 +2499,11 @@ if (require.main === module) {
         tursoUrl: process.env.TURSO_DATABASE_URL,
         tursoToken: process.env.TURSO_AUTH_TOKEN,
       });
-      await restoreRooms();
+      // F3: 期限切れを先に掃除してから復元する（古い部屋まで一旦メモリへ載せない）。復元数は restoreRooms が上限で抑える。
       const maxAgeMs = ROOM_TTL_HOURS * 60 * 60 * 1000;
       const pruned = await roomStore.pruneExpired(maxAgeMs);
       if (pruned) console.log(`[room-store] 期限切れの部屋スナップショットを ${pruned} 件削除しました`);
+      await restoreRooms();
       setInterval(() => {
         roomStore
           .pruneExpired(maxAgeMs)
@@ -1992,4 +2559,13 @@ module.exports = {
   flushPersist,
   closeAndForgetRoom, // 部屋復活レースの回帰検証用（スモーク）
   maybeRecordMatch, // D5(戦績): 決着記録の直接検証用（スモーク）
+  // 以下は堅牢化(F1〜F13)の回帰検証用（スモーク）
+  LIMITS,
+  sweepRooms,
+  clientIp,
+  staticAccess,
+  normalizeRoomDeck,
+  ensureAdminUser,
+  rateLimitHits,
+  pruneRateLimitHits,
 };

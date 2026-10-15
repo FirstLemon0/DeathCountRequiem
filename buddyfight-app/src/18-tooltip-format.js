@@ -10,6 +10,11 @@ function renderLog() {
     item.textContent = entry;
     elements.logList.append(item);
   });
+  // スマホのドック: ログボタンに直前の1行を出す（ログ本体はドロワー）。要素が無い画面/スタブでは何もしない。
+  const dockLine = typeof document.getElementById === "function" ? document.getElementById("dockLogLine") : null;
+  if (dockLine) {
+    dockLine.textContent = state.log[0] || "まだありません";
+  }
 }
 
 function showCardTooltip(card, event) {
@@ -378,7 +383,8 @@ function isCallRestricted(callerOwner, card) {
       (restriction) =>
         restriction.owner === callerOwner &&
         !restriction.byEffectOnly &&
-        !(restriction.allowFilter && matchesCardFilter(card, restriction.allowFilter)),
+        !(restriction.allowFilter && matchesCardFilter(card, restriction.allowFilter)) &&
+        whileConditionsHold(restriction), // 裁定 R9（whileCond 無しは常時有効）
     )
   ) {
     return true;
@@ -443,7 +449,7 @@ function passiveAbilityConditionsMet(card, ability) {
   }
   return ability.conditions.every((condition) => {
     if (condition.op === "sourceZoneIn") {
-      return condition.zones?.includes(slot.zone);
+      return zoneListIncludes(condition.zones, slot.zone);
     }
     return checkCondition(condition, slot.owner, {
       card,
@@ -510,6 +516,29 @@ function isRepeatableCounterKind(kind) {
   return Boolean(kind) && REPEATABLE_COUNTER_KINDS.has(kind);
 }
 
+// 対抗ロックの発生源（sourceInstanceId）を発生源の席の場から探す。旧ロック（発生源なし）や離場済みは null。
+function counterLockSourceSlot(lock) {
+  if (lock.sourceInstanceId == null) {
+    return null;
+  }
+  const field = state.players[lock.owner]?.field || {};
+  const zone = zones.find((z) => field[z]?.instanceId === lock.sourceInstanceId);
+  return zone ? { owner: lock.owner, zone, card: field[zone] } : null;
+}
+
+// sourceMustAttack のロックは、発生源が現在の攻撃者に含まれるバトル中だけ有効（他カードの攻撃には効かない）。
+function counterLockSourceActive(lock) {
+  if (!lock.sourceMustAttack) {
+    return true;
+  }
+  return getPendingAttackers().some((attacker) => attacker.card?.instanceId === lock.sourceInstanceId);
+}
+
+function counterLockSourceContext(lock) {
+  const slot = counterLockSourceSlot(lock);
+  return slot ? { card: slot.card, zone: slot.zone, owner: lock.owner } : {};
+}
+
 function canUseCounterEffect(owner, effect) {
   const pending = state.pendingAttack || state.pendingAction;
   if (!pending) {
@@ -521,7 +550,8 @@ function canUseCounterEffect(owner, effect) {
     (state.opponentCounterLockThisTurn || []).some(
       (lock) =>
         owner === 1 - lock.owner &&
-        (!lock.while.length || checkCardConditions(lock.while, lock.owner, {})),
+        counterLockSourceActive(lock) &&
+        (!lock.while.length || checkCardConditions(lock.while, lock.owner, counterLockSourceContext(lock))),
     )
   ) {
     return false;
@@ -546,6 +576,8 @@ function markCounterUsed(owner, kind) {
 }
 
 function zoneLabel(zone) {
+  if (isSetZone(zone)) return `配置魔法${zone.slice(3)}`; // rule-call-11: set3 以降も同形
+  if (isItemZone(zone)) return "アイテム"; // pt-fix-c T7-4: 追加アイテム枠(item2…)も「アイテム」
   return {
     left: "レフト",
     center: "センター",
